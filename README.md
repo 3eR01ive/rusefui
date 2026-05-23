@@ -33,7 +33,7 @@ npm run tauri build
 ## Структура
 
 - `crates/rusefi-protocol` — протокол ECU
-- `crates/rusefui-runtime` — logic-компоненты (`connection`, …)
+- `crates/rusefui-runtime` — `EcuSession`, logic-компоненты, `OutputChannelsSource` (poll `O`)
 - `src-tauri` — `component_mount` / `component_dispatch`, событие `component-state`
 - `src/composables/useRustComponent.ts` — подписка Vue на Rust state
 - `public/config/` — YAML layout

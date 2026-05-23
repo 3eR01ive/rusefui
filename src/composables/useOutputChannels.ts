@@ -1,0 +1,53 @@
+import { shallowRef, readonly } from "vue";
+import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+
+export interface OutputSnapshot {
+  connected: boolean;
+  pollHz: number;
+  rawLen: number;
+  values: Record<string, number>;
+  lastError?: string | null;
+}
+
+const snapshot = shallowRef<OutputSnapshot>({
+  connected: false,
+  pollHz: 0,
+  rawLen: 0,
+  values: {},
+});
+
+let unlisten: UnlistenFn | null = null;
+let initPromise: Promise<void> | null = null;
+
+export async function initOutputChannels(): Promise<void> {
+  if (initPromise) return initPromise;
+
+  initPromise = (async () => {
+    try {
+      snapshot.value = await invoke<OutputSnapshot>("output_get_snapshot");
+    } catch {
+      /* not in tauri yet */
+    }
+
+    await invoke("output_start_listener").catch(() => {});
+
+    if (!unlisten) {
+      unlisten = await listen<OutputSnapshot>("output-channels", (event) => {
+        snapshot.value = event.payload;
+      });
+    }
+  })();
+
+  return initPromise;
+}
+
+export function useOutputChannels() {
+  return {
+    snapshot: readonly(snapshot),
+    getField: (name: string): number | null => {
+      const v = snapshot.value.values[name];
+      return v === undefined ? null : v;
+    },
+  };
+}

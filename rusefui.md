@@ -371,4 +371,4 @@ rusefui/
 
 ---
 
-*Следующий шаг: опрос `outputChannels` и рабочие `output-value` / `scalar-field` поверх INI.*
+*Скелет `OutputChannelsSource` (poll `O` ~10 Hz) реализован. Следующий шаг: парсер INI по signature для всех полей output/config.*

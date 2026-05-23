@@ -1,23 +1,29 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use serde_json::Value;
 
 use crate::component::{requires_rust_logic, ComponentLogic, LogicComponentType};
 use crate::components::connection::ConnectionLogic;
+use crate::session::EcuSession;
 
 pub struct ComponentRuntime {
+    session: Arc<EcuSession>,
     instances: HashMap<String, Box<dyn ComponentLogic>>,
 }
 
-impl Default for ComponentRuntime {
-    fn default() -> Self {
+impl ComponentRuntime {
+    pub fn new(session: Arc<EcuSession>) -> Self {
         Self {
+            session,
             instances: HashMap::new(),
         }
     }
-}
 
-impl ComponentRuntime {
+    pub fn session(&self) -> Arc<EcuSession> {
+        Arc::clone(&self.session)
+    }
+
     pub fn mount(
         &mut self,
         instance_id: &str,
@@ -34,7 +40,9 @@ impl ComponentRuntime {
         }
 
         let logic: Box<dyn ComponentLogic> = match LogicComponentType::from_str(component_type) {
-            Some(LogicComponentType::Connection) => Box::new(ConnectionLogic::new()),
+            Some(LogicComponentType::Connection) => {
+                Box::new(ConnectionLogic::new(Arc::clone(&self.session)))
+            }
             None => {
                 return Err(format!("unknown logic component: {component_type}"));
             }

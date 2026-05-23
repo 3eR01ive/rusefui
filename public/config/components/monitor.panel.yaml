@@ -14,6 +14,7 @@ children:
             props:
               label: RPM
               unit: rpm
+              decimals: 0
             bind:
               source: outputChannels
               field: RPMValue
@@ -23,11 +24,12 @@ children:
             props:
               label: CLT
               unit: "°C"
+              decimals: 1
             bind:
               source: outputChannels
               field: coolant
 
       - type: text
         props:
-          text: "Значения появятся после реализации опроса outputChannels (команда O)."
+          text: "Опрос outputChannels (команда O) в Rust ~10 Hz. Поля пока по скелету INI f407-discovery."
           variant: hint

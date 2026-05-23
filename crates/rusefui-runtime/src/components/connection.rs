@@ -1,8 +1,10 @@
-use rusefi_protocol::{ProtocolError, SerialLink, DEFAULT_IO_TIMEOUT_MS};
+use std::sync::Arc;
+
 use serde::Serialize;
 use serde_json::{json, Value};
 
 use crate::component::{ComponentLogic, ComponentMeta, LogicComponentType};
+use crate::session::EcuSession;
 
 const BAUD_RATES: &[u32] = &[115_200, 230_400, 460_800, 921_600];
 
@@ -25,7 +27,7 @@ struct ConnectionViewState {
 }
 
 pub struct ConnectionLogic {
-    link: Option<SerialLink>,
+    session: Arc<EcuSession>,
     ports: Vec<String>,
     selected_port: String,
     baud_rate: u32,
@@ -37,9 +39,9 @@ pub struct ConnectionLogic {
 }
 
 impl ConnectionLogic {
-    pub fn new() -> Self {
+    pub fn new(session: Arc<EcuSession>) -> Self {
         Self {
-            link: None,
+            session,
             ports: Vec::new(),
             selected_port: String::new(),
             baud_rate: 115_200,
@@ -52,39 +54,41 @@ impl ConnectionLogic {
     }
 
     fn view_state(&self) -> ConnectionViewState {
-        if let Some(link) = &self.link {
-            let info = link.info();
-            ConnectionViewState {
-                ports: self.ports.clone(),
-                selected_port: self.selected_port.clone(),
-                baud_rate: self.baud_rate,
-                baud_rates: BAUD_RATES.to_vec(),
-                loading_ports: self.loading_ports,
-                connecting: self.connecting,
-                message: self.message.clone(),
-                message_is_error: self.message_is_error,
-                connected: true,
-                port_name: Some(info.port_name.clone()),
-                signature: Some(info.signature.clone()),
-                handshake_command: Some(info.handshake_command),
-                baud_rate_active: Some(info.baud_rate),
+        let connected = self.session.is_connected();
+        if connected {
+            if let Ok(info) = self.session.with_link(|link| Ok(link.info().clone())) {
+                return ConnectionViewState {
+                    ports: self.ports.clone(),
+                    selected_port: self.selected_port.clone(),
+                    baud_rate: self.baud_rate,
+                    baud_rates: BAUD_RATES.to_vec(),
+                    loading_ports: self.loading_ports,
+                    connecting: self.connecting,
+                    message: self.message.clone(),
+                    message_is_error: self.message_is_error,
+                    connected: true,
+                    port_name: Some(info.port_name),
+                    signature: Some(info.signature),
+                    handshake_command: Some(info.handshake_command),
+                    baud_rate_active: Some(info.baud_rate),
+                };
             }
-        } else {
-            ConnectionViewState {
-                ports: self.ports.clone(),
-                selected_port: self.selected_port.clone(),
-                baud_rate: self.baud_rate,
-                baud_rates: BAUD_RATES.to_vec(),
-                loading_ports: self.loading_ports,
-                connecting: self.connecting,
-                message: self.message.clone(),
-                message_is_error: self.message_is_error,
-                connected: false,
-                port_name: None,
-                signature: None,
-                handshake_command: None,
-                baud_rate_active: None,
-            }
+        }
+
+        ConnectionViewState {
+            ports: self.ports.clone(),
+            selected_port: self.selected_port.clone(),
+            baud_rate: self.baud_rate,
+            baud_rates: BAUD_RATES.to_vec(),
+            loading_ports: self.loading_ports,
+            connecting: self.connecting,
+            message: self.message.clone(),
+            message_is_error: self.message_is_error,
+            connected: false,
+            port_name: None,
+            signature: None,
+            handshake_command: None,
+            baud_rate_active: None,
         }
     }
 
@@ -97,7 +101,7 @@ impl ConnectionLogic {
         self.message = None;
         self.message_is_error = false;
 
-        match SerialLink::list_ports() {
+        match rusefi_protocol::SerialLink::list_ports() {
             Ok(ports) => {
                 self.ports = ports;
                 if self.selected_port.is_empty() {
@@ -127,36 +131,31 @@ impl ConnectionLogic {
         self.connecting = true;
         self.message = None;
         self.message_is_error = false;
-        self.link = None;
 
-        let result = SerialLink::connect(
-            &self.selected_port,
-            self.baud_rate,
-            DEFAULT_IO_TIMEOUT_MS,
-        );
+        let result = self
+            .session
+            .connect(&self.selected_port, self.baud_rate);
 
         self.connecting = false;
 
         match result {
-            Ok(link) => {
+            Ok(_) => {
                 self.last_error = None;
-                self.link = Some(link);
                 self.message = Some("Подключено.".into());
                 self.message_is_error = false;
                 Ok(())
             }
             Err(e) => {
-                let msg = format_error(&e);
-                self.last_error = Some(msg.clone());
-                self.message = Some(msg.clone());
+                self.last_error = Some(e.clone());
+                self.message = Some(e.clone());
                 self.message_is_error = true;
-                Err(msg)
+                Err(e)
             }
         }
     }
 
     fn disconnect(&mut self) {
-        self.link = None;
+        self.session.disconnect();
         self.message = Some("Отключено.".into());
         self.message_is_error = false;
     }
@@ -203,8 +202,4 @@ impl ComponentLogic for ConnectionLogic {
             other => Err(format!("unknown action: {other}")),
         }
     }
-}
-
-fn format_error(e: &ProtocolError) -> String {
-    e.to_string()
 }

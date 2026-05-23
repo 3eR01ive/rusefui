@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted } from "vue";
 import type { ComponentInstance, ComponentMeta, DataBinding } from "../../core/types";
+import { initOutputChannels, useOutputChannels } from "../../composables/useOutputChannels";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -11,19 +12,44 @@ const props = defineProps<{
 }>();
 
 const bind = computed(() => props.instance.bind as DataBinding | undefined);
+const fieldName = computed(() => bind.value?.field ?? "");
 const label = computed(
-  () => String(props.props.label ?? bind.value?.field ?? "—"),
+  () => String(props.props.label ?? (fieldName.value || "—")),
 );
-const field = computed(() => bind.value?.field ?? "—");
 const unit = computed(() => String(props.props.unit ?? ""));
+const decimals = computed(() => Number(props.props.decimals ?? 1));
+
+const { snapshot, getField } = useOutputChannels();
+
+onMounted(() => {
+  void initOutputChannels();
+});
+
+const rawValue = computed(() => {
+  if (!fieldName.value) return null;
+  return getField(fieldName.value);
+});
+
+const displayValue = computed(() => {
+  if (!snapshot.value.connected) return "—";
+  const v = rawValue.value;
+  if (v === null) return "—";
+  if (Number.isInteger(v) && decimals.value === 0) return String(v);
+  return v.toFixed(decimals.value);
+});
+
+const stale = computed(
+  () => snapshot.value.connected && rawValue.value === null && !!fieldName.value,
+);
 </script>
 
 <template>
-  <div class="output-value">
+  <div class="output-value" :class="{ stale }">
     <span class="ov-label">{{ label }}</span>
-    <span class="ov-value">—</span>
+    <span class="ov-value">{{ displayValue }}</span>
     <span v-if="unit" class="ov-unit">{{ unit }}</span>
-    <span class="ov-meta">output · {{ field }}</span>
+    <span v-if="snapshot.lastError" class="ov-error">{{ snapshot.lastError }}</span>
+    <span v-else class="ov-meta">output · {{ fieldName || "?" }}</span>
   </div>
 </template>
 
@@ -39,6 +65,11 @@ const unit = computed(() => String(props.props.unit ?? ""));
   min-width: 120px;
 }
 
+.output-value.stale {
+  border-style: dashed;
+  opacity: 0.85;
+}
+
 .ov-label {
   font-size: 0.75rem;
   color: var(--color-gray);
@@ -49,6 +80,7 @@ const unit = computed(() => String(props.props.unit ?? ""));
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--color-text);
+  font-variant-numeric: tabular-nums;
 }
 
 .ov-unit {
@@ -56,8 +88,13 @@ const unit = computed(() => String(props.props.unit ?? ""));
   color: var(--color-text-muted);
 }
 
-.ov-meta {
+.ov-meta,
+.ov-error {
   font-size: 0.68rem;
   color: var(--color-text-subtle);
+}
+
+.ov-error {
+  color: var(--color-error);
 }
 </style>

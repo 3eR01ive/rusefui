@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use serialport::{DataBits, FlowControl, Parity, StopBits};
 
-use crate::commands::TS_HELLO_COMMAND;
+use crate::commands::{TS_HELLO_COMMAND, TS_OUTPUT_COMMAND, TS_RESPONSE_OK};
 use crate::error::ProtocolError;
 use crate::packet::{make_crc_request, parse_crc_response, CrcResponse};
 
@@ -81,6 +81,26 @@ impl SerialLink {
         self.port.write_all(&request)?;
         self.port.flush()?;
         self.read_crc_frame()
+    }
+
+    /// `ochGetCommand` — live output block (`O%2o%2c`, big-endian offset/count).
+    pub fn read_output_channels(
+        &mut self,
+        offset: u16,
+        count: u16,
+    ) -> Result<Vec<u8>, ProtocolError> {
+        let payload = [
+            TS_OUTPUT_COMMAND,
+            (offset >> 8) as u8,
+            (offset & 0xFF) as u8,
+            (count >> 8) as u8,
+            (count & 0xFF) as u8,
+        ];
+        let response = self.send_request(&payload)?;
+        if response.code != TS_RESPONSE_OK {
+            return Err(ProtocolError::ErrorResponse(response.code));
+        }
+        Ok(response.payload)
     }
 
     fn read_crc_frame(&mut self) -> Result<CrcResponse, ProtocolError> {

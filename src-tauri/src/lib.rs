@@ -12,6 +12,8 @@ pub fn run() {
             runtime_cmds::component_get_state,
             runtime_cmds::component_dispatch,
             runtime_cmds::component_unmount,
+            runtime_cmds::output_get_snapshot,
+            runtime_cmds::output_start_listener,
         ])
         .run(tauri::generate_context!())
         .expect("error while running rusefui");

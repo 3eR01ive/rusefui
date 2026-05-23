@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import TabWorkspace from "./TabWorkspace.vue";
 import { createDataContext, provideDataContext } from "../core/data-context";
+import { initOutputChannels } from "../composables/useOutputChannels";
 
 const dataCtx = createDataContext();
 provideDataContext(dataCtx);
 
 const appTitle = ref("rusefui");
+
+onMounted(() => {
+  void initOutputChannels();
+});
 </script>
 
 <template>
