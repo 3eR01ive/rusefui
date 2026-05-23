@@ -1,0 +1,21 @@
+[package]
+name = "rusefui"
+version.workspace = true
+edition.workspace = true
+description = "rusEFI tuning interface"
+authors = ["guerrero"]
+license.workspace = true
+
+[lib]
+name = "rusefui_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+rusefi-protocol = { path = "../crates/rusefi-protocol" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = [] }
+thiserror = "2.0"

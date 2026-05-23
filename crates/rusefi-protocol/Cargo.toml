@@ -1,0 +1,15 @@
+[package]
+name = "rusefi-protocol"
+description = "rusEFI TunerStudio binary protocol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+crc32fast = "1.4"
+serialport = "4.6"
+serde = { version = "1", features = ["derive"] }
+thiserror = "2.0"
+
+[dev-dependencies]
+hex = "0.4"
