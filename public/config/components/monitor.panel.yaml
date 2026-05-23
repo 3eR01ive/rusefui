@@ -1,0 +1,33 @@
+# Пример вкладки с output-компонентами (данные появятся после polling).
+id: monitor.panel
+description: Превью декларативных output-привязок
+
+children:
+  - type: section
+    props:
+      title: Live values (заглушка)
+    children:
+      - type: row
+        children:
+          - type: output-value
+            id: rpm
+            props:
+              label: RPM
+              unit: rpm
+            bind:
+              source: outputChannels
+              field: RPMValue
+
+          - type: output-value
+            id: clt
+            props:
+              label: CLT
+              unit: "°C"
+            bind:
+              source: outputChannels
+              field: coolant
+
+      - type: text
+        props:
+          text: "Значения появятся после реализации опроса outputChannels (команда O)."
+          variant: hint

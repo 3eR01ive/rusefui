@@ -1,0 +1,18 @@
+# Составной компонент: панель подключения (файл = один composite).
+id: connection.panel
+description: Serial-подключение к ECU
+
+children:
+  - type: section
+    props:
+      title: Подключение к ECU
+    children:
+      - type: connection
+        id: ecu-connection
+        bind:
+          source: connection
+
+      - type: text
+        props:
+          text: "Протокол: queryCommand S, CRC envelope (msEnvelope_1.0)."
+          variant: hint

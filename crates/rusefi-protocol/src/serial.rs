@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use serialport::{DataBits, FlowControl, Parity, StopBits};
 
-use crate::commands::{TS_HELLO_COMMAND, TS_QUERY_COMMAND};
+use crate::commands::TS_HELLO_COMMAND;
 use crate::error::ProtocolError;
 use crate::packet::{make_crc_request, parse_crc_response, CrcResponse};
 
@@ -12,7 +12,7 @@ pub struct ConnectionInfo {
     pub port_name: String,
     pub baud_rate: u32,
     pub signature: String,
-    /// Which handshake byte succeeded (`Q` or `S`).
+    /// Handshake command (INI `queryCommand`, CRC envelope).
     pub handshake_command: char,
 }
 
@@ -62,64 +62,13 @@ impl SerialLink {
 
     fn handshake(&mut self) -> Result<String, ProtocolError> {
         self.port.clear(serialport::ClearBuffer::All)?;
-        if let Ok(sig) = self.try_handshake_crc(TS_HELLO_COMMAND) {
-            self.info.handshake_command = 'S';
-            return Ok(sig);
-        }
-
-        self.port.clear(serialport::ClearBuffer::All)?;
-        if let Ok(sig) = self.try_handshake_plain() {
-            self.info.handshake_command = 'Q';
-            return Ok(sig);
-        }
-
-        Err(ProtocolError::Timeout(self.timeout_ms))
-    }
-
-    fn try_handshake_crc(&mut self, command: u8) -> Result<String, ProtocolError> {
-        let request = make_crc_request(&[command]);
+        let request = make_crc_request(&[TS_HELLO_COMMAND]);
         self.port.write_all(&request)?;
         self.port.flush()?;
 
         let response = self.read_crc_frame()?;
+        self.info.handshake_command = 'S';
         response.into_string_payload()
-    }
-
-    fn try_handshake_plain(&mut self) -> Result<String, ProtocolError> {
-        self.port.write_all(&[TS_QUERY_COMMAND])?;
-        self.port.flush()?;
-
-        let deadline = std::time::Instant::now() + Duration::from_millis(self.timeout_ms);
-        let mut buf = Vec::with_capacity(128);
-        let mut chunk = [0u8; 64];
-
-        while std::time::Instant::now() < deadline {
-            match self.port.read(&mut chunk) {
-                Ok(0) => std::thread::sleep(Duration::from_millis(2)),
-                Ok(n) => {
-                    buf.extend_from_slice(&chunk[..n]);
-                    if buf.iter().any(|&b| b == 0) || buf.len() >= 120 {
-                        break;
-                    }
-                }
-                Err(e) if e.kind() == std::io::ErrorKind::TimedOut => {
-                    if !buf.is_empty() {
-                        break;
-                    }
-                }
-                Err(e) => return Err(e.into()),
-            }
-        }
-
-        let s = String::from_utf8_lossy(&buf)
-            .trim_end_matches('\0')
-            .trim()
-            .to_string();
-        if s.is_empty() {
-            Err(ProtocolError::EmptySignature)
-        } else {
-            Ok(s)
-        }
     }
 
     pub fn info(&self) -> &ConnectionInfo {

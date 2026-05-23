@@ -24,8 +24,16 @@ npm run build
 npm run tauri build
 ```
 
+## UI
+
+Модульный интерфейс: **только вкладки**, без меню. Layout и привязки данных — YAML в `public/config/`. Компоненты реализуются в коде и регистрируются в `src/components/register.ts`.
+
+См. [config/README.md](./config/README.md) и [rusefui.md](./rusefui.md#архитектура-ui-реализовано).
+
 ## Структура
 
-- `crates/rusefi-protocol` — CRC-пакеты, serial, handshake (`S` / `Q`)
+- `crates/rusefi-protocol` — CRC-пакеты, serial, handshake (`S`)
 - `src-tauri` — Tauri-команды (`list_serial_ports`, `connect_ecu`, …)
-- `src/views/ConnectionPage.vue` — страница подключения
+- `public/config/` — вкладки и деревья компонентов (YAML)
+- `src/core/` — реестр, загрузчик конфигов, data context
+- `src/components/builtins/` — `connection`, `scalar-field`, `output-value`, layout-контейнеры

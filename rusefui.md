@@ -250,22 +250,85 @@ flowchart LR
 
 ---
 
-## Структура репозитория rusefui (предварительно)
+## Архитектура UI (реализовано)
+
+**Принципы:** без меню — только **вкладки**; любой экран собирается из **компонентов**; композиция и привязка данных — **декларативно в YAML**.
+
+### Слои
+
+```mermaid
+flowchart TB
+  subgraph yaml [public/config]
+    app[app.yaml]
+    tabs[tabs/*.tab.yaml]
+    comp[components/*.yaml]
+  end
+
+  subgraph code [Код Vue]
+    reg[registry.ts]
+    host[ComponentHost]
+    builtins[builtins/*.vue]
+  end
+
+  app --> tabs
+  tabs --> comp
+  tabs --> host
+  comp --> host
+  reg --> builtins
+  host --> reg
+```
+
+| Слой | Путь | Роль |
+|------|------|------|
+| Реестр | `src/core/registry.ts` | Тип компонента доступен в YAML **только после** `registerComponent()` в коде |
+| Загрузчик | `src/core/config-loader.ts` | `app.yaml` → вкладки → дерево инстансов, `$component:` → файл composite |
+| Рендер | `src/components/ComponentHost.vue` | Рекурсивный рендер, `bind` → `data-context` |
+| Оболочка | `src/shell/TabWorkspace.vue` | Только tab bar + панели |
+| Конфиги | `public/config/` | Runtime (редактируемо без пересборки) |
+
+### Файлы конфигурации
+
+- **`components/<name>.yaml`** — составной компонент (дерево `children`).
+- **`tabs/<name>.tab.yaml`** — вкладка: `title` + `root` (inline или `$component: …`).
+- **`app.yaml`** — список вкладок.
+
+### Привязка данных (`bind`)
+
+```yaml
+bind:
+  source: connection | config | outputChannels | textLog
+  field: RPMValue   # для config / output
+```
+
+- **edit** — `scalar-field` → `source: config` (flash-калибровка, позже INI).
+- **display** — `output-value`, `connection`, `text` → live / статус / логи.
+
+### Новый компонент
+
+1. Реализовать Vue в `src/components/builtins/`.
+2. Зарегистрировать в `src/components/register.ts` (`type`, `mode`, `isContainer`).
+3. Использовать `type: …` в YAML.
+
+Подробнее: [config/README.md](./config/README.md).
+
+---
+
+## Структура репозитория rusefui
 
 ```
 rusefui/
-  rusefui.md              # этот документ
-  crates/
-    rusefi-protocol/      # бинарный протокол
-    rusefi-ini/            # парсер INI
-  src-tauri/              # оболочка Tauri
-  ui/                     # frontend
-  ini/                    # симлинк или копия generated INI для dev
-  tests/
-    fixtures/             # захваченные пакеты, эталонные .msq
+  rusefui.md
+  public/config/          # декларативный UI (YAML)
+  config/README.md        # описание формата
+  crates/rusefi-protocol/
+  src-tauri/
+  src/
+    core/                 # registry, config-loader, data-context
+    components/builtins/  # реализации компонентов
+    shell/                # TabWorkspace, AppShell
 ```
 
-Связь с rusefi: submodule или путь `../rusefi`; INI брать из `firmware/tunerstudio/generated/` при разработке.
+Связь с rusefi: `../rusefi`; INI — `firmware/tunerstudio/generated/`.
 
 ---
 
@@ -293,4 +356,4 @@ rusefui/
 
 ---
 
-*Документ создан по результатам анализа репозитория rusefi (май 2026). Следующий шаг — Фаза 1: каркас Rust crate и proof-of-concept подключения по serial.*
+*Следующий шаг: опрос `outputChannels` и рабочие `output-value` / `scalar-field` поверх INI.*

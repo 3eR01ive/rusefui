@@ -1,0 +1,6 @@
+tab:
+  id: connection
+  title: Подключение
+
+root:
+  $component: connection.panel

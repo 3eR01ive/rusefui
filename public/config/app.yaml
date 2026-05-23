@@ -1,0 +1,6 @@
+app:
+  title: rusefui
+
+tabs:
+  - $tab: connection
+  - $tab: monitor

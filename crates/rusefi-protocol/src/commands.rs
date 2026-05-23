@@ -1,5 +1,4 @@
-/// Query / hello (firmware accepts `Q` during port scan and `S` in INI).
-pub const TS_QUERY_COMMAND: u8 = b'Q';
+/// Hello / query (INI `queryCommand`, CRC envelope).
 pub const TS_HELLO_COMMAND: u8 = b'S';
 
 pub const TS_OUTPUT_COMMAND: u8 = b'O';

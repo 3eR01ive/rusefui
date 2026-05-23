@@ -1,17 +1,34 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
-import type { ConnectionStatus, ConnectParams } from "../types/connection";
+import type { ComponentInstance, ComponentMeta } from "../../core/types";
+import { useDataContext } from "../../core/data-context";
+import type { ConnectionStatus, ConnectParams } from "../../types/connection";
+
+defineProps<{
+  instance: ComponentInstance;
+  path: string;
+  props: Record<string, unknown>;
+  binding: unknown;
+  meta: ComponentMeta;
+}>();
 
 const BAUD_RATES = [115200, 230400, 460800, 921600] as const;
+const dataCtx = useDataContext();
 
 const ports = ref<string[]>([]);
 const selectedPort = ref("");
-const baudRate = ref<number>(115200);
+const baudRate = ref(115200);
 const loadingPorts = ref(false);
 const connecting = ref(false);
-const status = ref<ConnectionStatus>({ connected: false });
 const message = ref<string | null>(null);
+
+const status = computed({
+  get: () => dataCtx.connection.value,
+  set: (v: ConnectionStatus) => {
+    dataCtx.connection.value = v;
+  },
+});
 
 const isConnected = computed(() => status.value.connected);
 const canConnect = computed(
@@ -19,12 +36,12 @@ const canConnect = computed(
 );
 const isErrorMessage = computed(
   () =>
-  message.value != null &&
-  !isConnected.value &&
-  (message.value.toLowerCase().includes("error") ||
-    message.value.toLowerCase().includes("ошиб") ||
-    message.value.toLowerCase().includes("failed") ||
-    message.value.toLowerCase().includes("timeout")),
+    message.value != null &&
+    !isConnected.value &&
+    (message.value.toLowerCase().includes("error") ||
+      message.value.toLowerCase().includes("ошиб") ||
+      message.value.toLowerCase().includes("failed") ||
+      message.value.toLowerCase().includes("timeout")),
 );
 
 async function refreshPorts() {
@@ -85,6 +102,13 @@ async function disconnect() {
   }
 }
 
+watch(
+  () => dataCtx.connection.value.connected,
+  () => {
+    /* reactive badge in shell */
+  },
+);
+
 onMounted(async () => {
   await refreshPorts();
   await loadStatus();
@@ -92,9 +116,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="card">
-    <h2 class="card-title">Подключение к ECU</h2>
-
+  <div class="connection-panel">
     <div class="field">
       <label for="port">Порт</label>
       <div class="row">
@@ -121,12 +143,7 @@ onMounted(async () => {
     </div>
 
     <div class="actions">
-      <button
-        type="button"
-        class="btn primary"
-        :disabled="!canConnect"
-        @click="connect"
-      >
+      <button type="button" class="btn primary" :disabled="!canConnect" @click="connect">
         {{ connecting ? "Подключение…" : "Подключить" }}
       </button>
       <button
@@ -160,34 +177,14 @@ onMounted(async () => {
         <dd class="signature">{{ status.signature }}</dd>
       </dl>
     </div>
-
-    <div v-else class="status-box idle">
-      <p>ECU не подключена. Выберите порт и нажмите «Подключить».</p>
-      <p class="hint">
-        Отправляется команда <code>S</code> (CRC), при необходимости — plain <code>Q</code>.
-      </p>
-    </div>
-  </section>
+  </div>
 </template>
 
 <style scoped>
-.card {
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: 1.35rem 1.4rem;
-  box-shadow: var(--shadow-card);
-}
-
-.card-title {
-  margin: 0 0 1.25rem;
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.field {
-  margin-bottom: 1rem;
+.connection-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .field label {
@@ -213,17 +210,6 @@ select {
   border: 1px solid var(--color-border-strong);
   background: var(--color-bg-elevated);
   color: var(--color-text);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-select:hover:not(:disabled) {
-  border-color: var(--color-accent-muted);
-}
-
-select:focus {
-  outline: none;
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px var(--color-bg-accent-soft);
 }
 
 select:disabled {
@@ -234,7 +220,6 @@ select:disabled {
 .actions {
   display: flex;
   gap: 0.5rem;
-  margin-top: 1.25rem;
   flex-wrap: wrap;
 }
 
@@ -243,14 +228,6 @@ select:disabled {
   border-radius: var(--radius-md);
   border: 1px solid transparent;
   font-weight: 500;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    transform 0.1s ease;
-}
-
-.btn:active:not(:disabled) {
-  transform: translateY(1px);
 }
 
 .btn.primary {
@@ -267,17 +244,13 @@ select:disabled {
   color: var(--color-on-gray);
 }
 
-.btn.secondary:hover:not(:disabled) {
-  background: var(--color-gray-hover);
-}
-
 .btn:disabled {
   opacity: 0.42;
   cursor: not-allowed;
 }
 
 .message {
-  margin: 1rem 0 0;
+  margin: 0;
   font-size: 0.9rem;
   color: var(--color-text-muted);
 }
@@ -294,22 +267,11 @@ select:disabled {
   border-left: 3px solid var(--color-accent);
 }
 
-.status-box {
-  margin-top: 1.25rem;
-  padding: 1rem 1.05rem;
-  border-radius: var(--radius-md);
-  font-size: 0.9rem;
-}
-
 .status-box.connected {
+  padding: 1rem;
+  border-radius: var(--radius-md);
   background: var(--color-bg-accent-soft);
   border: 1px solid var(--color-success-border);
-}
-
-.status-box.idle {
-  background: var(--color-bg-muted);
-  border: 1px dashed var(--color-border-strong);
-  color: var(--color-text-muted);
 }
 
 .status-label {
@@ -336,28 +298,10 @@ select:disabled {
 .status-dl dd {
   margin: 0;
   word-break: break-all;
-  color: var(--color-text);
 }
 
 .signature {
-  font-family: ui-monospace, "Cascadia Mono", monospace;
-  font-size: 0.82rem;
-  color: var(--color-text);
-}
-
-.hint {
-  margin: 0.75rem 0 0;
-  font-size: 0.8rem;
-  color: var(--color-text-subtle);
-}
-
-code {
   font-family: ui-monospace, monospace;
-  background: var(--color-bg-elevated);
-  color: var(--color-accent-hover);
-  padding: 0.12em 0.4em;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  font-size: 0.92em;
+  font-size: 0.82rem;
 }
 </style>
