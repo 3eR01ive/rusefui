@@ -66,15 +66,17 @@ onMounted(async () => {
 
 .tab-bar {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.35rem;
   margin-bottom: 1.25rem;
   padding-bottom: 0;
   border-bottom: 1px solid var(--color-border);
-  overflow-x: auto;
+  width: 100%;
 }
 
 .tab-btn {
-  padding: 0.55rem 1rem;
+  flex: 1 1 0;
+  min-width: 8rem;
+  padding: 0.65rem 1.25rem;
   border: none;
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
@@ -83,6 +85,7 @@ onMounted(async () => {
   font-weight: 500;
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   white-space: nowrap;
+  text-align: center;
 }
 
 .tab-btn:hover {
@@ -99,6 +102,8 @@ onMounted(async () => {
 .tab-panel {
   flex: 1;
   min-height: 0;
+  width: 100%;
+  overflow: auto;
 }
 
 .workspace-loading,

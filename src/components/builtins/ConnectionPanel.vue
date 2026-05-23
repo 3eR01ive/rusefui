@@ -182,9 +182,23 @@ onMounted(async () => {
 
 <style scoped>
 .connection-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem 1.5rem;
+  width: 100%;
+  align-items: start;
+}
+
+@media (min-width: 768px) {
+  .connection-panel {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .connection-panel .actions,
+  .connection-panel .message,
+  .connection-panel .status-box {
+    grid-column: 1 / -1;
+  }
 }
 
 .field label {

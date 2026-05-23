@@ -48,12 +48,14 @@ onMounted(() => {
 
 <style scoped>
 .app-shell {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 1.75rem 1.25rem 2.5rem;
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0;
+  padding: var(--app-padding-y) var(--app-padding-x) calc(var(--app-padding-y) + 0.5rem);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 .app-header {

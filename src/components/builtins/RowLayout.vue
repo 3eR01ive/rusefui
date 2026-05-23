@@ -20,7 +20,13 @@ defineProps<{
 .layout-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: flex-end;
+  gap: 1rem;
+  align-items: stretch;
+  width: 100%;
+}
+
+.layout-row > :deep(*) {
+  flex: 1 1 12rem;
+  min-width: 10rem;
 }
 </style>

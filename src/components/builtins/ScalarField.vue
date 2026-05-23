@@ -36,7 +36,8 @@ const field = computed(() => bind.value?.field ?? "—");
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
-  max-width: 280px;
+  max-width: none;
+  width: 100%;
 }
 
 .field-label {

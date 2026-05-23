@@ -24,11 +24,13 @@ const title = computed(() => String(props.props.title ?? ""));
 
 <style scoped>
 .section {
+  width: 100%;
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: 1.1rem 1.2rem;
+  padding: 1.1rem 1.35rem;
   box-shadow: var(--shadow-card);
+  box-sizing: border-box;
 }
 
 .section-title {
