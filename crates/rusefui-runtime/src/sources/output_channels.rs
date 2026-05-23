@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-use rusefi_ini::{decode_output_channels, IniFile, OutputChannels, ScalarField};
+use rusefi_ini::{decode_output_channels, FieldKind, IniFile, OutputChannels, ScalarField};
 use serde::Serialize;
 use serde_json::{json, Value};
 
@@ -49,7 +49,40 @@ pub struct IniContext {
     pub config_scalars: HashMap<String, ScalarField>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputFieldInfo {
+    pub name: String,
+    pub units: Option<String>,
+    pub kind: String,
+}
+
 impl IniContext {
+    pub fn list_output_fields(&self) -> Vec<OutputFieldInfo> {
+        self.channels
+            .fields
+            .iter()
+            .map(|f| {
+                let (units, kind) = match &f.kind {
+                    FieldKind::Scalar(s) => {
+                        let u = if s.units.is_empty() {
+                            None
+                        } else {
+                            Some(s.units.clone())
+                        };
+                        (u, "scalar".to_string())
+                    }
+                    FieldKind::Bits(_) => (None, "bits".to_string()),
+                };
+                OutputFieldInfo {
+                    name: f.name.clone(),
+                    units,
+                    kind,
+                }
+            })
+            .collect()
+    }
+
     pub fn disconnected() -> Self {
         Self {
             signature: None,

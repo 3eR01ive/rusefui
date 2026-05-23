@@ -7,6 +7,7 @@ import TextBlock from "./builtins/TextBlock.vue";
 import ConnectionPanel from "./builtins/ConnectionPanel.vue";
 import SimulationPanel from "./builtins/SimulationPanel.vue";
 import ScalarField from "./builtins/ScalarField.vue";
+import OutputChart from "./builtins/OutputChart.vue";
 import OutputValue from "./builtins/OutputValue.vue";
 
 let registered = false;
@@ -104,6 +105,17 @@ export function registerBuiltinComponents(): void {
       description: "Поле калибровки (config page)",
     },
     ScalarField,
+  );
+
+  registerComponent(
+    {
+      type: "output-chart",
+      label: "Output chart",
+      mode: "display",
+      isContainer: false,
+      description: "Кривые output channels с автопромоткой",
+    },
+    OutputChart,
   );
 
   registerComponent(

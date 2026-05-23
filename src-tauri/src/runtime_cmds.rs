@@ -1,6 +1,6 @@
 use rusefui_runtime::{
-    default_log_path, ComponentRuntime, EcuSession, OutputSnapshot, ProtocolLogEntry,
-    ProtocolLogStore,
+    default_log_path, ComponentRuntime, EcuSession, OutputFieldInfo, OutputSnapshot,
+    ProtocolLogEntry, ProtocolLogStore,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -146,6 +146,11 @@ pub fn component_unmount(instance_id: String, state: State<RuntimeState>) {
 #[tauri::command]
 pub fn output_get_snapshot(state: State<RuntimeState>) -> OutputSnapshot {
     state.session.output().snapshot()
+}
+
+#[tauri::command]
+pub fn output_list_fields(state: State<RuntimeState>) -> Vec<OutputFieldInfo> {
+    state.session.ini_context().list_output_fields()
 }
 
 #[tauri::command]

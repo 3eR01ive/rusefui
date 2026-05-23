@@ -46,12 +46,13 @@ export function useProtocolLog() {
 
   function formatTime(ms: number): string {
     const d = new Date(ms);
-    return d.toLocaleTimeString(undefined, {
+    const base = d.toLocaleTimeString(undefined, {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
-      fractionalSecondDigits: 3,
     });
+  const frac = String(d.getMilliseconds()).padStart(3, "0");
+    return `${base}.${frac}`;
   }
 
   return {

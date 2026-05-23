@@ -1,11 +1,24 @@
-# Пример вкладки с output-компонентами (данные появятся после polling).
+# Монитор: live values + график output channels.
 id: monitor.panel
-description: Превью декларативных output-привязок
+description: Output channels — значения и кривые
 
 children:
   - type: section
     props:
-      title: Live values (заглушка)
+      title: Кривые (Output)
+    children:
+      - type: output-chart
+        id: scope
+        props:
+          height: 300
+          windowSeconds: 30
+          fields:
+            - RPMValue
+            - coolant
+
+  - type: section
+    props:
+      title: Live values
     children:
       - type: row
         children:
@@ -31,5 +44,5 @@ children:
 
       - type: text
         props:
-          text: "Опрос outputChannels (команда O) в Rust ~10 Hz. Поля пока по скелету INI f407-discovery."
+          text: "Опрос outputChannels (команда O) в Rust ~10 Hz. INI подбирается по signature ECU."
           variant: hint

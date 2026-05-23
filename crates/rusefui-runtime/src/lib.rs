@@ -18,4 +18,6 @@ pub use ini::{
     signatures_match, IniResolveError, ResolvedIni,
 };
 pub use protocol_log::{default_log_path, ProtocolLogEntry, ProtocolLogStore};
-pub use sources::output_channels::{IniContext, OutputSnapshot, DEFAULT_OUTPUT_BLOCK_SIZE};
+pub use sources::output_channels::{
+    IniContext, OutputFieldInfo, OutputSnapshot, DEFAULT_OUTPUT_BLOCK_SIZE,
+};

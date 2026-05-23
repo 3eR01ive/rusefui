@@ -17,6 +17,7 @@ pub fn run() {
             runtime_cmds::component_dispatch,
             runtime_cmds::component_unmount,
             runtime_cmds::output_get_snapshot,
+            runtime_cmds::output_list_fields,
             runtime_cmds::output_start_listener,
             runtime_cmds::ini_get_info,
             runtime_cmds::protocol_log_get,
