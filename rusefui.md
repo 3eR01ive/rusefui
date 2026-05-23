@@ -371,4 +371,4 @@ rusefui/
 
 ---
 
-*Скелет `OutputChannelsSource` (poll `O` ~10 Hz) реализован. Следующий шаг: парсер INI по signature для всех полей output/config.*
+*`OutputChannelsSource` (poll `O` ~10 Hz) декодирует все поля `[OutputChannels]` через `crates/rusefi-ini` и тестовый `test_data/rusefi_proteus_f7.ini`. Следующий шаг: выбор INI по signature ECU, парсинг config/constants.*

@@ -3,6 +3,7 @@
 //! Vue отвечает только за отрисовку `state` и отправку `dispatch(action)`.
 
 mod component;
+mod ini;
 mod runtime;
 pub mod components;
 pub mod session;
@@ -11,4 +12,5 @@ pub mod sources;
 pub use component::{ComponentAction, ComponentLogic, ComponentMeta, LogicComponentType};
 pub use runtime::ComponentRuntime;
 pub use session::EcuSession;
-pub use sources::output_channels::{OutputSnapshot, DEFAULT_OUTPUT_BLOCK_SIZE};
+pub use ini::{load_ini, resolve_ini_path};
+pub use sources::output_channels::{IniContext, OutputSnapshot, DEFAULT_OUTPUT_BLOCK_SIZE};

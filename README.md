@@ -33,7 +33,9 @@ npm run tauri build
 ## Структура
 
 - `crates/rusefi-protocol` — протокол ECU
+- `crates/rusefi-ini` — парсер INI (output channels, тестовый `test_data/rusefi_proteus_f7.ini`)
 - `crates/rusefui-runtime` — `EcuSession`, logic-компоненты, `OutputChannelsSource` (poll `O`)
+- `test_data/` — фикстура INI для разработки (`RUSEFI_INI_PATH` для другого файла)
 - `src-tauri` — `component_mount` / `component_dispatch`, событие `component-state`
 - `src/composables/useRustComponent.ts` — подписка Vue на Rust state
 - `public/config/` — YAML layout

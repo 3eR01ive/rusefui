@@ -2488,6 +2488,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rusefi-ini"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "rusefi-protocol"
 version = "0.1.0"
 dependencies = [
@@ -2515,6 +2524,7 @@ dependencies = [
 name = "rusefui-runtime"
 version = "0.1.0"
 dependencies = [
+ "rusefi-ini",
  "rusefi-protocol",
  "serde",
  "serde_json",

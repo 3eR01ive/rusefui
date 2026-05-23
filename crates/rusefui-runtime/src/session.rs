@@ -2,7 +2,8 @@ use std::sync::{Arc, Mutex};
 
 use rusefi_protocol::{ConnectionInfo, ProtocolError, SerialLink, DEFAULT_IO_TIMEOUT_MS};
 
-use crate::sources::output_channels::OutputChannelsSource;
+use crate::ini::load_ini;
+use crate::sources::output_channels::{IniContext, OutputChannelsSource};
 
 struct EcuSessionInner {
     link: Option<SerialLink>,
@@ -12,14 +13,24 @@ struct EcuSessionInner {
 pub struct EcuSession {
     inner: Mutex<EcuSessionInner>,
     output: OutputChannelsSource,
+    ini: IniContext,
 }
 
 impl EcuSession {
     pub fn new_arc() -> Arc<Self> {
+        let ini_file = load_ini().unwrap_or_else(|e| {
+            panic!("failed to load ECU INI (set RUSEFI_INI_PATH or add test_data/rusefi_proteus_f7.ini): {e}");
+        });
+        let ini_ctx = IniContext::from_ini(&ini_file);
         Arc::new(Self {
             inner: Mutex::new(EcuSessionInner { link: None }),
-            output: OutputChannelsSource::new(),
+            output: OutputChannelsSource::new(ini_ctx.clone()),
+            ini: ini_ctx,
         })
+    }
+
+    pub fn ini_context(&self) -> &IniContext {
+        &self.ini
     }
 
     pub fn output(&self) -> &OutputChannelsSource {

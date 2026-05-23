@@ -62,7 +62,7 @@ fn sync_output_poll(state: &RuntimeState, app: &AppHandle) {
         });
     } else {
         state.session.output().stop();
-        emit_output(app, &OutputSnapshot::disconnected());
+        emit_output(app, &state.session.output().snapshot());
     }
 }
 
@@ -129,4 +129,24 @@ pub fn output_get_snapshot(state: State<RuntimeState>) -> OutputSnapshot {
 pub fn output_start_listener(state: State<RuntimeState>, app: AppHandle) {
     emit_output(&app, &state.session.output().snapshot());
     sync_output_poll(&state, &app);
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IniInfo {
+    pub path: String,
+    pub signature: Option<String>,
+    pub och_block_size: u16,
+    pub field_count: usize,
+}
+
+#[tauri::command]
+pub fn ini_get_info(state: State<RuntimeState>) -> IniInfo {
+    let ctx = state.session.ini_context();
+    IniInfo {
+        path: rusefui_runtime::resolve_ini_path().display().to_string(),
+        signature: ctx.signature.clone(),
+        och_block_size: ctx.block_size,
+        field_count: ctx.channels.fields.len(),
+    }
 }

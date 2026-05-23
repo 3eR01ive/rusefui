@@ -1,0 +1,13 @@
+[package]
+name = "rusefi-ini"
+description = "Minimal TunerStudio INI parser for rusefui data sources"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+thiserror = "2.0"
+
+[dev-dependencies]
+serde_json = "1"

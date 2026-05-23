@@ -4,38 +4,15 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
+use rusefi_ini::{decode_output_channels, IniFile, OutputChannels};
 use serde::Serialize;
 use serde_json::{json, Value};
 
 use crate::session::EcuSession;
 
-/// Размер блока из типичного INI (`ochBlockSize`), скелет без парсера INI.
 pub const DEFAULT_OUTPUT_BLOCK_SIZE: u16 = 2044;
 
 const POLL_INTERVAL: Duration = Duration::from_millis(100);
-
-/// Поля из `rusefi_f407-discovery.ini` [OutputChannels] — позже заменить парсером INI.
-struct FieldDef {
-    name: &'static str,
-    offset: usize,
-    scale: f64,
-    signed: bool,
-}
-
-const SKELETON_FIELDS: &[FieldDef] = &[
-    FieldDef {
-        name: "RPMValue",
-        offset: 4,
-        scale: 1.0,
-        signed: false,
-    },
-    FieldDef {
-        name: "coolant",
-        offset: 14,
-        scale: 0.01,
-        signed: true,
-    },
-];
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -45,33 +22,60 @@ pub struct OutputSnapshot {
     pub raw_len: usize,
     pub values: HashMap<String, f64>,
     pub last_error: Option<String>,
+    pub ini_signature: Option<String>,
+    pub ini_field_count: usize,
 }
 
 impl OutputSnapshot {
-    pub fn disconnected() -> Self {
+    pub fn disconnected(ini: &IniContext) -> Self {
         Self {
             connected: false,
             poll_hz: 0.0,
             raw_len: 0,
             values: HashMap::new(),
             last_error: None,
+            ini_signature: ini.signature.clone(),
+            ini_field_count: ini.channels.fields.len(),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct IniContext {
+    pub signature: Option<String>,
+    pub channels: Arc<OutputChannels>,
+    pub block_size: u16,
+}
+
+impl IniContext {
+    pub fn from_ini(ini: &IniFile) -> Self {
+        Self {
+            signature: ini.signature.clone(),
+            channels: Arc::new(ini.output_channels.clone()),
+            block_size: ini.output_channels.och_block_size,
         }
     }
 }
 
 pub struct OutputChannelsSource {
+    ini: IniContext,
     snapshot: Arc<RwLock<OutputSnapshot>>,
     running: Arc<AtomicBool>,
     thread: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl OutputChannelsSource {
-    pub fn new() -> Self {
+    pub fn new(ini: IniContext) -> Self {
         Self {
-            snapshot: Arc::new(RwLock::new(OutputSnapshot::disconnected())),
+            ini: ini.clone(),
+            snapshot: Arc::new(RwLock::new(OutputSnapshot::disconnected(&ini))),
             running: Arc::new(AtomicBool::new(false)),
             thread: Mutex::new(None),
         }
+    }
+
+    pub fn ini_context(&self) -> &IniContext {
+        &self.ini
     }
 
     pub fn snapshot(&self) -> OutputSnapshot {
@@ -87,7 +91,7 @@ impl OutputChannelsSource {
         if let Some(handle) = self.thread.lock().unwrap().take() {
             let _ = handle.join();
         }
-        *self.snapshot.write().unwrap() = OutputSnapshot::disconnected();
+        *self.snapshot.write().unwrap() = OutputSnapshot::disconnected(&self.ini);
     }
 
     /// Фоновый poll команды `O`; `on_tick` вызывается из потока (например emit в Tauri).
@@ -101,10 +105,12 @@ impl OutputChannelsSource {
         let running = Arc::clone(&self.running);
         let snapshot = Arc::clone(&self.snapshot);
         let on_tick = Arc::new(on_tick);
+        let ini = self.ini.clone();
+        let block_size = self.ini.block_size;
 
         let handle = thread::Builder::new()
             .name("rusefui-output-poll".into())
-            .spawn(move || poll_loop(session, running, snapshot, on_tick))
+            .spawn(move || poll_loop(session, running, snapshot, ini, block_size, on_tick))
             .expect("spawn output poll thread");
 
         *self.thread.lock().unwrap() = Some(handle);
@@ -115,6 +121,8 @@ fn poll_loop(
     session: Arc<EcuSession>,
     running: Arc<AtomicBool>,
     snapshot: Arc<RwLock<OutputSnapshot>>,
+    ini: IniContext,
+    block_size: u16,
     on_tick: Arc<dyn Fn(OutputSnapshot) + Send + Sync>,
 ) {
     while running.load(Ordering::SeqCst) {
@@ -124,15 +132,15 @@ fn poll_loop(
             raw_len: 0,
             values: HashMap::new(),
             last_error: None,
+            ini_signature: ini.signature.clone(),
+            ini_field_count: ini.channels.fields.len(),
         };
 
         if snap.connected {
-            match session.with_link(|link| {
-                link.read_output_channels(0, DEFAULT_OUTPUT_BLOCK_SIZE)
-            }) {
+            match session.with_link(|link| link.read_output_channels(0, block_size)) {
                 Ok(bytes) => {
                     snap.raw_len = bytes.len();
-                    snap.values = decode_fields(&bytes);
+                    snap.values = decode_output_channels(&ini.channels, &bytes);
                 }
                 Err(e) => {
                     snap.last_error = Some(e);
@@ -144,41 +152,5 @@ fn poll_loop(
         on_tick(snap);
 
         thread::sleep(POLL_INTERVAL);
-    }
-}
-
-fn decode_fields(bytes: &[u8]) -> HashMap<String, f64> {
-    let mut out = HashMap::new();
-    for def in SKELETON_FIELDS {
-        if let Some(v) = read_field(bytes, def) {
-            out.insert(def.name.to_string(), v);
-        }
-    }
-    out
-}
-
-fn read_field(bytes: &[u8], def: &FieldDef) -> Option<f64> {
-    if def.offset + 2 > bytes.len() {
-        return None;
-    }
-    let raw = if def.signed {
-        i16::from_le_bytes([bytes[def.offset], bytes[def.offset + 1]]) as f64
-    } else {
-        u16::from_le_bytes([bytes[def.offset], bytes[def.offset + 1]]) as f64
-    };
-    Some(raw * def.scale)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn decode_rpm_and_clt_from_zeros() {
-        let mut bytes = vec![0u8; 32];
-        bytes[4] = 0x40;
-        bytes[5] = 0x1F; // 8000 LE u16
-        let m = decode_fields(&bytes);
-        assert_eq!(m.get("RPMValue"), Some(&8000.0));
     }
 }
