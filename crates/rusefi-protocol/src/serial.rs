@@ -5,8 +5,8 @@ use std::time::Duration;
 use serialport::{DataBits, FlowControl, Parity, StopBits};
 
 use crate::commands::{
-    TS_CHUNK_WRITE_COMMAND, TS_HELLO_COMMAND, TS_IO_TEST_COMMAND, TS_OUTPUT_COMMAND,
-    TS_RESPONSE_OK,
+    TS_CHUNK_WRITE_COMMAND, TS_EXECUTE_COMMAND, TS_HELLO_COMMAND, TS_IO_TEST_COMMAND,
+    TS_OUTPUT_COMMAND, TS_RESPONSE_OK,
 };
 use crate::error::ProtocolError;
 use crate::packet::{make_crc_request, parse_crc_response, CrcResponse};
@@ -115,7 +115,10 @@ impl SerialLink {
         self.read_crc_frame_logged(payload)
     }
 
-    /// `ochGetCommand` — live output block (`O%2o%2c`, big-endian offset/count).
+    /// `ochGetCommand` — live output block (`O%2o%2c`).
+    ///
+    /// Offset/count на проводе в **little-endian** (как Java `GetOutputsCommand` + `swap16`).
+    /// Прошивка читает `uint16_t*` без swap (`tunerstudio.cpp`).
     pub fn read_output_channels(
         &mut self,
         offset: u16,
@@ -123,10 +126,10 @@ impl SerialLink {
     ) -> Result<Vec<u8>, ProtocolError> {
         let payload = [
             TS_OUTPUT_COMMAND,
-            (offset >> 8) as u8,
-            (offset & 0xFF) as u8,
-            (count >> 8) as u8,
-            (count & 0xFF) as u8,
+            offset.to_le_bytes()[0],
+            offset.to_le_bytes()[1],
+            count.to_le_bytes()[0],
+            count.to_le_bytes()[1],
         ];
         let response = self.send_request(&payload)?;
         if response.code != TS_RESPONSE_OK {
@@ -135,7 +138,30 @@ impl SerialLink {
         Ok(response.payload)
     }
 
-    /// `C` — запись фрагмента страницы конфигурации (page, offset BE, count BE, data).
+    /// Сборка полного output-блока чанками (как Java `requestOutputChannels`).
+    pub fn read_output_channels_full(
+        &mut self,
+        total_size: u16,
+        chunk_size: u16,
+    ) -> Result<Vec<u8>, ProtocolError> {
+        if chunk_size == 0 {
+            return Err(ProtocolError::InvalidPacket("chunk_size is zero"));
+        }
+        let mut buf = vec![0u8; total_size as usize];
+        let mut offset = 0u16;
+        while offset < total_size {
+            let count = (total_size - offset).min(chunk_size);
+            let part = self.read_output_channels(offset, count)?;
+            if part.len() != count as usize {
+                return Err(ProtocolError::InvalidPacket("short output chunk"));
+            }
+            buf[offset as usize..offset as usize + part.len()].copy_from_slice(&part);
+            offset += count;
+        }
+        Ok(buf)
+    }
+
+    /// `C` — запись фрагмента страницы конфигурации (page, offset, count — LE на проводе).
     pub fn write_config_chunk(
         &mut self,
         page: u16,
@@ -146,9 +172,9 @@ impl SerialLink {
             .map_err(|_| ProtocolError::InvalidPacket("chunk too large"))?;
         let mut payload = Vec::with_capacity(7 + data.len());
         payload.push(TS_CHUNK_WRITE_COMMAND);
-        payload.extend_from_slice(&page.to_be_bytes());
-        payload.extend_from_slice(&offset.to_be_bytes());
-        payload.extend_from_slice(&count.to_be_bytes());
+        payload.extend_from_slice(&page.to_le_bytes());
+        payload.extend_from_slice(&offset.to_le_bytes());
+        payload.extend_from_slice(&count.to_le_bytes());
         payload.extend_from_slice(data);
 
         let response = self.send_request(&payload)?;
@@ -158,7 +184,19 @@ impl SerialLink {
         Ok(())
     }
 
-    /// `Z` — `executeTSCommand(subsystem, index)` (bench, stimulator, ETB, …).
+    /// `E` + текст — консольная команда (как Java `sendTextCommand` / rusefi_console CommandQueue).
+    pub fn execute_console_command(&mut self, text: &str) -> Result<(), ProtocolError> {
+        let mut payload = Vec::with_capacity(1 + text.len());
+        payload.push(TS_EXECUTE_COMMAND);
+        payload.extend_from_slice(text.as_bytes());
+        let response = self.send_request(&payload)?;
+        if response.code != TS_RESPONSE_OK {
+            return Err(ProtocolError::ErrorResponse(response.code));
+        }
+        Ok(())
+    }
+
+    /// `Z` — `executeTSCommand(subsystem, index)`; u16 **big-endian** (`SWAP_UINT16` в прошивке).
     pub fn execute_ts_command(
         &mut self,
         subsystem: u16,
@@ -263,5 +301,30 @@ mod tests {
     #[test]
     fn output_poll_detection() {
         assert!(crate::is_output_poll(&[b'O', 0, 0, 0, 0]));
+    }
+
+    /// Совпадает с `OchGetCommandTest` в rusEFI Java console.
+    #[test]
+    fn output_request_wire_format_matches_java() {
+        fn o_payload(offset: u16, count: u16) -> [u8; 5] {
+            [
+                TS_OUTPUT_COMMAND,
+                offset.to_le_bytes()[0],
+                offset.to_le_bytes()[1],
+                count.to_le_bytes()[0],
+                count.to_le_bytes()[1],
+            ]
+        }
+        assert_eq!(o_payload(400, 300), [b'O', 0x90, 0x01, 0x2c, 0x01]);
+        assert_eq!(o_payload(0, 2044), [b'O', 0x00, 0x00, 0xfc, 0x07]);
+    }
+
+    #[test]
+    fn execute_console_command_payload_format() {
+        let text = "rpm 1500";
+        let mut payload = vec![TS_EXECUTE_COMMAND];
+        payload.extend_from_slice(text.as_bytes());
+        assert_eq!(payload[0], b'E');
+        assert_eq!(&payload[1..], b"rpm 1500");
     }
 }

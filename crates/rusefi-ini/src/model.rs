@@ -4,6 +4,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Serialize)]
 pub struct IniFile {
     pub signature: Option<String>,
+    pub blocking_factor: u16,
     pub output_channels: OutputChannels,
     pub config_scalars: HashMap<String, ScalarField>,
 }

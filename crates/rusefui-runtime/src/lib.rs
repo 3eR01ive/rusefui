@@ -13,6 +13,9 @@ pub mod sources;
 pub use component::{ComponentAction, ComponentLogic, ComponentMeta, LogicComponentType};
 pub use runtime::ComponentRuntime;
 pub use session::EcuSession;
-pub use ini::{load_ini, resolve_ini_path};
+pub use ini::{
+    explicit_ini_path, ini_cache_dir, resolve_ini_for_signature, search_directories,
+    signatures_match, IniResolveError, ResolvedIni,
+};
 pub use protocol_log::{default_log_path, ProtocolLogEntry, ProtocolLogStore};
 pub use sources::output_channels::{IniContext, OutputSnapshot, DEFAULT_OUTPUT_BLOCK_SIZE};

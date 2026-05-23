@@ -9,20 +9,24 @@ pub fn describe_payload(payload: &[u8]) -> String {
     match payload[0] {
         b'S' | b'Q' => "hello/query".into(),
         b'O' if payload.len() >= 5 => {
-            let offset = u16::from_be_bytes([payload[1], payload[2]]);
-            let count = u16::from_be_bytes([payload[3], payload[4]]);
+            let offset = u16::from_le_bytes([payload[1], payload[2]]);
+            let count = u16::from_le_bytes([payload[3], payload[4]]);
             format!("output offset={offset} count={count}")
         }
         b'C' if payload.len() >= 7 => {
-            let page = u16::from_be_bytes([payload[1], payload[2]]);
-            let offset = u16::from_be_bytes([payload[3], payload[4]]);
-            let count = u16::from_be_bytes([payload[5], payload[6]]);
+            let page = u16::from_le_bytes([payload[1], payload[2]]);
+            let offset = u16::from_le_bytes([payload[3], payload[4]]);
+            let count = u16::from_le_bytes([payload[5], payload[6]]);
             format!("write page={page} offset={offset} count={count}")
         }
         b'Z' if payload.len() >= 5 => {
             let subsystem = u16::from_be_bytes([payload[1], payload[2]]);
             let index = u16::from_be_bytes([payload[3], payload[4]]);
             format!("io_test subsystem={subsystem} index={index}")
+        }
+        b'E' if payload.len() > 1 => {
+            let text = String::from_utf8_lossy(&payload[1..]);
+            format!("execute \"{text}\"")
         }
         b'R' if payload.len() >= 7 => {
             let page = u16::from_be_bytes([payload[1], payload[2]]);
@@ -50,7 +54,7 @@ pub fn describe_response(request_payload: &[u8], response: &crate::packet::CrcRe
             }
         }
         Some(b'O') => format!("OK {} bytes", response.payload.len()),
-        Some(b'C' | b'Z') => "OK".into(),
+        Some(b'C' | b'Z' | b'E') => "OK".into(),
         _ => format!("OK payload={} bytes", response.payload.len()),
     }
 }

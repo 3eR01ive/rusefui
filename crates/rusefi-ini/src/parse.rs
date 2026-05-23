@@ -18,6 +18,7 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
     let mut section = Section::None;
     let mut signature = None;
     let mut och_block_size = 2044u16;
+    let mut blocking_factor = 1024u16;
     let mut fields = Vec::new();
     let mut config_scalars = HashMap::new();
 
@@ -41,6 +42,11 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
         if section == Section::MegaTune || section == Section::TunerStudio {
             if let Some(sig) = parse_key_value(line, "signature") {
                 signature = Some(sig);
+            }
+            if section == Section::TunerStudio {
+                if let Some(factor) = parse_key_u16(line, "blockingFactor") {
+                    blocking_factor = factor;
+                }
             }
             continue;
         }
@@ -100,6 +106,7 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
 
     Ok(IniFile {
         signature,
+        blocking_factor,
         output_channels,
         config_scalars,
     })
@@ -110,7 +117,11 @@ fn parse_key_value(line: &str, key: &str) -> Option<String> {
     if k.trim() != key {
         return None;
     }
-    let v = v.trim().trim_matches('"');
+    let mut v = v.trim();
+    if let Some(idx) = v.find(';') {
+        v = v[..idx].trim();
+    }
+    let v = v.trim_matches('"');
     Some(v.to_string())
 }
 
@@ -230,7 +241,10 @@ mod tests {
     #[test]
     fn parse_proteus_fixture() {
         let ini = IniFile::load_test_proteus().expect("fixture ini");
-        assert!(ini.signature.as_ref().is_some_and(|s| s.contains("proteus_f7")));
+        assert_eq!(
+            ini.signature.as_deref(),
+            Some("rusEFI master.2025.09.02.proteus_f7.4139280449")
+        );
         assert_eq!(ini.output_channels.och_block_size, 2044);
         assert!(ini.output_channels.fields.len() > 100);
         assert!(ini.output_channels.field("RPMValue").is_some());

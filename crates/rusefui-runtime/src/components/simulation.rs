@@ -1,17 +1,11 @@
 use std::sync::Arc;
 
-use rusefi_protocol::{
-    TS_PAGE_SETTINGS, TS_SUBSYSTEM_X14, TS_X14_TRIGGER_STIMULATOR_DISABLE,
-    TS_X14_TRIGGER_STIMULATOR_ENABLE,
-};
-use rusefi_ini::{ScalarField, ScalarType};
 use serde::Serialize;
 use serde_json::{json, Value};
 
 use crate::component::{ComponentLogic, ComponentMeta, LogicComponentType};
 use crate::session::EcuSession;
 
-const TRIGGER_RPM_FIELD: &str = "triggerSimulatorRpm";
 const DEFAULT_RPM: u16 = 1500;
 
 #[derive(Debug, Clone, Serialize)]
@@ -36,16 +30,10 @@ pub struct SimulationLogic {
     busy: bool,
     message: Option<String>,
     message_is_error: bool,
-    trigger_rpm_field: Option<ScalarField>,
 }
 
 impl SimulationLogic {
     pub fn new(session: Arc<EcuSession>) -> Self {
-        let trigger_rpm_field = session
-            .ini_context()
-            .config_scalars
-            .get(TRIGGER_RPM_FIELD)
-            .cloned();
         let (rpm_min, rpm_max) = (0u16, 30_000u16);
         Self {
             session,
@@ -56,7 +44,6 @@ impl SimulationLogic {
             busy: false,
             message: None,
             message_is_error: false,
-            trigger_rpm_field,
         }
     }
 
@@ -85,50 +72,25 @@ impl SimulationLogic {
         }
     }
 
-    fn write_trigger_rpm(&self) -> Result<(), String> {
-        let field = self
-            .trigger_rpm_field
-            .as_ref()
-            .ok_or_else(|| format!("поле {TRIGGER_RPM_FIELD} не найдено в INI"))?;
-        if field.ty != ScalarType::U16 {
-            return Err(format!(
-                "{TRIGGER_RPM_FIELD}: ожидался U16, получен {:?}",
-                field.ty
-            ));
-        }
-        let raw = (self.rpm as f64 - field.translate) / field.scale;
-        let raw = raw.round().clamp(0.0, u16::MAX as f64) as u16;
-        let bytes = raw.to_le_bytes();
-        self.session.with_link(|link| {
-            link.write_config_chunk(TS_PAGE_SETTINGS, field.offset as u16, &bytes)
-        })?;
-        Ok(())
-    }
-
-    fn run_ts_command(&self, index: u16) -> Result<(), String> {
-        self.session.with_link(|link| link.execute_ts_command(TS_SUBSYSTEM_X14, index))
-    }
-
+    /// Как rusefi_console autotest: `rpm N` → `enable self_stimulation` (TS_EXECUTE).
     fn start(&mut self) -> Result<(), String> {
         self.require_connected()?;
         self.busy = true;
         self.message = None;
         self.message_is_error = false;
 
-        let result: Result<(), String> = (|| {
-            self.write_trigger_rpm()?;
-            self.run_ts_command(TS_X14_TRIGGER_STIMULATOR_ENABLE)?;
-            Ok(())
-        })();
+        let rpm = self.rpm;
+        let result = self.session.with_link(|link| {
+            link.execute_console_command(&format!("rpm {rpm}"))?;
+            link.execute_console_command("enable self_stimulation")?;
+            Ok::<(), rusefi_protocol::ProtocolError>(())
+        });
 
         self.busy = false;
         match result {
             Ok(()) => {
                 self.active = true;
-                self.message = Some(format!(
-                    "Стимуляция включена на {} RPM.",
-                    self.rpm
-                ));
+                self.message = Some(format!("Стимуляция включена на {} RPM.", self.rpm));
                 self.message_is_error = false;
                 Ok(())
             }
@@ -147,7 +109,9 @@ impl SimulationLogic {
         self.message = None;
         self.message_is_error = false;
 
-        let result = self.run_ts_command(TS_X14_TRIGGER_STIMULATOR_DISABLE);
+        let result = self
+            .session
+            .with_link(|link| link.execute_console_command("disable self_stimulation"));
 
         self.busy = false;
         match result {

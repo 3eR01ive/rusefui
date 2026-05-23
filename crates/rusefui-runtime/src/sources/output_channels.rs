@@ -45,22 +45,38 @@ pub struct IniContext {
     pub signature: Option<String>,
     pub channels: Arc<OutputChannels>,
     pub block_size: u16,
+    pub blocking_factor: u16,
     pub config_scalars: HashMap<String, ScalarField>,
 }
 
 impl IniContext {
+    pub fn disconnected() -> Self {
+        Self {
+            signature: None,
+            channels: Arc::new(OutputChannels {
+                och_block_size: DEFAULT_OUTPUT_BLOCK_SIZE,
+                fields: Vec::new(),
+                by_name: HashMap::new(),
+            }),
+            block_size: DEFAULT_OUTPUT_BLOCK_SIZE,
+            blocking_factor: 1024,
+            config_scalars: HashMap::new(),
+        }
+    }
+
     pub fn from_ini(ini: &IniFile) -> Self {
         Self {
             signature: ini.signature.clone(),
             channels: Arc::new(ini.output_channels.clone()),
             block_size: ini.output_channels.och_block_size,
+            blocking_factor: ini.blocking_factor,
             config_scalars: ini.config_scalars.clone(),
         }
     }
 }
 
 pub struct OutputChannelsSource {
-    ini: IniContext,
+    ini: Mutex<IniContext>,
     snapshot: Arc<RwLock<OutputSnapshot>>,
     running: Arc<AtomicBool>,
     thread: Mutex<Option<JoinHandle<()>>>,
@@ -69,15 +85,15 @@ pub struct OutputChannelsSource {
 impl OutputChannelsSource {
     pub fn new(ini: IniContext) -> Self {
         Self {
-            ini: ini.clone(),
+            ini: Mutex::new(ini.clone()),
             snapshot: Arc::new(RwLock::new(OutputSnapshot::disconnected(&ini))),
             running: Arc::new(AtomicBool::new(false)),
             thread: Mutex::new(None),
         }
     }
 
-    pub fn ini_context(&self) -> &IniContext {
-        &self.ini
+    pub fn ini_context(&self) -> IniContext {
+        self.ini.lock().unwrap().clone()
     }
 
     pub fn snapshot(&self) -> OutputSnapshot {
@@ -93,10 +109,16 @@ impl OutputChannelsSource {
         if let Some(handle) = self.thread.lock().unwrap().take() {
             let _ = handle.join();
         }
-        *self.snapshot.write().unwrap() = OutputSnapshot::disconnected(&self.ini);
+        let ini = self.ini.lock().unwrap().clone();
+        *self.snapshot.write().unwrap() = OutputSnapshot::disconnected(&ini);
     }
 
-    /// Фоновый poll команды `O`; `on_tick` вызывается из потока (например emit в Tauri).
+    pub fn replace_ini(&self, ini: IniContext) {
+        self.stop();
+        *self.ini.lock().unwrap() = ini.clone();
+        *self.snapshot.write().unwrap() = OutputSnapshot::disconnected(&ini);
+    }
+
     pub fn start<F>(&self, session: Arc<EcuSession>, on_tick: F)
     where
         F: Fn(OutputSnapshot) + Send + Sync + 'static,
@@ -107,12 +129,13 @@ impl OutputChannelsSource {
         let running = Arc::clone(&self.running);
         let snapshot = Arc::clone(&self.snapshot);
         let on_tick = Arc::new(on_tick);
-        let ini = self.ini.clone();
-        let block_size = self.ini.block_size;
+        let ini = self.ini.lock().unwrap().clone();
+        let block_size = ini.block_size;
+        let chunk_size = ini.blocking_factor;
 
         let handle = thread::Builder::new()
             .name("rusefui-output-poll".into())
-            .spawn(move || poll_loop(session, running, snapshot, ini, block_size, on_tick))
+            .spawn(move || poll_loop(session, running, snapshot, ini, block_size, chunk_size, on_tick))
             .expect("spawn output poll thread");
 
         *self.thread.lock().unwrap() = Some(handle);
@@ -125,6 +148,7 @@ fn poll_loop(
     snapshot: Arc<RwLock<OutputSnapshot>>,
     ini: IniContext,
     block_size: u16,
+    chunk_size: u16,
     on_tick: Arc<dyn Fn(OutputSnapshot) + Send + Sync>,
 ) {
     while running.load(Ordering::SeqCst) {
@@ -139,20 +163,17 @@ fn poll_loop(
         };
 
         if snap.connected {
-            match session.with_link(|link| link.read_output_channels(0, block_size)) {
+            match session.with_link(|link| link.read_output_channels_full(block_size, chunk_size)) {
                 Ok(bytes) => {
                     snap.raw_len = bytes.len();
                     snap.values = decode_output_channels(&ini.channels, &bytes);
                 }
-                Err(e) => {
-                    snap.last_error = Some(e);
-                }
+                Err(e) => snap.last_error = Some(e),
             }
         }
 
         *snapshot.write().unwrap() = snap.clone();
         on_tick(snap);
-
         thread::sleep(POLL_INTERVAL);
     }
 }

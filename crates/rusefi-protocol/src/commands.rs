@@ -7,6 +7,8 @@ pub const TS_CHUNK_WRITE_COMMAND: u8 = b'C';
 pub const TS_BURN_COMMAND: u8 = b'B';
 pub const TS_CRC_CHECK_COMMAND: u8 = b'k';
 pub const TS_IO_TEST_COMMAND: u8 = b'Z';
+/// Консольная команда (`TS_EXECUTE`), как Java `BinaryProtocol.sendTextCommand`.
+pub const TS_EXECUTE_COMMAND: u8 = b'E';
 
 /// Страница настроек (`TS_PAGE_SETTINGS`).
 pub const TS_PAGE_SETTINGS: u16 = 0;

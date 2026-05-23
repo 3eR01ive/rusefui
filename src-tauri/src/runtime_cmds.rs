@@ -166,8 +166,17 @@ pub struct IniInfo {
 #[tauri::command]
 pub fn ini_get_info(state: State<RuntimeState>) -> IniInfo {
     let ctx = state.session.ini_context();
+    let path = state
+        .session
+        .loaded_ini_path()
+        .map(|p| p.display().to_string())
+        .or_else(|| {
+            rusefui_runtime::explicit_ini_path()
+                .map(|p| p.display().to_string())
+        })
+        .unwrap_or_else(|| "(INI загружается при подключении по signature ECU)".into());
     IniInfo {
-        path: rusefui_runtime::resolve_ini_path().display().to_string(),
+        path,
         signature: ctx.signature.clone(),
         och_block_size: ctx.block_size,
         field_count: ctx.channels.fields.len(),
