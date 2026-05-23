@@ -2503,10 +2503,21 @@ name = "rusefui"
 version = "0.1.0"
 dependencies = [
  "rusefi-protocol",
+ "rusefui-runtime",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "rusefui-runtime"
+version = "0.1.0"
+dependencies = [
+ "rusefi-protocol",
+ "serde",
+ "serde_json",
  "thiserror 2.0.18",
 ]
 

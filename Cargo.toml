@@ -1,6 +1,10 @@
 [workspace]
 resolver = "2"
-members = ["crates/rusefi-protocol", "src-tauri"]
+members = [
+    "crates/rusefi-protocol",
+    "crates/rusefui-runtime",
+    "src-tauri",
+]
 
 [workspace.package]
 version = "0.1.0"

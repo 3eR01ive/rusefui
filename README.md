@@ -26,14 +26,15 @@ npm run tauri build
 
 ## UI
 
-Модульный интерфейс: **только вкладки**, без меню. Layout и привязки данных — YAML в `public/config/`. Компоненты реализуются в коде и регистрируются в `src/components/register.ts`.
+**Vue** — отрисовка и действия пользователя (`dispatch`). **Rust** (`rusefui-runtime`) — логика сложных компонентов и (далее) подготовка данных по `bind.source`. Layout — YAML в `public/config/`.
 
-См. [config/README.md](./config/README.md) и [rusefui.md](./rusefui.md#архитектура-ui-реализовано).
+См. [rusefui.md](./rusefui.md#архитектура-ui-реализовано) и [config/README.md](./config/README.md).
 
 ## Структура
 
-- `crates/rusefi-protocol` — CRC-пакеты, serial, handshake (`S`)
-- `src-tauri` — Tauri-команды (`list_serial_ports`, `connect_ecu`, …)
-- `public/config/` — вкладки и деревья компонентов (YAML)
-- `src/core/` — реестр, загрузчик конфигов, data context
-- `src/components/builtins/` — `connection`, `scalar-field`, `output-value`, layout-контейнеры
+- `crates/rusefi-protocol` — протокол ECU
+- `crates/rusefui-runtime` — logic-компоненты (`connection`, …)
+- `src-tauri` — `component_mount` / `component_dispatch`, событие `component-state`
+- `src/composables/useRustComponent.ts` — подписка Vue на Rust state
+- `public/config/` — YAML layout
+- `src/components/builtins/` — SFC (presentation-only или тонкая обёртка)

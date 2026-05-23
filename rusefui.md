@@ -254,37 +254,53 @@ flowchart LR
 
 **Принципы:** без меню — только **вкладки**; любой экран собирается из **компонентов**; композиция и привязка данных — **декларативно в YAML**.
 
-### Слои
+### Слои: Vue = отрисовка, Rust = данные и логика
 
 ```mermaid
 flowchart TB
-  subgraph yaml [public/config]
-    app[app.yaml]
-    tabs[tabs/*.tab.yaml]
-    comp[components/*.yaml]
-  end
+  yaml[YAML layout]
+  vue[Vue: SFC + registry]
+  invoke[invoke + events]
+  runtime[rusefui-runtime]
+  proto[rusefi-protocol]
+  ecu[ECU]
 
-  subgraph code [Код Vue]
-    reg[registry.ts]
-    host[ComponentHost]
-    builtins[builtins/*.vue]
-  end
-
-  app --> tabs
-  tabs --> comp
-  tabs --> host
-  comp --> host
-  reg --> builtins
-  host --> reg
+  yaml --> vue
+  vue -->|dispatch / state| invoke
+  invoke --> runtime
+  runtime --> proto
+  proto --> ecu
+  runtime -->|component-state| vue
 ```
+
+| Что | Где | Зачем |
+|-----|-----|--------|
+| **Presentation-only** (`stack`, `text`, `output-value` …) | Vue `.vue` | Только разметка; данные позже из **источников** (Rust), не из логики виджета |
+| **Logic component** (`connection`, …) | `crates/rusefui-runtime/src/components/` | Состояние + `dispatch(action)`; протокол, serial, таймеры |
+| **Реестр UI-типов** | `src/components/register.ts` | Какой SFC рисовать для `type` в YAML |
+| **Реестр logic-типов** | `rusefui-runtime` + `src/core/rust-logic.ts` | Какие `type` монтируются в Rust (должны совпадать) |
+| **Мост Tauri** | `src-tauri/runtime_cmds.rs` | `component_mount`, `component_dispatch`, событие `component-state` |
+| **Тонкий Vue** | `useRustComponent.ts` | `listen('component-state')` + вызов `dispatch` |
+
+Простые поля **не** получают отдельный Rust-файл на каждый `scalar-field`: для них будет **источник данных** `config` / `outputChannels` (один сервис на источник, много виджетов). Отдельная логика в Rust — для **сложных** компонентов (подключение, таблицы, лог, прошивка).
+
+#### Logic-компонент (пример `connection`)
+
+1. YAML: `type: connection`, `id: ecu-connection`
+2. `component_mount` создаёт `ConnectionLogic` в Rust
+3. Vue получает JSON `state` (порты, baud, connected, signature…)
+4. Клик «Подключить» → `component_dispatch({ action: "connect" })` → новый `state` + event
+5. Vue перерисовывает DOM, **без** `invoke` на каждый кадр gauge (для output позже — push из фонового poll в Rust)
+
+Команды Tauri: `component_mount`, `component_get_state`, `component_dispatch`, `component_unmount`, `component_list_logic_types`.
 
 | Слой | Путь | Роль |
 |------|------|------|
-| Реестр | `src/core/registry.ts` | Тип компонента доступен в YAML **только после** `registerComponent()` в коде |
-| Загрузчик | `src/core/config-loader.ts` | `app.yaml` → вкладки → дерево инстансов, `$component:` → файл composite |
-| Рендер | `src/components/ComponentHost.vue` | Рекурсивный рендер, `bind` → `data-context` |
-| Оболочка | `src/shell/TabWorkspace.vue` | Только tab bar + панели |
-| Конфиги | `public/config/` | Runtime (редактируемо без пересборки) |
+| Реестр UI | `src/core/registry.ts` | SFC для `type` в YAML |
+| Загрузчик | `src/core/config-loader.ts` | Вкладки и дерево инстансов |
+| Рендер | `src/components/ComponentHost.vue` | Рекурсия по YAML |
+| Runtime | `crates/rusefui-runtime/` | Logic-компоненты и (далее) data sources |
+| Конфиги | `public/config/` | Layout без кода |
 
 ### Файлы конфигурации
 
@@ -318,14 +334,13 @@ bind:
 ```
 rusefui/
   rusefui.md
-  public/config/          # декларативный UI (YAML)
-  config/README.md        # описание формата
-  crates/rusefi-protocol/
-  src-tauri/
-  src/
-    core/                 # registry, config-loader, data-context
-    components/builtins/  # реализации компонентов
-    shell/                # TabWorkspace, AppShell
+  public/config/
+  crates/rusefi-protocol/   # протокол ECU
+  crates/rusefui-runtime/   # logic-компоненты (+ позже data sources)
+  src-tauri/runtime_cmds.rs
+  src/composables/useRustComponent.ts
+  src/components/builtins/  # только отрисовка
+  src/shell/
 ```
 
 Связь с rusefi: `../rusefi`; INI — `firmware/tunerstudio/generated/`.

@@ -12,8 +12,9 @@
 
 ## Правила
 
-1. **`type:`** в YAML — только типы, зарегистрированные в `src/components/register.ts` (реализованы в коде).
-2. **`bind:`** — декларативная привязка к источнику: `connection`, `config`, `outputChannels`, `textLog`.
+1. **`type:`** в YAML — SFC в `src/components/register.ts` (отрисовка).
+2. **Logic в Rust** — только для сложных типов (`connection`, …), см. `crates/rusefui-runtime` и `src/core/rust-logic.ts`.
+3. **`bind:`** — источник данных: `connection`, `config`, `outputChannels`, `textLog` (снимки готовит Rust, не Vue).
 3. **`$component: foo.bar`** — ссылка на файл `components/foo.bar.yaml`.
 4. Вложенность: `children` у контейнеров (`stack`, `row`, `section`, `composite`) и у composite-файлов.
 

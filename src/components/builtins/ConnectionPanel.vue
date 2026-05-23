@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
-import { invoke } from "@tauri-apps/api/core";
+import { computed, watch } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useDataContext } from "../../core/data-context";
-import type { ConnectionStatus, ConnectParams } from "../../types/connection";
+import { useRustComponent } from "../../composables/useRustComponent";
 
-defineProps<{
+const props = defineProps<{
   instance: ComponentInstance;
   path: string;
   props: Record<string, unknown>;
@@ -13,106 +12,55 @@ defineProps<{
   meta: ComponentMeta;
 }>();
 
-const BAUD_RATES = [115200, 230400, 460800, 921600] as const;
+const { state, dispatch, error } = useRustComponent(props.instance, props.path);
 const dataCtx = useDataContext();
 
-const ports = ref<string[]>([]);
-const selectedPort = ref("");
-const baudRate = ref(115200);
-const loadingPorts = ref(false);
-const connecting = ref(false);
-const message = ref<string | null>(null);
-
-const status = computed({
-  get: () => dataCtx.connection.value,
-  set: (v: ConnectionStatus) => {
-    dataCtx.connection.value = v;
-  },
+const ports = computed(() => (state.value.ports as string[]) ?? []);
+const selectedPort = computed({
+  get: () => (state.value.selectedPort as string) ?? "",
+  set: (port: string) => void dispatch("set_selected_port", { port }),
 });
+const baudRate = computed({
+  get: () => (state.value.baudRate as number) ?? 115200,
+  set: (baud_rate: number) => void dispatch("set_baud_rate", { baud_rate }),
+});
+const baudRates = computed(() => (state.value.baudRates as number[]) ?? [115200]);
+const loadingPorts = computed(() => Boolean(state.value.loadingPorts));
+const connecting = computed(() => Boolean(state.value.connecting));
+const message = computed(() => (state.value.message as string) ?? null);
+const messageIsError = computed(() => Boolean(state.value.messageIsError));
+const isConnected = computed(() => Boolean(state.value.connected));
 
-const isConnected = computed(() => status.value.connected);
 const canConnect = computed(
   () => !!selectedPort.value && !connecting.value && !isConnected.value,
 );
-const isErrorMessage = computed(
-  () =>
-    message.value != null &&
-    !isConnected.value &&
-    (message.value.toLowerCase().includes("error") ||
-      message.value.toLowerCase().includes("ошиб") ||
-      message.value.toLowerCase().includes("failed") ||
-      message.value.toLowerCase().includes("timeout")),
-);
-
-async function refreshPorts() {
-  loadingPorts.value = true;
-  message.value = null;
-  try {
-    ports.value = await invoke<string[]>("list_serial_ports");
-    if (ports.value.length && !selectedPort.value) {
-      selectedPort.value = ports.value[0];
-    }
-    if (!ports.value.length) {
-      message.value = "Последовательные порты не найдены.";
-    }
-  } catch (e) {
-    message.value = String(e);
-  } finally {
-    loadingPorts.value = false;
-  }
-}
-
-async function loadStatus() {
-  try {
-    status.value = await invoke<ConnectionStatus>("connection_status");
-  } catch (e) {
-    message.value = String(e);
-  }
-}
-
-async function connect() {
-  if (!selectedPort.value) return;
-  connecting.value = true;
-  message.value = null;
-  const params: ConnectParams = {
-    port: selectedPort.value,
-    baud_rate: baudRate.value,
-  };
-  try {
-    status.value = await invoke<ConnectionStatus>("connect_ecu", { params });
-    message.value = "Подключено.";
-  } catch (e) {
-    message.value = String(e);
-    await loadStatus();
-  } finally {
-    connecting.value = false;
-  }
-}
-
-async function disconnect() {
-  connecting.value = true;
-  message.value = null;
-  try {
-    status.value = await invoke<ConnectionStatus>("disconnect_ecu");
-    message.value = "Отключено.";
-  } catch (e) {
-    message.value = String(e);
-  } finally {
-    connecting.value = false;
-  }
-}
 
 watch(
-  () => dataCtx.connection.value.connected,
-  () => {
-    /* reactive badge in shell */
+  state,
+  (s) => {
+    dataCtx.connection.value = {
+      connected: Boolean(s.connected),
+      port_name: (s.portName as string) ?? null,
+      baud_rate: (s.baudRateActive as number) ?? null,
+      signature: (s.signature as string) ?? null,
+      handshake_command: s.handshakeCommand != null ? String(s.handshakeCommand) : null,
+      last_error: error.value,
+    };
   },
+  { deep: true },
 );
 
-onMounted(async () => {
-  await refreshPorts();
-  await loadStatus();
-});
+function refreshPorts() {
+  return dispatch("refresh_ports");
+}
+
+function connect() {
+  return dispatch("connect");
+}
+
+function disconnect() {
+  return dispatch("disconnect");
+}
 </script>
 
 <template>
@@ -120,7 +68,12 @@ onMounted(async () => {
     <div class="field">
       <label for="port">Порт</label>
       <div class="row">
-        <select id="port" v-model="selectedPort" :disabled="isConnected || connecting">
+        <select
+          id="port"
+          :value="selectedPort"
+          :disabled="isConnected || connecting"
+          @change="selectedPort = ($event.target as HTMLSelectElement).value"
+        >
           <option v-if="!ports.length" value="" disabled>— нет портов —</option>
           <option v-for="p in ports" :key="p" :value="p">{{ p }}</option>
         </select>
@@ -137,8 +90,13 @@ onMounted(async () => {
 
     <div class="field">
       <label for="baud">Скорость (baud)</label>
-      <select id="baud" v-model.number="baudRate" :disabled="isConnected || connecting">
-        <option v-for="b in BAUD_RATES" :key="b" :value="b">{{ b }}</option>
+      <select
+        id="baud"
+        :value="baudRate"
+        :disabled="isConnected || connecting"
+        @change="baudRate = Number(($event.target as HTMLSelectElement).value)"
+      >
+        <option v-for="b in baudRates" :key="b" :value="b">{{ b }}</option>
       </select>
     </div>
 
@@ -157,24 +115,24 @@ onMounted(async () => {
     </div>
 
     <p
-      v-if="message"
+      v-if="message || error"
       class="message"
-      :class="{ error: isErrorMessage, success: isConnected && !isErrorMessage }"
+      :class="{ error: messageIsError || !!error, success: isConnected && !messageIsError }"
     >
-      {{ message }}
+      {{ error ?? message }}
     </p>
 
     <div v-if="isConnected" class="status-box connected">
       <p class="status-label">Подключено</p>
       <dl class="status-dl">
         <dt>Порт</dt>
-        <dd>{{ status.port_name }}</dd>
+        <dd>{{ state.portName }}</dd>
         <dt>Baud</dt>
-        <dd>{{ status.baud_rate }}</dd>
+        <dd>{{ state.baudRateActive }}</dd>
         <dt>Handshake</dt>
-        <dd>{{ status.handshake_command }}</dd>
+        <dd>{{ state.handshakeCommand }}</dd>
         <dt>Signature</dt>
-        <dd class="signature">{{ status.signature }}</dd>
+        <dd class="signature">{{ state.signature }}</dd>
       </dl>
     </div>
   </div>

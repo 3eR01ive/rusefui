@@ -27,8 +27,8 @@ export function createDataContext(): DataContextState {
 }
 
 /**
- * Разрешает декларативную привязку из YAML в runtime-значение.
- * По мере роста проекта сюда добавляются config / outputChannels / logs.
+ * Привязка к источнику данных. Снимки готовятся в Rust; здесь — только чтение
+ * уже синхронизированного в context (например connection из connection-компонента).
  */
 export function resolveBinding(bind: DataBinding | undefined): unknown {
   if (!bind) return undefined;
@@ -39,11 +39,9 @@ export function resolveBinding(bind: DataBinding | undefined): unknown {
     case "connection":
       return ctx.connection.value;
     case "config":
-      return { field: bind.field, params: bind.params, _placeholder: true };
     case "outputChannels":
-      return { field: bind.field, params: bind.params, _placeholder: true };
     case "textLog":
-      return { _placeholder: true };
+      return { source: bind.source, field: bind.field, params: bind.params };
     default:
       console.warn(`[data] unknown source: ${bind.source}`);
       return undefined;

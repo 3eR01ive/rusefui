@@ -1,29 +1,12 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
-import { invoke } from "@tauri-apps/api/core";
+import { ref } from "vue";
 import TabWorkspace from "./TabWorkspace.vue";
-import {
-  createDataContext,
-  provideDataContext,
-} from "../core/data-context";
-import type { ConnectionStatus } from "../types/connection";
+import { createDataContext, provideDataContext } from "../core/data-context";
 
 const dataCtx = createDataContext();
 provideDataContext(dataCtx);
 
 const appTitle = ref("rusefui");
-
-async function syncConnectionStatus() {
-  try {
-    dataCtx.connection.value = await invoke<ConnectionStatus>("connection_status");
-  } catch {
-    /* not connected yet */
-  }
-}
-
-onMounted(() => {
-  syncConnectionStatus();
-});
 </script>
 
 <template>
