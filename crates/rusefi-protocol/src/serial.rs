@@ -1,4 +1,5 @@
 use std::io::{Read, Write};
+use std::sync::Arc;
 use std::time::Duration;
 
 use serialport::{DataBits, FlowControl, Parity, StopBits};
@@ -9,6 +10,7 @@ use crate::commands::{
 };
 use crate::error::ProtocolError;
 use crate::packet::{make_crc_request, parse_crc_response, CrcResponse};
+use crate::tracer::ProtocolTracer;
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ConnectionInfo {
@@ -23,6 +25,8 @@ pub struct SerialLink {
     port: Box<dyn serialport::SerialPort>,
     timeout_ms: u64,
     info: ConnectionInfo,
+    tracer: Option<Arc<dyn ProtocolTracer>>,
+    last_request_payload: Vec<u8>,
 }
 
 impl SerialLink {
@@ -35,7 +39,12 @@ impl SerialLink {
         Ok(names)
     }
 
-    pub fn connect(port_name: &str, baud_rate: u32, timeout_ms: u64) -> Result<Self, ProtocolError> {
+    pub fn connect(
+        port_name: &str,
+        baud_rate: u32,
+        timeout_ms: u64,
+        tracer: Option<Arc<dyn ProtocolTracer>>,
+    ) -> Result<Self, ProtocolError> {
         let timeout = Duration::from_millis(timeout_ms);
         let port = serialport::new(port_name, baud_rate)
             .timeout(timeout)
@@ -54,6 +63,8 @@ impl SerialLink {
                 signature: String::new(),
                 handshake_command: TS_HELLO_COMMAND as char,
             },
+            tracer,
+            last_request_payload: Vec::new(),
         };
 
         link.port.clear(serialport::ClearBuffer::All)?;
@@ -65,13 +76,27 @@ impl SerialLink {
 
     fn handshake(&mut self) -> Result<String, ProtocolError> {
         self.port.clear(serialport::ClearBuffer::All)?;
-        let request = make_crc_request(&[TS_HELLO_COMMAND]);
+        let payload = [TS_HELLO_COMMAND];
+        self.last_request_payload = payload.to_vec();
+        let request = make_crc_request(&payload);
+        if let Some(tracer) = &self.tracer {
+            tracer.on_tx(&payload, &request);
+        }
         self.port.write_all(&request)?;
         self.port.flush()?;
 
-        let response = self.read_crc_frame()?;
-        self.info.handshake_command = 'S';
-        response.into_string_payload()
+        match self.read_crc_frame_logged(&payload) {
+            Ok(response) => {
+                self.info.handshake_command = 'S';
+                response.into_string_payload()
+            }
+            Err(e) => {
+                if let Some(tracer) = &self.tracer {
+                    tracer.on_rx_err(&payload, &e);
+                }
+                Err(e)
+            }
+        }
     }
 
     pub fn info(&self) -> &ConnectionInfo {
@@ -80,10 +105,14 @@ impl SerialLink {
 
     pub fn send_request(&mut self, payload: &[u8]) -> Result<CrcResponse, ProtocolError> {
         self.port.clear(serialport::ClearBuffer::All)?;
+        self.last_request_payload = payload.to_vec();
         let request = make_crc_request(payload);
+        if let Some(tracer) = &self.tracer {
+            tracer.on_tx(payload, &request);
+        }
         self.port.write_all(&request)?;
         self.port.flush()?;
-        self.read_crc_frame()
+        self.read_crc_frame_logged(payload)
     }
 
     /// `ochGetCommand` — live output block (`O%2o%2c`, big-endian offset/count).
@@ -149,6 +178,24 @@ impl SerialLink {
         Ok(())
     }
 
+    fn read_crc_frame_logged(&mut self, request_payload: &[u8]) -> Result<CrcResponse, ProtocolError> {
+        match self.read_crc_frame() {
+            Ok(response) => {
+                if let Some(tracer) = &self.tracer {
+                    let frame = build_response_frame(&response);
+                    tracer.on_rx_ok(request_payload, &frame, &response);
+                }
+                Ok(response)
+            }
+            Err(e) => {
+                if let Some(tracer) = &self.tracer {
+                    tracer.on_rx_err(request_payload, &e);
+                }
+                Err(e)
+            }
+        }
+    }
+
     fn read_crc_frame(&mut self) -> Result<CrcResponse, ProtocolError> {
         let deadline = std::time::Instant::now() + Duration::from_millis(self.timeout_ms);
 
@@ -193,6 +240,17 @@ impl SerialLink {
     }
 }
 
+fn build_response_frame(response: &CrcResponse) -> Vec<u8> {
+    let mut body = vec![response.code];
+    body.extend_from_slice(&response.payload);
+    let len = body.len() as u16;
+    let mut frame = vec![(len >> 8) as u8, (len & 0xFF) as u8];
+    frame.extend_from_slice(&body);
+    let crc = crate::crc::crc32(&body);
+    frame.extend_from_slice(&crc.to_be_bytes());
+    frame
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -200,5 +258,10 @@ mod tests {
     #[test]
     fn list_ports_does_not_panic() {
         let _ = SerialLink::list_ports();
+    }
+
+    #[test]
+    fn output_poll_detection() {
+        assert!(crate::is_output_poll(&[b'O', 0, 0, 0, 0]));
     }
 }

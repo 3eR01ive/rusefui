@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import TabWorkspace from "./TabWorkspace.vue";
+import ProtocolLogSheet from "./ProtocolLogSheet.vue";
 import { createDataContext, provideDataContext } from "../core/data-context";
 import { initOutputChannels } from "../composables/useOutputChannels";
+import { useProtocolLog, useProtocolLogLifecycle } from "../composables/useProtocolLog";
 
 const dataCtx = createDataContext();
 provideDataContext(dataCtx);
 
 const appTitle = ref("rusefui");
+const { togglePanel } = useProtocolLog();
+
+useProtocolLogLifecycle();
 
 onMounted(() => {
   void initOutputChannels();
@@ -22,15 +27,18 @@ onMounted(() => {
         <h1 class="app-title">{{ appTitle }}</h1>
         <span class="app-subtitle">rusEFI · декларативный UI</span>
       </div>
-      <span
+      <button
         v-if="dataCtx.connection.value.connected"
+        type="button"
         class="conn-badge"
-        title="ECU подключена"
+        title="Протокол ECU — команды и ответы"
+        @click="togglePanel"
       >
         ECU
-      </span>
+      </button>
     </header>
     <TabWorkspace />
+    <ProtocolLogSheet />
   </div>
 </template>
 
@@ -94,5 +102,10 @@ onMounted(() => {
   background: var(--color-bg-accent-soft);
   border: 1px solid var(--color-success-border);
   border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.conn-badge:hover {
+  background: #fce8d8;
 }
 </style>

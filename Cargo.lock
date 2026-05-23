@@ -2524,6 +2524,7 @@ dependencies = [
 name = "rusefui-runtime"
 version = "0.1.0"
 dependencies = [
+ "dirs",
  "rusefi-ini",
  "rusefi-protocol",
  "serde",

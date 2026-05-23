@@ -1,21 +1,32 @@
-use rusefui_runtime::{ComponentRuntime, EcuSession, OutputSnapshot};
+use rusefui_runtime::{
+    default_log_path, ComponentRuntime, EcuSession, OutputSnapshot, ProtocolLogEntry,
+    ProtocolLogStore,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 pub struct RuntimeState {
     pub session: Arc<EcuSession>,
     pub runtime: Mutex<ComponentRuntime>,
+    pub protocol_log: Arc<ProtocolLogStore>,
+}
+
+impl RuntimeState {
+    pub fn new(protocol_log: Arc<ProtocolLogStore>) -> Self {
+        let session = EcuSession::new_arc(Arc::clone(&protocol_log));
+        Self {
+            session: Arc::clone(&session),
+            runtime: Mutex::new(ComponentRuntime::new(session)),
+            protocol_log,
+        }
+    }
 }
 
 impl Default for RuntimeState {
     fn default() -> Self {
-        let session = EcuSession::new_arc();
-        Self {
-            session: Arc::clone(&session),
-            runtime: Mutex::new(ComponentRuntime::new(session)),
-        }
+        Self::new(ProtocolLogStore::new(default_log_path()))
     }
 }
 
@@ -53,6 +64,10 @@ fn emit_output(app: &AppHandle, snapshot: &OutputSnapshot) {
     let _ = app.emit("output-channels", snapshot);
 }
 
+fn emit_protocol_log(app: &AppHandle, entry: &ProtocolLogEntry) {
+    let _ = app.emit("protocol-log", entry);
+}
+
 fn sync_output_poll(state: &RuntimeState, app: &AppHandle) {
     if state.session.is_connected() {
         let app = app.clone();
@@ -64,6 +79,14 @@ fn sync_output_poll(state: &RuntimeState, app: &AppHandle) {
         state.session.output().stop();
         emit_output(app, &state.session.output().snapshot());
     }
+}
+
+pub fn register_protocol_log_emitter(app: &AppHandle) {
+    let handle = app.clone();
+    let state = app.state::<RuntimeState>();
+    state.protocol_log.add_listener(Arc::new(move |entry| {
+        emit_protocol_log(&handle, entry);
+    }));
 }
 
 #[tauri::command]
@@ -149,4 +172,25 @@ pub fn ini_get_info(state: State<RuntimeState>) -> IniInfo {
         och_block_size: ctx.block_size,
         field_count: ctx.channels.fields.len(),
     }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProtocolLogInfo {
+    pub path: String,
+    pub entries: Vec<ProtocolLogEntry>,
+}
+
+#[tauri::command]
+pub fn protocol_log_get(limit: Option<usize>, state: State<RuntimeState>) -> ProtocolLogInfo {
+    let limit = limit.unwrap_or(200).min(500);
+    ProtocolLogInfo {
+        path: state.protocol_log.path().display().to_string(),
+        entries: state.protocol_log.list(limit),
+    }
+}
+
+#[tauri::command]
+pub fn protocol_log_clear(state: State<RuntimeState>) {
+    state.protocol_log.clear();
 }
