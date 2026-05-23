@@ -6,6 +6,16 @@ pub const TS_READ_COMMAND: u8 = b'R';
 pub const TS_CHUNK_WRITE_COMMAND: u8 = b'C';
 pub const TS_BURN_COMMAND: u8 = b'B';
 pub const TS_CRC_CHECK_COMMAND: u8 = b'k';
+pub const TS_IO_TEST_COMMAND: u8 = b'Z';
+
+/// Страница настроек (`TS_PAGE_SETTINGS`).
+pub const TS_PAGE_SETTINGS: u16 = 0;
+
+/// Подсистема `TS_X14` для bench/ETB/stimulator команд (`executeTSCommand`).
+pub const TS_SUBSYSTEM_X14: u16 = 20;
+
+pub const TS_X14_TRIGGER_STIMULATOR_ENABLE: u16 = 0x0D;
+pub const TS_X14_TRIGGER_STIMULATOR_DISABLE: u16 = 0x0F;
 
 pub const TS_RESPONSE_OK: u8 = 0;
 pub const TS_RESPONSE_UNDERRUN: u8 = 0x80;

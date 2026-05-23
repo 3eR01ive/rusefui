@@ -5,12 +5,14 @@ use serde_json::Value;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LogicComponentType {
     Connection,
+    Simulation,
 }
 
 impl LogicComponentType {
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "connection" => Some(Self::Connection),
+            "simulation" => Some(Self::Simulation),
             _ => None,
         }
     }
@@ -18,6 +20,7 @@ impl LogicComponentType {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Connection => "connection",
+            Self::Simulation => "simulation",
         }
     }
 }

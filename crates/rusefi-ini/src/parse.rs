@@ -10,6 +10,7 @@ enum Section {
     None,
     MegaTune,
     TunerStudio,
+    Constants,
     OutputChannels,
 }
 
@@ -18,6 +19,7 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
     let mut signature = None;
     let mut och_block_size = 2044u16;
     let mut fields = Vec::new();
+    let mut config_scalars = HashMap::new();
 
     for (line_no, raw) in text.lines().enumerate() {
         let line = raw.trim();
@@ -29,6 +31,7 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
             section = match &line[1..line.len() - 1] {
                 "MegaTune" => Section::MegaTune,
                 "TunerStudio" => Section::TunerStudio,
+                "Constants" => Section::Constants,
                 "OutputChannels" => Section::OutputChannels,
                 _ => Section::None,
             };
@@ -42,16 +45,40 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
             continue;
         }
 
-        if section != Section::OutputChannels {
+        if section != Section::OutputChannels && section != Section::Constants {
             continue;
         }
 
-        if let Some(size) = parse_key_u16(line, "ochBlockSize") {
-            och_block_size = size;
+        if section == Section::OutputChannels {
+            if let Some(size) = parse_key_u16(line, "ochBlockSize") {
+                och_block_size = size;
+                continue;
+            }
+        }
+
+        if line.contains('=') && line.contains("scalar,") {
+            match parse_output_line(line) {
+                Ok(field) => {
+                    if section == Section::OutputChannels {
+                        fields.push(field);
+                    } else if let FieldKind::Scalar(scalar) = field.kind {
+                        config_scalars.insert(field.name, scalar);
+                    }
+                }
+                Err(e) => {
+                    return Err(IniError::Parse(format!(
+                        "line {}: {e} — `{line}`",
+                        line_no + 1
+                    )));
+                }
+            }
             continue;
         }
 
-        if line.contains('=') && (line.contains("scalar,") || line.contains("bits,")) {
+        if section == Section::OutputChannels
+            && line.contains('=')
+            && line.contains("bits,")
+        {
             match parse_output_line(line) {
                 Ok(field) => fields.push(field),
                 Err(e) => {
@@ -74,6 +101,7 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
     Ok(IniFile {
         signature,
         output_channels,
+        config_scalars,
     })
 }
 
@@ -207,5 +235,6 @@ mod tests {
         assert!(ini.output_channels.fields.len() > 100);
         assert!(ini.output_channels.field("RPMValue").is_some());
         assert!(ini.output_channels.field("coolant").is_some());
+        assert!(ini.config_scalars.get("triggerSimulatorRpm").is_some());
     }
 }

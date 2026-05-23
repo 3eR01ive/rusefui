@@ -1,0 +1,6 @@
+tab:
+  id: simulation
+  title: Стимуляция
+
+root:
+  $component: simulation.panel

@@ -7,7 +7,7 @@ mod parse;
 
 pub use decode::decode_output_channels;
 pub use error::IniError;
-pub use model::{IniFile, OutputChannelField, OutputChannels, ScalarType};
+pub use model::{IniFile, OutputChannelField, OutputChannels, ScalarField, ScalarType};
 pub use parse::parse_ini;
 
 /// Путь к тестовому INI в репозитории (`test_data/rusefi_proteus_f7.ini`).

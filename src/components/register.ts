@@ -5,6 +5,7 @@ import SectionLayout from "./builtins/SectionLayout.vue";
 import CompositeLayout from "./builtins/CompositeLayout.vue";
 import TextBlock from "./builtins/TextBlock.vue";
 import ConnectionPanel from "./builtins/ConnectionPanel.vue";
+import SimulationPanel from "./builtins/SimulationPanel.vue";
 import ScalarField from "./builtins/ScalarField.vue";
 import OutputValue from "./builtins/OutputValue.vue";
 
@@ -81,6 +82,17 @@ export function registerBuiltinComponents(): void {
       description: "Подключение к ECU по serial",
     },
     ConnectionPanel,
+  );
+
+  registerComponent(
+    {
+      type: "simulation",
+      label: "Simulation",
+      mode: "display",
+      isContainer: false,
+      description: "ECU trigger stimulator (RPM + cmd Z)",
+    },
+    SimulationPanel,
   );
 
   registerComponent(

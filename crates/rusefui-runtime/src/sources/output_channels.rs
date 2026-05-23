@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-use rusefi_ini::{decode_output_channels, IniFile, OutputChannels};
+use rusefi_ini::{decode_output_channels, IniFile, OutputChannels, ScalarField};
 use serde::Serialize;
 use serde_json::{json, Value};
 
@@ -45,6 +45,7 @@ pub struct IniContext {
     pub signature: Option<String>,
     pub channels: Arc<OutputChannels>,
     pub block_size: u16,
+    pub config_scalars: HashMap<String, ScalarField>,
 }
 
 impl IniContext {
@@ -53,6 +54,7 @@ impl IniContext {
             signature: ini.signature.clone(),
             channels: Arc::new(ini.output_channels.clone()),
             block_size: ini.output_channels.och_block_size,
+            config_scalars: ini.config_scalars.clone(),
         }
     }
 }

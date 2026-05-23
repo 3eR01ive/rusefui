@@ -3,7 +3,10 @@ use std::time::Duration;
 
 use serialport::{DataBits, FlowControl, Parity, StopBits};
 
-use crate::commands::{TS_HELLO_COMMAND, TS_OUTPUT_COMMAND, TS_RESPONSE_OK};
+use crate::commands::{
+    TS_CHUNK_WRITE_COMMAND, TS_HELLO_COMMAND, TS_IO_TEST_COMMAND, TS_OUTPUT_COMMAND,
+    TS_RESPONSE_OK,
+};
 use crate::error::ProtocolError;
 use crate::packet::{make_crc_request, parse_crc_response, CrcResponse};
 
@@ -101,6 +104,49 @@ impl SerialLink {
             return Err(ProtocolError::ErrorResponse(response.code));
         }
         Ok(response.payload)
+    }
+
+    /// `C` — запись фрагмента страницы конфигурации (page, offset BE, count BE, data).
+    pub fn write_config_chunk(
+        &mut self,
+        page: u16,
+        offset: u16,
+        data: &[u8],
+    ) -> Result<(), ProtocolError> {
+        let count = u16::try_from(data.len())
+            .map_err(|_| ProtocolError::InvalidPacket("chunk too large"))?;
+        let mut payload = Vec::with_capacity(7 + data.len());
+        payload.push(TS_CHUNK_WRITE_COMMAND);
+        payload.extend_from_slice(&page.to_be_bytes());
+        payload.extend_from_slice(&offset.to_be_bytes());
+        payload.extend_from_slice(&count.to_be_bytes());
+        payload.extend_from_slice(data);
+
+        let response = self.send_request(&payload)?;
+        if response.code != TS_RESPONSE_OK {
+            return Err(ProtocolError::ErrorResponse(response.code));
+        }
+        Ok(())
+    }
+
+    /// `Z` — `executeTSCommand(subsystem, index)` (bench, stimulator, ETB, …).
+    pub fn execute_ts_command(
+        &mut self,
+        subsystem: u16,
+        index: u16,
+    ) -> Result<(), ProtocolError> {
+        let payload = [
+            TS_IO_TEST_COMMAND,
+            (subsystem >> 8) as u8,
+            (subsystem & 0xFF) as u8,
+            (index >> 8) as u8,
+            (index & 0xFF) as u8,
+        ];
+        let response = self.send_request(&payload)?;
+        if response.code != TS_RESPONSE_OK {
+            return Err(ProtocolError::ErrorResponse(response.code));
+        }
+        Ok(())
     }
 
     fn read_crc_frame(&mut self) -> Result<CrcResponse, ProtocolError> {

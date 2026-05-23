@@ -1,0 +1,18 @@
+# ECU stimulator — triggerSimulatorRpm + cmd_enable_self_stim / cmd_disable_self_stim
+id: simulation.panel
+description: Внутренняя стимуляция триггера (RPM)
+
+children:
+  - type: section
+    props:
+      title: ECU Stimulator
+    children:
+      - type: text
+        props:
+          text: "Записывает triggerSimulatorRpm в конфиг и отправляет команду Z (enable/disable self stim)."
+          variant: hint
+
+      - type: simulation
+        id: ecu-simulator
+        bind:
+          source: simulation

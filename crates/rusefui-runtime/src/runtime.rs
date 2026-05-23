@@ -5,6 +5,7 @@ use serde_json::Value;
 
 use crate::component::{requires_rust_logic, ComponentLogic, LogicComponentType};
 use crate::components::connection::ConnectionLogic;
+use crate::components::simulation::SimulationLogic;
 use crate::session::EcuSession;
 
 pub struct ComponentRuntime {
@@ -43,6 +44,9 @@ impl ComponentRuntime {
             Some(LogicComponentType::Connection) => {
                 Box::new(ConnectionLogic::new(Arc::clone(&self.session)))
             }
+            Some(LogicComponentType::Simulation) => {
+                Box::new(SimulationLogic::new(Arc::clone(&self.session)))
+            }
             None => {
                 return Err(format!("unknown logic component: {component_type}"));
             }
@@ -77,6 +81,9 @@ impl ComponentRuntime {
     }
 
     pub fn list_logic_types(&self) -> Vec<&'static str> {
-        vec![LogicComponentType::Connection.as_str()]
+        vec![
+            LogicComponentType::Connection.as_str(),
+            LogicComponentType::Simulation.as_str(),
+        ]
     }
 }

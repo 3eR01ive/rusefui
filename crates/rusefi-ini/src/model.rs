@@ -5,6 +5,7 @@ use std::collections::HashMap;
 pub struct IniFile {
     pub signature: Option<String>,
     pub output_channels: OutputChannels,
+    pub config_scalars: HashMap<String, ScalarField>,
 }
 
 #[derive(Debug, Clone, Serialize)]

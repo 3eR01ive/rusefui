@@ -4,3 +4,4 @@ app:
 tabs:
   - $tab: connection
   - $tab: monitor
+  - $tab: simulation
