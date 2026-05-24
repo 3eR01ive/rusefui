@@ -28,8 +28,8 @@ export interface LogGraphPanelSpec {
   title: string;
 }
 
-const PANEL_GAP = 6;
-const CORNER_LINE_H = 12;
+const PANEL_GAP = 2;
+const CORNER_LINE_H = 10;
 
 function cssVar(name: string, fallback: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
@@ -53,8 +53,8 @@ export function drawLogGraphPanel(
   tMin: number,
   tMax: number,
 ): void {
-  const topPad = Math.max(18, 6 + traces.length * CORNER_LINE_H);
-  const bottomPad = Math.max(18, 6 + traces.length * CORNER_LINE_H);
+  const topPad = Math.max(12, 4 + traces.length * CORNER_LINE_H);
+  const bottomPad = Math.max(12, 4 + traces.length * CORNER_LINE_H);
   const margins: ChartMargins = {
     top: topPad,
     right: 12,
@@ -177,8 +177,8 @@ export function drawLogPanelsChart(
   ctx.clearRect(0, 0, width, height);
   if (panels.length === 0) return;
 
-  const outerTop = 4;
-  const outerBottom = 8;
+  const outerTop = 1;
+  const outerBottom = 2;
   const usable = height - outerTop - outerBottom;
   const panelH =
     (usable - PANEL_GAP * Math.max(0, panels.length - 1)) / panels.length;

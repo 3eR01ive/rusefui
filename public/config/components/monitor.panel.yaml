@@ -10,7 +10,7 @@ children:
       - type: output-chart
         id: scope
         props:
-          height: 300
+          height: 240
           windowSeconds: 30
           fields:
             - RPMValue
@@ -44,5 +44,5 @@ children:
 
       - type: text
         props:
-          text: "Опрос outputChannels (команда O) в Rust ~10 Hz. INI подбирается по signature ECU."
+          text: "Опрос outputChannels (команда O) в Rust ~200 Hz. INI подбирается по signature ECU."
           variant: hint

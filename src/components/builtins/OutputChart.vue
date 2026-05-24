@@ -45,9 +45,35 @@ const windowSeconds = computed(() => {
 });
 
 const chartHeight = computed(() => {
-  const h = Number(props.props.height ?? 280);
-  return h > 120 ? h : 280;
+  const h = Number(props.props.height ?? 220);
+  return h > 120 ? h : 220;
 });
+
+const LOG_SETUP_KEY = "rusefui-log-setup-expanded";
+
+const settingsExpanded = ref(false);
+
+function loadSettingsExpanded(): void {
+  try {
+    const v = localStorage.getItem(LOG_SETUP_KEY);
+    if (v === "1") settingsExpanded.value = true;
+    else if (v === "0") settingsExpanded.value = false;
+  } catch {
+    /* ignore */
+  }
+}
+
+function toggleSettingsExpanded(): void {
+  settingsExpanded.value = !settingsExpanded.value;
+  try {
+    localStorage.setItem(LOG_SETUP_KEY, settingsExpanded.value ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+  if (!settingsExpanded.value) {
+    showSuggest.value = false;
+  }
+}
 
 const defaultFields = computed(() => {
   const raw = props.props.fields;
@@ -70,21 +96,34 @@ const graphGroups = ref<LogGraphGroup[]>([
 ]);
 const activeGraphId = ref("g1");
 
+/** Все назначения каналов (один параметр может быть на нескольких графах). */
 function allSelectedFields(): string[] {
   return graphGroups.value.flatMap((g) => g.fieldNames);
 }
 
-function findGraphWithField(name: string): LogGraphGroup | undefined {
-  return graphGroups.value.find((g) => g.fieldNames.includes(name));
+/** Уникальные имена для опроса ECU и буфера рядов. */
+function uniquePollFields(): string[] {
+  return [...new Set(allSelectedFields())];
 }
 
-function isFieldSelected(name: string): boolean {
+function activeGraph(): LogGraphGroup | undefined {
+  return (
+    graphGroups.value.find((g) => g.id === activeGraphId.value) ?? graphGroups.value[0]
+  );
+}
+
+function isFieldOnActiveGraph(name: string): boolean {
+  const g = activeGraph();
+  return g?.fieldNames.includes(name) ?? false;
+}
+
+function isFieldOnAnyGraph(name: string): boolean {
   return allSelectedFields().includes(name);
 }
 
 function syncGraphStore(): void {
   syncRangeInputs();
-  store.value.setFields(allSelectedFields());
+  store.value.setFields(uniquePollFields());
 }
 
 async function refreshFieldCatalog(): Promise<void> {
@@ -135,7 +174,7 @@ const rangeInputs = ref<Record<string, { min: string; max: string }>>({});
 
 function syncRangeInputs(): void {
   const next: Record<string, { min: string; max: string }> = {};
-  for (const name of allSelectedFields()) {
+  for (const name of uniquePollFields()) {
     next[name] = rangeInputs.value[name] ?? { min: "", max: "" };
   }
   rangeInputs.value = next;
@@ -171,13 +210,14 @@ watch(
 
 watch(windowSeconds, (sec) => {
   store.value = createTimeSeriesStore(sec);
-  store.value.setFields(allSelectedFields());
+  store.value.setFields(uniquePollFields());
 });
 
 watch(graphGroups, () => syncGraphStore(), { deep: true });
 
 const channelRows = computed(() => {
   const rows: {
+    slotKey: string;
     name: string;
     graphId: string;
     graphLabel: string;
@@ -188,13 +228,14 @@ const channelRows = computed(() => {
     max: string;
   }[] = [];
   graphGroups.value.forEach((g, gi) => {
-    for (const name of g.fieldNames) {
+    g.fieldNames.forEach((name, idx) => {
       const s = store.value.seriesMap.get(name);
       const meta = allFields.value.find((f) => f.name === name);
       const pts = s?.points;
       const last = pts && pts.length > 0 ? pts[pts.length - 1]!.v : null;
       const ranges = rangeInputs.value[name] ?? { min: "", max: "" };
       rows.push({
+        slotKey: `${g.id}:${name}:${idx}`,
         name,
         graphId: g.id,
         graphLabel: `Граф ${gi + 1}`,
@@ -204,20 +245,30 @@ const channelRows = computed(() => {
         min: ranges.min,
         max: ranges.max,
       });
-    }
+    });
   });
   return rows;
 });
 
-const PANEL_GAP_UI = 6;
+const PANEL_GAP_UI = 2;
 
 const canvasHeight = computed(() => {
   const n = Math.max(1, graphGroups.value.filter((g) => g.fieldNames.length > 0).length);
-  const perPanel = Math.max(140, chartHeight.value);
-  return perPanel * n + PANEL_GAP_UI * Math.max(0, n - 1) + 12;
+  const perPanel = chartHeight.value;
+  return perPanel * n + PANEL_GAP_UI * Math.max(0, n - 1) + 4;
 });
 
 const hasAnyChannel = computed(() => allSelectedFields().length > 0);
+
+const setupSummary = computed(() => {
+  const ch = allSelectedFields().length;
+  const gr = graphGroups.value.filter((g) => g.fieldNames.length > 0).length;
+  const parts: string[] = [];
+  if (ch > 0) parts.push(`${ch} кан.`);
+  parts.push(`${gr || graphGroups.value.length} граф.`);
+  parts.push(`окно ${windowSeconds.value} с`);
+  return parts.join(" · ");
+});
 
 const filteredFields = computed(() => {
   const q = fieldFilter.value.trim().toLowerCase();
@@ -241,7 +292,7 @@ const suggestEmptyHint = computed(() => {
 
 const activeSeries = computed((): TimeSeries[] => {
   const out: TimeSeries[] = [];
-  for (const f of allSelectedFields()) {
+  for (const f of uniquePollFields()) {
     const s = store.value.seriesMap.get(f);
     if (s) out.push(s);
   }
@@ -250,6 +301,8 @@ const activeSeries = computed((): TimeSeries[] => {
 
 const legendItems = computed(() =>
   channelRows.value.map((row) => ({
+    slotKey: row.slotKey,
+    graphId: row.graphId,
     name: row.name,
     graphLabel: row.graphLabel,
     color: row.color,
@@ -267,13 +320,6 @@ function addGraph(): void {
 
 function removeGraph(id: string): void {
   if (graphGroups.value.length <= 1) return;
-  const g = graphGroups.value.find((x) => x.id === id);
-  if (g) {
-    for (const name of g.fieldNames) {
-      const { [name]: _, ...rest } = rangeInputs.value;
-      rangeInputs.value = rest;
-    }
-  }
   graphGroups.value = graphGroups.value.filter((x) => x.id !== id);
   if (activeGraphId.value === id) {
     activeGraphId.value = graphGroups.value[0]!.id;
@@ -281,13 +327,16 @@ function removeGraph(id: string): void {
   syncGraphStore();
 }
 
-function moveFieldToGraph(name: string, graphId: string): void {
-  for (const g of graphGroups.value) {
-    g.fieldNames = g.fieldNames.filter((f) => f !== name);
-  }
-  const target = graphGroups.value.find((g) => g.id === graphId);
-  if (target && !target.fieldNames.includes(name)) {
-    target.fieldNames = [...target.fieldNames, name];
+function moveFieldToGraph(name: string, fromGraphId: string, toGraphId: string): void {
+  if (fromGraphId === toGraphId) return;
+  const from = graphGroups.value.find((g) => g.id === fromGraphId);
+  const to = graphGroups.value.find((g) => g.id === toGraphId);
+  if (!from || !to) return;
+  const idx = from.fieldNames.indexOf(name);
+  if (idx < 0) return;
+  from.fieldNames = from.fieldNames.filter((_, i) => i !== idx);
+  if (!to.fieldNames.includes(name)) {
+    to.fieldNames = [...to.fieldNames, name];
   }
   graphGroups.value = [...graphGroups.value];
   syncGraphStore();
@@ -295,33 +344,30 @@ function moveFieldToGraph(name: string, graphId: string): void {
 }
 
 function toggleField(name: string): void {
-  const existing = findGraphWithField(name);
-  if (existing) {
-    existing.fieldNames = existing.fieldNames.filter((f) => f !== name);
-    const { [name]: _, ...rest } = rangeInputs.value;
-    rangeInputs.value = rest;
+  const g = activeGraph();
+  if (!g) return;
+  if (g.fieldNames.includes(name)) {
+    g.fieldNames = g.fieldNames.filter((f) => f !== name);
     graphGroups.value = [...graphGroups.value];
     syncGraphStore();
     return;
   }
   if (allSelectedFields().length >= MAX_CHANNELS) return;
-  const g =
-    graphGroups.value.find((x) => x.id === activeGraphId.value) ?? graphGroups.value[0];
-  if (!g) return;
   g.fieldNames = [...g.fieldNames, name];
-  rangeInputs.value[name] = { min: "", max: "" };
+  if (!rangeInputs.value[name]) {
+    rangeInputs.value[name] = { min: "", max: "" };
+  }
   graphGroups.value = [...graphGroups.value];
   syncGraphStore();
 }
 
-function removeField(name: string): void {
-  const g = findGraphWithField(name);
-  if (g) {
-    g.fieldNames = g.fieldNames.filter((f) => f !== name);
-    graphGroups.value = [...graphGroups.value];
-  }
-  const { [name]: _, ...rest } = rangeInputs.value;
-  rangeInputs.value = rest;
+function removeField(name: string, graphId: string): void {
+  const g = graphGroups.value.find((x) => x.id === graphId);
+  if (!g) return;
+  const idx = g.fieldNames.indexOf(name);
+  if (idx < 0) return;
+  g.fieldNames = g.fieldNames.filter((_, i) => i !== idx);
+  graphGroups.value = [...graphGroups.value];
   syncGraphStore();
 }
 
@@ -379,6 +425,7 @@ let resizeObserver: ResizeObserver | null = null;
 let unlistenEcu: UnlistenFn | null = null;
 
 onMounted(async () => {
+  loadSettingsExpanded();
   await initOutputChannels();
   await refreshFieldCatalog();
 
@@ -421,7 +468,7 @@ watch(
   () => snapshot.value.values,
   (values) => {
     if (!snapshot.value.connected) return;
-    for (const f of allSelectedFields()) {
+    for (const f of uniquePollFields()) {
       const v = values[f];
       if (v !== undefined) store.value.addSample(f, v);
     }
@@ -433,10 +480,53 @@ watch(activeSeries, () => redraw(), { deep: true });
 watch(canvasHeight, () => redraw());
 watch(rangeInputs, () => redraw(), { deep: true });
 watch(graphGroups, () => redraw(), { deep: true });
+watch(chartHeight, () => redraw());
 </script>
 
 <template>
-  <div class="output-chart log-chart" ref="containerRef">
+  <div
+    class="output-chart log-chart"
+    :class="{ 'log-chart--compact': !settingsExpanded }"
+    ref="containerRef"
+  >
+    <div class="log-chrome">
+      <button
+        type="button"
+        class="log-setup-toggle"
+        :aria-expanded="settingsExpanded"
+        :title="settingsExpanded ? 'Свернуть настройки' : 'Развернуть настройки'"
+        @click="toggleSettingsExpanded"
+      >
+        <span class="log-setup-chevron" :class="{ open: settingsExpanded }">▸</span>
+        <span class="log-setup-toggle-label">
+          {{ settingsExpanded ? "Свернуть" : "Настройки log" }}
+        </span>
+      </button>
+
+      <div v-if="!settingsExpanded" class="log-compact-meta">
+        <span class="log-compact-summary">{{ setupSummary }}</span>
+        <div class="graph-tabs graph-tabs--inline" role="tablist">
+          <button
+            v-for="(g, i) in graphGroups"
+            :key="g.id"
+            type="button"
+            role="tab"
+            class="graph-tab graph-tab--mini"
+            :class="{ active: activeGraphId === g.id }"
+            :title="`Граф ${i + 1}`"
+            @click="activeGraphId = g.id"
+          >
+            {{ i + 1 }}
+            <span v-if="g.fieldNames.length" class="graph-tab-count">{{ g.fieldNames.length }}</span>
+          </button>
+        </div>
+        <button type="button" class="btn-clear btn-clear--mini" title="Сброс истории" @click="clearHistory">
+          ↻
+        </button>
+      </div>
+    </div>
+
+    <div v-show="settingsExpanded" class="log-setup">
     <div class="graph-tabs">
       <button
         v-for="(g, i) in graphGroups"
@@ -467,7 +557,7 @@ watch(graphGroups, () => redraw(), { deep: true });
       >
         −
       </button>
-      <span class="graph-tabs-hint">Новые каналы добавляются на активный граф</span>
+      <span class="graph-tabs-hint">Каналы добавляются на активный граф (один параметр — на нескольких)</span>
     </div>
 
     <div class="toolbar">
@@ -497,7 +587,10 @@ watch(graphGroups, () => redraw(), { deep: true });
             <li
               v-for="f in filteredFields"
               :key="f.name"
-              :class="{ active: isFieldSelected(f.name) }"
+              :class="{
+                active: isFieldOnActiveGraph(f.name),
+                'on-other-graph': isFieldOnAnyGraph(f.name) && !isFieldOnActiveGraph(f.name),
+              }"
             >
               <button type="button" @mousedown.prevent="toggleField(f.name)">
                 {{ f.name }}
@@ -511,7 +604,7 @@ watch(graphGroups, () => redraw(), { deep: true });
       <div class="selected-fields">
         <span
           v-for="item in legendItems"
-          :key="item.name"
+          :key="item.slotKey"
           class="chip"
           :style="{ borderColor: item.color }"
         >
@@ -522,7 +615,12 @@ watch(graphGroups, () => redraw(), { deep: true });
             {{ Number.isInteger(item.value) ? item.value : item.value.toFixed(2) }}
             <span v-if="item.units" class="chip-units">{{ item.units }}</span>
           </span>
-          <button type="button" class="chip-remove" title="Убрать" @click="removeField(item.name)">
+          <button
+            type="button"
+            class="chip-remove"
+            title="Убрать с этого графа"
+            @click="removeField(item.name, item.graphId)"
+          >
             ×
           </button>
         </span>
@@ -537,7 +635,7 @@ watch(graphGroups, () => redraw(), { deep: true });
     <div v-if="channelRows.length" class="channel-ranges">
       <p class="ranges-title">Диапазон Y · min / max (пусто = авто по окну)</p>
       <div class="ranges-grid">
-        <div v-for="row in channelRows" :key="row.name" class="range-row">
+        <div v-for="row in channelRows" :key="row.slotKey" class="range-row">
           <span class="range-dot" :style="{ background: row.color }" />
           <span class="range-name">{{ row.name }}</span>
           <label class="range-graph">
@@ -545,7 +643,13 @@ watch(graphGroups, () => redraw(), { deep: true });
             <select
               class="range-select"
               :value="row.graphId"
-              @change="moveFieldToGraph(row.name, ($event.target as HTMLSelectElement).value)"
+              @change="
+                moveFieldToGraph(
+                  row.name,
+                  row.graphId,
+                  ($event.target as HTMLSelectElement).value,
+                )
+              "
             >
               <option v-for="(g, i) in graphGroups" :key="g.id" :value="g.id">
                 {{ i + 1 }}
@@ -577,6 +681,7 @@ watch(graphGroups, () => redraw(), { deep: true });
         </div>
       </div>
     </div>
+    </div>
 
     <div class="canvas-wrap">
       <canvas ref="canvasRef" class="chart-canvas" />
@@ -594,8 +699,89 @@ watch(graphGroups, () => redraw(), { deep: true });
 .output-chart {
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.35rem;
   width: 100%;
+}
+
+.output-chart.log-chart--compact {
+  gap: 0.2rem;
+}
+
+.log-chrome {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  min-height: 1.6rem;
+}
+
+.log-setup-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.4rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.log-setup-toggle:hover {
+  color: var(--color-text);
+  background: var(--color-bg-muted);
+}
+
+.log-setup-chevron {
+  display: inline-block;
+  font-size: 0.65rem;
+  transition: transform 0.15s ease;
+  transform: rotate(0deg);
+}
+
+.log-setup-chevron.open {
+  transform: rotate(90deg);
+}
+
+.log-compact-meta {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  min-width: 0;
+}
+
+.log-compact-summary {
+  font-size: 0.72rem;
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+}
+
+.graph-tabs--inline {
+  flex: 0 0 auto;
+  gap: 0.2rem;
+}
+
+.graph-tab--mini {
+  min-width: 1.5rem;
+  padding: 0.12rem 0.35rem;
+  font-size: 0.72rem;
+}
+
+.btn-clear--mini {
+  margin-left: auto;
+  padding: 0.12rem 0.4rem;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.log-setup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
 .graph-tabs {
@@ -703,6 +889,10 @@ watch(graphGroups, () => redraw(), { deep: true });
   background: var(--color-bg-accent-soft);
 }
 
+.field-suggest-portal li.on-other-graph button {
+  border-left: 2px solid var(--color-accent);
+}
+
 .field-suggest-portal button {
   display: flex;
   width: 100%;
@@ -732,7 +922,11 @@ watch(graphGroups, () => redraw(), { deep: true });
   gap: 0.35rem;
   flex: 2 1 20rem;
   align-content: flex-start;
-  padding-top: 1.15rem;
+  padding-top: 0;
+}
+
+.log-chart--compact .selected-fields {
+  padding-top: 0;
 }
 
 .channel-ranges {
@@ -893,7 +1087,7 @@ watch(graphGroups, () => redraw(), { deep: true });
   flex-direction: column;
   align-items: flex-end;
   gap: 0.25rem;
-  padding-top: 1.15rem;
+  padding-top: 0;
 }
 
 .window-hint {

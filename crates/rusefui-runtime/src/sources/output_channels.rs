@@ -14,12 +14,13 @@ use crate::session::EcuSession;
 
 pub const DEFAULT_OUTPUT_BLOCK_SIZE: u16 = 2044;
 
-const OUTPUT_POLL_HZ: f64 = 10.0;
-const POLL_INTERVAL: Duration = Duration::from_millis((1000.0 / OUTPUT_POLL_HZ) as u64);
-/// Реже во время стимуляции — меньше конкуренции за `inner` с редкими `E`.
-const STIM_OUTPUT_POLL_HZ: f64 = 5.0;
-const STIM_POLL_INTERVAL: Duration = Duration::from_millis((1000.0 / STIM_OUTPUT_POLL_HZ) as u64);
-const MIN_EMIT_INTERVAL: Duration = Duration::from_millis(100);
+const OUTPUT_POLL_HZ: f64 = 200.0;
+const POLL_INTERVAL: Duration = Duration::from_nanos((1_000_000_000.0 / OUTPUT_POLL_HZ) as u64);
+/// Чуть реже во время стимуляции — меньше конкуренции за `inner` с `E`.
+const STIM_OUTPUT_POLL_HZ: f64 = 100.0;
+const STIM_POLL_INTERVAL: Duration = Duration::from_nanos((1_000_000_000.0 / STIM_OUTPUT_POLL_HZ) as u64);
+/// UI-события не реже опроса ECU.
+const MIN_EMIT_INTERVAL: Duration = POLL_INTERVAL;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
