@@ -6,8 +6,8 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: ECU reboot needed to apply these settings
+    variant: hint
 - type: section
   props:
     title: SPI1 settings
@@ -27,6 +27,7 @@ children:
   - type: enum-field
     id: spi1mosipin
     props:
+      label: MOSI
       options:
       - value: 0
         label: NONE
@@ -384,7 +385,6 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: MOSI
     bind:
       source: config
       field: spi1mosiPin
@@ -1549,7 +1549,6 @@ children:
   - type: enum-field
     id: spi2mosipin
     props:
-      label: MOSI
       options:
       - value: 0
         label: NONE
@@ -1907,6 +1906,7 @@ children:
         label: PK14
       - value: 177
         label: PK15
+      label: MOSI
     bind:
       source: config
       field: spi2mosiPin
@@ -2415,7 +2415,6 @@ children:
   - type: enum-field
     id: spi2misomode
     props:
-      label: MISO mode
       options:
       - value: 0
         label: default
@@ -2547,6 +2546,7 @@ children:
         label: INVALID
       - value: 64
         label: PULLDOWN
+      label: MISO mode
     bind:
       source: config
       field: spi2MisoMode
@@ -3059,18 +3059,19 @@ children:
   - type: enum-field
     id: is-enabled-spi-3
     props:
+      label: Enable
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: Enable
     bind:
       source: config
       field: is_enabled_spi_3
   - type: enum-field
     id: spi3mosipin
     props:
+      label: MOSI
       options:
       - value: 0
         label: NONE
@@ -3428,13 +3429,13 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: MOSI
     bind:
       source: config
       field: spi3mosiPin
   - type: enum-field
     id: spi3mosimode
     props:
+      label: MOSI mode
       options:
       - value: 0
         label: default
@@ -3566,13 +3567,13 @@ children:
         label: INVALID
       - value: 64
         label: PULLDOWN
-      label: MOSI mode
     bind:
       source: config
       field: spi3MosiMode
   - type: enum-field
     id: spi3misopin
     props:
+      label: MISO
       options:
       - value: 0
         label: NONE
@@ -3930,14 +3931,12 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: MISO
     bind:
       source: config
       field: spi3misoPin
   - type: enum-field
     id: spi3misomode
     props:
-      label: MISO mode
       options:
       - value: 0
         label: default
@@ -4069,12 +4068,14 @@ children:
         label: INVALID
       - value: 64
         label: PULLDOWN
+      label: MISO mode
     bind:
       source: config
       field: spi3MisoMode
   - type: enum-field
     id: spi3sckpin
     props:
+      label: SCK
       options:
       - value: 0
         label: NONE
@@ -4432,14 +4433,12 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: SCK
     bind:
       source: config
       field: spi3sckPin
   - type: enum-field
     id: spi3sckmode
     props:
-      label: SCK mode
       options:
       - value: 0
         label: default
@@ -4571,6 +4570,7 @@ children:
         label: INVALID
       - value: 64
         label: PULLDOWN
+      label: SCK mode
     bind:
       source: config
       field: spi3SckMode
@@ -4581,12 +4581,12 @@ children:
   - type: enum-field
     id: is-enabled-spi-4
     props:
-      label: Enable
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Enable
     bind:
       source: config
       field: is_enabled_spi_4

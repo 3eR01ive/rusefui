@@ -33,12 +33,12 @@ children:
     - type: enum-field
       id: measuremaponlyinonecylinder
       props:
+        label: Measure Map Only In One Cylinder
         options:
         - value: 0
           label: 'false'
         - value: 1
           label: 'true'
-        label: Measure Map Only In One Cylinder
       bind:
         source: config
         field: measureMapOnlyInOneCylinder

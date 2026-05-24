@@ -7,6 +7,7 @@ children:
 - type: enum-field
   id: clutchdownpin
   props:
+    label: Clutch Down
     options:
     - value: 0
       label: NONE
@@ -172,14 +173,12 @@ children:
       label: Digital 4
     - value: 81
       label: Digital 6
-    label: Clutch Down
   bind:
     source: config
     field: clutchDownPin
 - type: enum-field
   id: clutchdownpinmode
   props:
-    label: Clutch Down mode
     options:
     - value: 0
       label: DEFAULT
@@ -195,6 +194,7 @@ children:
       label: INVERTED PULLUP
     - value: 6
       label: INVERTED PULLDOWN
+    label: Clutch Down mode
   bind:
     source: config
     field: clutchDownPinMode

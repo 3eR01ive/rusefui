@@ -135,8 +135,8 @@ pub(crate) fn ini_rhs<'a>(line: &'a str, key: &str) -> Option<&'a str> {
     if let Some(rest) = trimmed.strip_prefix(&prefix) {
         return Some(rest.trim());
     }
-  if trimmed.starts_with(key) {
-        let rest = trimmed[key.len()..].trim_start_matches('=').trim();
+    if trimmed.starts_with(key) {
+        let rest = trimmed[key.len()..].trim().trim_start_matches('=').trim();
         if !rest.is_empty() {
             return Some(rest);
         }
@@ -162,7 +162,12 @@ fn parse_dialog_item(line: &str) -> Option<DialogItem> {
     }
     if let Some(rest) = ini_rhs(line, "panel") {
         let parts = split_ini_args(rest).ok()?;
-        let panel_id = parts.first()?.trim().to_string();
+        let panel_id = parts
+            .first()?
+            .trim()
+            .trim_start_matches('=')
+            .trim()
+            .to_string();
         return Some(DialogItem::Panel(DialogPanel { panel_id }));
     }
     if let Some(rest) = ini_rhs(line, "commandButton") {
@@ -310,11 +315,23 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parse_menu_from_fixture() {
-        let text = std::fs::read_to_string(crate::default_test_ini_path()).unwrap();
-        let menu = parse_menu_section(&text).unwrap();
-        assert!(menu.dialogs.contains_key("engineChars"));
-        assert!(menu.dialogs.contains_key("triggerConfiguration"));
-        assert!(menu.entries.iter().any(|e| e.dialog_id == "engineChars"));
+    fn parse_panel_with_tabs_before_equals() {
+        let text = r#"
+[Menu]
+menu = "Fuel", 0
+
+[Menu]
+	subMenu = veTableDialog, "VE"
+
+	dialog = veTableDialog, "", border
+		panel		= veTableTbl, Center
+"#;
+        let menu = parse_menu_section(text).unwrap();
+        let dialog = menu.dialogs.get("veTableDialog").unwrap();
+        let panel = dialog.items.iter().find_map(|item| match item {
+            DialogItem::Panel(p) => Some(p.panel_id.clone()),
+            _ => None,
+        });
+        assert_eq!(panel.as_deref(), Some("veTableTbl"));
     }
 }

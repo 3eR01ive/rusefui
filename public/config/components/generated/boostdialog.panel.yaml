@@ -19,18 +19,19 @@ children:
 - type: enum-field
   id: boosttype
   props:
+    label: Control Mode
     options:
     - value: 0
       label: Open Loop
     - value: 1
       label: Open + Closed Loop
-    label: Control Mode
   bind:
     source: config
     field: boostType
 - type: enum-field
   id: boostcontrolpin
   props:
+    label: Output
     options:
     - value: 0
       label: NONE
@@ -258,7 +259,6 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
-    label: Output
   bind:
     source: config
     field: boostControlPin

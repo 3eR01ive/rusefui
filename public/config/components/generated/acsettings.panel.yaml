@@ -183,6 +183,7 @@ children:
   - type: enum-field
     id: acswitchmode
     props:
+      label: A/C switch mode
       options:
       - value: 0
         label: DEFAULT
@@ -198,7 +199,6 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
-      label: A/C switch mode
     bind:
       source: config
       field: acSwitchMode

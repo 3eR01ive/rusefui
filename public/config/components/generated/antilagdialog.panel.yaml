@@ -23,6 +23,7 @@ children:
 - type: enum-field
   id: antilagactivationmode
   props:
+    label: Activation Mode
     options:
     - value: 0
       label: Switch Input
@@ -32,14 +33,12 @@ children:
       label: Lua
     - value: 3
       label: INVALID
-    label: Activation Mode
   bind:
     source: config
     field: antiLagActivationMode
 - type: enum-field
   id: alsactivatepin
   props:
-    label: Switch Input
     options:
     - value: 0
       label: NONE
@@ -205,13 +204,13 @@ children:
       label: Digital 4
     - value: 81
       label: Digital 6
+    label: Switch Input
   bind:
     source: config
     field: ALSActivatePin
 - type: enum-field
   id: alsactivatepinmode
   props:
-    label: ALS Button mode
     options:
     - value: 0
       label: DEFAULT
@@ -227,6 +226,7 @@ children:
       label: INVERTED PULLUP
     - value: 6
       label: INVERTED PULLDOWN
+    label: ALS Button mode
   bind:
     source: config
     field: ALSActivatePinMode
@@ -289,24 +289,24 @@ children:
 - type: config-table
   id: fueladdertableals
   props:
-    variant: table
-    zBins: ALSFuelAdjustment
-    xBins: alsFuelAdjustmentrpmBins
     title: Fuel adjustment
+    variant: table
     yBins: alsFuelAdjustmentLoadBins
+    xBins: alsFuelAdjustmentrpmBins
+    zBins: ALSFuelAdjustment
 - type: config-table
   id: ignretardtableals
   props:
-    zBins: ALSTimingRetardTable
-    variant: table
     xBins: alsIgnRetardrpmBins
     yBins: alsIgnRetardLoadBins
     title: Ignition adjustment
+    zBins: ALSTimingRetardTable
+    variant: table
 - type: config-table
   id: ignskiptableals
   props:
-    xBins: alsIgnSkiprpmBins
-    yBins: alsIgnSkipLoadBins
+    zBins: ALSIgnSkipTable
     variant: table
     title: Ignition Skip
-    zBins: ALSIgnSkipTable
+    yBins: alsIgnSkipLoadBins
+    xBins: alsIgnSkiprpmBins

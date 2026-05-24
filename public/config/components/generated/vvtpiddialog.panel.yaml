@@ -734,7 +734,6 @@ children:
   - type: enum-field
     id: vvtpins4
     props:
-      label: VVT solenoid bank 2 exhaust
       options:
       - value: 0
         label: NONE
@@ -962,6 +961,7 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
+      label: VVT solenoid bank 2 exhaust
     bind:
       source: config
       field: vvtPins4
@@ -1095,5 +1095,5 @@ children:
       variant: hint
   - type: text
     props:
-      text: 'Кнопка: Bench bank 2 (cmd_test_vvt3_valve)'
       variant: hint
+      text: 'Кнопка: Bench bank 2 (cmd_test_vvt3_valve)'

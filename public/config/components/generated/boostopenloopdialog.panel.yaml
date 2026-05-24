@@ -89,9 +89,9 @@ children:
 - type: config-table
   id: boosttabletbl
   props:
+    xBins: boostRpmBins
     zBins: boostTableOpenLoop
+    yBins: boostOpenLoopLoadBins
     title: Boost control duty cycle (open loop)
     variant: table
-    xBins: boostRpmBins
-    xLabel: = "RPMValue
-    yBins: boostOpenLoopLoadBins
+    xLabel: RPMValue

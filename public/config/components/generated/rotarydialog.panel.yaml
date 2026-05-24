@@ -19,6 +19,7 @@ children:
 - type: enum-field
   id: trailingcoilpins1
   props:
+    label: Trailing Pin 1
     options:
     - value: 0
       label: NONE
@@ -246,7 +247,6 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
-    label: Trailing Pin 1
   bind:
     source: config
     field: trailingCoilPins1
@@ -955,10 +955,10 @@ children:
 - type: config-table
   id: trailingsparktable
   props:
+    variant: table
+    yLabel: Ignition Load
     yBins: trailingSparkLoadBins
     zBins: trailingSparkTable
-    variant: table
+    xLabel: RPM
     title: Trailing spark
     xBins: trailingSparkRpmBins
-    yLabel: Ignition Load
-    xLabel: RPM

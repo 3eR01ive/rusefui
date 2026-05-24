@@ -7,7 +7,6 @@ children:
 - type: enum-field
   id: torquereductionignitionretardxaxis
   props:
-    label: X axis
     options:
     - value: 0
       label: Zero
@@ -79,16 +78,16 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
+    label: X axis
   bind:
     source: config
     field: torqueReductionIgnitionRetardXaxis
 - type: config-table
   id: torquereductionignitionretardtlb
   props:
-    title: Torque reduction ignition retard table
-    xLabel: = {bitStringValue(pwmAxisLabels
     yLabel: torqueReductionIgnitionRetardXaxis)}
+    zBins: torqueReductionIgnitionRetardTable
+    variant: table
+    title: Torque reduction ignition retard table
     xBins: torqueReductionIgnitionRetardXBins
     yBins: torqueReductionIgnitionRetardGearBins
-    variant: table
-    zBins: torqueReductionIgnitionRetardTable

@@ -45,9 +45,9 @@ children:
 - type: config-table
   id: hpfplobeprofilecurve
   props:
-    variant: curve
     xLabel: '% pump volume'
-    title: HPFP Lobe Profile
     yLabel: angle
-    xBins: hpfpLobeProfileQuantityBins
     yBins: hpfpLobeProfileAngle
+    title: HPFP Lobe Profile
+    xBins: hpfpLobeProfileQuantityBins
+    variant: curve

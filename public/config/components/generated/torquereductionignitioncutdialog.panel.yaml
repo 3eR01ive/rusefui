@@ -85,10 +85,9 @@ children:
 - type: config-table
   id: torquereductionignitioncuttlb
   props:
+    title: Torque reduction cut table
     xBins: torqueReductionCutXBins
     yBins: torqueReductionCutGearBins
     variant: table
-    title: Torque reduction cut table
     zBins: torqueReductionIgnitionCutTable
     yLabel: torqueReductionCutXaxis)}
-    xLabel: = {bitStringValue(pwmAxisLabels

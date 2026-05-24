@@ -38,8 +38,8 @@ children:
       field: injectionMode
   - type: text
     props:
-      text: Batch injection with individual wiring
       variant: hint
+      text: Batch injection with individual wiring
   - type: enum-field
     id: alphanuseiat
     props:
@@ -55,7 +55,6 @@ children:
   - type: enum-field
     id: veoverridemode
     props:
-      label: Override VE table load axis
       options:
       - value: 0
         label: None
@@ -65,12 +64,14 @@ children:
         label: TPS
       - value: 3
         label: INVALID
+      label: Override VE table load axis
     bind:
       source: config
       field: veOverrideMode
   - type: enum-field
     id: afroverridemode
     props:
+      label: Override AFR table load axis
       options:
       - value: 0
         label: None
@@ -88,7 +89,6 @@ children:
         label: INVALID
       - value: 7
         label: INVALID
-      label: Override AFR table load axis
     bind:
       source: config
       field: afrOverrideMode
@@ -134,19 +134,18 @@ children:
   - type: enum-field
     id: injectorpressuretype
     props:
+      label: Fuel rail pressure sensor
       options:
       - value: 0
         label: Low
       - value: 1
         label: High
-      label: Fuel rail pressure sensor
     bind:
       source: config
       field: injectorPressureType
   - type: enum-field
     id: injectorcompensationmode
     props:
-      label: Injector flow compensation mode
       options:
       - value: 0
         label: None
@@ -156,6 +155,7 @@ children:
         label: Sensed Rail Pressure
       - value: 3
         label: HPFP fuel mass compensation
+      label: Injector flow compensation mode
     bind:
       source: config
       field: injectorCompensationMode
@@ -187,10 +187,10 @@ children:
 - type: config-table
   id: injectorsdeadtime
   props:
-    variant: table
-    yLabel: Pressure
-    xBins: injector_battLagCorrBattBins
     zBins: injector_battLagCorrTable
+    yLabel: Pressure
     yBins: injector_battLagCorrPressBins
     title: Injector dead time
     xLabel: Battery
+    xBins: injector_battLagCorrBattBins
+    variant: table

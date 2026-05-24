@@ -6,8 +6,8 @@ source:
 children:
 - type: text
   props:
-    text: The bias table controls how much of the blend table
     variant: hint
+    text: The bias table controls how much of the blend table
 - type: text
   props:
     text: is mixed in to the VE table. For example, a value of
@@ -194,8 +194,8 @@ children:
 - type: config-table
   id: veblend2bias
   props:
-    variant: curve
-    title: VE blend 2 bias
-    yLabel: veBlends2_blendParameter)}
     xBins: veBlends2_blendBins
     yBins: veBlends2_blendValues
+    yLabel: veBlends2_blendParameter)}
+    title: VE blend 2 bias
+    variant: curve

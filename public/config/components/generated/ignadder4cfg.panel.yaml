@@ -14,8 +14,8 @@ children:
     text: is mixed in to the base ignition table. For example, a value of
 - type: text
   props:
-    variant: hint
     text: +10 in the table, with 50 as the current bias will result
+    variant: hint
 - type: text
   props:
     text: in 5.0 degrees of ignition timing added.
@@ -26,8 +26,8 @@ children:
     text: The X axis of the bias table is controlled by the selected blend
 - type: text
   props:
-    text: parameter below.
     variant: hint
+    text: parameter below.
 - type: enum-field
   id: ignblends4-blendparameter
   props:
@@ -187,9 +187,9 @@ children:
 - type: config-table
   id: ignadder4bias
   props:
-    yLabel: bias
-    xBins: ignBlends4_blendBins
-    xLabel: param
     title: Ignition adder 4 bias
-    variant: curve
+    yLabel: bias
     yBins: ignBlends4_blendValues
+    xBins: ignBlends4_blendBins
+    variant: curve
+    xLabel: param

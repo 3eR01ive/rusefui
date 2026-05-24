@@ -52,8 +52,8 @@ children:
       field: auxTempSensor1_adcChannel
   - type: text
     props:
-      variant: hint
       text: Here is three pairs of thermistor temperature and resistance.
+      variant: hint
   - type: text
     props:
       variant: hint

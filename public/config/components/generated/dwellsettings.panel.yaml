@@ -7,18 +7,18 @@ children:
 - type: config-table
   id: dwellcorrection
   props:
-    variant: curve
-    title: Dwell time base
-    xLabel: RPM
-    yBins: sparkDwellValues
     xBins: sparkDwellRpmBins
+    yBins: sparkDwellValues
+    title: Dwell time base
+    variant: curve
+    xLabel: RPM
     yLabel: Dwell
 - type: config-table
   id: dwellvoltagecorrection
   props:
     yLabel: Multiplier
-    xBins: dwellVoltageCorrVoltBins
     xLabel: Battery Volts
-    variant: curve
     yBins: dwellVoltageCorrValues
+    xBins: dwellVoltageCorrVoltBins
+    variant: curve
     title: Dwell voltage correction

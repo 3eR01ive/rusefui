@@ -7,7 +7,6 @@ children:
 - type: enum-field
   id: acrpin
   props:
-    label: Pin
     options:
     - value: 0
       label: NONE
@@ -235,6 +234,7 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    label: Pin
   bind:
     source: config
     field: acrPin
@@ -474,12 +474,12 @@ children:
     field: acrPin2
 - type: text
   props:
-    variant: hint
     text: ACR is disabled after the specified number
+    variant: hint
 - type: text
   props:
-    variant: hint
     text: of revolutions, plus degrees of engine phase
+    variant: hint
 - type: scalar-field
   id: acrrevolutions
   props:
@@ -500,8 +500,8 @@ children:
     variant: hint
 - type: text
   props:
-    variant: hint
     text: 'Кнопка: Test ACR #2 (cmd_test_acr2_valve)'
+    variant: hint
 - type: text
   props:
     variant: hint

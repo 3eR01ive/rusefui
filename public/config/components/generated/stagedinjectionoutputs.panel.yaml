@@ -241,7 +241,6 @@ children:
 - type: enum-field
   id: injectionpinsstage22
   props:
-    label: Injection Stage 2 Output 2
     options:
     - value: 0
       label: NONE
@@ -469,6 +468,7 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    label: Injection Stage 2 Output 2
   bind:
     source: config
     field: injectionPinsStage22
@@ -709,7 +709,6 @@ children:
 - type: enum-field
   id: injectionpinsstage24
   props:
-    label: Injection Stage 2 Output 4
     options:
     - value: 0
       label: NONE
@@ -937,6 +936,7 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    label: Injection Stage 2 Output 4
   bind:
     source: config
     field: injectionPinsStage24
@@ -1177,7 +1177,6 @@ children:
 - type: enum-field
   id: injectionpinsstage26
   props:
-    label: 'Injection Stage 2 Output 6 '
     options:
     - value: 0
       label: NONE
@@ -1405,12 +1404,14 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    label: 'Injection Stage 2 Output 6 '
   bind:
     source: config
     field: injectionPinsStage26
 - type: enum-field
   id: injectionpinsstage27
   props:
+    label: 'Injection Stage 2 Output 7 '
     options:
     - value: 0
       label: NONE
@@ -1638,14 +1639,12 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
-    label: 'Injection Stage 2 Output 7 '
   bind:
     source: config
     field: injectionPinsStage27
 - type: enum-field
   id: injectionpinsstage28
   props:
-    label: 'Injection Stage 2 Output 8 '
     options:
     - value: 0
       label: NONE
@@ -1873,12 +1872,14 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    label: 'Injection Stage 2 Output 8 '
   bind:
     source: config
     field: injectionPinsStage28
 - type: enum-field
   id: injectionpinsstage29
   props:
+    label: 'Injection Stage 2 Output 9 '
     options:
     - value: 0
       label: NONE
@@ -2106,7 +2107,6 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
-    label: 'Injection Stage 2 Output 9 '
   bind:
     source: config
     field: injectionPinsStage29
@@ -2347,7 +2347,6 @@ children:
 - type: enum-field
   id: injectionpinsstage211
   props:
-    label: 'Injection Stage 2 Output 11 '
     options:
     - value: 0
       label: NONE
@@ -2575,6 +2574,7 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    label: 'Injection Stage 2 Output 11 '
   bind:
     source: config
     field: injectionPinsStage211

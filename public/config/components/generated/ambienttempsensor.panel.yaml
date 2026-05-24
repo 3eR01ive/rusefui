@@ -15,7 +15,6 @@ children:
 - type: enum-field
   id: ambienttempsensor-adcchannel
   props:
-    label: Input channel
     options:
     - value: 0
       label: NONE
@@ -51,6 +50,7 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
+    label: Input channel
   bind:
     source: config
     field: ambientTempSensor_adcChannel

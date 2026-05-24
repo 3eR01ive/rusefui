@@ -123,7 +123,6 @@ children:
   - type: enum-field
     id: o2heaterpin
     props:
-      label: Narrowband Heater output
       options:
       - value: 0
         label: NONE
@@ -351,6 +350,7 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
+      label: Narrowband Heater output
     bind:
       source: config
       field: o2heaterPin
@@ -361,6 +361,7 @@ children:
   - type: enum-field
     id: afr-hwchannel2
     props:
+      label: Input channel
       options:
       - value: 0
         label: NONE
@@ -396,7 +397,6 @@ children:
         label: Analog Temp 1
       - value: 16
         label: Analog Temp 2
-      label: Input channel
     bind:
       source: config
       field: afr_hwChannel2

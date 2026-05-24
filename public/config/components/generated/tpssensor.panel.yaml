@@ -36,12 +36,12 @@ children:
     - type: enum-field
       id: usefordredundanttps
       props:
+        label: Ford/Toyota redundant TPS mode
         options:
         - value: 0
           label: 'false'
         - value: 1
           label: 'true'
-        label: Ford/Toyota redundant TPS mode
       bind:
         source: config
         field: useFordRedundantTps
@@ -59,6 +59,7 @@ children:
     - type: enum-field
       id: tps1-1adcchannel
       props:
+        label: Primary sensor
         options:
         - value: 0
           label: NONE
@@ -94,7 +95,6 @@ children:
           label: Analog Temp 1
         - value: 16
           label: Analog Temp 2
-        label: Primary sensor
       bind:
         source: config
         field: tps1_1AdcChannel
@@ -115,6 +115,7 @@ children:
     - type: enum-field
       id: tps1-2adcchannel
       props:
+        label: Secondary sensor
         options:
         - value: 0
           label: NONE
@@ -150,7 +151,6 @@ children:
           label: Analog Temp 1
         - value: 16
           label: Analog Temp 2
-        label: Secondary sensor
       bind:
         source: config
         field: tps1_2AdcChannel
@@ -179,7 +179,6 @@ children:
     - type: enum-field
       id: tps2-1adcchannel
       props:
-        label: Primary sensor
         options:
         - value: 0
           label: NONE
@@ -215,6 +214,7 @@ children:
           label: Analog Temp 1
         - value: 16
           label: Analog Temp 2
+        label: Primary sensor
       bind:
         source: config
         field: tps2_1AdcChannel
@@ -290,8 +290,8 @@ children:
         field: tps2SecondaryMax
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Auto Calibrate ETB 2 (cmd_etb_auto_calibrate_2)'
+        variant: hint
 - type: section
   props:
     title: tpsGauges

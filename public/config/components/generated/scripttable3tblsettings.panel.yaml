@@ -14,8 +14,8 @@ children:
 - type: config-table
   id: scripttable3tbl
   props:
-    xBins: scriptTable3RpmBins
-    yBins: scriptTable3LoadBins
-    zBins: scriptTable3
-    title: 'Script Table #3'
     variant: table
+    zBins: scriptTable3
+    yBins: scriptTable3LoadBins
+    title: 'Script Table #3'
+    xBins: scriptTable3RpmBins

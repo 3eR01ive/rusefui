@@ -82,11 +82,11 @@ children:
     id: fuellevelcurve
     props:
       variant: curve
-      xBins: fuelLevelBins
-      title: Fuel Level
-      yBins: fuelLevelValues
-      xLabel: Voltage
       yLabel: '%'
+      xBins: fuelLevelBins
+      xLabel: Voltage
+      yBins: fuelLevelValues
+      title: Fuel Level
 - type: section
   props:
     title: fuelLevelGauges

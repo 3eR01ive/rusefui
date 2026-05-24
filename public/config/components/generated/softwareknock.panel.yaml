@@ -15,12 +15,12 @@ children:
     - type: enum-field
       id: enablesoftwareknock
       props:
+        label: Enable
         options:
         - value: 0
           label: 'false'
         - value: 1
           label: 'true'
-        label: Enable
       bind:
         source: config
         field: enableSoftwareKnock
@@ -79,12 +79,12 @@ children:
     - type: enum-field
       id: enableknockspectrogramfilter
       props:
-        label: Enable Knock Spectrogram Filter
         options:
         - value: 0
           label: 'false'
         - value: 1
           label: 'true'
+        label: Enable Knock Spectrogram Filter
       bind:
         source: config
         field: enableKnockSpectrogramFilter
@@ -147,9 +147,9 @@ children:
 - type: config-table
   id: knockthresholdcurve
   props:
-    variant: curve
-    xLabel: RPM
-    title: Engine Knock Threshold RPM Based
-    yLabel: Threshold
-    xBins: knockNoiseRpmBins
     yBins: knockBaseNoise
+    xBins: knockNoiseRpmBins
+    yLabel: Threshold
+    variant: curve
+    title: Engine Knock Threshold RPM Based
+    xLabel: RPM

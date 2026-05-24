@@ -7,9 +7,9 @@ children:
 - type: config-table
   id: boostopenloopgearaddercurve
   props:
+    title: Boost Open Loop gear-based modifier
     yBins: gearBasedOpenLoopBoostAdder
-    yLabel: duty cycle
     variant: curve
     xLabel: Gear
-    title: Boost Open Loop gear-based modifier
+    yLabel: duty cycle
     xBins: gearCountArray

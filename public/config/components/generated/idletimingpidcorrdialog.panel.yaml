@@ -18,8 +18,8 @@ children:
     field: useIdleTimingPidControl
 - type: text
   props:
-    variant: hint
     text: Gain is in degrees advance per rpm away from target
+    variant: hint
 - type: text
   props:
     text: A good starting point is 0.1 = 10 deg per 100 rpm

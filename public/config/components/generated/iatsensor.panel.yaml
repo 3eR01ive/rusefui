@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: iat-adcchannel
     props:
+      label: Input channel
       options:
       - value: 0
         label: NONE
@@ -46,7 +47,6 @@ children:
         label: Analog Temp 1
       - value: 16
         label: Analog Temp 2
-      label: Input channel
     bind:
       source: config
       field: iat_adcChannel
@@ -56,8 +56,8 @@ children:
       variant: hint
   - type: text
     props:
-      text: Typical temperatures are -40 deg C, 0 deg C and 100 deg C
       variant: hint
+      text: Typical temperatures are -40 deg C, 0 deg C and 100 deg C
   - type: scalar-field
     id: iat-tempc-1
     props:

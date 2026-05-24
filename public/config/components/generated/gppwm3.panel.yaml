@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: gppwm3-pin
     props:
+      label: Output
       options:
       - value: 0
         label: NONE
@@ -238,7 +239,6 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
-      label: Output
     bind:
       source: config
       field: gppwm3_pin
@@ -280,6 +280,7 @@ children:
   - type: enum-field
     id: gppwm3-rpmaxis
     props:
+      label: X Axis
       options:
       - value: 0
         label: Zero
@@ -351,13 +352,13 @@ children:
         label: Oil temp
       - value: 34
         label: Fuel Pressure
-      label: X Axis
     bind:
       source: config
       field: gppwm3_rpmAxis
   - type: enum-field
     id: gppwm3-loadaxis
     props:
+      label: Y Axis
       options:
       - value: 0
         label: Zero
@@ -429,7 +430,6 @@ children:
         label: Oil temp
       - value: 34
         label: Fuel Pressure
-      label: Y Axis
     bind:
       source: config
       field: gppwm3_loadAxis
@@ -443,9 +443,9 @@ children:
 - type: config-table
   id: gppwm3tbl
   props:
-    title: GP#3
     variant: table
-    yLabel: gppwm3_rpmAxis)}
     yBins: gppwm3_loadBins
+    yLabel: gppwm3_rpmAxis)}
+    title: GP#3
     xBins: gppwm3_rpmBins
     zBins: gppwm3_table

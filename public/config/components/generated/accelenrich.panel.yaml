@@ -33,8 +33,8 @@ children:
       field: mapPredictionBlendDuration
   - type: text
     props:
-      text: '"" ; spacer'
       variant: hint
+      text: '"" ; spacer'
   - type: scalar-field
     id: tpsaccellookback
     props:
@@ -88,12 +88,12 @@ children:
   - type: enum-field
     id: complexwallmodel
     props:
-      label: Wall fueling model type
       options:
       - value: 0
         label: Basic (constants)
       - value: 1
         label: Advanced (tables)
+      label: Wall fueling model type
     bind:
       source: config
       field: complexWallModel

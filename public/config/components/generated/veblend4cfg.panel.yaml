@@ -18,8 +18,8 @@ children:
     text: +10 in the table, with 50 as the current bias will result
 - type: text
   props:
-    variant: hint
     text: in +5.0% added to the VE. Note that this doesn't add 5% VE,
+    variant: hint
 - type: scalar-field
   id: instead--it-adds-5--to-the-current-ve-value--multiplying-ve-by-1-05
   props:
@@ -194,8 +194,8 @@ children:
 - type: config-table
   id: veblend4bias
   props:
-    title: VE blend 4 bias
-    yLabel: veBlends4_blendParameter)}
     variant: curve
     yBins: veBlends4_blendValues
+    title: VE blend 4 bias
     xBins: veBlends4_blendBins
+    yLabel: veBlends4_blendParameter)}

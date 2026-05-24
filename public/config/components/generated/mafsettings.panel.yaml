@@ -53,6 +53,7 @@ children:
 - type: enum-field
   id: maf2adcchannel
   props:
+    label: MAF 2 ADC input
     options:
     - value: 0
       label: NONE
@@ -88,7 +89,6 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
-    label: MAF 2 ADC input
   bind:
     source: config
     field: maf2AdcChannel

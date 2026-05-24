@@ -86,9 +86,8 @@ children:
   id: torquereductiontimetlb
   props:
     zBins: torqueReductionTimeTable
-    title: Torque reduction time table
-    xLabel: = {bitStringValue(pwmAxisLabels
-    yBins: torqueReductionTimeGearBins
-    variant: table
-    yLabel: torqueReductionTimeXaxis)}
     xBins: torqueReductionTimeXBins
+    yBins: torqueReductionTimeGearBins
+    yLabel: torqueReductionTimeXaxis)}
+    title: Torque reduction time table
+    variant: table

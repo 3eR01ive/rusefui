@@ -15,12 +15,12 @@ children:
     - type: enum-field
       id: isalternatorcontrolenabled
       props:
+        label: Enabled
         options:
         - value: 0
           label: 'false'
         - value: 1
           label: 'true'
-        label: Enabled
       bind:
         source: config
         field: isAlternatorControlEnabled
@@ -261,6 +261,7 @@ children:
     - type: enum-field
       id: alternatorcontrolpinmode
       props:
+        label: Control output mode
         options:
         - value: 0
           label: default
@@ -270,7 +271,6 @@ children:
           label: open collector
         - value: 3
           label: open collector inverted
-        label: Control output mode
       bind:
         source: config
         field: alternatorControlPinMode
@@ -290,8 +290,8 @@ children:
         field: acRelayAlternatorDutyAdder
     - type: text
       props:
-        text: PID control
         variant: hint
+        text: PID control
     - type: scalar-field
       id: alternatorcontrol-offset
       props:

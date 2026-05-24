@@ -10,20 +10,20 @@ children:
     variant: hint
 - type: text
   props:
-    variant: hint
     text: is mixed in to the base ignition table. For example, a value of
+    variant: hint
 - type: text
   props:
-    text: +10 in the table, with 50 as the current bias will result
     variant: hint
+    text: +10 in the table, with 50 as the current bias will result
 - type: text
   props:
     variant: hint
     text: in 5.0 degrees of ignition timing added.
 - type: text
   props:
-    text: The X axis of the bias table is controlled by the selected blend
     variant: hint
+    text: The X axis of the bias table is controlled by the selected blend
 - type: text
   props:
     text: parameter below.
@@ -109,6 +109,7 @@ children:
 - type: enum-field
   id: ignblends2-yaxisoverride
   props:
+    label: Y axis override (set Zero for no override)
     options:
     - value: 0
       label: Zero
@@ -180,16 +181,15 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
-    label: Y axis override (set Zero for no override)
   bind:
     source: config
     field: ignBlends2_yAxisOverride
 - type: config-table
   id: ignadder2bias
   props:
-    yLabel: bias
-    yBins: ignBlends2_blendValues
-    xLabel: param
-    title: Ignition adder 2 bias
-    xBins: ignBlends2_blendBins
     variant: curve
+    title: Ignition adder 2 bias
+    yLabel: bias
+    xLabel: param
+    xBins: ignBlends2_blendBins
+    yBins: ignBlends2_blendValues

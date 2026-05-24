@@ -11,18 +11,18 @@ children:
 - type: config-table
   id: wwbetacltcurve
   props:
-    variant: curve
-    xBins: wwCltBins
-    xLabel: coolant
-    title: Impact fraction vs. CLT
     yLabel: fraction
+    xBins: wwCltBins
     yBins: wwBetaCltValues
+    title: Impact fraction vs. CLT
+    variant: curve
+    xLabel: coolant
 - type: config-table
   id: wwbetamapcurve
   props:
-    title: Impact fraction vs. MAP
+    yLabel: mult
     xLabel: MAP
-    variant: curve
     xBins: wwMapBins
     yBins: wwBetaMapValues
-    yLabel: mult
+    title: Impact fraction vs. MAP
+    variant: curve

@@ -32,8 +32,8 @@ children:
         field: This PID is controlling how EWG Actuator DC motor reaches desired position
     - type: text
       props:
-        text: This section is for advanced users only!
         variant: hint
+        text: This section is for advanced users only!
     - type: scalar-field
       id: etbwastegatepid-pfactor
       props:

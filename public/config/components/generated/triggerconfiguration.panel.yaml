@@ -11,18 +11,19 @@ children:
   - type: enum-field
     id: twostroke
     props:
-      label: Strokes
       options:
       - value: 0
         label: Four Stroke
       - value: 1
         label: Two Stroke
+      label: Strokes
     bind:
       source: config
       field: twoStroke
   - type: enum-field
     id: trigger-type
     props:
+      label: Trigger type
       options:
       - value: 0
         label: custom toothed wheel
@@ -280,7 +281,6 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: Trigger type
     bind:
       source: config
       field: trigger_type
@@ -316,8 +316,8 @@ children:
       variant: hint
   - type: text
     props:
-      text: For well-known trigger types use '0' trigger angle offset
       variant: hint
+      text: For well-known trigger types use '0' trigger angle offset
   - type: scalar-field
     id: globaltriggerangleoffset
     props:
@@ -327,8 +327,8 @@ children:
       field: globalTriggerAngleOffset
   - type: text
     props:
-      text: Cam is primary if you have cam sensor as part of trigger shape
       variant: hint
+      text: Cam is primary if you have cam sensor as part of trigger shape
   - type: enum-field
     id: triggerinputpins1
     props:
@@ -504,6 +504,7 @@ children:
   - type: enum-field
     id: triggerinputpins1
     props:
+      label: Crank Sensor (Primary channel)
       options:
       - value: 0
         label: NONE
@@ -669,7 +670,6 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
-      label: Crank Sensor (Primary channel)
     bind:
       source: config
       field: triggerInputPins1
@@ -880,6 +880,7 @@ children:
   - type: enum-field
     id: vvtmode1
     props:
+      label: Cam mode (intake)
       options:
       - value: 0
         label: Inactive
@@ -1009,7 +1010,6 @@ children:
         label: INVALID
       - value: 63
         label: INVALID
-      label: Cam mode (intake)
     bind:
       source: config
       field: vvtMode1
@@ -1030,7 +1030,6 @@ children:
   - type: enum-field
     id: vvtmode2
     props:
-      label: Cam mode (exhaust)
       options:
       - value: 0
         label: Inactive
@@ -1160,13 +1159,13 @@ children:
         label: INVALID
       - value: 63
         label: INVALID
+      label: Cam mode (exhaust)
     bind:
       source: config
       field: vvtMode2
   - type: enum-field
     id: caminputs1
     props:
-      label: Cam sensor bank 1 intake
       options:
       - value: 0
         label: NONE
@@ -1332,6 +1331,7 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
+      label: Cam sensor bank 1 intake
     bind:
       source: config
       field: camInputs1
@@ -1510,6 +1510,7 @@ children:
   - type: enum-field
     id: caminputs3
     props:
+      label: Cam sensor bank 2 intake
       options:
       - value: 0
         label: NONE
@@ -1675,13 +1676,13 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
-      label: Cam sensor bank 2 intake
     bind:
       source: config
       field: camInputs3
   - type: enum-field
     id: caminputs4
     props:
+      label: Cam sensor bank 2 exhaust
       options:
       - value: 0
         label: NONE
@@ -1847,7 +1848,6 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
-      label: Cam sensor bank 2 exhaust
     bind:
       source: config
       field: camInputs4

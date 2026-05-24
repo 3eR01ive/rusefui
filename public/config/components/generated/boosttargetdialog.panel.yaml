@@ -7,8 +7,8 @@ children:
 - type: config-table
   id: boostclosedtbl
   props:
-    xBins: boostRpmBins
-    yBins: boostClosedLoopLoadBins
-    variant: table
-    zBins: boostTableClosedLoop
     title: Boost control target / Closed Loop (kPa)
+    variant: table
+    yBins: boostClosedLoopLoadBins
+    zBins: boostTableClosedLoop
+    xBins: boostRpmBins

@@ -15,6 +15,7 @@ children:
   - type: enum-field
     id: luadigitalinputpins1
     props:
+      label: 'Digital #1'
       options:
       - value: 0
         label: NONE
@@ -180,7 +181,6 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
-      label: 'Digital #1'
     bind:
       source: config
       field: luaDigitalInputPins1
@@ -359,7 +359,6 @@ children:
   - type: enum-field
     id: luadigitalinputpins3
     props:
-      label: 'Digital #3'
       options:
       - value: 0
         label: NONE
@@ -525,6 +524,7 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
+      label: 'Digital #3'
     bind:
       source: config
       field: luaDigitalInputPins3
@@ -703,7 +703,6 @@ children:
   - type: enum-field
     id: luadigitalinputpins5
     props:
-      label: 'Digital #5'
       options:
       - value: 0
         label: NONE
@@ -869,13 +868,13 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
+      label: 'Digital #5'
     bind:
       source: config
       field: luaDigitalInputPins5
   - type: enum-field
     id: luadigitalinputpins6
     props:
-      label: 'Digital #6'
       options:
       - value: 0
         label: NONE
@@ -1041,6 +1040,7 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
+      label: 'Digital #6'
     bind:
       source: config
       field: luaDigitalInputPins6
@@ -1219,7 +1219,6 @@ children:
   - type: enum-field
     id: luadigitalinputpins8
     props:
-      label: 'Digital #8'
       options:
       - value: 0
         label: NONE
@@ -1385,6 +1384,7 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
+      label: 'Digital #8'
     bind:
       source: config
       field: luaDigitalInputPins8
@@ -1417,6 +1417,7 @@ children:
   - type: enum-field
     id: luadigitalinputpinmodes2
     props:
+      label: 'Mode #2'
       options:
       - value: 0
         label: DEFAULT
@@ -1432,14 +1433,12 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
-      label: 'Mode #2'
     bind:
       source: config
       field: luaDigitalInputPinModes2
   - type: enum-field
     id: luadigitalinputpinmodes3
     props:
-      label: 'Mode #3'
       options:
       - value: 0
         label: DEFAULT
@@ -1455,13 +1454,13 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
+      label: 'Mode #3'
     bind:
       source: config
       field: luaDigitalInputPinModes3
   - type: enum-field
     id: luadigitalinputpinmodes4
     props:
-      label: 'Mode #4'
       options:
       - value: 0
         label: DEFAULT
@@ -1477,12 +1476,14 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
+      label: 'Mode #4'
     bind:
       source: config
       field: luaDigitalInputPinModes4
   - type: enum-field
     id: luadigitalinputpinmodes5
     props:
+      label: 'Mode #5'
       options:
       - value: 0
         label: DEFAULT
@@ -1498,13 +1499,13 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
-      label: 'Mode #5'
     bind:
       source: config
       field: luaDigitalInputPinModes5
   - type: enum-field
     id: luadigitalinputpinmodes6
     props:
+      label: 'Mode #6'
       options:
       - value: 0
         label: DEFAULT
@@ -1520,13 +1521,13 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
-      label: 'Mode #6'
     bind:
       source: config
       field: luaDigitalInputPinModes6
   - type: enum-field
     id: luadigitalinputpinmodes7
     props:
+      label: 'Mode #7'
       options:
       - value: 0
         label: DEFAULT
@@ -1542,7 +1543,6 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
-      label: 'Mode #7'
     bind:
       source: config
       field: luaDigitalInputPinModes7

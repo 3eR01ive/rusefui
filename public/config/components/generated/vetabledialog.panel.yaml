@@ -4,11 +4,48 @@ source:
   ini_dialog: veTableDialog
   menu_path: Fuel › Cylinder fuel trims › VE
 children:
-- type: text
+- type: section
   props:
-    text: Панель «= veOverrideModeSelector» — нет определения в INI
-    variant: hint
-- type: text
+    title: veOverrideModeSelector
+  children:
+  - type: enum-field
+    id: veoverridemode
+    props:
+      label: Override VE table load axis
+      options:
+      - value: 0
+        label: None
+      - value: 1
+        label: MAP
+      - value: 2
+        label: TPS
+      - value: 3
+        label: INVALID
+    bind:
+      source: config
+      field: veOverrideMode
+  - type: enum-field
+    id: fuelalgorithm
+    props:
+      label: Fuel strategy
+      options:
+      - value: 0
+        label: Speed Density
+      - value: 1
+        label: MAF Air Charge
+      - value: 2
+        label: Alpha-N
+      - value: 3
+        label: Lua
+    bind:
+      source: config
+      field: fuelAlgorithm
+- type: config-table
+  id: vetabletbl
   props:
-    text: Таблица/кривая «= veTableTbl» — нет определения в INI
-    variant: hint
+    xBins: veRpmBins
+    variant: table
+    zBins: veTable
+    yBins: veLoadBins
+    xLabel: RPM
+    title: VE Table

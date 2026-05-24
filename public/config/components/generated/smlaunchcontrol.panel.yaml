@@ -10,17 +10,17 @@ children:
   children:
   - type: text
     props:
-      variant: hint
       text: Also known as Rolling antilag
+      variant: hint
   - type: enum-field
     id: launchcontrolenabled
     props:
+      label: Enable Launch Control
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: Enable Launch Control
     bind:
       source: config
       field: launchControlEnabled
@@ -223,6 +223,7 @@ children:
   - type: enum-field
     id: launchactivatepinmode
     props:
+      label: Launch Button mode
       options:
       - value: 0
         label: DEFAULT
@@ -238,13 +239,13 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
-      label: Launch Button mode
     bind:
       source: config
       field: launchActivatePinMode
   - type: enum-field
     id: clutchdownpin
     props:
+      label: Clutch Down
       options:
       - value: 0
         label: NONE
@@ -410,7 +411,6 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
-      label: Clutch Down
     bind:
       source: config
       field: clutchDownPin
@@ -493,12 +493,12 @@ children:
   - type: enum-field
     id: launchsmoothretard
     props:
-      label: Smooth Retard Mode
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Smooth Retard Mode
     bind:
       source: config
       field: launchSmoothRetard
@@ -519,12 +519,12 @@ children:
   - type: enum-field
     id: launchsparkcutenable
     props:
+      label: Ignition Cut
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: Ignition Cut
     bind:
       source: config
       field: launchSparkCutEnable

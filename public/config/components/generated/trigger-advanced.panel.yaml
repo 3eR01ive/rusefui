@@ -19,12 +19,12 @@ children:
 - type: enum-field
   id: camsynconsecondcrankrevolution
   props:
+    label: Cam sync crank revolution
     options:
     - value: 0
       label: first
     - value: 1
       label: second
-    label: Cam sync crank revolution
   bind:
     source: config
     field: camSyncOnSecondCrankRevolution
@@ -52,12 +52,12 @@ children:
 - type: enum-field
   id: usenoiselesstriggerdecoder
   props:
-    label: Enable noise filtering
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: Enable noise filtering
   bind:
     source: config
     field: useNoiselessTriggerDecoder

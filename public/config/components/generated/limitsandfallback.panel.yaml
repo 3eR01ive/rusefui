@@ -15,12 +15,12 @@ children:
     - type: enum-field
       id: cutfuelonhardlimit
       props:
+        label: Cut fuel on RPM limit
         options:
         - value: 0
           label: no
         - value: 1
           label: yes
-        label: Cut fuel on RPM limit
       bind:
         source: config
         field: cutFuelOnHardLimit
@@ -158,9 +158,9 @@ children:
   - type: config-table
     id: cltrevlimitcurve
     props:
-      variant: curve
-      yBins: cltRevLimitRpm
-      title: cltRevLimitCurve
-      yLabel: RPM Limit
       xBins: cltRevLimitRpmBins
+      yLabel: RPM Limit
       xLabel: Coolant
+      title: cltRevLimitCurve
+      yBins: cltRevLimitRpm
+      variant: curve

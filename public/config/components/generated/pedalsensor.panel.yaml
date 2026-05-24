@@ -11,7 +11,6 @@ children:
   - type: enum-field
     id: throttlepedalpositionadcchannel
     props:
-      label: Accelerator position sensor
       options:
       - value: 0
         label: NONE
@@ -47,6 +46,7 @@ children:
         label: Analog Temp 1
       - value: 16
         label: Analog Temp 2
+      label: Accelerator position sensor
     bind:
       source: config
       field: throttlePedalPositionAdcChannel
@@ -59,8 +59,8 @@ children:
       field: throttlePedalUpVoltage
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Grab Idle/Up (cmd_calibrate_pedal_up)'
+      variant: hint
   - type: scalar-field
     id: throttlepedalwotvoltage
     props:
@@ -75,6 +75,7 @@ children:
   - type: enum-field
     id: throttlepedalpositionsecondadcchannel
     props:
+      label: Accelerator position 2nd sensor
       options:
       - value: 0
         label: NONE
@@ -110,7 +111,6 @@ children:
         label: Analog Temp 1
       - value: 16
         label: Analog Temp 2
-      label: Accelerator position 2nd sensor
     bind:
       source: config
       field: throttlePedalPositionSecondAdcChannel

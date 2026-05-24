@@ -14,9 +14,9 @@ children:
 - type: config-table
   id: scriptcurve2
   props:
+    yBins: scriptCurve2
+    title: 'Script Curve #2'
     xLabel: X
+    variant: curve
     yLabel: Y
     xBins: scriptCurve2Bins
-    yBins: scriptCurve2
-    variant: curve
-    title: 'Script Curve #2'

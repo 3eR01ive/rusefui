@@ -6,8 +6,8 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: WARNING! These settings have the potential to overheat ignition components
+    variant: hint
 - type: text
   props:
     text: and cause other nasty misbehavior.  Use with care, at your own risk!
@@ -19,12 +19,12 @@ children:
 - type: enum-field
   id: multisparkenable
   props:
+    label: Enable multiple sparks
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: Enable multiple sparks
   bind:
     source: config
     field: multisparkEnable
@@ -41,8 +41,8 @@ children:
       field: multisparkMaxRpm
   - type: text
     props:
-      variant: hint
       text: "\"Fire sparks for this angle duration\"\tmultisparkMaxSparkingAngle"
+      variant: hint
   - type: text
     props:
       variant: hint

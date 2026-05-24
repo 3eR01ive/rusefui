@@ -35,9 +35,9 @@ children:
 - type: config-table
   id: cltfuelcorrcurve
   props:
-    variant: curve
     xBins: cltFuelCorrBins
     yBins: cltFuelCorr
-    title: Warmup fuel manual Multiplier
-    xLabel: Coolant
     yLabel: Multiplier
+    variant: curve
+    xLabel: Coolant
+    title: Warmup fuel manual Multiplier

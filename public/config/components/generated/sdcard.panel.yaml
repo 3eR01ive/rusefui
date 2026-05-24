@@ -11,12 +11,12 @@ children:
   - type: enum-field
     id: issdcardenabled
     props:
-      label: Enable SD Card
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Enable SD Card
     bind:
       source: config
       field: isSdCardEnabled
@@ -34,29 +34,29 @@ children:
   children:
   - type: text
     props:
-      variant: hint
       text: rusEFI logs to SD when powered without USB connected
+      variant: hint
   - type: text
     props:
+      variant: hint
       text: and USB not connected for 15 seconds
-      variant: hint
   - type: text
     props:
+      variant: hint
       text: OR when Always start in Logging mode is enabled
-      variant: hint
   - type: text
     props:
-      variant: hint
       text: rusEFI connects SD to your PC when powered by USB
+      variant: hint
   - type: enum-field
     id: alwayswritesdcard
     props:
-      label: Always start in Logging mode
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Always start in Logging mode
     bind:
       source: config
       field: alwaysWriteSdCard
@@ -81,32 +81,32 @@ children:
       field: sdTriggerLog
 - type: text
   props:
-    variant: hint
     text: Панель «sdCardStateIndicators» — нет определения в INI
+    variant: hint
 - type: text
   props:
-    variant: hint
     text: Панель «sdCardErrorPanel» — нет определения в INI
+    variant: hint
 - type: section
   props:
     title: SD commands
   children:
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Mount to PC (cmd_mount_pc)'
+      variant: hint
   - type: text
     props:
       text: 'Кнопка: Mount to ECU (cmd_mount_ecu)'
       variant: hint
   - type: text
     props:
-      text: 'Кнопка: Unmount (cmd_unmount)'
       variant: hint
+      text: 'Кнопка: Unmount (cmd_unmount)'
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Format (cmd_format)'
+      variant: hint
 - type: section
   props:
     title: Fail reports
@@ -120,8 +120,8 @@ children:
       field: Executed only when SD card is mounted to ECU
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Remove all fail reports (cmd_delete_reports)'
+      variant: hint
   - type: text
     props:
       text: Панель «sdCardErrorReportIndicators» — нет определения в INI

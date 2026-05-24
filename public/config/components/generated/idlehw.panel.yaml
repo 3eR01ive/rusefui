@@ -594,12 +594,12 @@ children:
       - type: enum-field
         id: stepperforceparkingeveryrestart
         props:
+          label: Force parking every restart
           options:
           - value: 0
             label: 'false'
           - value: 1
             label: 'true'
-          label: Force parking every restart
         bind:
           source: config
           field: stepperForceParkingEveryRestart
@@ -614,7 +614,6 @@ children:
         - type: enum-field
           id: idle-steppersteppin
           props:
-            label: Idle Stepper Step Pin
             options:
             - value: 0
               label: NONE
@@ -972,13 +971,13 @@ children:
               label: PK14
             - value: 177
               label: PK15
+            label: Idle Stepper Step Pin
           bind:
             source: config
             field: idle_stepperStepPin
         - type: enum-field
           id: idle-stepperdirectionpin
           props:
-            label: Idle Stepper Dir Pin
             options:
             - value: 0
               label: NONE
@@ -1336,13 +1335,13 @@ children:
               label: PK14
             - value: 177
               label: PK15
+            label: Idle Stepper Dir Pin
           bind:
             source: config
             field: idle_stepperDirectionPin
         - type: enum-field
           id: stepperdirectionpinmode
           props:
-            label: Idle Stepper Dir Pin Mode
             options:
             - value: 0
               label: default
@@ -1352,6 +1351,7 @@ children:
               label: open collector
             - value: 3
               label: open collector inverted
+            label: Idle Stepper Dir Pin Mode
           bind:
             source: config
             field: stepperDirectionPinMode
@@ -1758,7 +1758,6 @@ children:
           - type: enum-field
             id: stepperdcio1-directionpin1
             props:
-              label: 'No1 Direction #1'
               options:
               - value: 0
                 label: NONE
@@ -2116,13 +2115,13 @@ children:
                 label: PK14
               - value: 177
                 label: PK15
+              label: 'No1 Direction #1'
             bind:
               source: config
               field: stepperDcIo1_directionPin1
           - type: enum-field
             id: stepperdcio1-directionpin2
             props:
-              label: 'No1 Direction #2'
               options:
               - value: 0
                 label: NONE
@@ -2480,12 +2479,14 @@ children:
                 label: PK14
               - value: 177
                 label: PK15
+              label: 'No1 Direction #2'
             bind:
               source: config
               field: stepperDcIo1_directionPin2
           - type: enum-field
             id: stepperdcio1-controlpin
             props:
+              label: No1 Control
               options:
               - value: 0
                 label: NONE
@@ -2843,7 +2844,6 @@ children:
                 label: PK14
               - value: 177
                 label: PK15
-              label: No1 Control
             bind:
               source: config
               field: stepperDcIo1_controlPin
@@ -3218,6 +3218,7 @@ children:
           - type: enum-field
             id: stepperdcio2-directionpin1
             props:
+              label: 'No2 Direction #1'
               options:
               - value: 0
                 label: NONE
@@ -3575,7 +3576,6 @@ children:
                 label: PK14
               - value: 177
                 label: PK15
-              label: 'No2 Direction #1'
             bind:
               source: config
               field: stepperDcIo2_directionPin1
@@ -3946,6 +3946,7 @@ children:
           - type: enum-field
             id: stepperdcio2-controlpin
             props:
+              label: No2 Control
               options:
               - value: 0
                 label: NONE
@@ -4303,7 +4304,6 @@ children:
                 label: PK14
               - value: 177
                 label: PK15
-              label: No2 Control
             bind:
               source: config
               field: stepperDcIo2_controlPin
@@ -4678,7 +4678,6 @@ children:
       - type: enum-field
         id: steppernummicrosteps
         props:
-          label: Stepping Mode
           options:
           - value: 0
             label: Full-Step (Default)
@@ -4712,6 +4711,7 @@ children:
             label: INVALID
           - value: 15
             label: INVALID
+          label: Stepping Mode
         bind:
           source: config
           field: stepperNumMicroSteps

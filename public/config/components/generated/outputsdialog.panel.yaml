@@ -294,12 +294,12 @@ children:
     - type: enum-field
       id: disablefan1whenstopped
       props:
-        label: Disable when engine stopped
         options:
         - value: 0
           label: 'false'
         - value: 1
           label: 'true'
+        label: Disable when engine stopped
       bind:
         source: config
         field: disableFan1WhenStopped
@@ -324,6 +324,7 @@ children:
     - type: enum-field
       id: fan2pin
       props:
+        label: Output
         options:
         - value: 0
           label: NONE
@@ -551,7 +552,6 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
-        label: Output
       bind:
         source: config
         field: fan2Pin
@@ -588,24 +588,24 @@ children:
     - type: enum-field
       id: enablefan2withac
       props:
-        label: Enable with AC
         options:
         - value: 0
           label: 'false'
         - value: 1
           label: 'true'
+        label: Enable with AC
       bind:
         source: config
         field: enableFan2WithAc
     - type: enum-field
       id: disablefan2whenstopped
       props:
-        label: Disable when engine stopped
         options:
         - value: 0
           label: 'false'
         - value: 1
           label: 'true'
+        label: Disable when engine stopped
       bind:
         source: config
         field: disableFan2WhenStopped
@@ -629,12 +629,12 @@ children:
     children:
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Test Fan 1 (cmd_test_fan_1)'
+        variant: hint
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Test Fan 2 (cmd_test_fan_2)'
+        variant: hint
   - type: text
     props:
       text: Панель «fanIndicators» — нет определения в INI

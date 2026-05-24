@@ -7,12 +7,12 @@ children:
 - type: enum-field
   id: coastingfuelcutenabled
   props:
-    label: Enable Coasting Fuel Cutoff
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: Enable Coasting Fuel Cutoff
   bind:
     source: config
     field: coastingFuelCutEnabled

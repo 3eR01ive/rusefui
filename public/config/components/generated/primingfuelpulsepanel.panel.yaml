@@ -14,9 +14,9 @@ children:
 - type: config-table
   id: primingpulse
   props:
-    xBins: primeBins
+    xLabel: Coolant
+    yLabel: Prime Pulse
     yBins: primeValues
     title: Priming pulse fuel mass
-    xLabel: Coolant
     variant: curve
-    yLabel: Prime Pulse
+    xBins: primeBins

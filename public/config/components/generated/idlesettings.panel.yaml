@@ -151,12 +151,12 @@ children:
   - type: enum-field
     id: useiacpidmulttable
     props:
+      label: Use IAC PID Multiplier Table
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: Use IAC PID Multiplier Table
     bind:
       source: config
       field: useIacPidMultTable
@@ -167,24 +167,24 @@ children:
   - type: enum-field
     id: useseparateadvanceforidle
     props:
-      label: Use idle ignition table
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Use idle ignition table
     bind:
       source: config
       field: useSeparateAdvanceForIdle
   - type: enum-field
     id: useidleadvancewhilecoasting
     props:
+      label: Use idle ignition table while coasting
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: Use idle ignition table while coasting
     bind:
       source: config
       field: useIdleAdvanceWhileCoasting
@@ -238,12 +238,12 @@ children:
   - type: enum-field
     id: useseparateidletablesforcrankingtaper
     props:
-      label: Use idle tables for cranking taper
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Use idle tables for cranking taper
     bind:
       source: config
       field: useSeparateIdleTablesForCrankingTaper

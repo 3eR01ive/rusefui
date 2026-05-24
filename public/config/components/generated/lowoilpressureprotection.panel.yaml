@@ -14,12 +14,12 @@ children:
 - type: enum-field
   id: enableoilpressureprotect
   props:
-    label: Enable low oil pressure protection
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: Enable low oil pressure protection
   bind:
     source: config
     field: enableOilPressureProtect
@@ -34,8 +34,8 @@ children:
   id: minimumoilpressure
   props:
     xBins: minimumOilPressureBins
-    yBins: minimumOilPressureValues
-    xLabel: RPM
     title: Minimum oil pressure
     yLabel: min pressure
     variant: curve
+    xLabel: RPM
+    yBins: minimumOilPressureValues

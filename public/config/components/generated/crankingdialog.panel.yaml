@@ -18,7 +18,6 @@ children:
   - type: enum-field
     id: crankinginjectionmode
     props:
-      label: Injection mode
       options:
       - value: 0
         label: Simultaneous
@@ -28,6 +27,7 @@ children:
         label: Batch
       - value: 3
         label: Single Point
+      label: Injection mode
     bind:
       source: config
       field: crankingInjectionMode
@@ -50,12 +50,12 @@ children:
   - type: enum-field
     id: useseparateadvanceforcranking
     props:
-      label: Timing Advance mode
       options:
       - value: 0
         label: Fixed (auto taper)
       - value: 1
         label: Table
+      label: Timing Advance mode
     bind:
       source: config
       field: useSeparateAdvanceForCranking
@@ -80,24 +80,24 @@ children:
   - type: enum-field
     id: iscylindercleanupenabled
     props:
-      label: Enable flood clear
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Enable flood clear
     bind:
       source: config
       field: isCylinderCleanupEnabled
   - type: enum-field
     id: isfasterenginespinupenabled
     props:
+      label: Enable faster engine spin-up
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: Enable faster engine spin-up
     bind:
       source: config
       field: isFasterEngineSpinUpEnabled
@@ -116,12 +116,12 @@ children:
   - type: enum-field
     id: flexcranking
     props:
+      label: Use Flex Fuel cranking table
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: Use Flex Fuel cranking table
     bind:
       source: config
       field: flexCranking

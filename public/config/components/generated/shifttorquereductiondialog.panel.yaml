@@ -54,6 +54,7 @@ children:
       - type: enum-field
         id: torquereductiontriggerpin
         props:
+          label: Torque Reduction Button
           options:
           - value: 0
             label: NONE
@@ -219,7 +220,6 @@ children:
             label: Digital 4
           - value: 81
             label: Digital 6
-          label: Torque Reduction Button
         bind:
           source: config
           field: torqueReductionTriggerPin
@@ -406,6 +406,7 @@ children:
       - type: enum-field
         id: clutchdownpin
         props:
+          label: Clutch Down
           options:
           - value: 0
             label: NONE
@@ -571,7 +572,6 @@ children:
             label: Digital 4
           - value: 81
             label: Digital 6
-          label: Clutch Down
         bind:
           source: config
           field: clutchDownPin
@@ -819,5 +819,5 @@ children:
   children:
   - type: text
     props:
-      text: Панель «shift_torque_reduction_stateIndicatorPanel» — нет определения в INI
       variant: hint
+      text: Панель «shift_torque_reduction_stateIndicatorPanel» — нет определения в INI

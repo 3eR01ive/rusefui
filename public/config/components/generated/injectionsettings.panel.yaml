@@ -21,12 +21,12 @@ children:
         field: Use only first half of outputs for batch mode
     - type: text
       props:
-        variant: hint
         text: wire each output to the corresponding cylinder number
+        variant: hint
     - type: text
       props:
-        variant: hint
         text: rusEFI handles firing order
+        variant: hint
     - type: enum-field
       id: injectionpins1
       props:
@@ -264,7 +264,6 @@ children:
     - type: enum-field
       id: injectionpins2
       props:
-        label: Injection Output 2
         options:
         - value: 0
           label: NONE
@@ -492,12 +491,14 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        label: Injection Output 2
       bind:
         source: config
         field: injectionPins2
     - type: enum-field
       id: injectionpins3
       props:
+        label: Injection Output 3
         options:
         - value: 0
           label: NONE
@@ -725,7 +726,6 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
-        label: Injection Output 3
       bind:
         source: config
         field: injectionPins3
@@ -966,6 +966,7 @@ children:
     - type: enum-field
       id: injectionpins5
       props:
+        label: 'Injection Output 5 '
         options:
         - value: 0
           label: NONE
@@ -1193,13 +1194,13 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
-        label: 'Injection Output 5 '
       bind:
         source: config
         field: injectionPins5
     - type: enum-field
       id: injectionpins6
       props:
+        label: 'Injection Output 6 '
         options:
         - value: 0
           label: NONE
@@ -1427,13 +1428,13 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
-        label: 'Injection Output 6 '
       bind:
         source: config
         field: injectionPins6
     - type: enum-field
       id: injectionpins7
       props:
+        label: 'Injection Output 7 '
         options:
         - value: 0
           label: NONE
@@ -1661,14 +1662,12 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
-        label: 'Injection Output 7 '
       bind:
         source: config
         field: injectionPins7
     - type: enum-field
       id: injectionpins8
       props:
-        label: 'Injection Output 8 '
         options:
         - value: 0
           label: NONE
@@ -1896,6 +1895,7 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        label: 'Injection Output 8 '
       bind:
         source: config
         field: injectionPins8
@@ -2370,6 +2370,7 @@ children:
     - type: enum-field
       id: injectionpins11
       props:
+        label: 'Injection Output 11 '
         options:
         - value: 0
           label: NONE
@@ -2597,7 +2598,6 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
-        label: 'Injection Output 11 '
       bind:
         source: config
         field: injectionPins11
@@ -2861,8 +2861,8 @@ children:
         variant: hint
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Injector #5 (cmd_test_inj5)'
+        variant: hint
     - type: text
       props:
         variant: hint
@@ -2881,17 +2881,17 @@ children:
         variant: hint
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Injector #10 (cmd_test_inj10)'
+        variant: hint
     - type: text
       props:
         text: 'Кнопка: Injector #11 (cmd_test_inj11)'
         variant: hint
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Injector #12 (cmd_test_inj12)'
+        variant: hint
     - type: text
       props:
-        text: 'Кнопка: Abort test (cmd_test_cancel)'
         variant: hint
+        text: 'Кнопка: Abort test (cmd_test_cancel)'

@@ -80,9 +80,9 @@ children:
   - type: config-table
     id: lambdamaxdeviationtabletbl
     props:
-      yBins: lambdaMaxDeviationLoadBins
+      variant: table
+      xLabel: RPM
       zBins: lambdaMaxDeviationTable
       title: Maximum Lambda Deviation
-      xLabel: RPM
+      yBins: lambdaMaxDeviationLoadBins
       xBins: lambdaMaxDeviationRpmBins
-      variant: table

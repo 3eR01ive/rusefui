@@ -90,8 +90,8 @@ children:
         field: Disables jam detection for testing until the next power cycle
     - type: text
       props:
-        text: 'Кнопка: Temporarily disable jam detection (cmd_etb_disable_jam_detect)'
         variant: hint
+        text: 'Кнопка: Temporarily disable jam detection (cmd_etb_disable_jam_detect)'
   - type: text
     props:
       text: Панель «etbIndicatorPanel» — нет определения в INI
@@ -244,5 +244,5 @@ children:
         text: 'Кнопка: Start ETB PID Autotune (cmd_etb_autotune)'
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Stop ETB PID Autotune (cmd_etb_autotune_stop)'
+        variant: hint

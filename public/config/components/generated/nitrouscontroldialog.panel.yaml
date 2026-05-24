@@ -27,12 +27,12 @@ children:
     - type: enum-field
       id: nitrouscontrolarmingmethod
       props:
+        label: Arming Method
         options:
         - value: 0
           label: Digital Switch Input
         - value: 1
           label: Lua Gauge
-        label: Arming Method
       bind:
         source: config
         field: nitrousControlArmingMethod
@@ -43,7 +43,6 @@ children:
       - type: enum-field
         id: nitrouscontroltriggerpin
         props:
-          label: Nitrous Control Button
           options:
           - value: 0
             label: NONE
@@ -209,12 +208,14 @@ children:
             label: Digital 4
           - value: 81
             label: Digital 6
+          label: Nitrous Control Button
         bind:
           source: config
           field: nitrousControlTriggerPin
       - type: enum-field
         id: nitrouscontroltriggerpinmode
         props:
+          label: Nitrous Control Mode
           options:
           - value: 0
             label: DEFAULT
@@ -230,7 +231,6 @@ children:
             label: INVERTED PULLUP
           - value: 6
             label: INVERTED PULLDOWN
-          label: Nitrous Control Mode
         bind:
           source: config
           field: nitrousControlTriggerPinMode

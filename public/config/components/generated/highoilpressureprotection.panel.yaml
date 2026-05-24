@@ -14,9 +14,9 @@ children:
 - type: config-table
   id: maximumoilpressure
   props:
+    title: Maximum oil pressure
     xBins: maximumOilPressureBins
-    xLabel: RPM
     yLabel: max pressure
     variant: curve
+    xLabel: RPM
     yBins: maximumOilPressureValues
-    title: Maximum oil pressure

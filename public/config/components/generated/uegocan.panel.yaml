@@ -14,12 +14,12 @@ children:
 - type: enum-field
   id: enableaemxseries
   props:
-    label: Enable CAN Wideband
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: Enable CAN Wideband
   bind:
     source: config
     field: enableAemXSeries
@@ -38,16 +38,16 @@ children:
 - type: enum-field
   id: forceo2heating
   props:
+    label: Force O2 sensor heating
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
-    label: Force O2 sensor heating
   bind:
     source: config
     field: forceO2Heating
 - type: text
   props:
-    text: 'Кнопка: Update 2023 Firmware (cmd_wideband_firmare_update)'
     variant: hint
+    text: 'Кнопка: Update 2023 Firmware (cmd_wideband_firmare_update)'

@@ -26,18 +26,18 @@ children:
 - type: config-table
   id: map-samplinganglecurve
   props:
-    title: MAP Sampling Start Angle
-    xBins: map_samplingAngleBins
-    yBins: map_samplingAngle
-    variant: curve
     xLabel: RPM
+    yBins: map_samplingAngle
+    xBins: map_samplingAngleBins
     yLabel: Angle
+    variant: curve
+    title: MAP Sampling Start Angle
 - type: config-table
   id: map-samplingwindowcurve
   props:
     xLabel: RPM
+    xBins: map_samplingWindowBins
+    variant: curve
+    yBins: map_samplingWindow
     title: MAP Sampling Duration
     yLabel: Window
-    yBins: map_samplingWindow
-    variant: curve
-    xBins: map_samplingWindowBins

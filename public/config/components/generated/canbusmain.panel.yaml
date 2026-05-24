@@ -179,12 +179,12 @@ children:
   - type: enum-field
     id: enableverbosecantx
     props:
-      label: Enable rusEFI CAN broadcast
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Enable rusEFI CAN broadcast
     bind:
       source: config
       field: enableVerboseCanTx
@@ -229,12 +229,12 @@ children:
   - type: enum-field
     id: enableextendedcanbroadcast
     props:
+      label: Enable board state broadcast
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: Enable board state broadcast
     bind:
       source: config
       field: enableExtendedCanBroadcast
@@ -245,12 +245,12 @@ children:
   - type: enum-field
     id: verbosecan
     props:
+      label: Verbose Can
       options:
       - value: 0
         label: Do not print
       - value: 1
         label: Print all
-      label: Verbose Can
     bind:
       source: config
       field: verboseCan
@@ -281,12 +281,12 @@ children:
   - type: enum-field
     id: canopenblt
     props:
-      label: Allow OpenBLT
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Allow OpenBLT
     bind:
       source: config
       field: canOpenBLT
@@ -297,12 +297,12 @@ children:
   - type: enum-field
     id: verbosecan2
     props:
+      label: Verbose Can2
       options:
       - value: 0
         label: Do not print
       - value: 1
         label: Print all
-      label: Verbose Can2
     bind:
       source: config
       field: verboseCan2

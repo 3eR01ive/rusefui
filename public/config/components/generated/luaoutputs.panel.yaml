@@ -6,20 +6,20 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: Use rusEFI console for Lua script editing
+    variant: hint
 - type: text
   props:
-    variant: hint
     text: Call startPwm to initialize, then call
+    variant: hint
 - type: text
   props:
+    variant: hint
     text: setPwmDuty and setPwmFreq to vary duty/freq
-    variant: hint
 - type: text
   props:
-    text: See rusefi.com/s/lua for more info
     variant: hint
+    text: See rusefi.com/s/lua for more info
 - type: enum-field
   id: luaoutputpins1
   props:
@@ -257,6 +257,7 @@ children:
 - type: enum-field
   id: luaoutputpins2
   props:
+    label: 'output #1'
     options:
     - value: 0
       label: NONE
@@ -484,7 +485,6 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
-    label: 'output #1'
   bind:
     source: config
     field: luaOutputPins2
@@ -725,6 +725,7 @@ children:
 - type: enum-field
   id: luaoutputpins4
   props:
+    label: 'output #3'
     options:
     - value: 0
       label: NONE
@@ -952,14 +953,12 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
-    label: 'output #3'
   bind:
     source: config
     field: luaOutputPins4
 - type: enum-field
   id: luaoutputpins5
   props:
-    label: 'output #4'
     options:
     - value: 0
       label: NONE
@@ -1187,6 +1186,7 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    label: 'output #4'
   bind:
     source: config
     field: luaOutputPins5
@@ -1661,6 +1661,7 @@ children:
 - type: enum-field
   id: luaoutputpins8
   props:
+    label: 'output #7'
     options:
     - value: 0
       label: NONE
@@ -1888,7 +1889,6 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
-    label: 'output #7'
   bind:
     source: config
     field: luaOutputPins8

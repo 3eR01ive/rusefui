@@ -41,7 +41,6 @@ children:
   - type: enum-field
     id: firingorder
     props:
-      label: Firing order
       options:
       - value: 0
         label: One Cylinder
@@ -299,6 +298,7 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: Firing order
     bind:
       source: config
       field: firingOrder
@@ -308,8 +308,8 @@ children:
   children:
   - type: text
     props:
-      text: These metadata are used by rusEFI Online
       variant: hint
+      text: These metadata are used by rusEFI Online
   - type: scalar-field
     id: enginemake
     props:
@@ -349,6 +349,7 @@ children:
   - type: enum-field
     id: fuelalgorithm
     props:
+      label: Fuel strategy
       options:
       - value: 0
         label: Speed Density
@@ -358,7 +359,6 @@ children:
         label: Alpha-N
       - value: 3
         label: Lua
-      label: Fuel strategy
     bind:
       source: config
       field: fuelAlgorithm
