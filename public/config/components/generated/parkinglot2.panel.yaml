@@ -371,6 +371,7 @@ children:
 - type: enum-field
   id: dacoutputpins2
   props:
+    label: dacOutputPins2
     options:
     - value: 0
       label: NONE
@@ -728,31 +729,30 @@ children:
       label: PK14
     - value: 177
       label: PK15
-    label: dacOutputPins2
   bind:
     source: config
     field: dacOutputPins2
 - type: enum-field
   id: luacanrxworkaround
   props:
-    label: luaCanRxWorkaround CAN performance hack
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: luaCanRxWorkaround CAN performance hack
   bind:
     source: config
     field: luaCanRxWorkaround
 - type: enum-field
   id: caninputbcm
   props:
-    label: Read RPM matching VSS profile
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: Read RPM matching VSS profile
   bind:
     source: config
     field: canInputBCM

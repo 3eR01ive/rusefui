@@ -65,12 +65,12 @@ children:
     - type: enum-field
       id: ltft-correctionenabled
       props:
+        label: Enable correction
         options:
         - value: 0
           label: 'false'
         - value: 1
           label: 'true'
-        label: Enable correction
       bind:
         source: config
         field: ltft_correctionEnabled

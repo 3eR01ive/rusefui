@@ -22,12 +22,12 @@ children:
     - type: enum-field
       id: disableetbwhenenginestopped
       props:
+        label: Disable ETB if engine is stopped
         options:
         - value: 0
           label: 'false'
         - value: 1
           label: 'true'
-        label: Disable ETB if engine is stopped
       bind:
         source: config
         field: disableEtbWhenEngineStopped
@@ -211,8 +211,8 @@ children:
         variant: hint
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Auto Calibrate ETB 2 (cmd_etb_auto_calibrate_2)'
+        variant: hint
   - type: section
     props:
       title: Sensor/PID autotune
@@ -240,9 +240,9 @@ children:
         field: Autotune executed for ETB 1 only, values applied for all ETBs
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Start ETB PID Autotune (cmd_etb_autotune)'
+        variant: hint
     - type: text
       props:
-        text: 'Кнопка: Stop ETB PID Autotune (cmd_etb_autotune_stop)'
         variant: hint
+        text: 'Кнопка: Stop ETB PID Autotune (cmd_etb_autotune_stop)'

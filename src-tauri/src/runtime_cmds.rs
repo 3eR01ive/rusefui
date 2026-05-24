@@ -1,6 +1,6 @@
 use rusefui_runtime::{
     default_log_path, ComponentRuntime, ConfigFieldInfo, ConfigSnapshot, EcuSession,
-    OutputFieldInfo, OutputSnapshot, ProtocolLogEntry, ProtocolLogFilterSettings,
+    EcuSyncOnMount, OutputFieldInfo, OutputSnapshot, ProtocolLogEntry, ProtocolLogFilterSettings,
     ProtocolLogStore,
 };
 use serde::{Deserialize, Serialize};
@@ -153,9 +153,22 @@ pub fn component_mount(
 ) -> Result<Value, String> {
     let mut rt = state.runtime.lock().map_err(|e| e.to_string())?;
     let snapshot = rt.mount(&params.instance_id, &params.component_type)?;
+    let sync = rt.ecu_sync_on_mount(&params.instance_id);
     emit_state(&app, &params.instance_id, &snapshot);
-    sync_ecu_data(&state, &app);
+    apply_ecu_sync_on_mount(sync, &state, &app);
     Ok(snapshot)
+}
+
+fn apply_ecu_sync_on_mount(policy: EcuSyncOnMount, state: &RuntimeState, app: &AppHandle) {
+    match policy {
+        EcuSyncOnMount::Full => sync_ecu_data(state, app),
+        EcuSyncOnMount::OutputPollIfConfigLoaded => {
+            if state.session.is_connected() && state.session.config().snapshot().loaded {
+                sync_output_poll_session(&state.session, app);
+            }
+        }
+        EcuSyncOnMount::None => {}
+    }
 }
 
 #[tauri::command]
@@ -176,10 +189,21 @@ pub fn component_dispatch(
     state: State<RuntimeState>,
     app: AppHandle,
 ) -> Result<Value, String> {
+    if state.session.is_connected() {
+        state.session.output().stop();
+    }
+
     let mut rt = state.runtime.lock().map_err(|e| e.to_string())?;
     let snapshot = rt.dispatch(&params.instance_id, &params.action, params.payload)?;
     emit_state(&app, &params.instance_id, &snapshot);
     sync_ecu_data(&state, &app);
+
+    // `run_without_output_poll` (стимуляция, config IO) не возобновляет poll `O`.
+    let config_snap = state.session.config().snapshot();
+    if state.session.is_connected() && !config_snap.loading {
+        sync_output_poll_session(&state.session, &app);
+    }
+
     Ok(snapshot)
 }
 
@@ -234,30 +258,44 @@ pub fn config_set_scalar(
     state: State<RuntimeState>,
     app: AppHandle,
 ) -> Result<ConfigSnapshot, String> {
-    // Output poll (50 Hz) мешает burn/flash — как при полном чтении конфига.
     state.session.output().stop();
 
     let session = Arc::clone(&state.session);
-    let result = state
-        .session
+    session
         .config()
-        .set_scalar(&state.session, &params.field, params.value);
+        .write_scalar(&session, &params.field, params.value)?;
 
-    if session.is_connected() {
-        let snap = session.config().snapshot();
-        if snap.loaded {
-            sync_output_poll_session(&session, &app);
-        } else {
-            emit_output(&app, &session.output().snapshot());
-        }
+    let snap = session.config().snapshot();
+    emit_config(&app, &snap);
+
+    if session.is_connected() && snap.loaded {
+        sync_output_poll_session(&session, &app);
+    }
+
+    Ok(snap)
+}
+
+#[tauri::command]
+pub fn config_burn(state: State<RuntimeState>, app: AppHandle) -> Result<(), String> {
+    if !state.session.is_connected() {
+        return Err("ECU не подключена".into());
+    }
+
+    state.session.output().stop();
+
+    let session = Arc::clone(&state.session);
+    session.config().burn_to_flash(&session)?;
+
+    let snap = session.config().snapshot();
+    emit_config(&app, &snap);
+
+    if snap.loaded {
+        sync_output_poll_session(&session, &app);
     } else {
         emit_output(&app, &session.output().snapshot());
     }
 
-    result?;
-    let snap = state.session.config().snapshot();
-    emit_config(&app, &snap);
-    Ok(snap)
+    Ok(())
 }
 
 #[derive(Debug, Deserialize)]
@@ -286,28 +324,13 @@ pub fn config_set_array_value(
     state: State<RuntimeState>,
     app: AppHandle,
 ) -> Result<ConfigSnapshot, String> {
-    state.session.output().stop();
-
-    let session = Arc::clone(&state.session);
-    let result = state.session.config().write_array_value(
+    state.session.config().write_array_value(
         &state.session,
         &params.field,
         params.index,
         params.value,
-    );
+    )?;
 
-    if session.is_connected() {
-        let snap = session.config().snapshot();
-        if snap.loaded {
-            sync_output_poll_session(&session, &app);
-        } else {
-            emit_output(&app, &session.output().snapshot());
-        }
-    } else {
-        emit_output(&app, &session.output().snapshot());
-    }
-
-    result?;
     let snap = state.session.config().snapshot();
     emit_config(&app, &snap);
     Ok(snap)

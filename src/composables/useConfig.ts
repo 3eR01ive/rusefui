@@ -94,6 +94,11 @@ export async function setConfigArrayValue(
   });
 }
 
+/** Запись текущего конфига page 0 во flash (команда `B`). */
+export async function burnConfig(): Promise<void> {
+  await invoke("config_burn");
+}
+
 export function useConfig() {
   return {
     snapshot: readonly(snapshot),
@@ -104,6 +109,7 @@ export function useConfig() {
     getFieldInfo: (name: string): ConfigFieldInfo | null =>
       fieldsByName.value.get(name) ?? null,
     setField: setConfigScalar,
+    burn: burnConfig,
     getArray: getConfigArray,
     setArrayValue: setConfigArrayValue,
   };

@@ -285,7 +285,6 @@ fn config_curve_node(curve: &IniCurveDef) -> YamlNode {
         "title".into(),
         serde_yaml::Value::String(curve.title.clone()),
     );
-    props.insert("variant".into(), serde_yaml::Value::String("curve".into()));
     if let Some(x) = &curve.x_label {
         props.insert("xLabel".into(), serde_yaml::Value::String(x.clone()));
     }
@@ -302,7 +301,7 @@ fn config_curve_node(curve: &IniCurveDef) -> YamlNode {
     );
 
     YamlNode {
-        node_type: "config-table".into(),
+        node_type: "curve".into(),
         id: Some(slugify(&curve.id)),
         props: Some(props),
         bind: None,
@@ -450,5 +449,10 @@ mod tests {
         assert!(result.files.contains_key("enginechars.panel.yaml"));
         let has_table = result.files.values().any(|yaml| yaml.contains("config-table"));
         assert!(has_table, "expected config-table in converted panels");
+        let has_curve = result
+            .files
+            .values()
+            .any(|yaml| yaml.contains("\n  type: curve\n") || yaml.contains("- type: curve"));
+        assert!(has_curve, "expected curve in converted panels");
     }
 }

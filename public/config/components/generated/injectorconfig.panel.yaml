@@ -23,6 +23,7 @@ children:
   - type: enum-field
     id: injectionmode
     props:
+      label: Mode
       options:
       - value: 0
         label: Simultaneous
@@ -32,7 +33,6 @@ children:
         label: Batch
       - value: 3
         label: Single Point
-      label: Mode
     bind:
       source: config
       field: injectionMode
@@ -43,18 +43,19 @@ children:
   - type: enum-field
     id: alphanuseiat
     props:
+      label: Alpha-N uses IAT density correction
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: Alpha-N uses IAT density correction
     bind:
       source: config
       field: alphaNUseIat
   - type: enum-field
     id: veoverridemode
     props:
+      label: Override VE table load axis
       options:
       - value: 0
         label: None
@@ -64,7 +65,6 @@ children:
         label: TPS
       - value: 3
         label: INVALID
-      label: Override VE table load axis
     bind:
       source: config
       field: veOverrideMode
@@ -122,12 +122,12 @@ children:
   - type: enum-field
     id: injectorflowasmassflow
     props:
+      label: Injector flow units
       options:
       - value: 0
         label: cc/min
       - value: 1
         label: grams per second
-      label: Injector flow units
     bind:
       source: config
       field: injectorFlowAsMassFlow
@@ -188,9 +188,9 @@ children:
   id: injectorsdeadtime
   props:
     zBins: injector_battLagCorrTable
-    yLabel: Pressure
-    yBins: injector_battLagCorrPressBins
-    title: Injector dead time
     xLabel: Battery
-    xBins: injector_battLagCorrBattBins
+    yLabel: Pressure
+    title: Injector dead time
+    yBins: injector_battLagCorrPressBins
     variant: table
+    xBins: injector_battLagCorrBattBins

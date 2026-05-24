@@ -27,7 +27,6 @@ children:
     - type: enum-field
       id: alternatorcontrolpin
       props:
-        label: Control output
         options:
         - value: 0
           label: NONE
@@ -255,13 +254,13 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        label: Control output
       bind:
         source: config
         field: alternatorControlPin
     - type: enum-field
       id: alternatorcontrolpinmode
       props:
-        label: Control output mode
         options:
         - value: 0
           label: default
@@ -271,6 +270,7 @@ children:
           label: open collector
         - value: 3
           label: open collector inverted
+        label: Control output mode
       bind:
         source: config
         field: alternatorControlPinMode
@@ -290,8 +290,8 @@ children:
         field: acRelayAlternatorDutyAdder
     - type: text
       props:
-        variant: hint
         text: PID control
+        variant: hint
     - type: scalar-field
       id: alternatorcontrol-offset
       props:
@@ -355,8 +355,8 @@ children:
   - type: config-table
     id: alternatorvoltagetargettabletbl
     props:
+      zBins: alternatorVoltageTargetTable
       xBins: alternatorVoltageTargetRpmBins
+      variant: table
       yBins: alternatorVoltageTargetLoadBins
       title: Alternator Voltage Target Table
-      variant: table
-      zBins: alternatorVoltageTargetTable

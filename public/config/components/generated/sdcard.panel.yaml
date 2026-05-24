@@ -42,8 +42,8 @@ children:
       text: and USB not connected for 15 seconds
   - type: text
     props:
-      variant: hint
       text: OR when Always start in Logging mode is enabled
+      variant: hint
   - type: text
     props:
       text: rusEFI connects SD to your PC when powered by USB
@@ -51,12 +51,12 @@ children:
   - type: enum-field
     id: alwayswritesdcard
     props:
+      label: Always start in Logging mode
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: Always start in Logging mode
     bind:
       source: config
       field: alwaysWriteSdCard
@@ -70,23 +70,23 @@ children:
   - type: enum-field
     id: sdtriggerlog
     props:
-      label: SD logger mode
       options:
       - value: 0
         label: normal
       - value: 1
         label: trigger
+      label: SD logger mode
     bind:
       source: config
       field: sdTriggerLog
 - type: text
   props:
-    text: Панель «sdCardStateIndicators» — нет определения в INI
     variant: hint
+    text: Панель «sdCardStateIndicators» — нет определения в INI
 - type: text
   props:
-    text: Панель «sdCardErrorPanel» — нет определения в INI
     variant: hint
+    text: Панель «sdCardErrorPanel» — нет определения в INI
 - type: section
   props:
     title: SD commands
@@ -101,12 +101,12 @@ children:
       variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Unmount (cmd_unmount)'
+      variant: hint
   - type: text
     props:
-      text: 'Кнопка: Format (cmd_format)'
       variant: hint
+      text: 'Кнопка: Format (cmd_format)'
 - type: section
   props:
     title: Fail reports
@@ -120,9 +120,9 @@ children:
       field: Executed only when SD card is mounted to ECU
   - type: text
     props:
-      text: 'Кнопка: Remove all fail reports (cmd_delete_reports)'
       variant: hint
+      text: 'Кнопка: Remove all fail reports (cmd_delete_reports)'
   - type: text
     props:
-      text: Панель «sdCardErrorReportIndicators» — нет определения в INI
       variant: hint
+      text: Панель «sdCardErrorReportIndicators» — нет определения в INI

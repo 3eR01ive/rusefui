@@ -11,12 +11,11 @@ children:
   bind:
     source: config
     field: etbIdleThrottleRange
-- type: config-table
+- type: curve
   id: cltcrankingcurve
   props:
-    xLabel: Coolant
+    yBins: cltCrankingCorr
     yLabel: Percent
     xBins: cltCrankingCorrBins
+    xLabel: Coolant
     title: Cranking Idle Valve Curve
-    yBins: cltCrankingCorr
-    variant: curve

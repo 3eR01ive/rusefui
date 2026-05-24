@@ -7,6 +7,7 @@ children:
 - type: enum-field
   id: auxanaloginputs1
   props:
+    label: 'ADC #1'
     options:
     - value: 0
       label: NONE
@@ -42,7 +43,6 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
-    label: 'ADC #1'
   bind:
     source: config
     field: auxAnalogInputs1
@@ -133,6 +133,7 @@ children:
 - type: enum-field
   id: auxanaloginputs4
   props:
+    label: 'ADC #4'
     options:
     - value: 0
       label: NONE
@@ -168,7 +169,6 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
-    label: 'ADC #4'
   bind:
     source: config
     field: auxAnalogInputs4
@@ -217,6 +217,7 @@ children:
 - type: enum-field
   id: auxanaloginputs6
   props:
+    label: 'ADC #6'
     options:
     - value: 0
       label: NONE
@@ -252,7 +253,6 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
-    label: 'ADC #6'
   bind:
     source: config
     field: auxAnalogInputs6

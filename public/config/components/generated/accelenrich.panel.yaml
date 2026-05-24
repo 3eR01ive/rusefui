@@ -11,7 +11,6 @@ children:
   - type: enum-field
     id: accelenrichmentmode
     props:
-      label: Accel Enrichment Mode
       options:
       - value: 0
         label: MS Adder
@@ -21,6 +20,7 @@ children:
         label: MAP Prediction
       - value: 3
         label: INVALID
+      label: Accel Enrichment Mode
     bind:
       source: config
       field: accelEnrichmentMode
@@ -33,8 +33,8 @@ children:
       field: mapPredictionBlendDuration
   - type: text
     props:
-      variant: hint
       text: '"" ; spacer'
+      variant: hint
   - type: scalar-field
     id: tpsaccellookback
     props:
@@ -65,8 +65,8 @@ children:
       field: tpsDecelEnleanmentThreshold
   - type: text
     props:
-      text: 'Accelerator Pump model:'
       variant: hint
+      text: 'Accelerator Pump model:'
   - type: scalar-field
     id: tpsaccelfractionperiod
     props:
@@ -88,12 +88,12 @@ children:
   - type: enum-field
     id: complexwallmodel
     props:
+      label: Wall fueling model type
       options:
       - value: 0
         label: Basic (constants)
       - value: 1
         label: Advanced (tables)
-      label: Wall fueling model type
     bind:
       source: config
       field: complexWallModel

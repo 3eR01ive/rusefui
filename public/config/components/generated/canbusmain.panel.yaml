@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: cannbctype
     props:
+      label: CAN dash type
       options:
       - value: 0
         label: None
@@ -76,14 +77,12 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
-      label: CAN dash type
     bind:
       source: config
       field: canNbcType
   - type: enum-field
     id: imutype
     props:
-      label: Inertia Measurement Unit
       options:
       - value: 0
         label: None
@@ -149,30 +148,31 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
+      label: Inertia Measurement Unit
     bind:
       source: config
       field: imuType
   - type: enum-field
     id: canreadenabled
     props:
-      label: CAN read enabled
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: CAN read enabled
     bind:
       source: config
       field: canReadEnabled
   - type: enum-field
     id: canwriteenabled
     props:
-      label: CAN write enabled
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: CAN write enabled
     bind:
       source: config
       field: canWriteEnabled
@@ -210,12 +210,12 @@ children:
   - type: enum-field
     id: rusefiverbose29b
     props:
-      label: rusEFI CAN data address type
       options:
       - value: 0
         label: 11 bit
       - value: 1
         label: 29 bit
+      label: rusEFI CAN data address type
     bind:
       source: config
       field: rusefiVerbose29b
@@ -297,12 +297,12 @@ children:
   - type: enum-field
     id: verbosecan2
     props:
-      label: Verbose Can2
       options:
       - value: 0
         label: Do not print
       - value: 1
         label: Print all
+      label: Verbose Can2
     bind:
       source: config
       field: verboseCan2
@@ -333,12 +333,12 @@ children:
   - type: enum-field
     id: can2openblt
     props:
-      label: Allow OpenBLT
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Allow OpenBLT
     bind:
       source: config
       field: can2OpenBLT

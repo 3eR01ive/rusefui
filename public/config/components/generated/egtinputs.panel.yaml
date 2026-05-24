@@ -18,12 +18,12 @@ children:
   - type: enum-field
     id: enableaemxseriesegt
     props:
+      label: CAN EGT (AEM X series of RusEFI)
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: CAN EGT (AEM X series of RusEFI)
     bind:
       source: config
       field: enableAemXSeriesEgt
@@ -63,7 +63,6 @@ children:
   - type: enum-field
     id: max31855-cs1
     props:
-      label: CS for EGT1
       options:
       - value: 0
         label: NONE
@@ -421,12 +420,14 @@ children:
         label: PK14
       - value: 177
         label: PK15
+      label: CS for EGT1
     bind:
       source: config
       field: max31855_cs1
   - type: enum-field
     id: max31855-cs2
     props:
+      label: CS for EGT2
       options:
       - value: 0
         label: NONE
@@ -784,14 +785,12 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: CS for EGT2
     bind:
       source: config
       field: max31855_cs2
   - type: enum-field
     id: max31855-cs3
     props:
-      label: CS for EGT3
       options:
       - value: 0
         label: NONE
@@ -1149,13 +1148,13 @@ children:
         label: PK14
       - value: 177
         label: PK15
+      label: CS for EGT3
     bind:
       source: config
       field: max31855_cs3
   - type: enum-field
     id: max31855-cs4
     props:
-      label: CS for EGT4
       options:
       - value: 0
         label: NONE
@@ -1513,13 +1512,13 @@ children:
         label: PK14
       - value: 177
         label: PK15
+      label: CS for EGT4
     bind:
       source: config
       field: max31855_cs4
   - type: enum-field
     id: max31855-cs5
     props:
-      label: CS for EGT5
       options:
       - value: 0
         label: NONE
@@ -1877,13 +1876,13 @@ children:
         label: PK14
       - value: 177
         label: PK15
+      label: CS for EGT5
     bind:
       source: config
       field: max31855_cs5
   - type: enum-field
     id: max31855-cs6
     props:
-      label: CS for EGT6
       options:
       - value: 0
         label: NONE
@@ -2241,6 +2240,7 @@ children:
         label: PK14
       - value: 177
         label: PK15
+      label: CS for EGT6
     bind:
       source: config
       field: max31855_cs6

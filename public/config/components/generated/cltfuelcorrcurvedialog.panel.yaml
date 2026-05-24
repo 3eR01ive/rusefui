@@ -32,12 +32,11 @@ children:
   bind:
     source: config
     field: 0.80% means 20% less fuel
-- type: config-table
+- type: curve
   id: cltfuelcorrcurve
   props:
-    xBins: cltFuelCorrBins
     yBins: cltFuelCorr
-    yLabel: Multiplier
-    variant: curve
     xLabel: Coolant
+    xBins: cltFuelCorrBins
+    yLabel: Multiplier
     title: Warmup fuel manual Multiplier

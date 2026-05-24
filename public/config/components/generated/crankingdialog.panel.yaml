@@ -50,12 +50,12 @@ children:
   - type: enum-field
     id: useseparateadvanceforcranking
     props:
+      label: Timing Advance mode
       options:
       - value: 0
         label: Fixed (auto taper)
       - value: 1
         label: Table
-      label: Timing Advance mode
     bind:
       source: config
       field: useSeparateAdvanceForCranking
@@ -104,24 +104,24 @@ children:
   - type: enum-field
     id: useadvancecorrectionsforcranking
     props:
+      label: Use Advance Corrections for cranking
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: Use Advance Corrections for cranking
     bind:
       source: config
       field: useAdvanceCorrectionsForCranking
   - type: enum-field
     id: flexcranking
     props:
-      label: Use Flex Fuel cranking table
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Use Flex Fuel cranking table
     bind:
       source: config
       field: flexCranking

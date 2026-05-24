@@ -11,12 +11,12 @@ children:
   - type: enum-field
     id: lambdaprotectionenable
     props:
-      label: Enable lambda protection
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Enable lambda protection
     bind:
       source: config
       field: lambdaProtectionEnable
@@ -81,8 +81,8 @@ children:
     id: lambdamaxdeviationtabletbl
     props:
       variant: table
-      xLabel: RPM
-      zBins: lambdaMaxDeviationTable
-      title: Maximum Lambda Deviation
       yBins: lambdaMaxDeviationLoadBins
+      zBins: lambdaMaxDeviationTable
       xBins: lambdaMaxDeviationRpmBins
+      title: Maximum Lambda Deviation
+      xLabel: RPM

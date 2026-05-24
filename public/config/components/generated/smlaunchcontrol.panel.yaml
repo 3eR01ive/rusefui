@@ -10,8 +10,8 @@ children:
   children:
   - type: text
     props:
-      text: Also known as Rolling antilag
       variant: hint
+      text: Also known as Rolling antilag
   - type: enum-field
     id: launchcontrolenabled
     props:
@@ -27,7 +27,6 @@ children:
   - type: enum-field
     id: launchactivationmode
     props:
-      label: Activation Mode
       options:
       - value: 0
         label: Launch Button
@@ -45,12 +44,14 @@ children:
         label: INVALID
       - value: 7
         label: INVALID
+      label: Activation Mode
     bind:
       source: config
       field: launchActivationMode
   - type: enum-field
     id: launchactivatepin
     props:
+      label: Launch Button
       options:
       - value: 0
         label: NONE
@@ -216,14 +217,12 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
-      label: Launch Button
     bind:
       source: config
       field: launchActivatePin
   - type: enum-field
     id: launchactivatepinmode
     props:
-      label: Launch Button mode
       options:
       - value: 0
         label: DEFAULT
@@ -239,13 +238,13 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
+      label: Launch Button mode
     bind:
       source: config
       field: launchActivatePinMode
   - type: enum-field
     id: clutchdownpin
     props:
-      label: Clutch Down
       options:
       - value: 0
         label: NONE
@@ -411,6 +410,7 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
+      label: Clutch Down
     bind:
       source: config
       field: clutchDownPin
@@ -467,12 +467,12 @@ children:
   - type: enum-field
     id: enablelaunchretard
     props:
-      label: Ignition Retard enable
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Ignition Retard enable
     bind:
       source: config
       field: enableLaunchRetard
@@ -545,12 +545,12 @@ children:
   - type: enum-field
     id: launchfuelcutenable
     props:
+      label: Fuel Cut
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: Fuel Cut
     bind:
       source: config
       field: launchFuelCutEnable
@@ -560,5 +560,5 @@ children:
   children:
   - type: text
     props:
-      text: Панель «launch_control_stateIndicatorPanel» — нет определения в INI
       variant: hint
+      text: Панель «launch_control_stateIndicatorPanel» — нет определения в INI

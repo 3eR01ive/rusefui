@@ -265,6 +265,7 @@ children:
 - type: enum-field
   id: boostcontrolpinmode
   props:
+    label: Output Mode
     options:
     - value: 0
       label: default
@@ -274,7 +275,6 @@ children:
       label: open collector
     - value: 3
       label: open collector inverted
-    label: Output Mode
   bind:
     source: config
     field: boostControlPinMode

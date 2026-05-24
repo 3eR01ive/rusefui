@@ -59,8 +59,8 @@ children:
       field: throttlePedalUpVoltage
   - type: text
     props:
-      text: 'Кнопка: Grab Idle/Up (cmd_calibrate_pedal_up)'
       variant: hint
+      text: 'Кнопка: Grab Idle/Up (cmd_calibrate_pedal_up)'
   - type: scalar-field
     id: throttlepedalwotvoltage
     props:
@@ -70,12 +70,11 @@ children:
       field: throttlePedalWOTVoltage
   - type: text
     props:
-      text: 'Кнопка: Grab WOT/Down (cmd_calibrate_pedal_down)'
       variant: hint
+      text: 'Кнопка: Grab WOT/Down (cmd_calibrate_pedal_down)'
   - type: enum-field
     id: throttlepedalpositionsecondadcchannel
     props:
-      label: Accelerator position 2nd sensor
       options:
       - value: 0
         label: NONE
@@ -111,6 +110,7 @@ children:
         label: Analog Temp 1
       - value: 16
         label: Analog Temp 2
+      label: Accelerator position 2nd sensor
     bind:
       source: config
       field: throttlePedalPositionSecondAdcChannel
@@ -138,12 +138,12 @@ children:
   - type: enum-field
     id: usefordredundantpps
     props:
-      label: Ford/Toyota redundant PPS mode
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Ford/Toyota redundant PPS mode
     bind:
       source: config
       field: useFordRedundantPps

@@ -10,16 +10,16 @@ children:
   children:
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Spark #1 (cmd_test_spk1)'
+      variant: hint
   - type: text
     props:
+      variant: hint
       text: 'Кнопка: Spark #2 (cmd_test_spk2)'
-      variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Spark #3 (cmd_test_spk3)'
+      variant: hint
   - type: text
     props:
       text: 'Кнопка: Spark #4 (cmd_test_spk4)'
@@ -30,24 +30,24 @@ children:
       variant: hint
   - type: text
     props:
+      variant: hint
       text: 'Кнопка: Spark #6 (cmd_test_spk6)'
-      variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Spark #7 (cmd_test_spk7)'
+      variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Spark #8 (cmd_test_spk8)'
+      variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Spark #9 (cmd_test_spk9)'
+      variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Spark #10 (cmd_test_spk10)'
+      variant: hint
   - type: text
     props:
       text: 'Кнопка: Spark #11 (cmd_test_spk11)'
@@ -58,8 +58,8 @@ children:
       variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Abort test (cmd_test_cancel)'
+      variant: hint
 - type: section
   props:
     title: Injector Test
@@ -70,16 +70,16 @@ children:
       text: 'Кнопка: Injector #1 (cmd_test_inj1)'
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Injector #2 (cmd_test_inj2)'
+      variant: hint
   - type: text
     props:
+      variant: hint
       text: 'Кнопка: Injector #3 (cmd_test_inj3)'
-      variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Injector #4 (cmd_test_inj4)'
+      variant: hint
   - type: text
     props:
       text: 'Кнопка: Injector #5 (cmd_test_inj5)'
@@ -94,28 +94,28 @@ children:
       variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Injector #8 (cmd_test_inj8)'
+      variant: hint
   - type: text
     props:
-      text: 'Кнопка: Injector #9 (cmd_test_inj9)'
       variant: hint
+      text: 'Кнопка: Injector #9 (cmd_test_inj9)'
   - type: text
     props:
       text: 'Кнопка: Injector #10 (cmd_test_inj10)'
       variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Injector #11 (cmd_test_inj11)'
+      variant: hint
   - type: text
     props:
       text: 'Кнопка: Injector #12 (cmd_test_inj12)'
       variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Abort test (cmd_test_cancel)'
+      variant: hint
 - type: section
   props:
     title: testOther
@@ -151,64 +151,64 @@ children:
   children:
   - type: text
     props:
+      variant: hint
       text: 'Кнопка: Lua Out #1 (cmd_test_lua1)'
-      variant: hint
   - type: text
     props:
+      variant: hint
       text: 'Кнопка: Lua Out #2 (cmd_test_lua2)'
-      variant: hint
   - type: text
     props:
+      variant: hint
       text: 'Кнопка: Lua Out #3 (cmd_test_lua3)'
-      variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Lua Out #4 (cmd_test_lua4)'
+      variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Lua Out #5 (cmd_test_lua5)'
+      variant: hint
   - type: text
     props:
+      variant: hint
       text: 'Кнопка: Lua Out #6 (cmd_test_lua6)'
-      variant: hint
   - type: text
     props:
+      variant: hint
       text: 'Кнопка: Lua Out #7 (cmd_test_lua7)'
-      variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Lua Out #8 (cmd_test_lua8)'
+      variant: hint
   - type: text
     props:
-      text: 'Кнопка: Abort test (cmd_test_cancel)'
       variant: hint
+      text: 'Кнопка: Abort test (cmd_test_cancel)'
 - type: section
   props:
     title: Misc
   children:
   - type: text
     props:
-      text: 'Кнопка: A/C Relay (cmd_test_ac_relay)'
       variant: hint
+      text: 'Кнопка: A/C Relay (cmd_test_ac_relay)'
   - type: text
     props:
       variant: hint
       text: 'Кнопка: Idle Air Valve (cmd_test_idle_valve)'
   - type: text
     props:
-      text: 'Кнопка: Idle Second Air Valve (cmd_test_second_idle_valve)'
       variant: hint
+      text: 'Кнопка: Idle Second Air Valve (cmd_test_second_idle_valve)'
   - type: text
     props:
       text: 'Кнопка: Stop Engine (cmd_stop_engine)'
       variant: hint
   - type: text
     props:
-      text: 'Кнопка: Write Config (cmd_write_config)'
       variant: hint
+      text: 'Кнопка: Write Config (cmd_write_config)'
   - type: text
     props:
       text: 'Кнопка: Reboot ECU (cmd_reset_controller)'
@@ -219,13 +219,13 @@ children:
       variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Reset to OpenBLT (cmd_openblt)'
+      variant: hint
   - type: text
     props:
+      variant: hint
       text: 'Кнопка: No flash Burn mode (cmd_burn_without_flash)'
-      variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Random fill LTFT (danger!) (cmd_ltft_dev_poke)'
+      variant: hint

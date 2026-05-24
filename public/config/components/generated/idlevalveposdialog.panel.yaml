@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: idlepositionchannel
     props:
+      label: Input
       options:
       - value: 0
         label: NONE
@@ -46,7 +47,6 @@ children:
         label: Analog Temp 1
       - value: 16
         label: Analog Temp 2
-      label: Input
     bind:
       source: config
       field: idlePositionChannel

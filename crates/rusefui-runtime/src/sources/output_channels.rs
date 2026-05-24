@@ -5,7 +5,7 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use rusefi_ini::{
-    decode_output_channels, ConfigFieldKind, FieldKind, IniFile, OutputChannels, ScalarField,
+    decode_output_channels, ConfigFieldKind, FieldKind, IniFile, OutputChannels,
 };
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -53,6 +53,10 @@ pub struct IniContext {
     pub page_read_has_page_index: bool,
     pub page_chunk_write_has_page_index: bool,
     pub config_fields: HashMap<String, ConfigFieldKind>,
+    /// `[ControllerCommands]` — сырые CRC-payload (`cmd_enable_self_stim` и т.д.).
+    pub ts_commands: HashMap<String, Vec<u8>>,
+    pub inter_write_delay_ms: u16,
+    pub page_activation_delay_ms: u16,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -104,6 +108,9 @@ impl IniContext {
             page_read_has_page_index: true,
             page_chunk_write_has_page_index: true,
             config_fields: HashMap::new(),
+            ts_commands: HashMap::new(),
+            inter_write_delay_ms: 10,
+            page_activation_delay_ms: 500,
         }
     }
 
@@ -117,6 +124,9 @@ impl IniContext {
             page_read_has_page_index: ini.page_read_has_page_index,
             page_chunk_write_has_page_index: ini.page_chunk_write_has_page_index,
             config_fields: ini.config_fields.clone(),
+            ts_commands: ini.ts_commands.clone(),
+            inter_write_delay_ms: ini.inter_write_delay_ms,
+            page_activation_delay_ms: ini.page_activation_delay_ms,
         }
     }
 }

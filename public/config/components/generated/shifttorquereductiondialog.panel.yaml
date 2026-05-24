@@ -11,12 +11,12 @@ children:
   - type: enum-field
     id: torquereductionenabled
     props:
-      label: Enable Shift Torque Reduction
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Enable Shift Torque Reduction
     bind:
       source: config
       field: torqueReductionEnabled
@@ -230,7 +230,6 @@ children:
       - type: enum-field
         id: launchactivatepin
         props:
-          label: Launch Button
           options:
           - value: 0
             label: NONE
@@ -396,6 +395,7 @@ children:
             label: Digital 4
           - value: 81
             label: Digital 6
+          label: Launch Button
         bind:
           source: config
           field: launchActivatePin
@@ -406,7 +406,6 @@ children:
       - type: enum-field
         id: clutchdownpin
         props:
-          label: Clutch Down
           options:
           - value: 0
             label: NONE
@@ -572,6 +571,7 @@ children:
             label: Digital 4
           - value: 81
             label: Digital 6
+          label: Clutch Down
         bind:
           source: config
           field: clutchDownPin
@@ -776,7 +776,6 @@ children:
       - type: enum-field
         id: clutchuppinmode
         props:
-          label: Clutch Up Mode
           options:
           - value: 0
             label: DEFAULT
@@ -792,6 +791,7 @@ children:
             label: INVERTED PULLUP
           - value: 6
             label: INVERTED PULLDOWN
+          label: Clutch Up Mode
         bind:
           source: config
           field: clutchUpPinMode

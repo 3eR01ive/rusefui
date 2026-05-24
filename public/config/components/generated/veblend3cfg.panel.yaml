@@ -10,12 +10,12 @@ children:
     variant: hint
 - type: text
   props:
-    text: is mixed in to the VE table. For example, a value of
     variant: hint
+    text: is mixed in to the VE table. For example, a value of
 - type: text
   props:
-    text: +10 in the table, with 50 as the current bias will result
     variant: hint
+    text: +10 in the table, with 50 as the current bias will result
 - type: text
   props:
     text: in +5.0% added to the VE. Note that this doesn't add 5% VE,
@@ -29,12 +29,12 @@ children:
     field: instead, it adds 5% to the current VE value, multiplying VE by 1.05.
 - type: text
   props:
-    text: The X axis of the bias table is controlled by the selected blend
     variant: hint
+    text: The X axis of the bias table is controlled by the selected blend
 - type: text
   props:
-    variant: hint
     text: parameter below.
+    variant: hint
 - type: enum-field
   id: veblends3-blendparameter
   props:
@@ -191,11 +191,10 @@ children:
   bind:
     source: config
     field: veBlends3_yAxisOverride
-- type: config-table
+- type: curve
   id: veblend3bias
   props:
-    yBins: veBlends3_blendValues
     yLabel: veBlends3_blendParameter)}
-    xBins: veBlends3_blendBins
-    variant: curve
+    yBins: veBlends3_blendValues
     title: VE blend 3 bias
+    xBins: veBlends3_blendBins

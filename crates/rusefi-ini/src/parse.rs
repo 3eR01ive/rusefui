@@ -16,6 +16,7 @@ enum Section {
     TunerStudio,
     Constants,
     OutputChannels,
+    ControllerCommands,
 }
 
 pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
@@ -28,8 +29,11 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
     let mut page_size = 64_000u32;
     let mut page_read_has_page_index = true;
     let mut page_chunk_write_has_page_index = true;
+    let mut inter_write_delay_ms = 10u16;
+    let mut page_activation_delay_ms = 500u16;
     let mut fields = Vec::new();
     let mut config_fields = HashMap::new();
+    let mut ts_commands = HashMap::new();
 
     for (line_no, raw) in text.lines().enumerate() {
         let line = raw.trim();
@@ -43,8 +47,18 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
                 "TunerStudio" => Section::TunerStudio,
                 "Constants" => Section::Constants,
                 "OutputChannels" => Section::OutputChannels,
+                "ControllerCommands" => Section::ControllerCommands,
                 _ => Section::None,
             };
+            continue;
+        }
+
+        if section == Section::ControllerCommands {
+            if let Some((name, value)) = parse_key_assignment(line) {
+                if let Some(unescaped) = parse_quoted_ini_string(value) {
+                    ts_commands.insert(name.to_string(), unescape_ini_bytes(&unescaped));
+                }
+            }
             continue;
         }
 
@@ -79,6 +93,14 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
             }
             if let Some(cmd) = parse_key_first_quoted(line, "pageChunkWrite") {
                 page_chunk_write_has_page_index = cmd.contains("%2i");
+                continue;
+            }
+            if let Some(ms) = parse_key_u16(line, "interWriteDelay") {
+                inter_write_delay_ms = ms;
+                continue;
+            }
+            if let Some(ms) = parse_key_u16(line, "pageActivationDelay") {
+                page_activation_delay_ms = ms;
                 continue;
             }
         }
@@ -134,11 +156,56 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
         page_size,
         page_read_has_page_index,
         page_chunk_write_has_page_index,
+        inter_write_delay_ms,
+        page_activation_delay_ms,
         output_channels,
         config_fields,
         tables,
         curves,
+        ts_commands,
     })
+}
+
+/// `Z\x00\x14\x00\x0d` → байты для CRC-запроса (без envelope).
+pub fn unescape_ini_bytes(s: &str) -> Vec<u8> {
+    let mut out = Vec::with_capacity(s.len());
+    let b = s.as_bytes();
+    let mut i = 0;
+    while i < b.len() {
+        if b[i] == b'\\' && i + 3 < b.len() && b[i + 1] == b'x' {
+            if let (Some(hi), Some(lo)) = (hex_nibble(b[i + 2]), hex_nibble(b[i + 3])) {
+                out.push((hi << 4) | lo);
+                i += 4;
+                continue;
+            }
+        }
+        out.push(b[i]);
+        i += 1;
+    }
+    out
+}
+
+fn hex_nibble(c: u8) -> Option<u8> {
+    match c {
+        b'0'..=b'9' => Some(c - b'0'),
+        b'a'..=b'f' => Some(c - b'a' + 10),
+        b'A'..=b'F' => Some(c - b'A' + 10),
+        _ => None,
+    }
+}
+
+fn parse_key_assignment(line: &str) -> Option<(&str, &str)> {
+    let (key, rest) = line.split_once('=')?;
+    Some((key.trim(), rest.trim()))
+}
+
+fn parse_quoted_ini_string(s: &str) -> Option<String> {
+    let t = s.trim();
+    if t.len() >= 2 && t.starts_with('"') && t.ends_with('"') {
+        Some(t[1..t.len() - 1].to_string())
+    } else {
+        None
+    }
 }
 
 struct ParsedIniField {
@@ -396,6 +463,33 @@ pageSize = 63900
 "#;
         let ini = parse_ini(text).unwrap();
         assert!(ini.page_chunk_write_has_page_index);
+    }
+
+    #[test]
+    fn controller_commands_unescape() {
+        let text = r#"
+[ControllerCommands]
+cmd_enable_self_stim = "Z\x00\x14\x00\x0d"
+cmd_disable_self_stim = "Z\x00\x14\x00\x0f"
+"#;
+        let ini = parse_ini(text).unwrap();
+        assert_eq!(
+            ini.ts_commands["cmd_enable_self_stim"],
+            vec![b'Z', 0x00, 0x14, 0x00, 0x0d]
+        );
+        assert_eq!(
+            ini.ts_commands["cmd_disable_self_stim"],
+            vec![b'Z', 0x00, 0x14, 0x00, 0x0f]
+        );
+    }
+
+    #[test]
+    fn proteus_fixture_has_self_stim_commands() {
+        let ini = IniFile::load_test_proteus().expect("fixture ini");
+        assert_eq!(
+            ini.ts_commands.get("cmd_enable_self_stim").map(Vec::as_slice),
+            Some(&[b'Z', 0x00, 0x14, 0x00, 0x0d][..])
+        );
     }
 
     #[test]

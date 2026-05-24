@@ -7,12 +7,12 @@ children:
 - type: enum-field
   id: enablestagedinjection
   props:
+    label: Enable
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: Enable
   bind:
     source: config
     field: enableStagedInjection
@@ -26,6 +26,7 @@ children:
 - type: enum-field
   id: secondaryinjectorcompensationmode
   props:
+    label: Secondary injector flow compensation mode
     options:
     - value: 0
       label: None
@@ -35,7 +36,6 @@ children:
       label: Sensed Rail Pressure
     - value: 3
       label: HPFP fuel mass compensation
-    label: Secondary injector flow compensation mode
   bind:
     source: config
     field: secondaryInjectorCompensationMode
@@ -51,8 +51,8 @@ children:
   props:
     variant: table
     zBins: injectorSecondary_battLagCorrTable
-    xBins: injectorSecondary_battLagCorrBattBins
-    xLabel: Battery
     title: Secondary injector dead time
     yBins: injectorSecondary_battLagCorrPressBins
+    xLabel: Battery
     yLabel: Pressure
+    xBins: injectorSecondary_battLagCorrBattBins

@@ -6,5 +6,5 @@ source:
 children:
 - type: text
   props:
-    text: Панель «fuel_computerIndicatorPanel» — нет определения в INI
     variant: hint
+    text: Панель «fuel_computerIndicatorPanel» — нет определения в INI

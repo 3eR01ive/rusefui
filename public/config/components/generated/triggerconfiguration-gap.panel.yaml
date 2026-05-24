@@ -11,12 +11,12 @@ children:
 - type: enum-field
   id: overridetriggergaps
   props:
-    label: Override well known trigger gaps
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: Override well known trigger gaps
   bind:
     source: config
     field: overrideTriggerGaps
@@ -142,12 +142,12 @@ children:
 - type: enum-field
   id: overridevvttriggergaps
   props:
-    label: Override well known VVT gaps
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: Override well known VVT gaps
   bind:
     source: config
     field: overrideVvtTriggerGaps
@@ -202,9 +202,9 @@ children:
     field: triggerVVTGapOverrideTo3
 - type: text
   props:
-    variant: hint
     text: 'VVT gap #4 from'
+    variant: hint
 - type: text
   props:
-    variant: hint
     text: 'VVT gap #4 to'
+    variant: hint

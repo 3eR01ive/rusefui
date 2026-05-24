@@ -10,8 +10,8 @@ children:
     text: The bias table controls how much of the blend table
 - type: text
   props:
-    variant: hint
     text: is mixed in to the closed loop boost table. For example, a value of
+    variant: hint
 - type: text
   props:
     variant: hint
@@ -22,8 +22,8 @@ children:
     variant: hint
 - type: text
   props:
-    variant: hint
     text: The X axis of the bias table is controlled by the selected blend
+    variant: hint
 - type: text
   props:
     text: parameter below.
@@ -109,7 +109,6 @@ children:
 - type: enum-field
   id: boostclosedloopblends2-yaxisoverride
   props:
-    label: Y axis override (set Zero for no override)
     options:
     - value: 0
       label: Zero
@@ -181,15 +180,15 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
+    label: Y axis override (set Zero for no override)
   bind:
     source: config
     field: boostClosedLoopBlends2_yAxisOverride
-- type: config-table
+- type: curve
   id: boostclosedloopblend2bias
   props:
     xBins: boostClosedLoopBlends2_blendBins
     yBins: boostClosedLoopBlends2_blendValues
     xLabel: param
-    title: Boost Closed loop blend 2 bias
-    variant: curve
     yLabel: bias
+    title: Boost Closed loop blend 2 bias

@@ -10,7 +10,9 @@ pub mod components;
 pub mod session;
 pub mod sources;
 
-pub use component::{ComponentAction, ComponentLogic, ComponentMeta, LogicComponentType};
+pub use component::{
+    ComponentAction, ComponentLogic, ComponentMeta, EcuSyncOnMount, LogicComponentType,
+};
 pub use runtime::ComponentRuntime;
 pub use session::EcuSession;
 pub use ini::{

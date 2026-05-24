@@ -1,0 +1,31 @@
+---
+description: rusEFI legacy INI — формат C/R на проводе (Proteus/560262154). Не ломать.
+alwaysApply: true
+---
+
+# rusEFI legacy config I/O (обязательно)
+
+INI `560262154.ini`: `pageReadCommand = "R%2o%2c"`, `pageChunkWrite = "C%2o%2c%v"`.
+
+## `R` — чтение
+
+- **Без page**: `R` + offset (LE) + count (LE). Флаг `page_read_has_page_index == false`.
+- Загрузка: `52 00 00 00 04`. Verify: `52 a0 01 04 00` (offset 416, count 4).
+- С page на legacy → offset=0, count=416 → `got 416 data bytes`.
+
+## `C` — запись
+
+- **Без page** на legacy: `C` + offset + count + data. Флаг `page_chunk_write_has_page_index == false`.
+- cylindersCount@416: `43 a0 01 04 00 09 00 00 00`.
+- С page на legacy → ECU отвечает OK, но в offset 416 остаётся старое значение (verify: sent 09, read 08).
+
+## Стимуляция
+
+- **Java console** (`RpmCommand`, `IoUtil`): `E` + `disable self_stimulation` → `E` + `rpm N` → `E` + `enable self_stimulation`. RPM **не** через `C`.
+- **TunerStudio**: поле `triggerSimulatorRpm` — legacy `C` без page; кнопка — сырой `Z` из INI (`cmd_enable_self_stim`). В rusefui для Start/Stop — консольный путь.
+- Перед сменой RPM при уже включённом стиме: disable, иначе `startSimulatedTriggerSignal()` не обновит RPM (`trigger_emulator_algo.cpp`).
+- Один `run_without_output_poll` + `with_link`, `interWriteDelay` между командами, без `O`.
+
+## Прочее
+
+- Burn (`B`) — отдельно, с page.

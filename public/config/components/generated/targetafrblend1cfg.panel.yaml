@@ -6,31 +6,32 @@ source:
 children:
 - type: text
   props:
+    variant: hint
     text: The bias table controls how much of the adder table
-    variant: hint
 - type: text
   props:
+    variant: hint
     text: is mixed in to the target AFR table. For example, a value of
-    variant: hint
 - type: text
   props:
-    text: +10 in the table, with 50 as the current bias will result
     variant: hint
+    text: +10 in the table, with 50 as the current bias will result
 - type: text
   props:
     text: in +5.0 added to target AFR %.
     variant: hint
 - type: text
   props:
-    variant: hint
     text: The X axis of the bias table is controlled by the selected blend
+    variant: hint
 - type: text
   props:
-    text: parameter below.
     variant: hint
+    text: parameter below.
 - type: enum-field
   id: targetafrblends1-blendparameter
   props:
+    label: Blend parameter
     options:
     - value: 0
       label: Zero
@@ -102,14 +103,12 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
-    label: Blend parameter
   bind:
     source: config
     field: targetAfrBlends1_blendParameter
 - type: enum-field
   id: targetafrblends1-yaxisoverride
   props:
-    label: Y axis override (set Zero for no override)
     options:
     - value: 0
       label: Zero
@@ -181,14 +180,14 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
+    label: Y axis override (set Zero for no override)
   bind:
     source: config
     field: targetAfrBlends1_yAxisOverride
-- type: config-table
+- type: curve
   id: targetafrblend1bias
   props:
-    variant: curve
-    xBins: targetAfrBlends1_blendBins
-    title: Target AFR adder 1 bias
     yBins: targetAfrBlends1_blendValues
+    title: Target AFR adder 1 bias
     yLabel: targetAfrBlends1_blendParameter)}
+    xBins: targetAfrBlends1_blendBins

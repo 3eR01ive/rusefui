@@ -52,12 +52,12 @@ children:
       field: clt_adcChannel
   - type: text
     props:
-      variant: hint
       text: Input three pairs of thermistor temperature and resistance.
+      variant: hint
   - type: text
     props:
-      variant: hint
       text: Typical temperatures are -40 deg C, 0 deg C and 100 deg C
+      variant: hint
   - type: scalar-field
     id: clt-tempc-1
     props:
@@ -103,12 +103,12 @@ children:
   - type: enum-field
     id: uselinearcltsensor
     props:
+      label: Linear characteristic
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: Linear characteristic
     bind:
       source: config
       field: useLinearCltSensor

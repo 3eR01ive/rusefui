@@ -42,12 +42,11 @@ children:
   bind:
     source: config
     field: hpfpPeakPos
-- type: config-table
+- type: curve
   id: hpfplobeprofilecurve
   props:
-    xLabel: '% pump volume'
-    yLabel: angle
-    yBins: hpfpLobeProfileAngle
-    title: HPFP Lobe Profile
     xBins: hpfpLobeProfileQuantityBins
-    variant: curve
+    yBins: hpfpLobeProfileAngle
+    xLabel: '% pump volume'
+    title: HPFP Lobe Profile
+    yLabel: angle

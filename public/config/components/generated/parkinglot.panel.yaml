@@ -7,7 +7,6 @@ children:
 - type: enum-field
   id: uimode
   props:
-    label: uiMode
     options:
     - value: 0
       label: Full
@@ -17,18 +16,19 @@ children:
       label: Tuning
     - value: 3
       label: INVALID
+    label: uiMode
   bind:
     source: config
     field: uiMode
 - type: enum-field
   id: can1listenmode
   props:
-    label: can1ListenMode
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: can1ListenMode
   bind:
     source: config
     field: can1ListenMode
@@ -47,12 +47,12 @@ children:
 - type: enum-field
   id: rethrowhardfault
   props:
+    label: rethrowHardFault
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: rethrowHardFault
   bind:
     source: config
     field: rethrowHardFault
@@ -75,12 +75,12 @@ children:
 - type: enum-field
   id: yesunderstandlocking
   props:
+    label: I understand ECU Locking
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
-    label: I understand ECU Locking
   bind:
     source: config
     field: yesUnderstandLocking
@@ -109,41 +109,41 @@ children:
     field: verboseQuad
 - type: text
   props:
-    variant: hint
     text: System hacks
+    variant: hint
 - type: enum-field
   id: vvtbooleanforveryspecialcases
   props:
-    label: vvtBooleanForVerySpecialCases
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: vvtBooleanForVerySpecialCases
   bind:
     source: config
     field: vvtBooleanForVerySpecialCases
 - type: enum-field
   id: watchoutforlineartime
   props:
+    label: watchOutForLinearTime
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: watchOutForLinearTime
   bind:
     source: config
     field: watchOutForLinearTime
 - type: enum-field
   id: verboseisotp
   props:
+    label: TS over CAN debug
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: TS over CAN debug
   bind:
     source: config
     field: verboseIsoTp
@@ -186,12 +186,12 @@ children:
 - type: enum-field
   id: alwaysinstantrpm
   props:
-    label: Always use instant RPM
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: Always use instant RPM
   bind:
     source: config
     field: alwaysInstantRpm
@@ -238,24 +238,24 @@ children:
 - type: enum-field
   id: usebiquadonauxspeedsensors
   props:
+    label: useBiQuadOnAuxSpeedSensors
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: useBiQuadOnAuxSpeedSensors
   bind:
     source: config
     field: useBiQuadOnAuxSpeedSensors
 - type: enum-field
   id: kickstartcranking
   props:
+    label: TODO KS mode 4569
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: TODO KS mode 4569
   bind:
     source: config
     field: kickStartCranking

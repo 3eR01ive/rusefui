@@ -6,8 +6,8 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: Put this sensor before any turbocharger/supercharger
+    variant: hint
 - type: text
   props:
     text: near the air filter.

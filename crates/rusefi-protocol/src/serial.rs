@@ -7,8 +7,7 @@ use serialport::{DataBits, FlowControl, Parity, StopBits};
 
 use crate::commands::{
     TS_BURN_COMMAND, TS_CHUNK_WRITE_COMMAND, TS_EXECUTE_COMMAND, TS_HELLO_COMMAND,
-    TS_IO_TEST_COMMAND, TS_OUTPUT_COMMAND, TS_READ_COMMAND, TS_RESPONSE_BURN_OK,
-    TS_RESPONSE_OK,
+    TS_IO_TEST_COMMAND, TS_OUTPUT_COMMAND, TS_READ_COMMAND, TS_RESPONSE_BURN_OK, TS_RESPONSE_OK,
 };
 use crate::error::ProtocolError;
 use crate::packet::{make_crc_request, parse_crc_response, CrcResponse};
@@ -19,6 +18,44 @@ const CONFIG_IO_TIMEOUT_MS: u64 = 3000;
 
 /// Макс. размер тела CRC-ответа (код + data), как в Java `IncomingDataBuffer`.
 const MAX_CRC_BODY_LEN: usize = 65535;
+
+/// Собрать тело CRC-запроса `R` (page опционален — см. INI `pageReadCommand`).
+pub fn pack_config_read_request(
+    page: u16,
+    offset: u16,
+    count: u16,
+    include_page_index: bool,
+) -> Vec<u8> {
+    let mut payload = Vec::with_capacity(if include_page_index { 7 } else { 5 });
+    payload.push(TS_READ_COMMAND);
+    if include_page_index {
+        payload.extend_from_slice(&page.to_le_bytes());
+    }
+    payload.extend_from_slice(&offset.to_le_bytes());
+    payload.extend_from_slice(&count.to_le_bytes());
+    payload
+}
+
+/// Собрать тело CRC-запроса `C` (page опционален — см. INI `pageChunkWrite`).
+pub fn pack_config_write_request(
+    page: u16,
+    offset: u16,
+    data: &[u8],
+    include_page_index: bool,
+) -> Vec<u8> {
+    let count = data.len() as u16;
+    let mut payload = Vec::with_capacity(
+        1 + usize::from(include_page_index) * 2 + 4 + data.len(),
+    );
+    payload.push(TS_CHUNK_WRITE_COMMAND);
+    if include_page_index {
+        payload.extend_from_slice(&page.to_le_bytes());
+    }
+    payload.extend_from_slice(&offset.to_le_bytes());
+    payload.extend_from_slice(&count.to_le_bytes());
+    payload.extend_from_slice(data);
+    payload
+}
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ConnectionInfo {
@@ -182,31 +219,23 @@ impl SerialLink {
         Ok(buf)
     }
 
-    /// `R` — чтение страницы конфигурации (offset/count — **LE**, как Java `ByteRange` + `swap16`).
+    /// `R` — чтение страницы конфигурации (offset/count — **LE**).
     ///
-    /// Если `read_has_page_index` (INI `pageReadCommand` = `"R%2i%2o%2c"`), на проводе
-    /// page+offset+count. Старый `"R%2o%2c"` (7 символов) — только offset+count.
-    ///
-    /// На legacy ECU нельзя слать `00 00` перед offset: прошивка возьмёт `data16[1]` как count
-    /// (например offset=416 → прочитает 416 байт с offset 0).
+    /// Формат кадра — из INI `pageReadCommand` (`page_read_has_page_index`).
+    /// На legacy (`R%2o%2c`) **все** `R` без page: и загрузка page, и verify после `C`.
+    /// Нельзя подмешивать page=0 перед offset — ECU прочитает offset=0, count=416 и т.п.
     pub fn read_config_chunk(
         &mut self,
         page: u16,
         offset: u16,
         count: u16,
-        read_has_page_index: bool,
+        include_page_index: bool,
     ) -> Result<Vec<u8>, ProtocolError> {
         if count == 0 {
             return Err(ProtocolError::InvalidPacket("config read count is zero".into()));
         }
 
-        let mut payload = Vec::with_capacity(if read_has_page_index { 7 } else { 5 });
-        payload.push(TS_READ_COMMAND);
-        if read_has_page_index {
-            payload.extend_from_slice(&page.to_le_bytes());
-        }
-        payload.extend_from_slice(&offset.to_le_bytes());
-        payload.extend_from_slice(&count.to_le_bytes());
+        let payload = pack_config_read_request(page, offset, count, include_page_index);
 
         const MAX_ATTEMPTS: usize = 3;
         let expected_packet_len = count as usize + 1;
@@ -247,13 +276,13 @@ impl SerialLink {
         page: u16,
         total_size: u32,
         chunk_size: u16,
-        read_has_page_index: bool,
+        page_read_has_page_index: bool,
     ) -> Result<Vec<u8>, ProtocolError> {
         self.read_config_page_full_with_progress(
             page,
             total_size,
             chunk_size,
-            read_has_page_index,
+            page_read_has_page_index,
             |_, _| {},
         )
     }
@@ -264,7 +293,7 @@ impl SerialLink {
         page: u16,
         total_size: u32,
         chunk_size: u16,
-        read_has_page_index: bool,
+        page_read_has_page_index: bool,
         mut on_progress: F,
     ) -> Result<Vec<u8>, ProtocolError>
     where
@@ -279,7 +308,8 @@ impl SerialLink {
         while offset < total_size {
             let remaining = total_size - offset;
             let count = remaining.min(chunk_size as u32) as u16;
-            let part = self.read_config_chunk(page, offset as u16, count, read_has_page_index)?;
+            let part =
+                self.read_config_chunk(page, offset as u16, count, page_read_has_page_index)?;
             if part.len() != count as usize {
                 return Err(ProtocolError::InvalidPacket(format!(
                     "short config chunk: got {} bytes, expected {count} (page={page} offset={offset})",
@@ -294,23 +324,18 @@ impl SerialLink {
         Ok(buf)
     }
 
-    /// `C` — запись фрагмента settings page. Как Java `WriteCommand.getWritePacket`:
-    /// всегда page+offset+count+data (page=0 для settings), даже если INI `pageChunkWrite = "C%2o%2c%v"`.
+    /// `C` — запись фрагмента settings page (`include_page_index` из INI `pageChunkWrite`).
     pub fn write_config_chunk(
         &mut self,
         page: u16,
         offset: u16,
         data: &[u8],
-        _chunk_write_has_page_index: bool,
+        include_page_index: bool,
     ) -> Result<(), ProtocolError> {
-        let count = u16::try_from(data.len())
-            .map_err(|_| ProtocolError::InvalidPacket("chunk too large".into()))?;
-        let mut payload = Vec::with_capacity(1 + 6 + data.len());
-        payload.push(TS_CHUNK_WRITE_COMMAND);
-        payload.extend_from_slice(&page.to_le_bytes());
-        payload.extend_from_slice(&offset.to_le_bytes());
-        payload.extend_from_slice(&count.to_le_bytes());
-        payload.extend_from_slice(data);
+        if data.len() > u16::MAX as usize {
+            return Err(ProtocolError::InvalidPacket("chunk too large".into()));
+        }
+        let payload = pack_config_write_request(page, offset, data, include_page_index);
 
         let response = self.send_request(&payload)?;
         if response.code != TS_RESPONSE_OK {
@@ -339,6 +364,18 @@ impl SerialLink {
         payload.push(TS_EXECUTE_COMMAND);
         payload.extend_from_slice(text.as_bytes());
         let response = self.send_request(&payload)?;
+        if response.code != TS_RESPONSE_OK {
+            return Err(ProtocolError::ErrorResponse(response.code));
+        }
+        Ok(())
+    }
+
+    /// Сырой CRC-payload из INI `[ControllerCommands]` (например `cmd_enable_self_stim`).
+    pub fn send_binary_command(&mut self, payload: &[u8]) -> Result<(), ProtocolError> {
+        if payload.is_empty() {
+            return Err(ProtocolError::InvalidPacket("empty command payload".into()));
+        }
+        let response = self.send_request(payload)?;
         if response.code != TS_RESPONSE_OK {
             return Err(ProtocolError::ErrorResponse(response.code));
         }
@@ -475,54 +512,45 @@ mod tests {
         assert_eq!(o_payload(0, 2044), [b'O', 0x00, 0x00, 0xfc, 0x07]);
     }
 
-    /// С page (`R%2i%2o%2c`).
+    /// С page (`R%2i%2o%2c`) — не legacy Proteus.
     #[test]
     fn read_config_request_wire_format_with_page() {
-        fn r_payload(page: u16, offset: u16, count: u16) -> [u8; 7] {
-            [
-                TS_READ_COMMAND,
-                page.to_le_bytes()[0],
-                page.to_le_bytes()[1],
-                offset.to_le_bytes()[0],
-                offset.to_le_bytes()[1],
-                count.to_le_bytes()[0],
-                count.to_le_bytes()[1],
-            ]
-        }
-        assert_eq!(r_payload(0, 0, 1024), [b'R', 0, 0, 0, 0, 0, 4]);
-        assert_eq!(r_payload(0, 1024, 1024), [b'R', 0, 0, 0, 4, 0, 4]);
+        assert_eq!(
+            pack_config_read_request(0, 0, 1024, true),
+            vec![b'R', 0, 0, 0, 0, 0, 4]
+        );
     }
 
-    /// Без page (`R%2o%2c`) — как INI `560262154.ini` и Java `ByteRange.packOffsetAndSize`.
+    /// Без page (`R%2o%2c`) — загрузка page и verify после `C`, INI `560262154.ini`.
     #[test]
     fn read_config_request_wire_format_legacy_no_page() {
-        fn r_payload(offset: u16, count: u16) -> [u8; 5] {
-            [
-                TS_READ_COMMAND,
-                offset.to_le_bytes()[0],
-                offset.to_le_bytes()[1],
-                count.to_le_bytes()[0],
-                count.to_le_bytes()[1],
-            ]
-        }
-        assert_eq!(r_payload(0, 1024), [b'R', 0, 0, 0, 4]);
+        assert_eq!(
+            pack_config_read_request(0, 0, 1024, false),
+            vec![b'R', 0, 0, 0, 4]
+        );
+        assert_eq!(
+            pack_config_read_request(0, 416, 4, false),
+            vec![b'R', 0xa0, 0x01, 0x04, 0x00]
+        );
+        assert_eq!(
+            pack_config_read_request(0, 1024, 1024, false),
+            vec![b'R', 0, 4, 0, 4]
+        );
     }
 
-    /// Как Java `WriteCommand` / `ByteRange.packPageOffsetAndSize` — page=0 всегда в теле `C`.
     #[test]
-    fn write_config_request_always_includes_page_zero() {
-        fn c_payload(page: u16, offset: u16, data: &[u8]) -> Vec<u8> {
-            let count = data.len() as u16;
-            let mut payload = vec![TS_CHUNK_WRITE_COMMAND];
-            payload.extend_from_slice(&page.to_le_bytes());
-            payload.extend_from_slice(&offset.to_le_bytes());
-            payload.extend_from_slice(&count.to_le_bytes());
-            payload.extend_from_slice(data);
-            payload
-        }
+    fn write_config_request_wire_format_with_page() {
         assert_eq!(
-            c_payload(0, 412, &[0xdc, 0x05]),
+            pack_config_write_request(0, 412, &[0xdc, 0x05], true),
             vec![b'C', 0, 0, 0x9c, 0x01, 0x02, 0x00, 0xdc, 0x05]
+        );
+    }
+
+    #[test]
+    fn write_config_request_wire_format_legacy_no_page() {
+        assert_eq!(
+            pack_config_write_request(0, 416, &[0x09, 0x00, 0x00, 0x00], false),
+            vec![b'C', 0xa0, 0x01, 0x04, 0x00, 0x09, 0x00, 0x00, 0x00]
         );
     }
 

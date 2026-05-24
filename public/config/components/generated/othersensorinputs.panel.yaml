@@ -373,6 +373,7 @@ children:
 - type: enum-field
   id: clutchuppinmode
   props:
+    label: Clutch Up mode
     options:
     - value: 0
       label: DEFAULT
@@ -388,7 +389,6 @@ children:
       label: INVERTED PULLUP
     - value: 6
       label: INVERTED PULLDOWN
-    label: Clutch Up mode
   bind:
     source: config
     field: clutchUpPinMode
@@ -567,6 +567,7 @@ children:
 - type: enum-field
   id: brakepedalpinmode
   props:
+    label: Brake Pedal Mode
     options:
     - value: 0
       label: DEFAULT
@@ -582,14 +583,12 @@ children:
       label: INVERTED PULLUP
     - value: 6
       label: INVERTED PULLDOWN
-    label: Brake Pedal Mode
   bind:
     source: config
     field: brakePedalPinMode
 - type: enum-field
   id: turbospeedsensorinputpin
   props:
-    label: Turbo Speed Sensor
     options:
     - value: 0
       label: NONE
@@ -755,6 +754,7 @@ children:
       label: Digital 4
     - value: 81
       label: Digital 6
+    label: Turbo Speed Sensor
   bind:
     source: config
     field: turboSpeedSensorInputPin

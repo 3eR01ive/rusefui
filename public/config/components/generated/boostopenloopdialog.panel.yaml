@@ -11,7 +11,6 @@ children:
   - type: enum-field
     id: boostopenloopyaxis
     props:
-      label: Y Axis
       options:
       - value: 0
         label: Zero
@@ -83,15 +82,16 @@ children:
         label: Oil temp
       - value: 34
         label: Fuel Pressure
+      label: Y Axis
     bind:
       source: config
       field: boostOpenLoopYAxis
 - type: config-table
   id: boosttabletbl
   props:
-    xBins: boostRpmBins
-    zBins: boostTableOpenLoop
     yBins: boostOpenLoopLoadBins
     title: Boost control duty cycle (open loop)
-    variant: table
+    xBins: boostRpmBins
+    zBins: boostTableOpenLoop
     xLabel: RPMValue
+    variant: table

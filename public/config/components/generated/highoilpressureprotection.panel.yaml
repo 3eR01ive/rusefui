@@ -11,12 +11,11 @@ children:
   bind:
     source: config
     field: maxOilPressureTimeout
-- type: config-table
+- type: curve
   id: maximumoilpressure
   props:
-    title: Maximum oil pressure
-    xBins: maximumOilPressureBins
-    yLabel: max pressure
-    variant: curve
-    xLabel: RPM
     yBins: maximumOilPressureValues
+    title: Maximum oil pressure
+    yLabel: max pressure
+    xLabel: RPM
+    xBins: maximumOilPressureBins

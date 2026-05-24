@@ -27,7 +27,6 @@ children:
   - type: enum-field
     id: fuelalgorithm
     props:
-      label: Fuel strategy
       options:
       - value: 0
         label: Speed Density
@@ -37,6 +36,7 @@ children:
         label: Alpha-N
       - value: 3
         label: Lua
+      label: Fuel strategy
     bind:
       source: config
       field: fuelAlgorithm
@@ -44,8 +44,8 @@ children:
   id: vetabletbl
   props:
     xBins: veRpmBins
-    variant: table
+    title: VE Table
     zBins: veTable
     yBins: veLoadBins
+    variant: table
     xLabel: RPM
-    title: VE Table

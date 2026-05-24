@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use crate::component::{requires_rust_logic, ComponentLogic, LogicComponentType};
+use crate::component::{requires_rust_logic, ComponentLogic, EcuSyncOnMount, LogicComponentType};
 use crate::components::connection::ConnectionLogic;
 use crate::components::simulation::SimulationLogic;
 use crate::session::EcuSession;
@@ -85,5 +85,12 @@ impl ComponentRuntime {
             LogicComponentType::Connection.as_str(),
             LogicComponentType::Simulation.as_str(),
         ]
+    }
+
+    pub fn ecu_sync_on_mount(&self, instance_id: &str) -> EcuSyncOnMount {
+        self.instances
+            .get(instance_id)
+            .map(|l| l.ecu_sync_on_mount())
+            .unwrap_or(EcuSyncOnMount::Full)
     }
 }

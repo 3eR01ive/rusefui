@@ -25,12 +25,11 @@ children:
         variant: hint
     - type: text
       props:
-        text: rusEFI handles firing order
         variant: hint
+        text: rusEFI handles firing order
     - type: enum-field
       id: injectionpins1
       props:
-        label: Injection Output 1
         options:
         - value: 0
           label: NONE
@@ -258,12 +257,14 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        label: Injection Output 1
       bind:
         source: config
         field: injectionPins1
     - type: enum-field
       id: injectionpins2
       props:
+        label: Injection Output 2
         options:
         - value: 0
           label: NONE
@@ -491,14 +492,12 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
-        label: Injection Output 2
       bind:
         source: config
         field: injectionPins2
     - type: enum-field
       id: injectionpins3
       props:
-        label: Injection Output 3
         options:
         - value: 0
           label: NONE
@@ -726,12 +725,14 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        label: Injection Output 3
       bind:
         source: config
         field: injectionPins3
     - type: enum-field
       id: injectionpins4
       props:
+        label: Injection Output 4
         options:
         - value: 0
           label: NONE
@@ -959,7 +960,6 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
-        label: Injection Output 4
       bind:
         source: config
         field: injectionPins4
@@ -2136,6 +2136,7 @@ children:
     - type: enum-field
       id: injectionpins10
       props:
+        label: 'Injection Output 10 '
         options:
         - value: 0
           label: NONE
@@ -2363,7 +2364,6 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
-        label: 'Injection Output 10 '
       bind:
         source: config
         field: injectionPins10
@@ -2845,53 +2845,53 @@ children:
     children:
     - type: text
       props:
+        variant: hint
         text: 'Кнопка: Injector #1 (cmd_test_inj1)'
-        variant: hint
     - type: text
       props:
+        variant: hint
         text: 'Кнопка: Injector #2 (cmd_test_inj2)'
-        variant: hint
     - type: text
       props:
-        text: 'Кнопка: Injector #3 (cmd_test_inj3)'
         variant: hint
+        text: 'Кнопка: Injector #3 (cmd_test_inj3)'
     - type: text
       props:
         text: 'Кнопка: Injector #4 (cmd_test_inj4)'
         variant: hint
     - type: text
       props:
-        text: 'Кнопка: Injector #5 (cmd_test_inj5)'
         variant: hint
+        text: 'Кнопка: Injector #5 (cmd_test_inj5)'
     - type: text
       props:
         variant: hint
         text: 'Кнопка: Injector #6 (cmd_test_inj6)'
     - type: text
       props:
-        text: 'Кнопка: Injector #7 (cmd_test_inj7)'
         variant: hint
+        text: 'Кнопка: Injector #7 (cmd_test_inj7)'
     - type: text
       props:
-        text: 'Кнопка: Injector #8 (cmd_test_inj8)'
         variant: hint
+        text: 'Кнопка: Injector #8 (cmd_test_inj8)'
     - type: text
       props:
         text: 'Кнопка: Injector #9 (cmd_test_inj9)'
         variant: hint
     - type: text
       props:
-        text: 'Кнопка: Injector #10 (cmd_test_inj10)'
         variant: hint
+        text: 'Кнопка: Injector #10 (cmd_test_inj10)'
     - type: text
       props:
-        text: 'Кнопка: Injector #11 (cmd_test_inj11)'
         variant: hint
+        text: 'Кнопка: Injector #11 (cmd_test_inj11)'
     - type: text
       props:
         text: 'Кнопка: Injector #12 (cmd_test_inj12)'
         variant: hint
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Abort test (cmd_test_cancel)'
+        variant: hint

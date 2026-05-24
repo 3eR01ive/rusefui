@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useDataContext } from "../../core/data-context";
+import { useOutputChannels } from "../../composables/useOutputChannels";
 import { useRustComponent } from "../../composables/useRustComponent";
 
 const props = defineProps<{
@@ -14,6 +15,9 @@ const props = defineProps<{
 
 const { state, dispatch, error } = useRustComponent(props.instance, props.path);
 const dataCtx = useDataContext();
+const { getField } = useOutputChannels();
+
+const ecuRpm = computed(() => getField("RPMValue"));
 
 const rpm = computed({
   get: () => Number(state.value.rpm ?? 1500),
@@ -93,7 +97,10 @@ function stop() {
 
     <div v-if="active" class="status-box active">
       <p class="status-label">Стимуляция активна</p>
-      <p class="status-value">{{ rpm }} RPM</p>
+      <p class="status-value">Задано {{ rpm }} RPM</p>
+      <p v-if="ecuRpm != null" class="status-ecu">
+        RPMValue с ECU: <strong>{{ Math.round(ecuRpm) }}</strong>
+      </p>
     </div>
   </div>
 </template>
@@ -211,5 +218,11 @@ function stop() {
   margin: 0;
   font-size: 1.25rem;
   font-weight: 600;
+}
+
+.status-ecu {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
 }
 </style>

@@ -155,7 +155,6 @@ children:
 - type: enum-field
   id: auxspeedsensorinputpin1
   props:
-    label: Aux Speed Input 1
     options:
     - value: 0
       label: NONE
@@ -321,13 +320,13 @@ children:
       label: Digital 4
     - value: 81
       label: Digital 6
+    label: Aux Speed Input 1
   bind:
     source: config
     field: auxSpeedSensorInputPin1
 - type: enum-field
   id: auxspeedsensorinputpin2
   props:
-    label: Aux Speed Input 2
     options:
     - value: 0
       label: NONE
@@ -493,6 +492,7 @@ children:
       label: Digital 4
     - value: 81
       label: Digital 6
+    label: Aux Speed Input 2
   bind:
     source: config
     field: auxSpeedSensorInputPin2
@@ -511,12 +511,12 @@ children:
 - type: enum-field
   id: usevssassecondwheelspeed
   props:
+    label: Use VSS As Second Wheel Speed
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: Use VSS As Second Wheel Speed
   bind:
     source: config
     field: useVssAsSecondWheelSpeed

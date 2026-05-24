@@ -113,6 +113,7 @@ children:
     - type: enum-field
       id: fuelhighpressuresentinput
       props:
+        label: Sensor SENT input
         options:
         - value: 0
           label: None
@@ -130,7 +131,6 @@ children:
           label: SENT input 6
         - value: 7
           label: SENT input 7
-        label: Sensor SENT input
       bind:
         source: config
         field: FuelHighPressureSentInput

@@ -7,7 +7,6 @@ children:
 - type: enum-field
   id: uimode
   props:
-    label: Tuning View
     options:
     - value: 0
       label: Full
@@ -17,6 +16,7 @@ children:
       label: Tuning
     - value: 3
       label: INVALID
+    label: Tuning View
   bind:
     source: config
     field: uiMode
@@ -41,6 +41,7 @@ children:
   - type: enum-field
     id: firingorder
     props:
+      label: Firing order
       options:
       - value: 0
         label: One Cylinder
@@ -298,7 +299,6 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: Firing order
     bind:
       source: config
       field: firingOrder
@@ -344,8 +344,8 @@ children:
   children:
   - type: text
     props:
-      text: https://rusefi.com/s/fuel
       variant: hint
+      text: https://rusefi.com/s/fuel
   - type: enum-field
     id: fuelalgorithm
     props:

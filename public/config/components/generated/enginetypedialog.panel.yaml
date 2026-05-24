@@ -6,8 +6,8 @@ source:
 children:
 - type: text
   props:
-    text: These buttons send a command to rusEFI controller to apply preset values
     variant: hint
+    text: These buttons send a command to rusEFI controller to apply preset values
 - type: text
   props:
     variant: hint

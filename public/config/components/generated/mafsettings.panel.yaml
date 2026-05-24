@@ -6,8 +6,8 @@ source:
 children:
 - type: text
   props:
-    text: <html><a href=https://github.com/rusefi/rusefi/wiki/MAF>https://github.com/rusefi/rusefi/wiki/MAF</a></html>
     variant: hint
+    text: <html><a href=https://github.com/rusefi/rusefi/wiki/MAF>https://github.com/rusefi/rusefi/wiki/MAF</a></html>
 - type: enum-field
   id: mafadcchannel
   props:

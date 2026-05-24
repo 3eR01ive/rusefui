@@ -116,4 +116,13 @@ impl EcuSession {
             .ok_or_else(|| "ECU не подключена".to_string())?;
         f(link).map_err(|e| e.to_string())
     }
+
+    /// Останавливает poll `O`, выполняет `f`, не перезапускает poll (вызовите `output().start` снаружи).
+    pub fn run_without_output_poll<F, R>(&self, f: F) -> Result<R, String>
+    where
+        F: FnOnce(&Self) -> Result<R, String>,
+    {
+        self.output().stop();
+        f(self)
+    }
 }

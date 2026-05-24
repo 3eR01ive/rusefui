@@ -14,8 +14,8 @@ children:
 - type: config-table
   id: scripttable1tbl
   props:
-    variant: table
-    xBins: scriptTable1RpmBins
     yBins: scriptTable1LoadBins
-    title: 'Script Table #1'
     zBins: scriptTable1
+    xBins: scriptTable1RpmBins
+    title: 'Script Table #1'
+    variant: table

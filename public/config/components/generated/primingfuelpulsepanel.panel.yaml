@@ -11,12 +11,11 @@ children:
   bind:
     source: config
     field: primingDelay
-- type: config-table
+- type: curve
   id: primingpulse
   props:
     xLabel: Coolant
-    yLabel: Prime Pulse
+    xBins: primeBins
     yBins: primeValues
     title: Priming pulse fuel mass
-    variant: curve
-    xBins: primeBins
+    yLabel: Prime Pulse

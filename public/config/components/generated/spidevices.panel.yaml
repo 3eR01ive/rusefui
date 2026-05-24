@@ -19,7 +19,6 @@ children:
 - type: enum-field
   id: accelerometerspidevice
   props:
-    label: Accelerometer SPI
     options:
     - value: 0
       label: Off
@@ -35,6 +34,7 @@ children:
       label: SPI5
     - value: 6
       label: SPI6
+    label: Accelerometer SPI
   bind:
     source: config
     field: accelerometerSpiDevice

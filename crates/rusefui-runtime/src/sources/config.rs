@@ -5,7 +5,7 @@ use std::thread::{self, sleep, JoinHandle};
 use std::time::Duration;
 
 use rusefi_ini::{
-    decode_array, decode_config_at, decode_config_fields, encode_array_element,
+    decode_array, decode_config_fields, encode_array_element,
     encode_config_value, ArrayShape, ConfigFieldKind,
 };
 use rusefi_protocol::{ProtocolError, TS_PAGE_SETTINGS};
@@ -17,8 +17,8 @@ use crate::sources::output_channels::IniContext;
 /// INI `pageActivationDelay` + время async-записи flash после burn.
 const BURN_SETTLE_MS: u64 = 1500;
 const BURN_RETRIES: usize = 3;
-/// INI `interWriteDelay`.
-const INTER_WRITE_DELAY_MS: u64 = 15;
+/// INI `interWriteDelay` (типично 10 ms).
+const INTER_WRITE_DELAY_MS: u64 = 10;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -97,6 +97,19 @@ impl ConfigSource {
 
     pub fn snapshot(&self) -> ConfigSnapshot {
         self.snapshot.read().unwrap().clone()
+    }
+
+    /// Сырой образ page 0 (для encode точечных записей, напр. triggerSimulatorRpm).
+    pub fn page_raw(&self) -> Vec<u8> {
+        self.raw.lock().unwrap().clone()
+    }
+
+    pub fn patch_page_raw(&self, offset: usize, bytes: &[u8]) {
+        let mut raw = self.raw.lock().unwrap();
+        if offset + bytes.len() > raw.len() {
+            raw.resize(offset + bytes.len(), 0);
+        }
+        raw[offset..offset + bytes.len()].copy_from_slice(bytes);
     }
 
     pub fn list_fields(&self) -> Vec<ConfigFieldInfo> {
@@ -194,16 +207,14 @@ impl ConfigSource {
             return Err(format!("offset {name}[{index}] exceeds protocol limit"));
         }
 
-        session.with_link(|link| {
-            link.write_config_chunk(
-                TS_PAGE_SETTINGS,
-                offset as u16,
-                &encoded,
-                true,
-            )?;
-            sleep(Duration::from_millis(INTER_WRITE_DELAY_MS));
-            Ok(())
-        })?;
+        self.write_verified_chunk(
+            session,
+            ini.page_read_has_page_index,
+            ini.page_chunk_write_has_page_index,
+            offset as u16,
+            &encoded,
+            &format!("{name}[{index}]"),
+        )?;
 
         {
             let mut raw = self.raw.lock().unwrap();
@@ -345,7 +356,7 @@ impl ConfigSource {
         *self.thread.lock().unwrap() = Some(handle);
     }
 
-    /// Запись скаляра в RAM ECU (`C`) без verify-read и burn — как правка поля в TunerStudio до Save.
+    /// Запись скаляра в RAM ECU (`C`) + verify-read; flash — отдельно [`Self::burn_to_flash`].
     pub fn write_scalar(
         &self,
         session: &EcuSession,
@@ -366,16 +377,14 @@ impl ConfigSource {
             return Err(format!("offset {name} exceeds protocol limit"));
         }
 
-        session.with_link(|link| {
-            link.write_config_chunk(
-                TS_PAGE_SETTINGS,
-                offset as u16,
-                &encoded,
-                true,
-            )?;
-            sleep(Duration::from_millis(INTER_WRITE_DELAY_MS));
-            Ok(())
-        })?;
+        self.write_verified_chunk(
+            session,
+            ini.page_read_has_page_index,
+            ini.page_chunk_write_has_page_index,
+            offset as u16,
+            &encoded,
+            name,
+        )?;
 
         {
             let mut raw = self.raw.lock().unwrap();
@@ -389,111 +398,149 @@ impl ConfigSource {
         {
             let mut snap = self.snapshot.write().unwrap();
             snap.values.insert(name.to_string(), value);
+            snap.last_error = None;
         }
 
         Ok(())
     }
 
+    /// `C` + verify + `B` (как было при сохранении поля целиком).
     pub fn set_scalar(
         &self,
         session: &EcuSession,
         name: &str,
         value: f64,
     ) -> Result<(), String> {
-        let ini = self.ini.lock().unwrap().clone();
-        let field = ini
-            .config_fields
-            .get(name)
-            .ok_or_else(|| format!("unknown config field: {name}"))?;
-        let offset = config_field_offset(field);
-        let current = self.raw.lock().unwrap().clone();
-        let encoded = encode_config_value(field, value, &current)
-            .ok_or_else(|| format!("cannot encode value for {name}"))?;
+        self.write_scalar(session, name, value)?;
+        self.burn_to_flash(session)
+    }
 
-        if offset > u16::MAX as u32 {
-            return Err(format!("offset {name} exceeds protocol limit"));
+    /// Commit settings page 0 во flash (`B`), затем перечитать page с ECU.
+    pub fn burn_to_flash(&self, session: &EcuSession) -> Result<(), String> {
+        if !session.is_connected() {
+            return Err("ECU не подключена".into());
         }
 
-        let chunk_count = u16::try_from(encoded.len())
-            .map_err(|_| format!("encoded value for {name} too large"))?;
-
-        let read_has_page_index = ini.page_read_has_page_index;
-
-        let actual = session.with_link(|link| {
-            link.write_config_chunk(
-                TS_PAGE_SETTINGS,
-                offset as u16,
-                &encoded,
-                true,
-            )?;
-            sleep(Duration::from_millis(INTER_WRITE_DELAY_MS));
-
-            let read_back = link.read_config_chunk(
-                TS_PAGE_SETTINGS,
-                offset as u16,
-                chunk_count,
-                read_has_page_index,
-            )?;
-
-            let off = offset as usize;
-            let mut page = self.raw.lock().unwrap().clone();
-            if off + read_back.len() > page.len() {
-                page.resize(off + read_back.len(), 0);
-            }
-            page[off..off + read_back.len()].copy_from_slice(&read_back);
-
-            let actual = decode_config_at(field, &page).ok_or_else(|| {
-                ProtocolError::InvalidPacket(format!(
-                    "config write verify decode failed at offset {} for {name}",
-                    offset
-                ))
-            })?;
-
-            if (actual - value).abs() > 1e-4 {
-                return Err(ProtocolError::InvalidPacket(format!(
-                    "config write verify failed for {name}: expected {value}, ECU has {actual} (offset {})",
-                    offset
-                )));
-            }
-
-            let mut last_err = None;
-            for attempt in 0..BURN_RETRIES {
-                match link.burn_config_page(TS_PAGE_SETTINGS) {
-                    Ok(()) => {
-                        last_err = None;
-                        break;
-                    }
-                    Err(e) => {
-                        last_err = Some(e);
-                        if attempt + 1 < BURN_RETRIES {
-                            sleep(Duration::from_millis(15));
+        session.run_without_output_poll(|session| {
+            session.with_link(|link| {
+                let mut last_err = None;
+                for attempt in 0..BURN_RETRIES {
+                    match link.burn_config_page(TS_PAGE_SETTINGS) {
+                        Ok(()) => {
+                            last_err = None;
+                            break;
+                        }
+                        Err(e) => {
+                            last_err = Some(e);
+                            if attempt + 1 < BURN_RETRIES {
+                                sleep(Duration::from_millis(15));
+                            }
                         }
                     }
                 }
-            }
-            if let Some(e) = last_err {
-                return Err(e);
-            }
-
-            sleep(Duration::from_millis(BURN_SETTLE_MS));
-
-            Ok(actual)
+                if let Some(e) = last_err {
+                    return Err(e);
+                }
+                sleep(Duration::from_millis(BURN_SETTLE_MS));
+                Ok(())
+            })
         })?;
 
-        {
-            let mut raw = self.raw.lock().unwrap();
-            let off = offset as usize;
-            if off + encoded.len() <= raw.len() {
-                raw[off..off + encoded.len()].copy_from_slice(&encoded);
-            }
+        self.reload_page_from_ecu(session)?;
+
+        let mut snap = self.snapshot.write().unwrap();
+        snap.last_error = None;
+        Ok(())
+    }
+
+    /// Перечитать page 0 с ECU в кэш (после burn / переподключения).
+    pub fn reload_page_from_ecu(&self, session: &EcuSession) -> Result<(), String> {
+        if !session.is_connected() {
+            return Err("ECU не подключена".into());
         }
 
-        {
-            let mut snap = self.snapshot.write().unwrap();
-            snap.values.insert(name.to_string(), actual);
-        }
+        let ini = self.ini.lock().unwrap().clone();
+        let config_fields = ini.config_fields.clone();
+        let page_size = ini.page_size;
+        let chunk_size = ini.blocking_factor;
+        let read_has_page_index = ini.page_read_has_page_index;
+
+        let bytes = session.run_without_output_poll(|session| {
+            session.with_link(|link| {
+                link.read_config_page_full(
+                    TS_PAGE_SETTINGS,
+                    page_size,
+                    chunk_size,
+                    read_has_page_index,
+                )
+            })
+        })?;
+
+        let values = decode_config_fields(&config_fields, &bytes);
+        *self.raw.lock().unwrap() = bytes.clone();
+
+        let mut snap = self.snapshot.write().unwrap();
+        snap.connected = true;
+        snap.loaded = true;
+        snap.loading = false;
+        snap.progress = 1.0;
+        snap.bytes_loaded = page_size;
+        snap.bytes_total = page_size;
+        snap.raw_len = bytes.len();
+        snap.values = values;
+        snap.field_count = config_fields.len();
+        snap.last_error = None;
 
         Ok(())
+    }
+
+    fn write_verified_chunk(
+        &self,
+        session: &EcuSession,
+        page_read_has_page_index: bool,
+        page_chunk_write_has_page_index: bool,
+        offset: u16,
+        encoded: &[u8],
+        field_label: &str,
+    ) -> Result<(), String> {
+        let count = u16::try_from(encoded.len())
+            .map_err(|_| format!("encoded chunk too large for {field_label}"))?;
+
+        session.run_without_output_poll(|session| {
+            session.with_link(|link| {
+                link.write_config_chunk(
+                    TS_PAGE_SETTINGS,
+                    offset,
+                    encoded,
+                    page_chunk_write_has_page_index,
+                )?;
+                sleep(Duration::from_millis(INTER_WRITE_DELAY_MS));
+
+                let read_back = link.read_config_chunk(
+                    TS_PAGE_SETTINGS,
+                    offset,
+                    count,
+                    page_read_has_page_index,
+                )?;
+
+                if read_back.as_slice() != encoded {
+                    let sent = encoded
+                        .iter()
+                        .map(|b| format!("{b:02x}"))
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    let got = read_back
+                        .iter()
+                        .map(|b| format!("{b:02x}"))
+                        .collect::<Vec<_>>()
+                        .join(" ");
+                    return Err(ProtocolError::InvalidPacket(format!(
+                        "config write verify failed for {field_label} at offset {offset}: sent [{sent}] read [{got}]"
+                    )));
+                }
+                Ok(())
+            })
+        })
     }
 }
 

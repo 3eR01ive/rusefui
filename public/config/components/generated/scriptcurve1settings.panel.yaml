@@ -11,12 +11,11 @@ children:
   bind:
     source: config
     field: scriptCurveName1
-- type: config-table
+- type: curve
   id: scriptcurve1
   props:
-    yBins: scriptCurve1
-    yLabel: Y
-    xBins: scriptCurve1Bins
-    variant: curve
     title: 'Script Curve #1'
     xLabel: X
+    yLabel: Y
+    xBins: scriptCurve1Bins
+    yBins: scriptCurve1

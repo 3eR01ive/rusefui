@@ -6,8 +6,8 @@ source:
 children:
 - type: text
   props:
-    text: Also known as Rotational Idle
     variant: hint
+    text: Also known as Rotational Idle
 - type: enum-field
   id: antilagenabled
   props:
@@ -39,6 +39,7 @@ children:
 - type: enum-field
   id: alsactivatepin
   props:
+    label: Switch Input
     options:
     - value: 0
       label: NONE
@@ -204,7 +205,6 @@ children:
       label: Digital 4
     - value: 81
       label: Digital 6
-    label: Switch Input
   bind:
     source: config
     field: ALSActivatePin
@@ -291,22 +291,22 @@ children:
   props:
     title: Fuel adjustment
     variant: table
-    yBins: alsFuelAdjustmentLoadBins
     xBins: alsFuelAdjustmentrpmBins
+    yBins: alsFuelAdjustmentLoadBins
     zBins: ALSFuelAdjustment
 - type: config-table
   id: ignretardtableals
   props:
+    title: Ignition adjustment
     xBins: alsIgnRetardrpmBins
     yBins: alsIgnRetardLoadBins
-    title: Ignition adjustment
     zBins: ALSTimingRetardTable
     variant: table
 - type: config-table
   id: ignskiptableals
   props:
-    zBins: ALSIgnSkipTable
     variant: table
-    title: Ignition Skip
     yBins: alsIgnSkipLoadBins
+    zBins: ALSIgnSkipTable
     xBins: alsIgnSkiprpmBins
+    title: Ignition Skip

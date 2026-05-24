@@ -9,6 +9,7 @@ import SimulationPanel from "./builtins/SimulationPanel.vue";
 import ScalarField from "./builtins/ScalarField.vue";
 import EnumField from "./builtins/EnumField.vue";
 import ConfigTable from "./builtins/ConfigTable.vue";
+import ConfigCurve from "./builtins/ConfigCurve.vue";
 import IniPanelsBrowser from "./builtins/IniPanelsBrowser.vue";
 import OutputChart from "./builtins/OutputChart.vue";
 import OutputValue from "./builtins/OutputValue.vue";
@@ -127,9 +128,20 @@ export function registerBuiltinComponents(): void {
       label: "Config table",
       mode: "edit",
       isContainer: false,
-      description: "Таблица/кривая калибровки из INI",
+      description: "2D-таблица калибровки из INI",
     },
     ConfigTable,
+  );
+
+  registerComponent(
+    {
+      type: "curve",
+      label: "Config curve",
+      mode: "edit",
+      isContainer: false,
+      description: "1D-кривая калибровки из INI (xBins + yBins)",
+    },
+    ConfigCurve,
   );
 
   registerComponent(

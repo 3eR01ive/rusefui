@@ -6,28 +6,28 @@ source:
 children:
 - type: text
   props:
-    text: The bias table controls how much of the blend table
     variant: hint
+    text: The bias table controls how much of the blend table
 - type: text
   props:
-    text: is mixed in to the base ignition table. For example, a value of
     variant: hint
+    text: is mixed in to the base ignition table. For example, a value of
 - type: text
   props:
     text: +10 in the table, with 50 as the current bias will result
     variant: hint
 - type: text
   props:
-    variant: hint
     text: in 5.0 degrees of ignition timing added.
+    variant: hint
 - type: text
   props:
-    variant: hint
     text: The X axis of the bias table is controlled by the selected blend
+    variant: hint
 - type: text
   props:
-    text: parameter below.
     variant: hint
+    text: parameter below.
 - type: enum-field
   id: ignblends1-blendparameter
   props:
@@ -184,12 +184,11 @@ children:
   bind:
     source: config
     field: ignBlends1_yAxisOverride
-- type: config-table
+- type: curve
   id: ignadder1bias
   props:
-    yBins: ignBlends1_blendValues
-    xLabel: param
-    title: Ignition adder 1 bias
-    variant: curve
-    yLabel: bias
     xBins: ignBlends1_blendBins
+    yBins: ignBlends1_blendValues
+    title: Ignition adder 1 bias
+    yLabel: bias
+    xLabel: param

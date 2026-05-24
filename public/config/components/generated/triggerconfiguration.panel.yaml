@@ -11,12 +11,12 @@ children:
   - type: enum-field
     id: twostroke
     props:
+      label: Strokes
       options:
       - value: 0
         label: Four Stroke
       - value: 1
         label: Two Stroke
-      label: Strokes
     bind:
       source: config
       field: twoStroke
@@ -301,12 +301,12 @@ children:
   - type: enum-field
     id: skippedwheeloncam
     props:
-      label: Skipped wheel location
       options:
       - value: 0
         label: On crankshaft
       - value: 1
         label: On camshaft
+      label: Skipped wheel location
     bind:
       source: config
       field: skippedWheelOnCam
@@ -332,7 +332,6 @@ children:
   - type: enum-field
     id: triggerinputpins1
     props:
-      label: Cam Sensor (Primary channel)
       options:
       - value: 0
         label: NONE
@@ -498,6 +497,7 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
+      label: Cam Sensor (Primary channel)
     bind:
       source: config
       field: triggerInputPins1
@@ -860,12 +860,12 @@ children:
   - type: enum-field
     id: invertsecondarytriggersignal
     props:
+      label: Secondary Edge
       options:
       - value: 0
         label: Rising
       - value: 1
         label: Falling
-      label: Secondary Edge
     bind:
       source: config
       field: invertSecondaryTriggerSignal
@@ -875,8 +875,8 @@ children:
   children:
   - type: text
     props:
-      text: <html><a href=https://rusefi.com/s/vvt>https://rusefi.com/s/vvt</a></html>
       variant: hint
+      text: <html><a href=https://rusefi.com/s/vvt>https://rusefi.com/s/vvt</a></html>
   - type: enum-field
     id: vvtmode1
     props:
@@ -1166,6 +1166,7 @@ children:
   - type: enum-field
     id: caminputs1
     props:
+      label: Cam sensor bank 1 intake
       options:
       - value: 0
         label: NONE
@@ -1331,7 +1332,6 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
-      label: Cam sensor bank 1 intake
     bind:
       source: config
       field: camInputs1
@@ -1854,12 +1854,12 @@ children:
   - type: enum-field
     id: invertcamvvtsignal
     props:
+      label: intake Cam Edge Select
       options:
       - value: 0
         label: Rising
       - value: 1
         label: Falling
-      label: intake Cam Edge Select
     bind:
       source: config
       field: invertCamVVTSignal
@@ -1910,6 +1910,7 @@ children:
   - type: enum-field
     id: enginesynccam
     props:
+      label: Cam for engine sync resolution
       options:
       - value: 0
         label: Intake First Bank
@@ -1919,7 +1920,6 @@ children:
         label: Intake Second Bank
       - value: 3
         label: Exhaust Second Bank
-      label: Cam for engine sync resolution
     bind:
       source: config
       field: engineSyncCam

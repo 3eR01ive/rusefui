@@ -26,12 +26,12 @@ children:
 - type: enum-field
   id: widebandonsecondbus
   props:
+    label: Wideband CAN bus
     options:
     - value: 0
       label: CAN1
     - value: 1
       label: CAN2
-    label: Wideband CAN bus
   bind:
     source: config
     field: widebandOnSecondBus

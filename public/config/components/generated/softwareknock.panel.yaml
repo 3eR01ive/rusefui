@@ -41,12 +41,12 @@ children:
     - type: enum-field
       id: knockdetectionusedoublefrequency
       props:
-        label: Detection mode
         options:
         - value: 0
           label: first harmonic
         - value: 1
           label: second harmonic
+        label: Detection mode
       bind:
         source: config
         field: knockDetectionUseDoubleFrequency
@@ -67,24 +67,24 @@ children:
     - type: enum-field
       id: enableknockspectrogram
       props:
+        label: Enable Knock Spectrogram
         options:
         - value: 0
           label: no
         - value: 1
           label: yes
-        label: Enable Knock Spectrogram
       bind:
         source: config
         field: enableKnockSpectrogram
     - type: enum-field
       id: enableknockspectrogramfilter
       props:
+        label: Enable Knock Spectrogram Filter
         options:
         - value: 0
           label: 'false'
         - value: 1
           label: 'true'
-        label: Enable Knock Spectrogram Filter
       bind:
         source: config
         field: enableKnockSpectrogramFilter
@@ -144,12 +144,11 @@ children:
       bind:
         source: config
         field: knockSuppressMinTps
-- type: config-table
+- type: curve
   id: knockthresholdcurve
   props:
-    yBins: knockBaseNoise
     xBins: knockNoiseRpmBins
-    yLabel: Threshold
-    variant: curve
     title: Engine Knock Threshold RPM Based
+    yLabel: Threshold
+    yBins: knockBaseNoise
     xLabel: RPM

@@ -21,7 +21,7 @@ pub use model::{
     ArrayField, ArrayShape, ConfigFieldKind, EnumField, EnumOption, FieldKind, IniCurveDef,
     IniFile, IniTableDef, OutputChannelField, OutputChannels, ScalarField, ScalarType,
 };
-pub use parse::{parse_ini, split_ini_args};
+pub use parse::{parse_ini, split_ini_args, unescape_ini_bytes};
 
 /// Путь к тестовому INI в репозитории (`test_data/rusefi_proteus_f7.ini`).
 pub fn default_test_ini_path() -> std::path::PathBuf {

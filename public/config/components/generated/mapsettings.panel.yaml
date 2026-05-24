@@ -28,8 +28,8 @@ children:
         field: mapErrorDetectionTooHigh
     - type: text
       props:
-        variant: hint
         text: Панель «mapValidIndicators» — нет определения в INI
+        variant: hint
     - type: enum-field
       id: measuremaponlyinonecylinder
       props:
@@ -63,6 +63,7 @@ children:
     - type: enum-field
       id: map-sensor-hwchannel
       props:
+        label: MAP input
         options:
         - value: 0
           label: NONE
@@ -98,7 +99,6 @@ children:
           label: Analog Temp 1
         - value: 16
           label: Analog Temp 2
-        label: MAP input
       bind:
         source: config
         field: map_sensor_hwChannel

@@ -20,7 +20,7 @@ children:
   id: tractionignitionskiptabletbl
   props:
     zBins: tractionControlIgnitionSkip
-    variant: table
-    yBins: tractionControlSlipBins
-    title: Traction Control Skip Ignition
     xBins: tractionControlSpeedBins
+    variant: table
+    title: Traction Control Skip Ignition
+    yBins: tractionControlSlipBins

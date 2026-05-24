@@ -1,16 +1,20 @@
 use std::sync::Arc;
+use std::thread::sleep;
+use std::time::Duration;
 
-use rusefi_protocol::{
-    TS_SUBSYSTEM_X14, TS_X14_TRIGGER_STIMULATOR_DISABLE, TS_X14_TRIGGER_STIMULATOR_ENABLE,
-};
+use rusefi_ini::{encode_config_value, ConfigFieldKind};
 use serde::Serialize;
 use serde_json::{json, Value};
 
-use crate::component::{ComponentLogic, ComponentMeta, LogicComponentType};
+use crate::component::{ComponentLogic, ComponentMeta, EcuSyncOnMount, LogicComponentType};
 use crate::session::EcuSession;
 
+const TRIGGER_RPM_FIELD: &str = "triggerSimulatorRpm";
+const CMD_SELF_STIMULATION: &str = "self_stimulation";
 const DEFAULT_RPM: u16 = 1500;
 
+/// Как Java console (`RpmCommand`, `IoUtil.getEnableCommand` / `getDisableCommand`):
+/// `E` + `rpm N`, `E` + `enable self_stimulation` — без `C` в конфиг (см. `settings.cpp` / `trigger_emulator_algo.cpp`).
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SimulatorViewState {
@@ -75,34 +79,52 @@ impl SimulationLogic {
         }
     }
 
-    /// INI `cmd_enable_self_stim`: `C` triggerSimulatorRpm (без burn) + `Z` subsystem X14.
+    /// Локальный кэш `triggerSimulatorRpm` после успешной консольной `rpm`.
+    fn patch_local_trigger_rpm(&self) -> Result<(), String> {
+        let ini = self.session.ini_context();
+        let field = ini
+            .config_fields
+            .get(TRIGGER_RPM_FIELD)
+            .ok_or_else(|| format!("поле {TRIGGER_RPM_FIELD} не найдено в INI"))?;
+        let offset = match field {
+            ConfigFieldKind::Scalar(s) => s.offset,
+            _ => return Err(format!("{TRIGGER_RPM_FIELD}: ожидался scalar")),
+        };
+        let raw = self.session.config().page_raw();
+        let encoded = encode_config_value(field, f64::from(self.rpm), &raw)
+            .ok_or_else(|| format!("не удалось закодировать {TRIGGER_RPM_FIELD}"))?;
+        self.session
+            .config()
+            .patch_page_raw(offset as usize, &encoded);
+        Ok(())
+    }
+
     fn start(&mut self) -> Result<(), String> {
         self.require_connected()?;
-        self.session.output().stop();
         self.busy = true;
         self.message = None;
         self.message_is_error = false;
 
+        let inter_write_delay =
+            Duration::from_millis(u64::from(self.session.ini_context().inter_write_delay_ms));
         let rpm = self.rpm;
-        let result = (|| {
-            // TS: RPM через `C` (Java всегда шлёт page=0), enable — `Z`. Без burn до enable.
-            self.session.with_link(|link| {
-                let _ = link.execute_ts_command(TS_SUBSYSTEM_X14, TS_X14_TRIGGER_STIMULATOR_DISABLE);
-                Ok(())
-            })?;
-            self.session.config().write_scalar(
-                &self.session,
-                "triggerSimulatorRpm",
-                f64::from(rpm),
-            )?;
-            self.session.with_link(|link| {
-                link.execute_ts_command(TS_SUBSYSTEM_X14, TS_X14_TRIGGER_STIMULATOR_ENABLE)
+        let session = Arc::clone(&self.session);
+
+        // disable → rpm → enable: сброс hasInitTriggerEmulator и новый RPM до enable.
+        let result = session.run_without_output_poll(|session| {
+            session.with_link(|link| {
+                link.execute_console_command(&format!("disable {CMD_SELF_STIMULATION}"))?;
+                sleep(inter_write_delay);
+                link.execute_console_command(&format!("rpm {rpm}"))?;
+                sleep(inter_write_delay);
+                link.execute_console_command(&format!("enable {CMD_SELF_STIMULATION}"))
             })
-        })();
+        });
 
         self.busy = false;
         match result {
             Ok(()) => {
+                let _ = self.patch_local_trigger_rpm();
                 self.active = true;
                 self.message = Some(format!("Стимуляция включена на {} RPM.", self.rpm));
                 self.message_is_error = false;
@@ -119,13 +141,15 @@ impl SimulationLogic {
 
     fn stop(&mut self) -> Result<(), String> {
         self.require_connected()?;
-        self.session.output().stop();
         self.busy = true;
         self.message = None;
         self.message_is_error = false;
 
-        let result = self.session.with_link(|link| {
-            link.execute_ts_command(TS_SUBSYSTEM_X14, TS_X14_TRIGGER_STIMULATOR_DISABLE)
+        let session = Arc::clone(&self.session);
+        let result = session.run_without_output_poll(|session| {
+            session.with_link(|link| {
+                link.execute_console_command(&format!("disable {CMD_SELF_STIMULATION}"))
+            })
         });
 
         self.busy = false;
@@ -151,6 +175,10 @@ impl ComponentLogic for SimulationLogic {
             component_type: LogicComponentType::Simulation.as_str().to_string(),
             has_rust_logic: true,
         }
+    }
+
+    fn ecu_sync_on_mount(&self) -> EcuSyncOnMount {
+        EcuSyncOnMount::OutputPollIfConfigLoaded
     }
 
     fn state(&self) -> Value {

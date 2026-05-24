@@ -10,12 +10,11 @@ children:
     variant: hint
 - type: text
   props:
-    variant: hint
     text: but before the intercooler.
+    variant: hint
 - type: enum-field
   id: compressordischargetemperature-adcchannel
   props:
-    label: Input channel
     options:
     - value: 0
       label: NONE
@@ -51,6 +50,7 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
+    label: Input channel
   bind:
     source: config
     field: compressorDischargeTemperature_adcChannel

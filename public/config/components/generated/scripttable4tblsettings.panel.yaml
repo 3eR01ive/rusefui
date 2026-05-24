@@ -15,7 +15,7 @@ children:
   id: scripttable4tbl
   props:
     yBins: scriptTable4LoadBins
-    title: 'Script Table #4'
-    zBins: scriptTable4
     variant: table
     xBins: scriptTable4RpmBins
+    zBins: scriptTable4
+    title: 'Script Table #4'

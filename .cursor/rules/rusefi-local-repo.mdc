@@ -1,0 +1,22 @@
+---
+description: rusEFI reference — только локальный клон ../rusefi, не веб.
+alwaysApply: true
+---
+
+# Локальный репозиторий rusEFI
+
+Путь: **`/home/guerrero/dev/rusefi`** (от корня rusefui: **`../rusefi`**).
+
+## Обязательно
+
+- Протокол TunerStudio (`R`/`C`/`Z`/`B`), firmware, Java console, INI-команды — **искать в `../rusefi`**, не в интернете.
+- Эталоны:
+  - `firmware/console/binary/tunerstudio.cpp` — разбор CRC-команд
+  - `firmware/controllers/bench_test.cpp` — `executeTSCommand`, `TS_TRIGGER_STIMULATOR_*`
+  - `firmware/controllers/trigger/trigger_emulator_algo.cpp` — стимуляция, `triggerSimulatorRpm`
+  - `firmware/tunerstudio/generated/*.ini` — `cmd_enable_self_stim`, offset полей
+  - `java_console/io/.../WriteCommand.java`, `ByteRange.java` — формат `C`/`R`
+
+## Legacy I/O (560262154 / Proteus)
+
+См. также `rusefi-legacy-config-io.mdc`: `R` и legacy `C` **без page** на проводе; `Z` как в INI (`Z\x00\x14\x00\x0d`).

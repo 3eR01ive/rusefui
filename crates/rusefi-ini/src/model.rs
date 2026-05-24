@@ -10,8 +10,12 @@ pub struct IniFile {
     /// `pageReadCommand` для page 0 включает `%2i` (новый формат с номером страницы).
     /// Старый `"R%2o%2c"` (длина 7) — только offset+count, как в Java `BinaryProtocol`.
     pub page_read_has_page_index: bool,
-    /// `pageChunkWrite` содержит `%2i` (формат INI для TunerStudio). Протокол `C` всё равно шлёт page=0 (Java).
+    /// `pageChunkWrite` содержит `%2i` — на проводе `C` с page; иначе `C%2o%2c%v` — только offset+count+data.
     pub page_chunk_write_has_page_index: bool,
+    /// INI `interWriteDelay` (ms), типично 10.
+    pub inter_write_delay_ms: u16,
+    /// INI `pageActivationDelay` (ms) — пауза TS после записи поля перед `Z`, типично 500.
+    pub page_activation_delay_ms: u16,
     pub output_channels: OutputChannels,
     /// Поля page 0: скаляры, enum и массивы из секции `[Constants]`.
     pub config_fields: HashMap<String, ConfigFieldKind>,
@@ -19,6 +23,8 @@ pub struct IniFile {
     pub tables: HashMap<String, IniTableDef>,
     /// 1D-кривые из `[CurveEditor]`.
     pub curves: HashMap<String, IniCurveDef>,
+    /// Сырые байты из `[ControllerCommands]` (`cmd_enable_self_stim` и т.д.).
+    pub ts_commands: HashMap<String, Vec<u8>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
