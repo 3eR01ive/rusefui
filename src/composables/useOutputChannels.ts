@@ -7,6 +7,7 @@ export interface OutputSnapshot {
   pollHz: number;
   rawLen: number;
   values: Record<string, number>;
+  iniFieldCount?: number;
   lastError?: string | null;
 }
 

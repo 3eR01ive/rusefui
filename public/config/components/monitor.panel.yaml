@@ -5,7 +5,7 @@ description: Output channels — значения и кривые
 children:
   - type: section
     props:
-      title: Кривые (Output)
+      title: Log
     children:
       - type: output-chart
         id: scope

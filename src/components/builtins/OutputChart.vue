@@ -15,7 +15,7 @@ import {
   createTimeSeriesStore,
   type TimeSeries,
 } from "../../composables/useTimeSeriesBuffer";
-import { drawTimeSeriesChart } from "../../composables/drawTimeSeriesChart";
+import { drawLogPanelsChart, type LogPanelSpec } from "../../composables/drawTimeSeriesChart";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -52,6 +52,8 @@ const { snapshot } = useOutputChannels();
 const { fields: allFields, reload: reloadOutputFields } = useOutputFields();
 
 const selectedFields = ref<string[]>([...defaultFields.value]);
+/** min/max для шкалы Y; пустая строка = авто по данным окна. */
+const rangeInputs = ref<Record<string, { min: string; max: string }>>({});
 const fieldFilter = ref("");
 const showSuggest = ref(false);
 const suggestStyle = ref({ top: "0px", left: "0px", width: "0px" });
@@ -87,11 +89,39 @@ async function refreshFieldCatalog(): Promise<void> {
   if (selectedFields.value.length === 0 && allFields.value.length > 0) {
     selectedFields.value = [allFields.value[0]!.name];
   }
+  syncRangeInputs();
   store.value.setFields(selectedFields.value);
 }
 
+function syncRangeInputs(): void {
+  const next: Record<string, { min: string; max: string }> = {};
+  for (const name of selectedFields.value) {
+    next[name] = rangeInputs.value[name] ?? { min: "", max: "" };
+  }
+  rangeInputs.value = next;
+}
+
+function parseRangeInput(raw: string): number | null {
+  const t = raw.trim();
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+
+function setRangeMin(name: string, value: string): void {
+  const prev = rangeInputs.value[name] ?? { min: "", max: "" };
+  rangeInputs.value = { ...rangeInputs.value, [name]: { ...prev, min: value } };
+  redraw();
+}
+
+function setRangeMax(name: string, value: string): void {
+  const prev = rangeInputs.value[name] ?? { min: "", max: "" };
+  rangeInputs.value = { ...rangeInputs.value, [name]: { ...prev, max: value } };
+  redraw();
+}
+
 watch(
-  () => snapshot.value.iniFieldCount,
+  () => snapshot.value.iniFieldCount ?? 0,
   (count, prev) => {
     if (count > 0 && count !== prev) {
       void refreshFieldCatalog();
@@ -107,10 +137,35 @@ watch(windowSeconds, (sec) => {
 watch(
   selectedFields,
   (list) => {
+    syncRangeInputs();
     store.value.setFields(list);
   },
   { deep: true },
 );
+
+const channelRows = computed(() =>
+  selectedFields.value.map((name) => {
+    const s = store.value.seriesMap.get(name);
+    const meta = allFields.value.find((f) => f.name === name);
+    const pts = s?.points;
+    const last = pts && pts.length > 0 ? pts[pts.length - 1]!.v : null;
+    const ranges = rangeInputs.value[name] ?? { min: "", max: "" };
+    return {
+      name,
+      color: s?.color ?? "#888",
+      units: meta?.units ?? "",
+      value: last,
+      min: ranges.min,
+      max: ranges.max,
+    };
+  }),
+);
+
+const canvasHeight = computed(() => {
+  const n = Math.max(1, selectedFields.value.length);
+  const perPanel = Math.max(100, Math.floor(chartHeight.value / Math.min(n, 3)));
+  return perPanel * n + 28;
+});
 
 const filteredFields = computed(() => {
   const q = fieldFilter.value.trim().toLowerCase();
@@ -142,18 +197,12 @@ const activeSeries = computed((): TimeSeries[] => {
 });
 
 const legendItems = computed(() =>
-  selectedFields.value.map((name) => {
-    const s = store.value.seriesMap.get(name);
-    const meta = allFields.value.find((f) => f.name === name);
-    const pts = s?.points;
-    const last = pts && pts.length > 0 ? pts[pts.length - 1]!.v : null;
-    return {
-      name,
-      color: s?.color ?? "#888",
-      units: meta?.units ?? "",
-      value: last,
-    };
-  }),
+  channelRows.value.map((row) => ({
+    name: row.name,
+    color: row.color,
+    units: row.units,
+    value: row.value,
+  })),
 );
 
 function toggleField(name: string): void {
@@ -162,11 +211,14 @@ function toggleField(name: string): void {
     selectedFields.value = selectedFields.value.filter((f) => f !== name);
   } else if (selectedFields.value.length < 8) {
     selectedFields.value = [...selectedFields.value, name];
+    rangeInputs.value[name] = { min: "", max: "" };
   }
 }
 
 function removeField(name: string): void {
   selectedFields.value = selectedFields.value.filter((f) => f !== name);
+  const { [name]: _, ...rest } = rangeInputs.value;
+  rangeInputs.value = rest;
 }
 
 function clearHistory(): void {
@@ -178,7 +230,7 @@ function redraw(): void {
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
   const w = canvasWidth.value;
-  const h = chartHeight.value;
+  const h = canvasHeight.value;
   canvas.width = Math.floor(w * dpr);
   canvas.height = Math.floor(h * dpr);
   canvas.style.width = `${w}px`;
@@ -188,8 +240,23 @@ function redraw(): void {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   const { tMin, tMax } = store.value.visibleRange();
-  const { vMin, vMax } = store.value.valueRange(tMin, tMax);
-  drawTimeSeriesChart(ctx, w, h, activeSeries.value, tMin, tMax, vMin, vMax);
+  const panels: LogPanelSpec[] = [];
+  for (const name of selectedFields.value) {
+    const s = store.value.seriesMap.get(name);
+    if (!s) continue;
+    const inp = rangeInputs.value[name] ?? { min: "", max: "" };
+    const { vMin, vMax } = store.value.valueRangeForSeries(
+      s,
+      tMin,
+      tMax,
+      parseRangeInput(inp.min),
+      parseRangeInput(inp.max),
+    );
+    const meta = allFields.value.find((f) => f.name === name);
+    const units = meta?.units ? ` (${meta.units})` : "";
+    panels.push({ series: s, vMin, vMax, label: `${name}${units}` });
+  }
+  drawLogPanelsChart(ctx, w, h, panels, tMin, tMax);
 }
 
 let resizeObserver: ResizeObserver | null = null;
@@ -247,14 +314,14 @@ watch(
 );
 
 watch(activeSeries, () => redraw(), { deep: true });
-watch(chartHeight, () => redraw());
+watch(canvasHeight, () => redraw());
 </script>
 
 <template>
-  <div class="output-chart" ref="containerRef">
+  <div class="output-chart log-chart" ref="containerRef">
     <div class="toolbar">
       <div class="field-picker">
-        <label class="picker-label" for="chart-field-filter">Параметры Output</label>
+        <label class="picker-label" for="chart-field-filter">Каналы log</label>
         <input
           id="chart-field-filter"
           ref="searchInputRef"
@@ -315,9 +382,41 @@ watch(chartHeight, () => redraw());
       </div>
     </div>
 
+    <div v-if="channelRows.length" class="channel-ranges">
+      <p class="ranges-title">Диапазон Y · min / max (пусто = авто по окну)</p>
+      <div class="ranges-grid">
+        <div v-for="row in channelRows" :key="row.name" class="range-row">
+          <span class="range-dot" :style="{ background: row.color }" />
+          <span class="range-name">{{ row.name }}</span>
+          <label class="range-field">
+            <span>min</span>
+            <input
+              type="number"
+              class="range-input"
+              :value="row.min"
+              placeholder="авто"
+              step="any"
+              @input="setRangeMin(row.name, ($event.target as HTMLInputElement).value)"
+            />
+          </label>
+          <label class="range-field">
+            <span>max</span>
+            <input
+              type="number"
+              class="range-input"
+              :value="row.max"
+              placeholder="авто"
+              step="any"
+              @input="setRangeMax(row.name, ($event.target as HTMLInputElement).value)"
+            />
+          </label>
+        </div>
+      </div>
+    </div>
+
     <div class="canvas-wrap">
       <canvas ref="canvasRef" class="chart-canvas" />
-      <p v-if="!snapshot.connected" class="overlay-hint">Подключите ECU для записи кривых</p>
+      <p v-if="!snapshot.connected" class="overlay-hint">Подключите ECU для записи log</p>
       <p v-else-if="selectedFields.length === 0" class="overlay-hint">
         Выберите параметры через поиск выше
       </p>
@@ -421,6 +520,88 @@ watch(chartHeight, () => redraw());
   flex: 2 1 20rem;
   align-content: flex-start;
   padding-top: 1.15rem;
+}
+
+.channel-ranges {
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-muted);
+}
+
+.ranges-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-gray);
+  font-weight: 500;
+}
+
+.ranges-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.range-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  gap: 0.5rem 0.75rem;
+  align-items: center;
+}
+
+.range-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.range-name {
+  font-size: 0.82rem;
+  font-weight: 500;
+  font-family: ui-monospace, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.range-field {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--color-text-subtle);
+}
+
+.range-input {
+  width: 5.5rem;
+  padding: 0.25rem 0.4rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-size: 0.82rem;
+}
+
+.range-input::placeholder {
+  color: var(--color-text-subtle);
+  opacity: 0.7;
+}
+
+@media (max-width: 640px) {
+  .range-row {
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .range-name {
+    grid-column: 2;
+  }
+
+  .range-field {
+    grid-column: 2;
+  }
 }
 
 .chip {

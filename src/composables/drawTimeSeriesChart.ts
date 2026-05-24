@@ -115,6 +115,60 @@ export function drawTimeSeriesChart(
   ctx.restore();
 }
 
+export interface LogPanelSpec {
+  series: TimeSeries;
+  vMin: number;
+  vMax: number;
+  label: string;
+}
+
+const PANEL_GAP = 4;
+
+/** Stacked log panels — у каждого канала своя шкала Y (min/max). */
+export function drawLogPanelsChart(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  panels: LogPanelSpec[],
+  tMin: number,
+  tMax: number,
+): void {
+  ctx.clearRect(0, 0, width, height);
+  if (panels.length === 0) return;
+
+  const outerTop = 8;
+  const outerBottom = 24;
+  const usable = height - outerTop - outerBottom;
+  const panelH =
+    (usable - PANEL_GAP * Math.max(0, panels.length - 1)) / panels.length;
+
+  panels.forEach((panel, i) => {
+    const y0 = outerTop + i * (panelH + PANEL_GAP);
+    ctx.save();
+    ctx.translate(0, y0);
+    drawTimeSeriesChart(
+      ctx,
+      width,
+      panelH,
+      [panel.series],
+      tMin,
+      tMax,
+      panel.vMin,
+      panel.vMax,
+    );
+
+    ctx.font = "600 10px Segoe UI, system-ui, sans-serif";
+    ctx.fillStyle =
+      getComputedStyle(document.documentElement)
+        .getPropertyValue("--color-text")
+        .trim() || "#3a3530";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    ctx.fillText(panel.label, 56, 10);
+    ctx.restore();
+  });
+}
+
 function formatTick(v: number): string {
   const abs = Math.abs(v);
   if (abs >= 10000) return v.toFixed(0);

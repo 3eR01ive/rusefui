@@ -22,6 +22,15 @@ const SERIES_COLORS = [
   "#8b5a2b",
 ];
 
+function padValueRange(vMin: number, vMax: number): { vMin: number; vMax: number } {
+  if (vMin === vMax) {
+    const pad = Math.abs(vMin) * 0.1 + 1;
+    return { vMin: vMin - pad, vMax: vMax + pad };
+  }
+  const pad = (vMax - vMin) * 0.08;
+  return { vMin: vMin - pad, vMax: vMax + pad };
+}
+
 export function createTimeSeriesStore(windowSeconds: number) {
   const seriesMap = reactive(new Map<string, TimeSeries>());
   let tOrigin: number | null = null;
@@ -94,6 +103,40 @@ export function createTimeSeriesStore(windowSeconds: number) {
     return { tMin: Math.max(0, tMax - windowSeconds), tMax };
   }
 
+  function valueRangeForSeries(
+    s: TimeSeries,
+    tMin: number,
+    tMax: number,
+    yMin: number | null,
+    yMax: number | null,
+  ): { vMin: number; vMax: number } {
+    let dataMin = Infinity;
+    let dataMax = -Infinity;
+    for (const p of s.points) {
+      if (p.t < tMin || p.t > tMax) continue;
+      if (p.v < dataMin) dataMin = p.v;
+      if (p.v > dataMax) dataMax = p.v;
+    }
+
+    if (yMin !== null && yMax !== null && yMin < yMax) {
+      return { vMin: yMin, vMax: yMax };
+    }
+
+    if (!Number.isFinite(dataMin) || !Number.isFinite(dataMax)) {
+      if (yMin !== null && yMax !== null) return { vMin: yMin, vMax: yMax };
+      if (yMin !== null) return { vMin: yMin, vMax: yMin + 1 };
+      if (yMax !== null) return { vMin: yMax - 1, vMax: yMax };
+      return { vMin: 0, vMax: 1 };
+    }
+
+    const vMin = yMin !== null ? yMin : dataMin;
+    const vMax = yMax !== null ? yMax : dataMax;
+    if (vMin >= vMax) {
+      return padValueRange(dataMin, dataMax);
+    }
+    return { vMin, vMax };
+  }
+
   function valueRange(tMin: number, tMax: number): { vMin: number; vMax: number } {
     let vMin = Infinity;
     let vMax = -Infinity;
@@ -123,6 +166,7 @@ export function createTimeSeriesStore(windowSeconds: number) {
     resetTimeOrigin,
     visibleRange,
     valueRange,
+    valueRangeForSeries,
   };
 }
 
