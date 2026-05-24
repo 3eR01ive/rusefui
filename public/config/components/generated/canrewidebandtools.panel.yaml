@@ -1,0 +1,120 @@
+id: canReWidebandTools.panel
+description: rusEFI Wideband Tools
+source:
+  ini_dialog: canReWidebandTools
+  menu_path: Sensors › Chassis sensors › rusEFI Wideband Tools
+children:
+- type: section
+  props:
+    title: 2025 firmware
+  children:
+  - type: scalar-field
+    id: widebandonsecondbus
+    props:
+      label: Wideband CAN bus
+    bind:
+      source: config
+      field: widebandOnSecondBus
+  - type: scalar-field
+    id: canrewidebandhwindex
+    props:
+      label: Target device HW ID
+    bind:
+      source: config
+      field: canReWidebandHwIndex
+  - type: text
+    props:
+      text: 'Кнопка: Ping/Get FW version (cmd_set_wideband_ping_by_id)'
+      variant: hint
+  - type: scalar-field
+    id: canrewidebandcanid
+    props:
+      label: Required CAN ID
+    bind:
+      source: config
+      field: canReWidebandCanId
+  - type: text
+    props:
+      variant: hint
+      text: 'Кнопка: Set Index (cmd_set_wideband_idx_by_id)'
+  - type: text
+    props:
+      variant: hint
+      text: 'Кнопка: Update 2025 Firmware (cmd_set_wideband_flash_by_id)'
+  - type: scalar-field
+    id: fw-version-and-build-date
+    props:
+      label: 'FW version and build date:'
+    bind:
+      source: config
+      field: 'FW version and build date:'
+  - type: text
+    props:
+      text: Панель «canReWidebandBuildDate» — нет определения в INI
+      variant: hint
+- type: section
+  props:
+    title: Legacy 2023 firmware
+  children:
+  - type: text
+    props:
+      text: Please connect exactly one wideband controller before pressing this button!
+      variant: hint
+  - type: text
+    props:
+      variant: hint
+      text: 'Кнопка: Update 2023 Firmware (cmd_wideband_firmare_update)'
+- type: text
+  props:
+    variant: hint
+    text: Панель «canReWidebandIndicators» — нет определения в INI
+- type: section
+  props:
+    title: rusEFI Wideband 1 auto remap
+  children:
+  - type: scalar-field
+    id: canwbo1-enableremap
+    props:
+      label: Auto remap on start
+    bind:
+      source: config
+      field: canWbo1_enableRemap
+  - type: scalar-field
+    id: canwbo1-rehwidx
+    props:
+      label: rusEFI WBO hardware index
+    bind:
+      source: config
+      field: canWbo1_reHwidx
+  - type: scalar-field
+    id: canwbo1-reid
+    props:
+      label: rusEFI WBO CAN ID
+    bind:
+      source: config
+      field: canWbo1_reId
+- type: section
+  props:
+    title: rusEFI Wideband 2 auto remap
+  children:
+  - type: scalar-field
+    id: canwbo2-enableremap
+    props:
+      label: Auto remap on start
+    bind:
+      source: config
+      field: canWbo2_enableRemap
+  - type: scalar-field
+    id: canwbo2-rehwidx
+    props:
+      label: rusEFI WBO hardware index
+    bind:
+      source: config
+      field: canWbo2_reHwidx
+  - type: scalar-field
+    id: canwbo2-reid
+    props:
+      label: rusEFI WBO CAN ID
+    bind:
+      source: config
+      field: canWbo2_reId

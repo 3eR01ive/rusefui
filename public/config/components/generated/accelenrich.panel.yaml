@@ -1,0 +1,99 @@
+id: AccelEnrich.panel
+description: Accel/Decel Enrichment
+source:
+  ini_dialog: AccelEnrich
+  menu_path: Fuel › Target AFR adder tables › Acceleration enrichment
+children:
+- type: section
+  props:
+    title: TPS
+  children:
+  - type: scalar-field
+    id: accelenrichmentmode
+    props:
+      label: Accel Enrichment Mode
+    bind:
+      source: config
+      field: accelEnrichmentMode
+  - type: scalar-field
+    id: mappredictionblendduration
+    props:
+      label: Map Prediction Blend Duration
+    bind:
+      source: config
+      field: mapPredictionBlendDuration
+  - type: text
+    props:
+      text: '"" ; spacer'
+      variant: hint
+  - type: scalar-field
+    id: tpsaccellookback
+    props:
+      label: Length
+    bind:
+      source: config
+      field: tpsAccelLookback
+  - type: scalar-field
+    id: nofueltrimafteracceltime
+    props:
+      label: Inhibit closed loop fuel after accel
+    bind:
+      source: config
+      field: noFuelTrimAfterAccelTime
+  - type: scalar-field
+    id: tpsaccelenrichmentthreshold
+    props:
+      label: Accel Activation Threshold
+    bind:
+      source: config
+      field: tpsAccelEnrichmentThreshold
+  - type: scalar-field
+    id: tpsdecelenleanmentthreshold
+    props:
+      label: Decel Threshold
+    bind:
+      source: config
+      field: tpsDecelEnleanmentThreshold
+  - type: text
+    props:
+      text: 'Accelerator Pump model:'
+      variant: hint
+  - type: scalar-field
+    id: tpsaccelfractionperiod
+    props:
+      label: Fraction Period
+    bind:
+      source: config
+      field: tpsAccelFractionPeriod
+  - type: scalar-field
+    id: tpsaccelfractiondivisor
+    props:
+      label: Fraction Divisor
+    bind:
+      source: config
+      field: tpsAccelFractionDivisor
+- type: section
+  props:
+    title: Wall Wetting (alpha version)
+  children:
+  - type: scalar-field
+    id: complexwallmodel
+    props:
+      label: Wall fueling model type
+    bind:
+      source: config
+      field: complexWallModel
+  - type: scalar-field
+    id: wwaetau
+    props:
+      label: evaporation time constant / tau
+    bind:
+      source: config
+      field: wwaeTau
+  - type: scalar-field
+    id: wwaebeta
+    props:
+      label: added to wall coef / beta
+    bind:
+      source: config
+      field: wwaeBeta

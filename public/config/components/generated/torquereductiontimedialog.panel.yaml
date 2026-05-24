@@ -1,0 +1,17 @@
+id: torqueReductionTimeDialog.panel
+description: Shift Torque Reduction Time table
+source:
+  ini_dialog: torqueReductionTimeDialog
+  menu_path: Advanced › Shift Torque Reduction Time table
+children:
+- type: scalar-field
+  id: torquereductiontimexaxis
+  props:
+    label: X axis
+  bind:
+    source: config
+    field: torqueReductionTimeXaxis
+- type: text
+  props:
+    text: Панель «torqueReductionTimeTlb» — нет определения в INI
+    variant: hint

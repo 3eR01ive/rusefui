@@ -1,0 +1,90 @@
+id: cylinderBankSelect.panel
+description: Cylinder Banks
+source:
+  ini_dialog: cylinderBankSelect
+  menu_path: Fuel › Cylinder bank selection
+children:
+- type: scalar-field
+  id: cylinderbankselect1
+  props:
+    label: Cylinder 1
+  bind:
+    source: config
+    field: cylinderBankSelect1
+- type: scalar-field
+  id: cylinderbankselect2
+  props:
+    label: Cylinder 2
+  bind:
+    source: config
+    field: cylinderBankSelect2
+- type: scalar-field
+  id: cylinderbankselect3
+  props:
+    label: Cylinder 3
+  bind:
+    source: config
+    field: cylinderBankSelect3
+- type: scalar-field
+  id: cylinderbankselect4
+  props:
+    label: Cylinder 4
+  bind:
+    source: config
+    field: cylinderBankSelect4
+- type: scalar-field
+  id: cylinderbankselect5
+  props:
+    label: 'Cylinder 5 '
+  bind:
+    source: config
+    field: cylinderBankSelect5
+- type: scalar-field
+  id: cylinderbankselect6
+  props:
+    label: 'Cylinder 6 '
+  bind:
+    source: config
+    field: cylinderBankSelect6
+- type: scalar-field
+  id: cylinderbankselect7
+  props:
+    label: 'Cylinder 7 '
+  bind:
+    source: config
+    field: cylinderBankSelect7
+- type: scalar-field
+  id: cylinderbankselect8
+  props:
+    label: 'Cylinder 8 '
+  bind:
+    source: config
+    field: cylinderBankSelect8
+- type: scalar-field
+  id: cylinderbankselect9
+  props:
+    label: 'Cylinder 9 '
+  bind:
+    source: config
+    field: cylinderBankSelect9
+- type: scalar-field
+  id: cylinderbankselect10
+  props:
+    label: 'Cylinder 10 '
+  bind:
+    source: config
+    field: cylinderBankSelect10
+- type: scalar-field
+  id: cylinderbankselect11
+  props:
+    label: 'Cylinder 11 '
+  bind:
+    source: config
+    field: cylinderBankSelect11
+- type: scalar-field
+  id: cylinderbankselect12
+  props:
+    label: 'Cylinder 12 '
+  bind:
+    source: config
+    field: cylinderBankSelect12

@@ -1,0 +1,27 @@
+id: speedSensorCan.panel
+description: CAN Vehicle Speed
+source:
+  ini_dialog: speedSensorCan
+  menu_path: CAN-bus › CAN Vehicle speed sensor
+children:
+- type: scalar-field
+  id: enablecanvss
+  props:
+    label: Enable CAN VSS
+  bind:
+    source: config
+    field: enableCanVss
+- type: scalar-field
+  id: canvssnbctype
+  props:
+    label: CAN VSS type
+  bind:
+    source: config
+    field: canVssNbcType
+- type: scalar-field
+  id: canvssscaling
+  props:
+    label: CAN VSS scaling
+  bind:
+    source: config
+    field: canVssScaling

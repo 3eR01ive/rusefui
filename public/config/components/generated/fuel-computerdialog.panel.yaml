@@ -1,0 +1,10 @@
+id: fuel_computerDialog.panel
+description: fuel_computer
+source:
+  ini_dialog: fuel_computerDialog
+  menu_path: View › fuel_computer
+children:
+- type: text
+  props:
+    variant: hint
+    text: Панель «fuel_computerIndicatorPanel» — нет определения в INI

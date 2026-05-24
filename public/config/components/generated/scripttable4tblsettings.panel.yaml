@@ -1,0 +1,17 @@
+id: scriptTable4TblSettings.panel
+description: 'Script Table #4'
+source:
+  ini_dialog: scriptTable4TblSettings
+  menu_path: 'Advanced › Lua Calibrations › Script Table #4'
+children:
+- type: scalar-field
+  id: scripttablename4
+  props:
+    label: Name
+  bind:
+    source: config
+    field: scriptTableName4
+- type: text
+  props:
+    text: Таблица/кривая «scriptTable4Tbl» — редактор пока не реализован
+    variant: hint

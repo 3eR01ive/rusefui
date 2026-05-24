@@ -1,0 +1,84 @@
+id: hpfpPumpDialog.panel
+description: HPFP Pump Configuration
+source:
+  ini_dialog: hpfpPumpDialog
+  menu_path: Controller › HPFP Pump Configuration
+children:
+- type: scalar-field
+  id: hpfpvalvepin
+  props:
+    label: Valve Pin
+  bind:
+    source: config
+    field: hpfpValvePin
+- type: scalar-field
+  id: hpfpvalvepinmode
+  props:
+    label: Valve Pin Mode
+  bind:
+    source: config
+    field: hpfpValvePinMode
+- type: text
+  props:
+    text: 'Кнопка: Bench Test HPFP Valve (cmd_test_hpfp_valve)'
+    variant: hint
+- type: scalar-field
+  id: hpfppumpvolume
+  props:
+    label: Pump volume
+  bind:
+    source: config
+    field: hpfpPumpVolume
+- type: scalar-field
+  id: hpfpminangle
+  props:
+    label: Minimum angle
+  bind:
+    source: config
+    field: hpfpMinAngle
+- type: scalar-field
+  id: hpfpactivationangle
+  props:
+    label: Activation angle
+  bind:
+    source: config
+    field: hpfpActivationAngle
+- type: scalar-field
+  id: hpfptargetdecay
+  props:
+    label: Target decay rate
+  bind:
+    source: config
+    field: hpfpTargetDecay
+- type: scalar-field
+  id: hpfppidp
+  props:
+    label: Proportional gain
+  bind:
+    source: config
+    field: hpfpPidP
+- type: scalar-field
+  id: hpfppidi
+  props:
+    label: Integral gain
+  bind:
+    source: config
+    field: hpfpPidI
+- type: scalar-field
+  id: hpfppid-itermmin
+  props:
+    label: iTerm Min
+  bind:
+    source: config
+    field: hpfpPid_iTermMin
+- type: scalar-field
+  id: hpfppid-itermmax
+  props:
+    label: iTerm Max
+  bind:
+    source: config
+    field: hpfpPid_iTermMax
+- type: text
+  props:
+    text: Таблица/кривая «hpfpDeadtimeCurve» — редактор пока не реализован
+    variant: hint

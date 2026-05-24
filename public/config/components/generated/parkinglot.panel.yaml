@@ -1,0 +1,168 @@
+id: parkingLot.panel
+description: Experimental/Broken
+source:
+  ini_dialog: parkingLot
+  menu_path: Controller › Experimental 1
+children:
+- type: scalar-field
+  id: uimode
+  props:
+    label: uiMode
+  bind:
+    source: config
+    field: uiMode
+- type: scalar-field
+  id: can1listenmode
+  props:
+    label: can1ListenMode
+  bind:
+    source: config
+    field: can1ListenMode
+- type: scalar-field
+  id: can2listenmode
+  props:
+    label: can2ListenMode
+  bind:
+    source: config
+    field: can2ListenMode
+- type: scalar-field
+  id: rethrowhardfault
+  props:
+    label: rethrowHardFault
+  bind:
+    source: config
+    field: rethrowHardFault
+- type: scalar-field
+  id: cangpiotype
+  props:
+    label: canGpioType
+  bind:
+    source: config
+    field: canGpioType
+- type: scalar-field
+  id: yesunderstandlocking
+  props:
+    label: I understand ECU Locking
+  bind:
+    source: config
+    field: yesUnderstandLocking
+- type: text
+  props:
+    text: Use console for unlocking
+    variant: hint
+- type: scalar-field
+  id: tunehidingkey
+  props:
+    label: Tune read/write password
+  bind:
+    source: config
+    field: tuneHidingKey
+- type: scalar-field
+  id: verbosequad
+  props:
+    label: verboseQuad
+  bind:
+    source: config
+    field: verboseQuad
+- type: text
+  props:
+    variant: hint
+    text: System hacks
+- type: scalar-field
+  id: vvtbooleanforveryspecialcases
+  props:
+    label: vvtBooleanForVerySpecialCases
+  bind:
+    source: config
+    field: vvtBooleanForVerySpecialCases
+- type: scalar-field
+  id: watchoutforlineartime
+  props:
+    label: watchOutForLinearTime
+  bind:
+    source: config
+    field: watchOutForLinearTime
+- type: scalar-field
+  id: verboseisotp
+  props:
+    label: TS over CAN debug
+  bind:
+    source: config
+    field: verboseIsoTp
+- type: scalar-field
+  id: consumeobdsensors
+  props:
+    label: consumeObdSensors
+  bind:
+    source: config
+    field: consumeObdSensors
+- type: scalar-field
+  id: allowidenticalpps
+  props:
+    label: BRZ/FRS/GT86 pedal
+  bind:
+    source: config
+    field: allowIdenticalPps
+- type: scalar-field
+  id: artificialtestmisfire
+  props:
+    label: Artificial Misfire
+  bind:
+    source: config
+    field: artificialTestMisfire
+- type: scalar-field
+  id: alwaysinstantrpm
+  props:
+    label: Always use instant RPM
+  bind:
+    source: config
+    field: alwaysInstantRpm
+- type: scalar-field
+  id: modeledflowidle
+  props:
+    label: Modeled flow idle
+  bind:
+    source: config
+    field: modeledFlowIdle
+- type: scalar-field
+  id: idlemaximumairmass
+  props:
+    label: Max idle flow
+  bind:
+    source: config
+    field: idleMaximumAirmass
+- type: scalar-field
+  id: vinnumber
+  props:
+    label: vinNumber
+  bind:
+    source: config
+    field: vinNumber
+- type: scalar-field
+  id: turbochargerfilter
+  props:
+    label: turbochargerFilter
+  bind:
+    source: config
+    field: turbochargerFilter
+- type: scalar-field
+  id: auxfrequencyfilter
+  props:
+    label: auxFrequencyFilter
+  bind:
+    source: config
+    field: auxFrequencyFilter
+- type: scalar-field
+  id: usebiquadonauxspeedsensors
+  props:
+    label: useBiQuadOnAuxSpeedSensors
+  bind:
+    source: config
+    field: useBiQuadOnAuxSpeedSensors
+- type: scalar-field
+  id: kickstartcranking
+  props:
+    label: TODO KS mode 4569
+  bind:
+    source: config
+    field: kickStartCranking

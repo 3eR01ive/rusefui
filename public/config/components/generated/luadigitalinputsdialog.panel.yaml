@@ -1,0 +1,130 @@
+id: luaDigitalInputsDialog.panel
+description: Lua Digital Aux Inputs
+source:
+  ini_dialog: luaDigitalInputsDialog
+  menu_path: Advanced › Lua › Lua Digital Inputs
+children:
+- type: section
+  props:
+    title: luaDigitalInputsLeftDialog
+  children:
+  - type: text
+    props:
+      variant: hint
+      text: Read these with getAuxDigital(0) etc
+  - type: scalar-field
+    id: luadigitalinputpins1
+    props:
+      label: 'Digital #1'
+    bind:
+      source: config
+      field: luaDigitalInputPins1
+  - type: scalar-field
+    id: luadigitalinputpins2
+    props:
+      label: 'Digital #2'
+    bind:
+      source: config
+      field: luaDigitalInputPins2
+  - type: scalar-field
+    id: luadigitalinputpins3
+    props:
+      label: 'Digital #3'
+    bind:
+      source: config
+      field: luaDigitalInputPins3
+  - type: scalar-field
+    id: luadigitalinputpins4
+    props:
+      label: 'Digital #4'
+    bind:
+      source: config
+      field: luaDigitalInputPins4
+  - type: scalar-field
+    id: luadigitalinputpins5
+    props:
+      label: 'Digital #5'
+    bind:
+      source: config
+      field: luaDigitalInputPins5
+  - type: scalar-field
+    id: luadigitalinputpins6
+    props:
+      label: 'Digital #6'
+    bind:
+      source: config
+      field: luaDigitalInputPins6
+  - type: scalar-field
+    id: luadigitalinputpins7
+    props:
+      label: 'Digital #7'
+    bind:
+      source: config
+      field: luaDigitalInputPins7
+  - type: scalar-field
+    id: luadigitalinputpins8
+    props:
+      label: 'Digital #8'
+    bind:
+      source: config
+      field: luaDigitalInputPins8
+- type: section
+  props:
+    title: luaDigitalInputsRightDialog
+  children:
+  - type: scalar-field
+    id: luadigitalinputpinmodes1
+    props:
+      label: 'Mode #1'
+    bind:
+      source: config
+      field: luaDigitalInputPinModes1
+  - type: scalar-field
+    id: luadigitalinputpinmodes2
+    props:
+      label: 'Mode #2'
+    bind:
+      source: config
+      field: luaDigitalInputPinModes2
+  - type: scalar-field
+    id: luadigitalinputpinmodes3
+    props:
+      label: 'Mode #3'
+    bind:
+      source: config
+      field: luaDigitalInputPinModes3
+  - type: scalar-field
+    id: luadigitalinputpinmodes4
+    props:
+      label: 'Mode #4'
+    bind:
+      source: config
+      field: luaDigitalInputPinModes4
+  - type: scalar-field
+    id: luadigitalinputpinmodes5
+    props:
+      label: 'Mode #5'
+    bind:
+      source: config
+      field: luaDigitalInputPinModes5
+  - type: scalar-field
+    id: luadigitalinputpinmodes6
+    props:
+      label: 'Mode #6'
+    bind:
+      source: config
+      field: luaDigitalInputPinModes6
+  - type: scalar-field
+    id: luadigitalinputpinmodes7
+    props:
+      label: 'Mode #7'
+    bind:
+      source: config
+      field: luaDigitalInputPinModes7
+  - type: scalar-field
+    id: luadigitalinputpinmodes8
+    props:
+      label: 'Mode #8'
+    bind:
+      source: config
+      field: luaDigitalInputPinModes8

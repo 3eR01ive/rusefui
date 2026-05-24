@@ -1,0 +1,106 @@
+id: antiLagDialog.panel
+description: AntiLag/Rotational Idle Settings
+source:
+  ini_dialog: antiLagDialog
+  menu_path: Controller › Anti-Lag ALS
+children:
+- type: text
+  props:
+    text: Also known as Rotational Idle
+    variant: hint
+- type: scalar-field
+  id: antilagenabled
+  props:
+    label: Enable AntiLag
+  bind:
+    source: config
+    field: antiLagEnabled
+- type: scalar-field
+  id: antilagactivationmode
+  props:
+    label: Activation Mode
+  bind:
+    source: config
+    field: antiLagActivationMode
+- type: scalar-field
+  id: alsactivatepin
+  props:
+    label: Switch Input
+  bind:
+    source: config
+    field: ALSActivatePin
+- type: scalar-field
+  id: alsactivatepinmode
+  props:
+    label: ALS Button mode
+  bind:
+    source: config
+    field: ALSActivatePinMode
+- type: scalar-field
+  id: alsmaxduration
+  props:
+    label: ALS timeout
+  bind:
+    source: config
+    field: ALSMaxDuration
+- type: scalar-field
+  id: alsmaxtps
+  props:
+    label: Max TPS
+  bind:
+    source: config
+    field: ALSMaxTPS
+- type: scalar-field
+  id: alsminrpm
+  props:
+    label: Min RPM
+  bind:
+    source: config
+    field: ALSMinRPM
+- type: scalar-field
+  id: alsmaxrpm
+  props:
+    label: Max RPM
+  bind:
+    source: config
+    field: ALSMaxRPM
+- type: scalar-field
+  id: alsminclt
+  props:
+    label: Min CLT
+  bind:
+    source: config
+    field: ALSMinCLT
+- type: scalar-field
+  id: alsmaxclt
+  props:
+    label: Max CLT
+  bind:
+    source: config
+    field: ALSMaxCLT
+- type: scalar-field
+  id: alsidleadd
+  props:
+    label: Idle Air Add
+  bind:
+    source: config
+    field: ALSIdleAdd
+- type: scalar-field
+  id: alsetbadd
+  props:
+    label: ETB Air Add
+  bind:
+    source: config
+    field: ALSEtbAdd
+- type: text
+  props:
+    text: Таблица/кривая «FuelAdderTableALS» — редактор пока не реализован
+    variant: hint
+- type: text
+  props:
+    variant: hint
+    text: Таблица/кривая «IgnRetardTableALS» — редактор пока не реализован
+- type: text
+  props:
+    text: Таблица/кривая «IgnSkipTableALS» — редактор пока не реализован
+    variant: hint

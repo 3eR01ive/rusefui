@@ -1,0 +1,130 @@
+id: canBusMain.panel
+description: CAN Bus Communication
+source:
+  ini_dialog: canBusMain
+  menu_path: CAN-bus › CAN Bus Settings
+children:
+- type: section
+  props:
+    title: CAN Bus
+  children:
+  - type: scalar-field
+    id: cannbctype
+    props:
+      label: CAN dash type
+    bind:
+      source: config
+      field: canNbcType
+  - type: scalar-field
+    id: imutype
+    props:
+      label: Inertia Measurement Unit
+    bind:
+      source: config
+      field: imuType
+  - type: scalar-field
+    id: canreadenabled
+    props:
+      label: CAN read enabled
+    bind:
+      source: config
+      field: canReadEnabled
+  - type: scalar-field
+    id: canwriteenabled
+    props:
+      label: CAN write enabled
+    bind:
+      source: config
+      field: canWriteEnabled
+  - type: scalar-field
+    id: enableverbosecantx
+    props:
+      label: Enable rusEFI CAN broadcast
+    bind:
+      source: config
+      field: enableVerboseCanTx
+  - type: scalar-field
+    id: canbroadcastusechanneltwo
+    props:
+      label: rusEFI CAN data bus
+    bind:
+      source: config
+      field: canBroadcastUseChannelTwo
+  - type: scalar-field
+    id: verbosecanbaseaddress
+    props:
+      label: rusEFI CAN data base address
+    bind:
+      source: config
+      field: verboseCanBaseAddress
+  - type: scalar-field
+    id: rusefiverbose29b
+    props:
+      label: rusEFI CAN data address type
+    bind:
+      source: config
+      field: rusefiVerbose29b
+  - type: scalar-field
+    id: cansleepperiodms
+    props:
+      label: rusEFI CAN data period
+    bind:
+      source: config
+      field: canSleepPeriodMs
+  - type: scalar-field
+    id: enableextendedcanbroadcast
+    props:
+      label: Enable board state broadcast
+    bind:
+      source: config
+      field: enableExtendedCanBroadcast
+- type: section
+  props:
+    title: Primary CAN
+  children:
+  - type: scalar-field
+    id: verbosecan
+    props:
+      label: Verbose Can
+    bind:
+      source: config
+      field: verboseCan
+  - type: scalar-field
+    id: canbaudrate
+    props:
+      label: Bitrate
+    bind:
+      source: config
+      field: canBaudRate
+  - type: scalar-field
+    id: canopenblt
+    props:
+      label: Allow OpenBLT
+    bind:
+      source: config
+      field: canOpenBLT
+- type: section
+  props:
+    title: Secondary CAN
+  children:
+  - type: scalar-field
+    id: verbosecan2
+    props:
+      label: Verbose Can2
+    bind:
+      source: config
+      field: verboseCan2
+  - type: scalar-field
+    id: can2baudrate
+    props:
+      label: Bitrate
+    bind:
+      source: config
+      field: can2BaudRate
+  - type: scalar-field
+    id: can2openblt
+    props:
+      label: Allow OpenBLT
+    bind:
+      source: config
+      field: can2OpenBLT

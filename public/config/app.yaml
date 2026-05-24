@@ -5,3 +5,4 @@ tabs:
   - $tab: connection
   - $tab: monitor
   - $tab: simulation
+  - $tab: ini-preview

@@ -1,0 +1,152 @@
+id: outputsDialog.panel
+description: Outputs
+source:
+  ini_dialog: outputsDialog
+  menu_path: Setup › Limits and protection › Outputs
+children:
+- type: section
+  props:
+    title: outputsDialogLeft
+- type: section
+  props:
+    title: Fan Settings
+  children:
+  - type: section
+    props:
+      title: Fan 1
+    children:
+    - type: scalar-field
+      id: fanpin
+      props:
+        label: Output
+      bind:
+        source: config
+        field: fanPin
+    - type: scalar-field
+      id: fanpinmode
+      props:
+        label: Output mode
+      bind:
+        source: config
+        field: fanPinMode
+    - type: scalar-field
+      id: fanontemperature
+      props:
+        label: On temperature
+      bind:
+        source: config
+        field: fanOnTemperature
+    - type: scalar-field
+      id: fanofftemperature
+      props:
+        label: Off temperature
+      bind:
+        source: config
+        field: fanOffTemperature
+    - type: scalar-field
+      id: enablefan1withac
+      props:
+        label: Enable with AC
+      bind:
+        source: config
+        field: enableFan1WithAc
+    - type: scalar-field
+      id: disablefan1whenstopped
+      props:
+        label: Disable when engine stopped
+      bind:
+        source: config
+        field: disableFan1WhenStopped
+    - type: scalar-field
+      id: disablefan1atspeed
+      props:
+        label: Disable above vehicle speed
+      bind:
+        source: config
+        field: disableFan1AtSpeed
+    - type: scalar-field
+      id: fan1extraidle
+      props:
+        label: Idle adder
+      bind:
+        source: config
+        field: fan1ExtraIdle
+  - type: section
+    props:
+      title: Fan 2
+    children:
+    - type: scalar-field
+      id: fan2pin
+      props:
+        label: Output
+      bind:
+        source: config
+        field: fan2Pin
+    - type: scalar-field
+      id: fan2pinmode
+      props:
+        label: Output mode
+      bind:
+        source: config
+        field: fan2PinMode
+    - type: scalar-field
+      id: fan2ontemperature
+      props:
+        label: On temperature
+      bind:
+        source: config
+        field: fan2OnTemperature
+    - type: scalar-field
+      id: fan2offtemperature
+      props:
+        label: Off temperature
+      bind:
+        source: config
+        field: fan2OffTemperature
+    - type: scalar-field
+      id: enablefan2withac
+      props:
+        label: Enable with AC
+      bind:
+        source: config
+        field: enableFan2WithAc
+    - type: scalar-field
+      id: disablefan2whenstopped
+      props:
+        label: Disable when engine stopped
+      bind:
+        source: config
+        field: disableFan2WhenStopped
+    - type: scalar-field
+      id: disablefan2atspeed
+      props:
+        label: Disable above vehicle speed
+      bind:
+        source: config
+        field: disableFan2AtSpeed
+    - type: scalar-field
+      id: fan2extraidle
+      props:
+        label: Idle adder
+      bind:
+        source: config
+        field: fan2ExtraIdle
+  - type: section
+    props:
+      title: fanTest
+    children:
+    - type: text
+      props:
+        text: 'Кнопка: Test Fan 1 (cmd_test_fan_1)'
+        variant: hint
+    - type: text
+      props:
+        text: 'Кнопка: Test Fan 2 (cmd_test_fan_2)'
+        variant: hint
+  - type: text
+    props:
+      text: Панель «fanIndicators» — нет определения в INI
+      variant: hint
+- type: section
+  props:
+    title: outputsDialogRight

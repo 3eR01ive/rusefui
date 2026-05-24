@@ -1,0 +1,90 @@
+id: coastingFuelCutControl.panel
+description: Coasting Fuel Cutoff Settings
+source:
+  ini_dialog: coastingFuelCutControl
+  menu_path: Fuel › Target AFR adder tables › Deceleration fuel cutoff (DFCO)
+children:
+- type: scalar-field
+  id: coastingfuelcutenabled
+  props:
+    label: Enable Coasting Fuel Cutoff
+  bind:
+    source: config
+    field: coastingFuelCutEnabled
+- type: scalar-field
+  id: coastingfuelcutclt
+  props:
+    label: No cut below CLT
+  bind:
+    source: config
+    field: coastingFuelCutClt
+- type: scalar-field
+  id: coastingfuelcutrpmhigh
+  props:
+    label: RPM cut fuel above
+  bind:
+    source: config
+    field: coastingFuelCutRpmHigh
+- type: scalar-field
+  id: coastingfuelcutrpmlow
+  props:
+    label: RPM restore fuel below
+  bind:
+    source: config
+    field: coastingFuelCutRpmLow
+- type: scalar-field
+  id: coastingfuelcutvsshigh
+  props:
+    label: Vehicle speed cut above
+  bind:
+    source: config
+    field: coastingFuelCutVssHigh
+- type: scalar-field
+  id: coastingfuelcutvsslow
+  props:
+    label: Vehicle speed restore below
+  bind:
+    source: config
+    field: coastingFuelCutVssLow
+- type: scalar-field
+  id: coastingfuelcuttps
+  props:
+    label: Cut fuel below TPS
+  bind:
+    source: config
+    field: coastingFuelCutTps
+- type: scalar-field
+  id: coastingfuelcutmap
+  props:
+    label: Cut fuel below MAP
+  bind:
+    source: config
+    field: coastingFuelCutMap
+- type: scalar-field
+  id: dfcodelay
+  props:
+    label: Fuel cut delay
+  bind:
+    source: config
+    field: dfcoDelay
+- type: scalar-field
+  id: nofueltrimafterdfcotime
+  props:
+    label: Inhibit closed loop fuel after cut
+  bind:
+    source: config
+    field: noFuelTrimAfterDfcoTime
+- type: scalar-field
+  id: dfcoretarddeg
+  props:
+    label: Ignition retard during cut
+  bind:
+    source: config
+    field: dfcoRetardDeg
+- type: scalar-field
+  id: dfcoretardrampintime
+  props:
+    label: After cut timing ramp-in time
+  bind:
+    source: config
+    field: dfcoRetardRampInTime

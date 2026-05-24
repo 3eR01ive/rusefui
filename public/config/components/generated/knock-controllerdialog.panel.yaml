@@ -1,0 +1,6 @@
+id: knock_controllerDialog.panel
+description: knock_controller
+source:
+  ini_dialog: knock_controllerDialog
+  menu_path: View › knock_controller
+children: []

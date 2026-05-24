@@ -1,0 +1,45 @@
+id: rotaryDialog.panel
+description: Rotary
+source:
+  ini_dialog: rotaryDialog
+  menu_path: Controller › Rotary
+children:
+- type: scalar-field
+  id: enabletrailingsparks
+  props:
+    label: Enable Trailing Sparks
+  bind:
+    source: config
+    field: enableTrailingSparks
+- type: scalar-field
+  id: trailingcoilpins1
+  props:
+    label: Trailing Pin 1
+  bind:
+    source: config
+    field: trailingCoilPins1
+- type: scalar-field
+  id: trailingcoilpins2
+  props:
+    label: Trailing Pin 2
+  bind:
+    source: config
+    field: trailingCoilPins2
+- type: scalar-field
+  id: trailingcoilpins3
+  props:
+    label: Trailing Pin 3
+  bind:
+    source: config
+    field: trailingCoilPins3
+- type: scalar-field
+  id: trailingcoilpins4
+  props:
+    label: Trailing Pin 4
+  bind:
+    source: config
+    field: trailingCoilPins4
+- type: text
+  props:
+    text: Таблица/кривая «trailingSparkTable» — редактор пока не реализован
+    variant: hint

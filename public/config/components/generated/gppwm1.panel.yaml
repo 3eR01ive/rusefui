@@ -1,0 +1,77 @@
+id: gppwm1.panel
+description: General Purpose PWM 1
+source:
+  ini_dialog: gppwm1
+  menu_path: Advanced › Boost blend tables › General Purpose PWM 1
+children:
+- type: section
+  props:
+    title: gppwm1left
+  children:
+  - type: scalar-field
+    id: gppwm1-pin
+    props:
+      label: Output
+    bind:
+      source: config
+      field: gppwm1_pin
+  - type: scalar-field
+    id: set-frequency-to-0hz-for-on-off-mode
+    props:
+      label: Set frequency to 0hz for on-off mode
+    bind:
+      source: config
+      field: Set frequency to 0hz for on-off mode
+  - type: scalar-field
+    id: gppwm1-pwmfrequency
+    props:
+      label: Frequency
+    bind:
+      source: config
+      field: gppwm1_pwmFrequency
+  - type: scalar-field
+    id: gppwm1-onaboveduty
+    props:
+      label: On above duty
+    bind:
+      source: config
+      field: gppwm1_onAboveDuty
+  - type: scalar-field
+    id: gppwm1-offbelowduty
+    props:
+      label: Off below duty
+    bind:
+      source: config
+      field: gppwm1_offBelowDuty
+  - type: scalar-field
+    id: gppwm1-dutyiferror
+    props:
+      label: Duty if error
+    bind:
+      source: config
+      field: gppwm1_dutyIfError
+  - type: scalar-field
+    id: gppwm1-rpmaxis
+    props:
+      label: X Axis
+    bind:
+      source: config
+      field: gppwm1_rpmAxis
+  - type: scalar-field
+    id: gppwm1-loadaxis
+    props:
+      label: Y Axis
+    bind:
+      source: config
+      field: gppwm1_loadAxis
+  - type: scalar-field
+    id: gppwmnote1
+    props:
+      label: Note
+    bind:
+      source: config
+      field: gpPwmNote1
+- type: text
+  props:
+    text: Таблица/кривая «gppwm1Tbl» — редактор пока не реализован
+    variant: hint

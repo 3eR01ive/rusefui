@@ -7,6 +7,7 @@ import TextBlock from "./builtins/TextBlock.vue";
 import ConnectionPanel from "./builtins/ConnectionPanel.vue";
 import SimulationPanel from "./builtins/SimulationPanel.vue";
 import ScalarField from "./builtins/ScalarField.vue";
+import IniPanelsBrowser from "./builtins/IniPanelsBrowser.vue";
 import OutputChart from "./builtins/OutputChart.vue";
 import OutputValue from "./builtins/OutputValue.vue";
 
@@ -105,6 +106,17 @@ export function registerBuiltinComponents(): void {
       description: "Поле калибровки (config page)",
     },
     ScalarField,
+  );
+
+  registerComponent(
+    {
+      type: "ini-panels-browser",
+      label: "INI panels browser",
+      mode: "display",
+      isContainer: false,
+      description: "Просмотр сконвертированных INI-панелей",
+    },
+    IniPanelsBrowser,
   );
 
   registerComponent(

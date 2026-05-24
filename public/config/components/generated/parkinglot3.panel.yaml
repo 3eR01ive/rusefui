@@ -1,0 +1,69 @@
+id: parkingLot3.panel
+description: Experimental 3
+source:
+  ini_dialog: parkingLot3
+  menu_path: Controller › Experimental 3
+children:
+- type: scalar-field
+  id: triggereventstimeoutms
+  props:
+    label: triggerEventsTimeoutMs
+  bind:
+    source: config
+    field: triggerEventsTimeoutMs
+- type: scalar-field
+  id: devbit0
+  props:
+    label: devBit0
+  bind:
+    source: config
+    field: devBit0
+- type: scalar-field
+  id: devbit1
+  props:
+    label: devBit1
+  bind:
+    source: config
+    field: devBit1
+- type: scalar-field
+  id: devbit2
+  props:
+    label: devBit2
+  bind:
+    source: config
+    field: devBit2
+- type: scalar-field
+  id: devbit3
+  props:
+    label: devBit3
+  bind:
+    source: config
+    field: devBit3
+- type: scalar-field
+  id: devbit4
+  props:
+    label: devBit4
+  bind:
+    source: config
+    field: devBit4
+- type: scalar-field
+  id: devbit5
+  props:
+    label: devBit5
+  bind:
+    source: config
+    field: devBit5
+- type: scalar-field
+  id: devbit6
+  props:
+    label: devBit6
+  bind:
+    source: config
+    field: devBit6
+- type: scalar-field
+  id: devbit7
+  props:
+    label: devBit7
+  bind:
+    source: config
+    field: devBit7

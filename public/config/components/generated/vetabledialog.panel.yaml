@@ -1,0 +1,14 @@
+id: veTableDialog.panel
+description: VE
+source:
+  ini_dialog: veTableDialog
+  menu_path: Fuel › Cylinder fuel trims › VE
+children:
+- type: text
+  props:
+    text: Панель «= veOverrideModeSelector» — нет определения в INI
+    variant: hint
+- type: text
+  props:
+    text: Таблица/кривая «= veTableTbl» — редактор пока не реализован
+    variant: hint

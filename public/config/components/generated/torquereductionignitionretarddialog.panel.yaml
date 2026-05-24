@@ -1,0 +1,17 @@
+id: torqueReductionIgnitionRetardDialog.panel
+description: Torque Reduction Ignition Retard Table
+source:
+  ini_dialog: torqueReductionIgnitionRetardDialog
+  menu_path: Advanced › Torque Reduction Ignition Retard Table
+children:
+- type: scalar-field
+  id: torquereductionignitionretardxaxis
+  props:
+    label: X axis
+  bind:
+    source: config
+    field: torqueReductionIgnitionRetardXaxis
+- type: text
+  props:
+    text: Панель «torqueReductionIgnitionRetardTlb» — нет определения в INI
+    variant: hint

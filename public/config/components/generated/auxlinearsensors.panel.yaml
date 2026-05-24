@@ -1,0 +1,112 @@
+id: auxLinearSensors.panel
+description: Aux Sensors
+source:
+  ini_dialog: auxLinearSensors
+  menu_path: Sensors › Aux sensors › Aux Sensors
+children:
+- type: section
+  props:
+    title: 'Aux Linear Sensor #1'
+  children:
+  - type: scalar-field
+    id: auxlinear1-hwchannel
+    props:
+      label: Input
+    bind:
+      source: config
+      field: auxLinear1_hwChannel
+  - type: scalar-field
+    id: auxlinear1-v1
+    props:
+      label: Low voltage
+    bind:
+      source: config
+      field: auxLinear1_v1
+  - type: scalar-field
+    id: auxlinear1-value1
+    props:
+      label: Low value
+    bind:
+      source: config
+      field: auxLinear1_value1
+  - type: scalar-field
+    id: auxlinear1-v2
+    props:
+      label: High voltage
+    bind:
+      source: config
+      field: auxLinear1_v2
+  - type: scalar-field
+    id: auxlinear1-value2
+    props:
+      label: High value
+    bind:
+      source: config
+      field: auxLinear1_value2
+- type: section
+  props:
+    title: 'Aux Linear Sensor #2'
+  children:
+  - type: scalar-field
+    id: auxlinear2-hwchannel
+    props:
+      label: Input
+    bind:
+      source: config
+      field: auxLinear2_hwChannel
+  - type: scalar-field
+    id: auxlinear2-v1
+    props:
+      label: Low voltage
+    bind:
+      source: config
+      field: auxLinear2_v1
+  - type: scalar-field
+    id: auxlinear2-value1
+    props:
+      label: Low value
+    bind:
+      source: config
+      field: auxLinear2_value1
+  - type: scalar-field
+    id: auxlinear2-v2
+    props:
+      label: High voltage
+    bind:
+      source: config
+      field: auxLinear2_v2
+  - type: scalar-field
+    id: auxlinear2-value2
+    props:
+      label: High value
+    bind:
+      source: config
+      field: auxLinear2_value2
+- type: scalar-field
+  id: auxspeedsensorinputpin1
+  props:
+    label: Aux Speed Input 1
+  bind:
+    source: config
+    field: auxSpeedSensorInputPin1
+- type: scalar-field
+  id: auxspeedsensorinputpin2
+  props:
+    label: Aux Speed Input 2
+  bind:
+    source: config
+    field: auxSpeedSensorInputPin2
+- type: scalar-field
+  id: useauxspeedforslipratio
+  props:
+    label: Use Aux Speed Sensors for slip ratio
+  bind:
+    source: config
+    field: useAuxSpeedForSlipRatio
+- type: scalar-field
+  id: usevssassecondwheelspeed
+  props:
+    label: Use VSS As Second Wheel Speed
+  bind:
+    source: config
+    field: useVssAsSecondWheelSpeed

@@ -1,0 +1,123 @@
+id: pedalSensor.panel
+description: Accelerator pedal
+source:
+  ini_dialog: pedalSensor
+  menu_path: Sensors › Chassis sensors › Accelerator pedal
+children:
+- type: section
+  props:
+    title: Accelerator pedal
+  children:
+  - type: scalar-field
+    id: throttlepedalpositionadcchannel
+    props:
+      label: Accelerator position sensor
+    bind:
+      source: config
+      field: throttlePedalPositionAdcChannel
+  - type: scalar-field
+    id: throttlepedalupvoltage
+    props:
+      label: Up (idle) voltage
+    bind:
+      source: config
+      field: throttlePedalUpVoltage
+  - type: text
+    props:
+      text: 'Кнопка: Grab Idle/Up (cmd_calibrate_pedal_up)'
+      variant: hint
+  - type: scalar-field
+    id: throttlepedalwotvoltage
+    props:
+      label: Down (WOT) voltage
+    bind:
+      source: config
+      field: throttlePedalWOTVoltage
+  - type: text
+    props:
+      text: 'Кнопка: Grab WOT/Down (cmd_calibrate_pedal_down)'
+      variant: hint
+  - type: scalar-field
+    id: throttlepedalpositionsecondadcchannel
+    props:
+      label: Accelerator position 2nd sensor
+    bind:
+      source: config
+      field: throttlePedalPositionSecondAdcChannel
+  - type: scalar-field
+    id: throttlepedalsecondaryupvoltage
+    props:
+      label: Up (idle) voltage
+    bind:
+      source: config
+      field: throttlePedalSecondaryUpVoltage
+  - type: scalar-field
+    id: throttlepedalsecondarywotvoltage
+    props:
+      label: Down (WOT) voltage
+    bind:
+      source: config
+      field: throttlePedalSecondaryWOTVoltage
+  - type: scalar-field
+    id: ppsexpaveragealpha
+    props:
+      label: Accelerator Exp Average
+    bind:
+      source: config
+      field: ppsExpAverageAlpha
+  - type: scalar-field
+    id: usefordredundantpps
+    props:
+      label: Ford/Toyota redundant PPS mode
+    bind:
+      source: config
+      field: useFordRedundantPps
+  - type: scalar-field
+    id: ppssecondarymaximum
+    props:
+      label: Secondary PPS maximum
+    bind:
+      source: config
+      field: ppsSecondaryMaximum
+  - type: section
+    props:
+      title: TPS/PPS Limits
+    children:
+    - type: scalar-field
+      id: tpserrordetectiontoolow
+      props:
+        label: TPS/PPS minimum valid value
+      bind:
+        source: config
+        field: tpsErrorDetectionTooLow
+    - type: scalar-field
+      id: tpserrordetectiontoohigh
+      props:
+        label: TPS/PPS maximum valid value
+      bind:
+        source: config
+        field: tpsErrorDetectionTooHigh
+    - type: scalar-field
+      id: etbsplit
+      props:
+        label: TPS/PPS Error Detection Threshold
+      bind:
+        source: config
+        field: etbSplit
+    - type: scalar-field
+      id: usefordredundanttps
+      props:
+        label: Ford/Toyota redundant TPS mode
+      bind:
+        source: config
+        field: useFordRedundantTps
+    - type: scalar-field
+      id: tpssecondarymaximum
+      props:
+        label: Secondary TPS maximum
+      bind:
+        source: config
+        field: tpsSecondaryMaximum
+- type: section
+  props:
+    title: pedalGauges

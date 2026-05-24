@@ -1,0 +1,14 @@
+id: engineTypeDialog.panel
+description: Popular vehicles
+source:
+  ini_dialog: engineTypeDialog
+  menu_path: Controller › Popular vehicles
+children:
+- type: text
+  props:
+    text: These buttons send a command to rusEFI controller to apply preset values
+    variant: hint
+- type: text
+  props:
+    variant: hint
+    text: Once you send the command, please reconnect to rusEFI controller in order to read fresh values

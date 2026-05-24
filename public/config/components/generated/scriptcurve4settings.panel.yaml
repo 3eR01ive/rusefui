@@ -1,0 +1,17 @@
+id: scriptCurve4Settings.panel
+description: 'Script Curve #4'
+source:
+  ini_dialog: scriptCurve4Settings
+  menu_path: 'Advanced › Lua Calibrations › Script Curve #4'
+children:
+- type: scalar-field
+  id: scriptcurvename4
+  props:
+    label: Name
+  bind:
+    source: config
+    field: scriptCurveName4
+- type: text
+  props:
+    text: Таблица/кривая «scriptCurve4» — редактор пока не реализован
+    variant: hint

@@ -1,0 +1,6 @@
+id: live_data_exampleDialog.panel
+description: live_data_example
+source:
+  ini_dialog: live_data_exampleDialog
+  menu_path: View › live_data_example
+children: []

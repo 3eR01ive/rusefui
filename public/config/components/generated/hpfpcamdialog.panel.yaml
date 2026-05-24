@@ -1,0 +1,31 @@
+id: hpfpCamDialog.panel
+description: HPFP Cam Configuration
+source:
+  ini_dialog: hpfpCamDialog
+  menu_path: Controller › HPFP Cam Configuration
+children:
+- type: scalar-field
+  id: hpfpcamlobes
+  props:
+    label: Number of lobes
+  bind:
+    source: config
+    field: hpfpCamLobes
+- type: scalar-field
+  id: hpfpcam
+  props:
+    label: If using VVT, which cam the pump is driven from
+  bind:
+    source: config
+    field: hpfpCam
+- type: scalar-field
+  id: hpfppeakpos
+  props:
+    label: Angle of first lobe peak
+  bind:
+    source: config
+    field: hpfpPeakPos
+- type: text
+  props:
+    text: Таблица/кривая «hpfpLobeProfileCurve» — редактор пока не реализован
+    variant: hint

@@ -1,0 +1,10 @@
+id: boostOpenLoopGearAdderDialog.panel
+description: Boost control open loop gear adder
+source:
+  ini_dialog: boostOpenLoopGearAdderDialog
+  menu_path: Advanced › Boost control open loop gear adder
+children:
+- type: text
+  props:
+    text: Таблица/кривая «boostOpenLoopGearAdderCurve» — редактор пока не реализован
+    variant: hint

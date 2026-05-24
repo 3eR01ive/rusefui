@@ -1,14 +1,18 @@
 //! Парсер подмножества TunerStudio INI для источников данных rusefui.
 
+mod convert_panel;
 mod decode;
 mod error;
+mod menu;
 mod model;
 mod parse;
 
+pub use convert_panel::{convert_menu_panels, ConvertResult, PanelManifest, PanelManifestEntry};
 pub use decode::decode_output_channels;
 pub use error::IniError;
+pub use menu::{parse_menu_section, IniMenu};
 pub use model::{FieldKind, IniFile, OutputChannelField, OutputChannels, ScalarField, ScalarType};
-pub use parse::parse_ini;
+pub use parse::{parse_ini, split_ini_args};
 
 /// Путь к тестовому INI в репозитории (`test_data/rusefi_proteus_f7.ini`).
 pub fn default_test_ini_path() -> std::path::PathBuf {

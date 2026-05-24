@@ -1,0 +1,10 @@
+id: ac_controlDialog.panel
+description: ac_control
+source:
+  ini_dialog: ac_controlDialog
+  menu_path: View › ac_control
+children:
+- type: text
+  props:
+    variant: hint
+    text: Панель «ac_controlIndicatorPanel» — нет определения в INI

@@ -1,0 +1,17 @@
+id: cltCrankingCurveDialog.panel
+description: Cranking Idle Valve Curve
+source:
+  ini_dialog: cltCrankingCurveDialog
+  menu_path: Idle › Cranking Idle Valve Curve
+children:
+- type: scalar-field
+  id: etbidlethrottlerange
+  props:
+    label: ETB idle maximum angle
+  bind:
+    source: config
+    field: etbIdleThrottleRange
+- type: text
+  props:
+    text: Таблица/кривая «cltCrankingCurve» — редактор пока не реализован
+    variant: hint

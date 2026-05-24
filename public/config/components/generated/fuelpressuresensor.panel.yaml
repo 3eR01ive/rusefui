@@ -1,0 +1,117 @@
+id: fuelPressureSensor.panel
+description: Fuel pressure
+source:
+  ini_dialog: fuelPressureSensor
+  menu_path: Sensors › Fuel sensors › Fuel pressure
+children:
+- type: section
+  props:
+    title: Fuel Pressure Sensor
+  children:
+  - type: section
+    props:
+      title: Fuel Low Pressure Sensor
+    children:
+    - type: scalar-field
+      id: lowpressurefuel-hwchannel
+      props:
+        label: Analog input
+      bind:
+        source: config
+        field: lowPressureFuel_hwChannel
+    - type: scalar-field
+      id: fuelpressuresensormode
+      props:
+        label: sensor type
+      bind:
+        source: config
+        field: fuelPressureSensorMode
+    - type: section
+      props:
+        title: Sensor scaling
+      children:
+      - type: scalar-field
+        id: lowpressurefuel-v1
+        props:
+          label: low voltage
+        bind:
+          source: config
+          field: lowPressureFuel_v1
+      - type: scalar-field
+        id: lowpressurefuel-value1
+        props:
+          label: low pressure
+        bind:
+          source: config
+          field: lowPressureFuel_value1
+      - type: scalar-field
+        id: lowpressurefuel-v2
+        props:
+          label: high voltage
+        bind:
+          source: config
+          field: lowPressureFuel_v2
+      - type: scalar-field
+        id: lowpressurefuel-value2
+        props:
+          label: high pressure
+        bind:
+          source: config
+          field: lowPressureFuel_value2
+  - type: section
+    props:
+      title: Fuel High Pressure Sensor
+    children:
+    - type: text
+      props:
+        text: "\"Sensor SENT type\"\t\t\t\t\t\tFuelHighPressureSentType"
+        variant: hint
+    - type: scalar-field
+      id: fuelhighpressuresentinput
+      props:
+        label: Sensor SENT input
+      bind:
+        source: config
+        field: FuelHighPressureSentInput
+    - type: scalar-field
+      id: highpressurefuel-hwchannel
+      props:
+        label: Analog input
+      bind:
+        source: config
+        field: highPressureFuel_hwChannel
+    - type: section
+      props:
+        title: Sensor scaling
+      children:
+      - type: scalar-field
+        id: highpressurefuel-v1
+        props:
+          label: low voltage
+        bind:
+          source: config
+          field: highPressureFuel_v1
+      - type: scalar-field
+        id: highpressurefuel-value1
+        props:
+          label: low pressure
+        bind:
+          source: config
+          field: highPressureFuel_value1
+      - type: scalar-field
+        id: highpressurefuel-v2
+        props:
+          label: high voltage
+        bind:
+          source: config
+          field: highPressureFuel_v2
+      - type: scalar-field
+        id: highpressurefuel-value2
+        props:
+          label: high pressure
+        bind:
+          source: config
+          field: highPressureFuel_value2
+- type: section
+  props:
+    title: fuelPressureGauges

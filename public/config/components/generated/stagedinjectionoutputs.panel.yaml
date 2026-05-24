@@ -1,0 +1,90 @@
+id: stagedInjectionOutputs.panel
+description: Staged injection outputs
+source:
+  ini_dialog: stagedInjectionOutputs
+  menu_path: Fuel › Staged injection outputs
+children:
+- type: scalar-field
+  id: injectionpinsstage21
+  props:
+    label: Injection Stage 2 Output 1
+  bind:
+    source: config
+    field: injectionPinsStage21
+- type: scalar-field
+  id: injectionpinsstage22
+  props:
+    label: Injection Stage 2 Output 2
+  bind:
+    source: config
+    field: injectionPinsStage22
+- type: scalar-field
+  id: injectionpinsstage23
+  props:
+    label: Injection Stage 2 Output 3
+  bind:
+    source: config
+    field: injectionPinsStage23
+- type: scalar-field
+  id: injectionpinsstage24
+  props:
+    label: Injection Stage 2 Output 4
+  bind:
+    source: config
+    field: injectionPinsStage24
+- type: scalar-field
+  id: injectionpinsstage25
+  props:
+    label: 'Injection Stage 2 Output 5 '
+  bind:
+    source: config
+    field: injectionPinsStage25
+- type: scalar-field
+  id: injectionpinsstage26
+  props:
+    label: 'Injection Stage 2 Output 6 '
+  bind:
+    source: config
+    field: injectionPinsStage26
+- type: scalar-field
+  id: injectionpinsstage27
+  props:
+    label: 'Injection Stage 2 Output 7 '
+  bind:
+    source: config
+    field: injectionPinsStage27
+- type: scalar-field
+  id: injectionpinsstage28
+  props:
+    label: 'Injection Stage 2 Output 8 '
+  bind:
+    source: config
+    field: injectionPinsStage28
+- type: scalar-field
+  id: injectionpinsstage29
+  props:
+    label: 'Injection Stage 2 Output 9 '
+  bind:
+    source: config
+    field: injectionPinsStage29
+- type: scalar-field
+  id: injectionpinsstage210
+  props:
+    label: 'Injection Stage 2 Output 10 '
+  bind:
+    source: config
+    field: injectionPinsStage210
+- type: scalar-field
+  id: injectionpinsstage211
+  props:
+    label: 'Injection Stage 2 Output 11 '
+  bind:
+    source: config
+    field: injectionPinsStage211
+- type: scalar-field
+  id: injectionpinsstage212
+  props:
+    label: 'Injection Stage 2 Output 12 '
+  bind:
+    source: config
+    field: injectionPinsStage212

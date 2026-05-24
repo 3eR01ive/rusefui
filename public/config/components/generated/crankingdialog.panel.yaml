@@ -1,0 +1,88 @@
+id: crankingDialog.panel
+description: Cranking Settings
+source:
+  ini_dialog: crankingDialog
+  menu_path: Cranking › Cranking settings
+children:
+- type: scalar-field
+  id: cranking-rpm
+  props:
+    label: Cranking RPM limit
+  bind:
+    source: config
+    field: cranking_rpm
+- type: section
+  props:
+    title: Fuel
+  children:
+  - type: scalar-field
+    id: crankinginjectionmode
+    props:
+      label: Injection mode
+    bind:
+      source: config
+      field: crankingInjectionMode
+  - type: scalar-field
+    id: userunningmathforcranking
+    props:
+      label: Fuel Source For Cranking
+    bind:
+      source: config
+      field: useRunningMathForCranking
+- type: section
+  props:
+    title: Ignition
+  children:
+  - type: scalar-field
+    id: useseparateadvanceforcranking
+    props:
+      label: Timing Advance mode
+    bind:
+      source: config
+      field: useSeparateAdvanceForCranking
+  - type: scalar-field
+    id: crankingtimingangle
+    props:
+      label: Fixed cranking advance
+    bind:
+      source: config
+      field: crankingTimingAngle
+  - type: scalar-field
+    id: ignitiondwellforcrankingms
+    props:
+      label: Fixed Cranking Dwell
+    bind:
+      source: config
+      field: ignitionDwellForCrankingMs
+- type: section
+  props:
+    title: Advanced
+  children:
+  - type: scalar-field
+    id: iscylindercleanupenabled
+    props:
+      label: Enable flood clear
+    bind:
+      source: config
+      field: isCylinderCleanupEnabled
+  - type: scalar-field
+    id: isfasterenginespinupenabled
+    props:
+      label: Enable faster engine spin-up
+    bind:
+      source: config
+      field: isFasterEngineSpinUpEnabled
+  - type: scalar-field
+    id: useadvancecorrectionsforcranking
+    props:
+      label: Use Advance Corrections for cranking
+    bind:
+      source: config
+      field: useAdvanceCorrectionsForCranking
+  - type: scalar-field
+    id: flexcranking
+    props:
+      label: Use Flex Fuel cranking table
+    bind:
+      source: config
+      field: flexCranking

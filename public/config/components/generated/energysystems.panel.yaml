@@ -1,0 +1,117 @@
+id: energySystems.panel
+description: Battery and Alternator Settings
+source:
+  ini_dialog: energySystems
+  menu_path: Setup › Limits and protection › Battery and alternator
+children:
+- type: section
+  props:
+    title: Alternator Settings
+  children:
+  - type: section
+    props:
+      title: Alternator Settings
+    children:
+    - type: scalar-field
+      id: isalternatorcontrolenabled
+      props:
+        label: Enabled
+      bind:
+        source: config
+        field: isAlternatorControlEnabled
+    - type: scalar-field
+      id: alternatorcontrolpin
+      props:
+        label: Control output
+      bind:
+        source: config
+        field: alternatorControlPin
+    - type: scalar-field
+      id: alternatorcontrolpinmode
+      props:
+        label: Control output mode
+      bind:
+        source: config
+        field: alternatorControlPinMode
+    - type: scalar-field
+      id: alternatorpwmfrequency
+      props:
+        label: PWM frequency
+      bind:
+        source: config
+        field: alternatorPwmFrequency
+    - type: scalar-field
+      id: acrelayalternatordutyadder
+      props:
+        label: A/C duty adder
+      bind:
+        source: config
+        field: acRelayAlternatorDutyAdder
+    - type: text
+      props:
+        text: PID control
+        variant: hint
+    - type: scalar-field
+      id: alternatorcontrol-offset
+      props:
+        label: offset
+      bind:
+        source: config
+        field: alternatorControl_offset
+    - type: scalar-field
+      id: alternatorcontrol-pfactor
+      props:
+        label: P factor
+      bind:
+        source: config
+        field: alternatorControl_pFactor
+    - type: scalar-field
+      id: alternatorcontrol-ifactor
+      props:
+        label: I factor
+      bind:
+        source: config
+        field: alternatorControl_iFactor
+    - type: scalar-field
+      id: alternatorcontrol-dfactor
+      props:
+        label: D factor
+      bind:
+        source: config
+        field: alternatorControl_dFactor
+    - type: scalar-field
+      id: alternator-itermmin
+      props:
+        label: iTerm min
+      bind:
+        source: config
+        field: alternator_iTermMin
+    - type: scalar-field
+      id: alternator-itermmax
+      props:
+        label: iTerm max
+      bind:
+        source: config
+        field: alternator_iTermMax
+    - type: scalar-field
+      id: alternatorcontrol-minvalue
+      props:
+        label: Min
+      bind:
+        source: config
+        field: alternatorControl_minValue
+    - type: scalar-field
+      id: alternatorcontrol-maxvalue
+      props:
+        label: Max
+      bind:
+        source: config
+        field: alternatorControl_maxValue
+    - type: text
+      props:
+        variant: hint
+        text: '% duty = Pterm + Iterm + Dterm + offset%'
+  - type: text
+    props:
+      text: Таблица/кривая «alternatorVoltageTargetTableTbl» — редактор пока не реализован
+      variant: hint

@@ -1,0 +1,48 @@
+id: oilPressureSensor.panel
+description: Oil pressure
+source:
+  ini_dialog: oilPressureSensor
+  menu_path: Sensors › Oil sensors › Oil pressure
+children:
+- type: section
+  props:
+    title: Oil Pressure Sensor
+  children:
+  - type: scalar-field
+    id: oilpressure-hwchannel
+    props:
+      label: Oil Pressure input
+    bind:
+      source: config
+      field: oilPressure_hwChannel
+  - type: scalar-field
+    id: oilpressure-v1
+    props:
+      label: low voltage
+    bind:
+      source: config
+      field: oilPressure_v1
+  - type: scalar-field
+    id: oilpressure-value1
+    props:
+      label: low pressure
+    bind:
+      source: config
+      field: oilPressure_value1
+  - type: scalar-field
+    id: oilpressure-v2
+    props:
+      label: high voltage
+    bind:
+      source: config
+      field: oilPressure_v2
+  - type: scalar-field
+    id: oilpressure-value2
+    props:
+      label: high pressure
+    bind:
+      source: config
+      field: oilPressure_value2
+- type: section
+  props:
+    title: oilPressureGauges

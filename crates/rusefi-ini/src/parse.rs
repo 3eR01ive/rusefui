@@ -198,8 +198,8 @@ fn parse_bit_range(s: &str) -> Result<(u8, u8), String> {
     Ok((low, high))
 }
 
-/// Разбор аргументов после `scalar,` / `bits,` с учётом кавычек.
-fn split_ini_args(s: &str) -> Result<Vec<String>, String> {
+/// Разбор аргументов INI с учётом кавычек (после `field =`, `dialog =`, …).
+pub fn split_ini_args(s: &str) -> Result<Vec<String>, String> {
     let mut out = Vec::new();
     let mut cur = String::new();
     let mut in_quotes = false;

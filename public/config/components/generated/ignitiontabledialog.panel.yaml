@@ -1,0 +1,14 @@
+id: IgnitionTableDialog.panel
+description: Ignition advance
+source:
+  ini_dialog: IgnitionTableDialog
+  menu_path: Ignition › Ignition advance
+children:
+- type: text
+  props:
+    variant: hint
+    text: Таблица/кривая «ignitionTableIndicators» — редактор пока не реализован
+- type: text
+  props:
+    variant: hint
+    text: Таблица/кривая «ignitionTableTbl» — редактор пока не реализован

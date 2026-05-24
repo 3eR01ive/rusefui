@@ -1,0 +1,10 @@
+id: boostTargetDialog.panel
+description: Boost control target
+source:
+  ini_dialog: boostTargetDialog
+  menu_path: Advanced › Boost control target
+children:
+- type: text
+  props:
+    variant: hint
+    text: Таблица/кривая «boostClosedTbl» — редактор пока не реализован

@@ -1,0 +1,10 @@
+id: lambda_monitorDialog.panel
+description: lambda_monitor
+source:
+  ini_dialog: lambda_monitorDialog
+  menu_path: View › lambda_monitor
+children:
+- type: text
+  props:
+    text: Панель «lambda_monitorIndicatorPanel» — нет определения в INI
+    variant: hint

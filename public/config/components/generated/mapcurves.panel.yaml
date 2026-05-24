@@ -1,0 +1,28 @@
+id: mapCurves.panel
+description: MAP sampling
+source:
+  ini_dialog: mapCurves
+  menu_path: Sensors › Chassis sensors › MAP sampling
+children:
+- type: scalar-field
+  id: ismapaveragingenabled
+  props:
+    label: Window averaging
+  bind:
+    source: config
+    field: isMapAveragingEnabled
+- type: scalar-field
+  id: mapexpaveragealpha
+  props:
+    label: mapExpAverageAlpha
+  bind:
+    source: config
+    field: mapExpAverageAlpha
+- type: text
+  props:
+    variant: hint
+    text: Таблица/кривая «map_samplingAngleCurve» — редактор пока не реализован
+- type: text
+  props:
+    text: Таблица/кривая «map_samplingWindowCurve» — редактор пока не реализован
+    variant: hint

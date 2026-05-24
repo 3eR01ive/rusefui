@@ -1,0 +1,17 @@
+id: scriptCurve5Settings.panel
+description: 'Script Curve #5'
+source:
+  ini_dialog: scriptCurve5Settings
+  menu_path: 'Advanced › Lua Calibrations › Script Curve #5'
+children:
+- type: scalar-field
+  id: scriptcurvename5
+  props:
+    label: Name
+  bind:
+    source: config
+    field: scriptCurveName5
+- type: text
+  props:
+    text: Таблица/кривая «scriptCurve5» — редактор пока не реализован
+    variant: hint

@@ -1,0 +1,125 @@
+id: mc33Dialog.panel
+description: Low-Z smart injector control
+source:
+  ini_dialog: mc33Dialog
+  menu_path: Controller › GDI Injector Control
+children:
+- type: scalar-field
+  id: externalrusefigdimodule
+  props:
+    label: externalRusEfiGdiModule
+  bind:
+    source: config
+    field: externalRusEfiGdiModule
+- type: scalar-field
+  id: mc33816-cs
+  props:
+    label: SPI Chip Select
+  bind:
+    source: config
+    field: mc33816_cs
+- type: scalar-field
+  id: mc33816spidevice
+  props:
+    label: SPI Device
+  bind:
+    source: config
+    field: mc33816spiDevice
+- type: scalar-field
+  id: mc33816-rstb
+  props:
+    label: MC33816 rstb
+  bind:
+    source: config
+    field: mc33816_rstb
+- type: scalar-field
+  id: mc33816-flag0
+  props:
+    label: MC33816 flag0
+  bind:
+    source: config
+    field: mc33816_flag0
+- type: scalar-field
+  id: mc33816-driven
+  props:
+    label: MC33816 Driven
+  bind:
+    source: config
+    field: mc33816_driven
+- type: scalar-field
+  id: mc33-hvolt
+  props:
+    label: Boost voltage
+  bind:
+    source: config
+    field: mc33_hvolt
+- type: scalar-field
+  id: mc33-i-boost
+  props:
+    label: Boost current target
+  bind:
+    source: config
+    field: mc33_i_boost
+- type: scalar-field
+  id: mc33-t-min-boost
+  props:
+    label: Min boost time
+  bind:
+    source: config
+    field: mc33_t_min_boost
+- type: scalar-field
+  id: mc33-t-max-boost
+  props:
+    label: Max boost time (timeout)
+  bind:
+    source: config
+    field: mc33_t_max_boost
+- type: scalar-field
+  id: mc33-i-peak
+  props:
+    label: Peak phase current target
+  bind:
+    source: config
+    field: mc33_i_peak
+- type: scalar-field
+  id: mc33-t-peak-tot
+  props:
+    label: Peak phase duration
+  bind:
+    source: config
+    field: mc33_t_peak_tot
+- type: scalar-field
+  id: mc33-t-peak-off
+  props:
+    label: Peak phase loop off time
+  bind:
+    source: config
+    field: mc33_t_peak_off
+- type: scalar-field
+  id: mc33-t-bypass
+  props:
+    label: Peak -> Hold Bypass Time
+  bind:
+    source: config
+    field: mc33_t_bypass
+- type: scalar-field
+  id: mc33-i-hold
+  props:
+    label: Hold current target
+  bind:
+    source: config
+    field: mc33_i_hold
+- type: scalar-field
+  id: mc33-t-hold-off
+  props:
+    label: Hold phase loop off time
+  bind:
+    source: config
+    field: mc33_t_hold_off
+- type: scalar-field
+  id: mc33-t-hold-tot
+  props:
+    label: Maximum injection duration
+  bind:
+    source: config
+    field: mc33_t_hold_tot

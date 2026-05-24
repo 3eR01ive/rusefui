@@ -1,0 +1,120 @@
+id: dynoChars.panel
+description: Virtual Dyno Settings
+source:
+  ini_dialog: dynoChars
+  menu_path: Controller › Torque › Virtual Dyno engine
+children:
+- type: scalar-field
+  id: dynorpmstep
+  props:
+    label: Rpm trim window
+  bind:
+    source: config
+    field: dynoRpmStep
+- type: section
+  props:
+    title: Base Settings
+  children:
+  - type: scalar-field
+    id: dynocarcarmasskg
+    props:
+      label: Car mass
+    bind:
+      source: config
+      field: dynoCarCarMassKg
+  - type: scalar-field
+    id: dynocarcargomasskg
+    props:
+      label: Cargo mass
+    bind:
+      source: config
+      field: dynoCarCargoMassKg
+  - type: scalar-field
+    id: dynocarcoeffofdrag
+    props:
+      label: Drag coefficient
+    bind:
+      source: config
+      field: dynoCarCoeffOfDrag
+  - type: scalar-field
+    id: dynocarfrontalaream2
+    props:
+      label: Frontal car area
+    bind:
+      source: config
+      field: dynoCarFrontalAreaM2
+- type: section
+  props:
+    title: Sae Corrections
+  children:
+  - type: scalar-field
+    id: dynosaetemperaturec
+    props:
+      label: Air temperature
+    bind:
+      source: config
+      field: dynoSaeTemperatureC
+  - type: scalar-field
+    id: dynosaerelativehumidity
+    props:
+      label: Relative air humidity
+    bind:
+      source: config
+      field: dynoSaeRelativeHumidity
+  - type: scalar-field
+    id: dynosaebaro
+    props:
+      label: Atmospheric pressure
+    bind:
+      source: config
+      field: dynoSaeBaro
+- type: section
+  props:
+    title: Wheels
+  children:
+  - type: scalar-field
+    id: dynocarwheeldiainch
+    props:
+      label: Disc diameter
+    bind:
+      source: config
+      field: dynoCarWheelDiaInch
+  - type: scalar-field
+    id: dynocarwheelaspectratio
+    props:
+      label: Tyre height
+    bind:
+      source: config
+      field: dynoCarWheelAspectRatio
+  - type: scalar-field
+    id: dynocarwheeltirewidthmm
+    props:
+      label: Tire width
+    bind:
+      source: config
+      field: dynoCarWheelTireWidthMm
+- type: section
+  props:
+    title: Gears
+  children:
+  - type: scalar-field
+    id: dynocargearprimaryreduction
+    props:
+      label: Primary reduction
+    bind:
+      source: config
+      field: dynoCarGearPrimaryReduction
+  - type: scalar-field
+    id: dynocargearratio
+    props:
+      label: Gear ratio
+    bind:
+      source: config
+      field: dynoCarGearRatio
+  - type: scalar-field
+    id: dynocargearfinaldrive
+    props:
+      label: Final drive
+    bind:
+      source: config
+      field: dynoCarGearFinalDrive

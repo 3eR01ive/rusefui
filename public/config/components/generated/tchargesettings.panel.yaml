@@ -1,0 +1,110 @@
+id: tChargeSettings.panel
+description: Estimated cylinder air temperature
+source:
+  ini_dialog: tChargeSettings
+  menu_path: Fuel › Target AFR adder tables › Charge temperature estimation
+children:
+- type: section
+  props:
+    title: tChargeGeneralSettings
+  children:
+  - type: scalar-field
+    id: tchargemode
+    props:
+      label: Mode
+    bind:
+      source: config
+      field: tChargeMode
+  - type: text
+    props:
+      variant: hint
+      text: These two parameters limit the estimate's rate of change
+  - type: scalar-field
+    id: tchargeairincrlimit
+    props:
+      label: Increase rate limit
+    bind:
+      source: config
+      field: tChargeAirIncrLimit
+  - type: scalar-field
+    id: tchargeairdecrlimit
+    props:
+      label: Decrease rate limit
+    bind:
+      source: config
+      field: tChargeAirDecrLimit
+- type: section
+  props:
+    title: RPM+TPS mode
+  children:
+  - type: scalar-field
+    id: we-use-these-coefficients-to-approximate-air-fuel-charge
+    props:
+      label: We use these coefficients to approximate air/fuel charge
+    bind:
+      source: config
+      field: We use these coefficients to approximate air/fuel charge
+  - type: scalar-field
+    id: temperature-based-on-clt-and-iat--depending-on-rpm-and-tpm
+    props:
+      label: temperature based on CLT and IAT, depending on RPM and TPM
+    bind:
+      source: config
+      field: temperature based on CLT and IAT, depending on RPM and TPM
+  - type: scalar-field
+    id: tchargeminrpmmintps
+    props:
+      label: Low RPM/Low TPS
+    bind:
+      source: config
+      field: tChargeMinRpmMinTps
+  - type: scalar-field
+    id: tchargeminrpmmaxtps
+    props:
+      label: Low RPM/High TPS
+    bind:
+      source: config
+      field: tChargeMinRpmMaxTps
+  - type: scalar-field
+    id: tchargemaxrpmmintps
+    props:
+      label: High RPM/Low TPS
+    bind:
+      source: config
+      field: tChargeMaxRpmMinTps
+  - type: scalar-field
+    id: tchargemaxrpmmaxtps
+    props:
+      label: High RPM/High TPS
+    bind:
+      source: config
+      field: tChargeMaxRpmMaxTps
+- type: section
+  props:
+    title: Airflow interpolation mode
+  children:
+  - type: scalar-field
+    id: tchargeaircoefmin
+    props:
+      label: Low flow coefficient
+    bind:
+      source: config
+      field: tChargeAirCoefMin
+  - type: scalar-field
+    id: tchargeaircoefmax
+    props:
+      label: High flow coefficient
+    bind:
+      source: config
+      field: tChargeAirCoefMax
+  - type: scalar-field
+    id: tchargeairflowmax
+    props:
+      label: Max air flow
+    bind:
+      source: config
+      field: tChargeAirFlowMax
+- type: text
+  props:
+    variant: hint
+    text: Таблица/кривая «tchargeCurve» — редактор пока не реализован

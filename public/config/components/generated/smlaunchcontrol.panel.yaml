@@ -1,0 +1,162 @@
+id: smLaunchControl.panel
+description: Launch Control
+source:
+  ini_dialog: smLaunchControl
+  menu_path: Advanced › Launch Control
+children:
+- type: section
+  props:
+    title: Launch Control Settings
+  children:
+  - type: text
+    props:
+      variant: hint
+      text: Also known as Rolling antilag
+  - type: scalar-field
+    id: launchcontrolenabled
+    props:
+      label: Enable Launch Control
+    bind:
+      source: config
+      field: launchControlEnabled
+  - type: scalar-field
+    id: launchactivationmode
+    props:
+      label: Activation Mode
+    bind:
+      source: config
+      field: launchActivationMode
+  - type: scalar-field
+    id: launchactivatepin
+    props:
+      label: Launch Button
+    bind:
+      source: config
+      field: launchActivatePin
+  - type: scalar-field
+    id: launchactivatepinmode
+    props:
+      label: Launch Button mode
+    bind:
+      source: config
+      field: launchActivatePinMode
+  - type: scalar-field
+    id: clutchdownpin
+    props:
+      label: Clutch Down
+    bind:
+      source: config
+      field: clutchDownPin
+  - type: scalar-field
+    id: clutchdownpinmode
+    props:
+      label: Clutch Down mode
+    bind:
+      source: config
+      field: clutchDownPinMode
+  - type: scalar-field
+    id: launchspeedthreshold
+    props:
+      label: Speed Threshold
+    bind:
+      source: config
+      field: launchSpeedThreshold
+  - type: scalar-field
+    id: launchrpm
+    props:
+      label: Launch RPM
+    bind:
+      source: config
+      field: launchRpm
+  - type: scalar-field
+    id: launchrpmwindow
+    props:
+      label: Launch Control Window
+    bind:
+      source: config
+      field: launchRpmWindow
+  - type: scalar-field
+    id: launchtpsthreshold
+    props:
+      label: TPS Threshold
+    bind:
+      source: config
+      field: launchTpsThreshold
+  - type: scalar-field
+    id: enablelaunchretard
+    props:
+      label: Ignition Retard enable
+    bind:
+      source: config
+      field: enableLaunchRetard
+  - type: scalar-field
+    id: launchtimingretard
+    props:
+      label: Ignition Retard
+    bind:
+      source: config
+      field: launchTimingRetard
+  - type: scalar-field
+    id: launchfueladderpercent
+    props:
+      label: Fuel Added %
+    bind:
+      source: config
+      field: launchFuelAdderPercent
+  - type: scalar-field
+    id: launchsmoothretard
+    props:
+      label: Smooth Retard Mode
+    bind:
+      source: config
+      field: launchSmoothRetard
+  - type: scalar-field
+    id: launchcorrectionsendrpm
+    props:
+      label: Launch Corrections End RPM
+    bind:
+      source: config
+      field: launchCorrectionsEndRpm
+  - type: scalar-field
+    id: hard-cut-mode
+    props:
+      label: Hard Cut Mode
+    bind:
+      source: config
+      field: Hard Cut Mode
+  - type: scalar-field
+    id: launchsparkcutenable
+    props:
+      label: Ignition Cut
+    bind:
+      source: config
+      field: launchSparkCutEnable
+  - type: scalar-field
+    id: initialignitioncutpercent
+    props:
+      label: Initial Ignition Cut %
+    bind:
+      source: config
+      field: initialIgnitionCutPercent
+  - type: scalar-field
+    id: finalignitioncutpercentbeforelaunch
+    props:
+      label: Final Ignition Cut % Before launch
+    bind:
+      source: config
+      field: finalIgnitionCutPercentBeforeLaunch
+  - type: scalar-field
+    id: launchfuelcutenable
+    props:
+      label: Fuel Cut
+    bind:
+      source: config
+      field: launchFuelCutEnable
+- type: section
+  props:
+    title: launch_control_state
+  children:
+  - type: text
+    props:
+      variant: hint
+      text: Панель «launch_control_stateIndicatorPanel» — нет определения в INI

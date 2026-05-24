@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
+    "convert-panels": "cargo run -p rusefi-ini --bin ini-convert-panels",
     "preview": "vite preview",
     "tauri": "tauri"
   },

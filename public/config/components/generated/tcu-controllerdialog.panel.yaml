@@ -1,0 +1,10 @@
+id: tcu_controllerDialog.panel
+description: tcu_controller
+source:
+  ini_dialog: tcu_controllerDialog
+  menu_path: View › tcu_controller
+children:
+- type: text
+  props:
+    variant: hint
+    text: Панель «tcu_controllerIndicatorPanel» — нет определения в INI

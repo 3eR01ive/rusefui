@@ -1,0 +1,146 @@
+id: limitsAndFallback.panel
+description: Limits and fallbacks
+source:
+  ini_dialog: limitsAndFallback
+  menu_path: Setup › Limits and protection › Limits and fallbacks
+children:
+- type: section
+  props:
+    title: limitsAndFallbackLeft
+  children:
+  - type: section
+    props:
+      title: Limits
+    children:
+    - type: scalar-field
+      id: cutfuelonhardlimit
+      props:
+        label: Cut fuel on RPM limit
+      bind:
+        source: config
+        field: cutFuelOnHardLimit
+    - type: scalar-field
+      id: cutsparkonhardlimit
+      props:
+        label: Cut spark on RPM limit
+      bind:
+        source: config
+        field: cutSparkOnHardLimit
+    - type: scalar-field
+      id: usecltbasedrpmlimit
+      props:
+        label: Use Engine Temperature RPM limit curve
+      bind:
+        source: config
+        field: useCltBasedRpmLimit
+    - type: scalar-field
+      id: rpmhardlimit
+      props:
+        label: RPM hard limit
+      bind:
+        source: config
+        field: rpmHardLimit
+    - type: scalar-field
+      id: rpmhardlimithyst
+      props:
+        label: RPM limit hysteresis
+      bind:
+        source: config
+        field: rpmHardLimitHyst
+    - type: scalar-field
+      id: boostcutpressure
+      props:
+        label: Boost cut pressure
+      bind:
+        source: config
+        field: boostCutPressure
+    - type: scalar-field
+      id: boostcutpressurehyst
+      props:
+        label: Boost cut pressure hysteresis
+      bind:
+        source: config
+        field: boostCutPressureHyst
+    - type: section
+      props:
+        title: Injector Duty Cycle Limiter
+      children:
+      - type: scalar-field
+        id: maxinjectordutyinstant
+        props:
+          label: Instantaneous injector duty cycle limit
+        bind:
+          source: config
+          field: maxInjectorDutyInstant
+      - type: scalar-field
+        id: maxinjectordutysustained
+        props:
+          label: Sustained injector duty cycle limit
+        bind:
+          source: config
+          field: maxInjectorDutySustained
+      - type: scalar-field
+        id: maxinjectordutysustainedtimeout
+        props:
+          label: Sustained injector duty cycle delay
+        bind:
+          source: config
+          field: maxInjectorDutySustainedTimeout
+  - type: section
+    props:
+      title: Soft RPM Limit
+    children:
+    - type: scalar-field
+      id: rpmsoftlimitwindowsize
+      props:
+        label: Window size
+      bind:
+        source: config
+        field: rpmSoftLimitWindowSize
+    - type: scalar-field
+      id: rpmsoftlimittimingretard
+      props:
+        label: Timing retard
+      bind:
+        source: config
+        field: rpmSoftLimitTimingRetard
+    - type: scalar-field
+      id: rpmsoftlimitfueladded
+      props:
+        label: Fuel added
+      bind:
+        source: config
+        field: rpmSoftLimitFuelAdded
+  - type: section
+    props:
+      title: Electronic Throttle Limiting
+    children:
+    - type: scalar-field
+      id: smoothly-close-the-throttle-to-limit-rpm
+      props:
+        label: Smoothly close the throttle to limit RPM.
+      bind:
+        source: config
+        field: Smoothly close the throttle to limit RPM.
+    - type: scalar-field
+      id: etbrevlimitstart
+      props:
+        label: Soft limiter start
+      bind:
+        source: config
+        field: etbRevLimitStart
+    - type: scalar-field
+      id: etbrevlimitrange
+      props:
+        label: Soft limiter range
+      bind:
+        source: config
+        field: etbRevLimitRange
+- type: section
+  props:
+    title: Engine Temperature RPM Limit
+  children:
+  - type: text
+    props:
+      text: Таблица/кривая «cltRevLimitCurve» — редактор пока не реализован
+      variant: hint

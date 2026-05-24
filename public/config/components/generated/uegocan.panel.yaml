@@ -1,0 +1,38 @@
+id: uegoCan.panel
+description: CAN O2 sensors
+source:
+  ini_dialog: uegoCan
+  menu_path: CAN-bus › CAN O2 sensors
+children:
+- type: scalar-field
+  id: support-for-aem-or-rusefi-can-uego
+  props:
+    label: Support for AEM or RusEFI CAN UEGO
+  bind:
+    source: config
+    field: Support for AEM or RusEFI CAN UEGO
+- type: scalar-field
+  id: enableaemxseries
+  props:
+    label: Enable CAN Wideband
+  bind:
+    source: config
+    field: enableAemXSeries
+- type: scalar-field
+  id: widebandonsecondbus
+  props:
+    label: Wideband CAN bus
+  bind:
+    source: config
+    field: widebandOnSecondBus
+- type: scalar-field
+  id: forceo2heating
+  props:
+    label: Force O2 sensor heating
+  bind:
+    source: config
+    field: forceO2Heating
+- type: text
+  props:
+    variant: hint
+    text: 'Кнопка: Update 2023 Firmware (cmd_wideband_firmare_update)'

@@ -1,0 +1,200 @@
+id: triggerConfiguration_gap.panel
+description: Trigger Gap Override
+source:
+  ini_dialog: triggerConfiguration_gap
+  menu_path: Setup › Limits and protection › Trigger Gap Override
+children:
+- type: text
+  props:
+    text: This is a pretty advanced feature for when you are debugging trigger synchronization
+    variant: hint
+- type: scalar-field
+  id: overridetriggergaps
+  props:
+    label: Override well known trigger gaps
+  bind:
+    source: config
+    field: overrideTriggerGaps
+- type: scalar-field
+  id: gaptrackinglengthoverride
+  props:
+    label: gapTrackingLengthOverride
+  bind:
+    source: config
+    field: gapTrackingLengthOverride
+- type: scalar-field
+  id: triggergapoverridefrom1
+  props:
+    label: First gap from
+  bind:
+    source: config
+    field: triggerGapOverrideFrom1
+- type: scalar-field
+  id: triggergapoverrideto1
+  props:
+    label: First gap to
+  bind:
+    source: config
+    field: triggerGapOverrideTo1
+- type: scalar-field
+  id: triggergapoverridefrom2
+  props:
+    label: Second gap from
+  bind:
+    source: config
+    field: triggerGapOverrideFrom2
+- type: scalar-field
+  id: triggergapoverrideto2
+  props:
+    label: Second gap to
+  bind:
+    source: config
+    field: triggerGapOverrideTo2
+- type: scalar-field
+  id: triggergapoverridefrom3
+  props:
+    label: 'Gap #3 from'
+  bind:
+    source: config
+    field: triggerGapOverrideFrom3
+- type: scalar-field
+  id: triggergapoverrideto3
+  props:
+    label: 'Gap #3 to'
+  bind:
+    source: config
+    field: triggerGapOverrideTo3
+- type: scalar-field
+  id: triggergapoverridefrom4
+  props:
+    label: 'Gap #4 from'
+  bind:
+    source: config
+    field: triggerGapOverrideFrom4
+- type: scalar-field
+  id: triggergapoverrideto4
+  props:
+    label: 'Gap #4 to'
+  bind:
+    source: config
+    field: triggerGapOverrideTo4
+- type: scalar-field
+  id: triggergapoverridefrom5
+  props:
+    label: 'Gap #5 from'
+  bind:
+    source: config
+    field: triggerGapOverrideFrom5
+- type: scalar-field
+  id: triggergapoverrideto5
+  props:
+    label: 'Gap #5 to'
+  bind:
+    source: config
+    field: triggerGapOverrideTo5
+- type: scalar-field
+  id: triggergapoverridefrom6
+  props:
+    label: 'Gap #6 from'
+  bind:
+    source: config
+    field: triggerGapOverrideFrom6
+- type: scalar-field
+  id: triggergapoverrideto6
+  props:
+    label: 'Gap #6 to'
+  bind:
+    source: config
+    field: triggerGapOverrideTo6
+- type: scalar-field
+  id: triggergapoverridefrom7
+  props:
+    label: 'Gap #7 from'
+  bind:
+    source: config
+    field: triggerGapOverrideFrom7
+- type: scalar-field
+  id: triggergapoverrideto7
+  props:
+    label: 'Gap #7 to'
+  bind:
+    source: config
+    field: triggerGapOverrideTo7
+- type: scalar-field
+  id: triggergapoverridefrom8
+  props:
+    label: 'Gap #8 from'
+  bind:
+    source: config
+    field: triggerGapOverrideFrom8
+- type: scalar-field
+  id: triggergapoverrideto8
+  props:
+    label: 'Gap #8 to'
+  bind:
+    source: config
+    field: triggerGapOverrideTo8
+- type: scalar-field
+  id: overridevvttriggergaps
+  props:
+    label: Override well known VVT gaps
+  bind:
+    source: config
+    field: overrideVvtTriggerGaps
+- type: scalar-field
+  id: gapvvttrackinglengthoverride
+  props:
+    label: gapVvtTrackingLengthOverride
+  bind:
+    source: config
+    field: gapVvtTrackingLengthOverride
+- type: scalar-field
+  id: triggervvtgapoverridefrom1
+  props:
+    label: First VVT gap from
+  bind:
+    source: config
+    field: triggerVVTGapOverrideFrom1
+- type: scalar-field
+  id: triggervvtgapoverrideto1
+  props:
+    label: First VVT gap to
+  bind:
+    source: config
+    field: triggerVVTGapOverrideTo1
+- type: scalar-field
+  id: triggervvtgapoverridefrom2
+  props:
+    label: Second VVT gap from
+  bind:
+    source: config
+    field: triggerVVTGapOverrideFrom2
+- type: scalar-field
+  id: triggervvtgapoverrideto2
+  props:
+    label: Second VVT gap to
+  bind:
+    source: config
+    field: triggerVVTGapOverrideTo2
+- type: scalar-field
+  id: triggervvtgapoverridefrom3
+  props:
+    label: 'VVT gap #3 from'
+  bind:
+    source: config
+    field: triggerVVTGapOverrideFrom3
+- type: scalar-field
+  id: triggervvtgapoverrideto3
+  props:
+    label: 'VVT gap #3 to'
+  bind:
+    source: config
+    field: triggerVVTGapOverrideTo3
+- type: text
+  props:
+    text: 'VVT gap #4 from'
+    variant: hint
+- type: text
+  props:
+    text: 'VVT gap #4 to'
+    variant: hint

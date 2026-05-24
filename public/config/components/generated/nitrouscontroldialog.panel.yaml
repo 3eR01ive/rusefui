@@ -1,0 +1,167 @@
+id: NitrousControlDialog.panel
+description: Nitrous Control
+source:
+  ini_dialog: NitrousControlDialog
+  menu_path: Advanced › Nitrous Control
+children:
+- type: section
+  props:
+    title: NitrousControlSettingsDialog
+  children:
+  - type: scalar-field
+    id: nitrouscontrolenabled
+    props:
+      label: Enable Nitrous Control
+    bind:
+      source: config
+      field: nitrousControlEnabled
+  - type: section
+    props:
+      title: Arming Method
+    children:
+    - type: scalar-field
+      id: nitrouscontrolarmingmethod
+      props:
+        label: Arming Method
+      bind:
+        source: config
+        field: nitrousControlArmingMethod
+    - type: section
+      props:
+        title: Digital Switch Input
+      children:
+      - type: scalar-field
+        id: nitrouscontroltriggerpin
+        props:
+          label: Nitrous Control Button
+        bind:
+          source: config
+          field: nitrousControlTriggerPin
+      - type: scalar-field
+        id: nitrouscontroltriggerpinmode
+        props:
+          label: Nitrous Control Mode
+        bind:
+          source: config
+          field: nitrousControlTriggerPinMode
+    - type: section
+      props:
+        title: Lua Gauge
+      children:
+      - type: scalar-field
+        id: nitrousluagauge
+        props:
+          label: Lua Gauge
+        bind:
+          source: config
+          field: nitrousLuaGauge
+      - type: scalar-field
+        id: nitrousluagaugemeaning
+        props:
+          label: Value Meaning
+        bind:
+          source: config
+          field: nitrousLuaGaugeMeaning
+      - type: scalar-field
+        id: nitrousluagaugearmingvalue
+        props:
+          label: Arming Value
+        bind:
+          source: config
+          field: nitrousLuaGaugeArmingValue
+  - type: section
+    props:
+      title: Settings
+    children:
+    - type: scalar-field
+      id: nitrousrelaypin
+      props:
+        label: Nitrous Relay
+      bind:
+        source: config
+        field: nitrousRelayPin
+    - type: scalar-field
+      id: nitrousrelaypinmode
+      props:
+        label: Nitrous Relay Mode
+      bind:
+        source: config
+        field: nitrousRelayPinMode
+    - type: scalar-field
+      id: nitrousminimumvehiclespeed
+      props:
+        label: Minimum Vehicle Speed
+      bind:
+        source: config
+        field: nitrousMinimumVehicleSpeed
+    - type: scalar-field
+      id: nitrousminimumtps
+      props:
+        label: Minimum TPS
+      bind:
+        source: config
+        field: nitrousMinimumTps
+    - type: scalar-field
+      id: nitrousminimumclt
+      props:
+        label: Minimum CLT
+      bind:
+        source: config
+        field: nitrousMinimumClt
+    - type: scalar-field
+      id: nitrousmaximummap
+      props:
+        label: Maximum MAP
+      bind:
+        source: config
+        field: nitrousMaximumMap
+    - type: scalar-field
+      id: nitrousmaximumafr
+      props:
+        label: Maximum AFR
+      bind:
+        source: config
+        field: nitrousMaximumAfr
+    - type: scalar-field
+      id: nitrousactivationrpm
+      props:
+        label: Activation RPM
+      bind:
+        source: config
+        field: nitrousActivationRpm
+    - type: scalar-field
+      id: nitrousdeactivationrpm
+      props:
+        label: Dectivation RPM
+      bind:
+        source: config
+        field: nitrousDeactivationRpm
+    - type: scalar-field
+      id: nitrousdeactivationrpmwindow
+      props:
+        label: Dectivation RPM Window
+      bind:
+        source: config
+        field: nitrousDeactivationRpmWindow
+    - type: scalar-field
+      id: nitrousfueladderpercent
+      props:
+        label: Fuel Adder
+      bind:
+        source: config
+        field: nitrousFuelAdderPercent
+    - type: scalar-field
+      id: nitrousignitionretard
+      props:
+        label: Ignition Retard
+      bind:
+        source: config
+        field: nitrousIgnitionRetard
+- type: section
+  props:
+    title: nitrous_control_state
+  children:
+  - type: text
+    props:
+      variant: hint
+      text: Панель «nitrous_control_stateIndicatorPanel» — нет определения в INI

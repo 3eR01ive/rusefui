@@ -1,0 +1,12 @@
+id: acPressureSensor.panel
+description: A/C Pressure
+source:
+  ini_dialog: acPressureSensor
+  menu_path: Sensors › Chassis sensors › A/C Pressure
+children:
+- type: section
+  props:
+    title: A/C Pressure Sensor
+- type: section
+  props:
+    title: acPressureGauges

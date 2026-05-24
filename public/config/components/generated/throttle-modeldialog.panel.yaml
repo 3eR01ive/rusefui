@@ -1,0 +1,10 @@
+id: throttle_modelDialog.panel
+description: throttle_model
+source:
+  ini_dialog: throttle_modelDialog
+  menu_path: View › throttle_model
+children:
+- type: text
+  props:
+    variant: hint
+    text: Панель «throttle_modelIndicatorPanel» — нет определения в INI

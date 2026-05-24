@@ -1,0 +1,55 @@
+id: veBlend3Cfg.panel
+description: VE blend 3 config
+source:
+  ini_dialog: veBlend3Cfg
+  menu_path: Fuel › VE blend tables › VE blend 3 bias
+children:
+- type: text
+  props:
+    text: The bias table controls how much of the blend table
+    variant: hint
+- type: text
+  props:
+    variant: hint
+    text: is mixed in to the VE table. For example, a value of
+- type: text
+  props:
+    variant: hint
+    text: +10 in the table, with 50 as the current bias will result
+- type: text
+  props:
+    text: in +5.0% added to the VE. Note that this doesn't add 5% VE,
+    variant: hint
+- type: scalar-field
+  id: instead--it-adds-5--to-the-current-ve-value--multiplying-ve-by-1-05
+  props:
+    label: instead, it adds 5% to the current VE value, multiplying VE by 1.05.
+  bind:
+    source: config
+    field: instead, it adds 5% to the current VE value, multiplying VE by 1.05.
+- type: text
+  props:
+    text: The X axis of the bias table is controlled by the selected blend
+    variant: hint
+- type: text
+  props:
+    variant: hint
+    text: parameter below.
+- type: scalar-field
+  id: veblends3-blendparameter
+  props:
+    label: Blend parameter
+  bind:
+    source: config
+    field: veBlends3_blendParameter
+- type: scalar-field
+  id: veblends3-yaxisoverride
+  props:
+    label: Y axis override (set Zero for no override)
+  bind:
+    source: config
+    field: veBlends3_yAxisOverride
+- type: text
+  props:
+    text: Панель «veBlend3Bias» — нет определения в INI
+    variant: hint

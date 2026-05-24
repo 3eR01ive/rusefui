@@ -1,0 +1,202 @@
+id: spiBuses.panel
+description: SPI buses settings
+source:
+  ini_dialog: spiBuses
+  menu_path: Controller › SPI Buses
+children:
+- type: text
+  props:
+    variant: hint
+    text: ECU reboot needed to apply these settings
+- type: section
+  props:
+    title: SPI1 settings
+  children:
+  - type: scalar-field
+    id: is-enabled-spi-1
+    props:
+      label: Enable
+    bind:
+      source: config
+      field: is_enabled_spi_1
+  - type: scalar-field
+    id: spi1mosipin
+    props:
+      label: MOSI
+    bind:
+      source: config
+      field: spi1mosiPin
+  - type: scalar-field
+    id: spi1mosimode
+    props:
+      label: MOSI mode
+    bind:
+      source: config
+      field: spi1MosiMode
+  - type: scalar-field
+    id: spi1misopin
+    props:
+      label: MISO
+    bind:
+      source: config
+      field: spi1misoPin
+  - type: scalar-field
+    id: spi1misomode
+    props:
+      label: MISO mode
+    bind:
+      source: config
+      field: spi1MisoMode
+  - type: scalar-field
+    id: spi1sckpin
+    props:
+      label: SCK
+    bind:
+      source: config
+      field: spi1sckPin
+  - type: scalar-field
+    id: spi1sckmode
+    props:
+      label: SCK mode
+    bind:
+      source: config
+      field: spi1SckMode
+- type: section
+  props:
+    title: SPI2 settings
+  children:
+  - type: scalar-field
+    id: is-enabled-spi-2
+    props:
+      label: Enable
+    bind:
+      source: config
+      field: is_enabled_spi_2
+  - type: scalar-field
+    id: spi2mosipin
+    props:
+      label: MOSI
+    bind:
+      source: config
+      field: spi2mosiPin
+  - type: scalar-field
+    id: spi2mosimode
+    props:
+      label: MOSI mode
+    bind:
+      source: config
+      field: spi2MosiMode
+  - type: scalar-field
+    id: spi2misopin
+    props:
+      label: MISO
+    bind:
+      source: config
+      field: spi2misoPin
+  - type: scalar-field
+    id: spi2misomode
+    props:
+      label: MISO mode
+    bind:
+      source: config
+      field: spi2MisoMode
+  - type: scalar-field
+    id: spi2sckpin
+    props:
+      label: SCK
+    bind:
+      source: config
+      field: spi2sckPin
+  - type: scalar-field
+    id: spi2sckmode
+    props:
+      label: SCK mode
+    bind:
+      source: config
+      field: spi2SckMode
+- type: section
+  props:
+    title: SPI3 settings
+  children:
+  - type: scalar-field
+    id: is-enabled-spi-3
+    props:
+      label: Enable
+    bind:
+      source: config
+      field: is_enabled_spi_3
+  - type: scalar-field
+    id: spi3mosipin
+    props:
+      label: MOSI
+    bind:
+      source: config
+      field: spi3mosiPin
+  - type: scalar-field
+    id: spi3mosimode
+    props:
+      label: MOSI mode
+    bind:
+      source: config
+      field: spi3MosiMode
+  - type: scalar-field
+    id: spi3misopin
+    props:
+      label: MISO
+    bind:
+      source: config
+      field: spi3misoPin
+  - type: scalar-field
+    id: spi3misomode
+    props:
+      label: MISO mode
+    bind:
+      source: config
+      field: spi3MisoMode
+  - type: scalar-field
+    id: spi3sckpin
+    props:
+      label: SCK
+    bind:
+      source: config
+      field: spi3sckPin
+  - type: scalar-field
+    id: spi3sckmode
+    props:
+      label: SCK mode
+    bind:
+      source: config
+      field: spi3SckMode
+- type: section
+  props:
+    title: SPI4 settings
+  children:
+  - type: scalar-field
+    id: is-enabled-spi-4
+    props:
+      label: Enable
+    bind:
+      source: config
+      field: is_enabled_spi_4
+- type: section
+  props:
+    title: SPI5 settings
+  children:
+  - type: scalar-field
+    id: is-enabled-spi-5
+    props:
+      label: Enable
+    bind:
+      source: config
+      field: is_enabled_spi_5
+- type: section
+  props:
+    title: SPI6 settings
+  children:
+  - type: scalar-field
+    id: is-enabled-spi-6
+    props:
+      label: Enable
+    bind:
+      source: config
+      field: is_enabled_spi_6

@@ -1,0 +1,260 @@
+id: idlehw.panel
+description: Idle hardware
+source:
+  ini_dialog: idlehw
+  menu_path: Idle › Idle hardware
+children:
+- type: text
+  props:
+    variant: hint
+    text: ECU reboot needed to apply these settings
+- type: scalar-field
+  id: usestepperidle
+  props:
+    label: Use Stepper
+  bind:
+    source: config
+    field: useStepperIdle
+- type: scalar-field
+  id: etbidlethrottlerange
+  props:
+    label: Electronic throttle idle range
+  bind:
+    source: config
+    field: etbIdleThrottleRange
+- type: section
+  props:
+    title: Idle Valve Hardware
+  children:
+  - type: section
+    props:
+      title: Solenoid
+    children:
+    - type: scalar-field
+      id: idle-solenoidpin
+      props:
+        label: Idle Solenoid Primary output
+      bind:
+        source: config
+        field: idle_solenoidPin
+    - type: scalar-field
+      id: isdoublesolenoididle
+      props:
+        label: Double Solenoid Mode
+      bind:
+        source: config
+        field: isDoubleSolenoidIdle
+    - type: scalar-field
+      id: secondsolenoidpin
+      props:
+        label: Idle Solenoid Secondary output
+      bind:
+        source: config
+        field: secondSolenoidPin
+    - type: scalar-field
+      id: idle-solenoidpinmode
+      props:
+        label: Idle Solenoid output(s) Mode
+      bind:
+        source: config
+        field: idle_solenoidPinMode
+    - type: scalar-field
+      id: idle-solenoidfrequency
+      props:
+        label: Idle Solenoid Frequency
+      bind:
+        source: config
+        field: idle_solenoidFrequency
+  - type: section
+    props:
+      title: Stepper
+    children:
+    - type: section
+      props:
+        title: idleStepperGeneral
+      children:
+      - type: scalar-field
+        id: usehbridgestodriveidlestepper
+        props:
+          label: Drive stepper with dual H bridges
+        bind:
+          source: config
+          field: useHbridgesToDriveIdleStepper
+      - type: scalar-field
+        id: userawoutputtodriveidlestepper
+        props:
+          label: Drive stepper with PushPull outputs
+        bind:
+          source: config
+          field: useRawOutputToDriveIdleStepper
+      - type: scalar-field
+        id: idlestepperreactiontime
+        props:
+          label: Stepper reaction time
+        bind:
+          source: config
+          field: idleStepperReactionTime
+      - type: scalar-field
+        id: idlesteppertotalsteps
+        props:
+          label: Stepper total steps
+        bind:
+          source: config
+          field: idleStepperTotalSteps
+      - type: scalar-field
+        id: stepperparkingextrasteps
+        props:
+          label: Stepper parking extra steps, %
+        bind:
+          source: config
+          field: stepperParkingExtraSteps
+      - type: scalar-field
+        id: stepperforceparkingeveryrestart
+        props:
+          label: Force parking every restart
+        bind:
+          source: config
+          field: stepperForceParkingEveryRestart
+    - type: section
+      props:
+        title: idleStepperHwType
+      children:
+      - type: section
+        props:
+          title: Stepper Controller Hardware
+        children:
+        - type: scalar-field
+          id: idle-steppersteppin
+          props:
+            label: Idle Stepper Step Pin
+          bind:
+            source: config
+            field: idle_stepperStepPin
+        - type: scalar-field
+          id: idle-stepperdirectionpin
+          props:
+            label: Idle Stepper Dir Pin
+          bind:
+            source: config
+            field: idle_stepperDirectionPin
+        - type: scalar-field
+          id: stepperdirectionpinmode
+          props:
+            label: Idle Stepper Dir Pin Mode
+          bind:
+            source: config
+            field: stepperDirectionPinMode
+        - type: scalar-field
+          id: stepperenablepin
+          props:
+            label: Idle Stepper Enable Pin
+          bind:
+            source: config
+            field: stepperEnablePin
+        - type: scalar-field
+          id: stepperenablepinmode
+          props:
+            label: Idle Stepper Enable Pin Mode
+          bind:
+            source: config
+            field: stepperEnablePinMode
+      - type: section
+        props:
+          title: Stepper H-Bridge Hardware
+        children:
+        - type: scalar-field
+          id: stepperdcinvertedpins
+          props:
+            label: Inverted driver pins
+          bind:
+            source: config
+            field: stepperDcInvertedPins
+        - type: section
+          props:
+            title: H-Bridge Hardware No1
+          children:
+          - type: scalar-field
+            id: stepperdcio1-directionpin1
+            props:
+              label: 'No1 Direction #1'
+            bind:
+              source: config
+              field: stepperDcIo1_directionPin1
+          - type: scalar-field
+            id: stepperdcio1-directionpin2
+            props:
+              label: 'No1 Direction #2'
+            bind:
+              source: config
+              field: stepperDcIo1_directionPin2
+          - type: scalar-field
+            id: stepperdcio1-controlpin
+            props:
+              label: No1 Control
+            bind:
+              source: config
+              field: stepperDcIo1_controlPin
+          - type: scalar-field
+            id: stepperdcio1-disablepin
+            props:
+              label: No1 Disable
+            bind:
+              source: config
+              field: stepperDcIo1_disablePin
+        - type: section
+          props:
+            title: H-Bridge Hardware No2
+          children:
+          - type: scalar-field
+            id: stepperdcio2-directionpin1
+            props:
+              label: 'No2 Direction #1'
+            bind:
+              source: config
+              field: stepperDcIo2_directionPin1
+          - type: scalar-field
+            id: stepperdcio2-directionpin2
+            props:
+              label: 'No2 Direction #2'
+            bind:
+              source: config
+              field: stepperDcIo2_directionPin2
+          - type: scalar-field
+            id: stepperdcio2-controlpin
+            props:
+              label: No2 Control
+            bind:
+              source: config
+              field: stepperDcIo2_controlPin
+          - type: scalar-field
+            id: stepperdcio2-disablepin
+            props:
+              label: No2 Disable
+            bind:
+              source: config
+              field: stepperDcIo2_disablePin
+    - type: section
+      props:
+        title: Micro-Stepping
+      children:
+      - type: scalar-field
+        id: steppernummicrosteps
+        props:
+          label: Stepping Mode
+        bind:
+          source: config
+          field: stepperNumMicroSteps
+      - type: scalar-field
+        id: steppermindutycycle
+        props:
+          label: Min. Duty Cycle
+        bind:
+          source: config
+          field: stepperMinDutyCycle
+      - type: scalar-field
+        id: steppermaxdutycycle
+        props:
+          label: Max. Duty Cycle
+        bind:
+          source: config
+          field: stepperMaxDutyCycle

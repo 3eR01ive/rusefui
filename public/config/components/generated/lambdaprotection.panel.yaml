@@ -1,0 +1,78 @@
+id: lambdaProtection.panel
+description: Lambda Protection
+source:
+  ini_dialog: lambdaProtection
+  menu_path: Setup › Limits and protection › Lambda protection
+children:
+- type: section
+  props:
+    title: lambdaProtectionLeft
+  children:
+  - type: scalar-field
+    id: lambdaprotectionenable
+    props:
+      label: Enable lambda protection
+    bind:
+      source: config
+      field: lambdaProtectionEnable
+  - type: scalar-field
+    id: lambdaprotectionminload
+    props:
+      label: Check above load
+    bind:
+      source: config
+      field: lambdaProtectionMinLoad
+  - type: scalar-field
+    id: lambdaprotectionmintps
+    props:
+      label: and above TPS
+    bind:
+      source: config
+      field: lambdaProtectionMinTps
+  - type: scalar-field
+    id: lambdaprotectionminrpm
+    props:
+      label: and above RPM
+    bind:
+      source: config
+      field: lambdaProtectionMinRpm
+  - type: text
+    props:
+      variant: hint
+      text: and after delay
+  - type: scalar-field
+    id: then-cut-fuel-until
+    props:
+      label: 'Then cut fuel until:'
+    bind:
+      source: config
+      field: 'Then cut fuel until:'
+  - type: scalar-field
+    id: lambdaprotectionrestoreload
+    props:
+      label: Load less than
+    bind:
+      source: config
+      field: lambdaProtectionRestoreLoad
+  - type: scalar-field
+    id: lambdaprotectionrestoretps
+    props:
+      label: and TPS less than
+    bind:
+      source: config
+      field: lambdaProtectionRestoreTps
+  - type: scalar-field
+    id: lambdaprotectionrestorerpm
+    props:
+      label: and RPM less than
+    bind:
+      source: config
+      field: lambdaProtectionRestoreRpm
+- type: section
+  props:
+    title: Lambda Difference Table
+  children:
+  - type: text
+    props:
+      text: Таблица/кривая «lambdaMaxDeviationTableTbl» — редактор пока не реализован
+      variant: hint

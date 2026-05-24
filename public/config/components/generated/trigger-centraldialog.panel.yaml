@@ -1,0 +1,10 @@
+id: trigger_centralDialog.panel
+description: trigger_central
+source:
+  ini_dialog: trigger_centralDialog
+  menu_path: View › trigger_central
+children:
+- type: text
+  props:
+    text: Панель «trigger_centralIndicatorPanel» — нет определения в INI
+    variant: hint

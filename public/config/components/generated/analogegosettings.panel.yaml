@@ -1,0 +1,95 @@
+id: analogEgoSettings.panel
+description: Analog O2 sensor
+source:
+  ini_dialog: analogEgoSettings
+  menu_path: Sensors › Chassis sensors › Analog O2 sensor
+children:
+- type: scalar-field
+  id: disable-can-o2-sensor-s--to-enable-this-settings
+  props:
+    label: Disable CAN O2 sensor(s) to enable this settings
+  bind:
+    source: config
+    field: Disable CAN O2 sensor(s) to enable this settings
+- type: section
+  props:
+    title: O2 sensor
+  children:
+  - type: scalar-field
+    id: afr-type
+    props:
+      label: Type
+    bind:
+      source: config
+      field: afr_type
+  - type: scalar-field
+    id: afr-v1
+    props:
+      label: low voltage
+    bind:
+      source: config
+      field: afr_v1
+  - type: scalar-field
+    id: afr-value1
+    props:
+      label: low value
+    bind:
+      source: config
+      field: afr_value1
+  - type: scalar-field
+    id: afr-v2
+    props:
+      label: high voltage
+    bind:
+      source: config
+      field: afr_v2
+  - type: scalar-field
+    id: afr-value2
+    props:
+      label: high value
+    bind:
+      source: config
+      field: afr_value2
+  - type: scalar-field
+    id: egovalueshift
+    props:
+      label: Correction
+    bind:
+      source: config
+      field: egoValueShift
+- type: section
+  props:
+    title: O2 Sensor 1 I/O
+  children:
+  - type: scalar-field
+    id: afr-hwchannel
+    props:
+      label: Input channel
+    bind:
+      source: config
+      field: afr_hwChannel
+  - type: scalar-field
+    id: o2heaterpin
+    props:
+      label: Narrowband Heater output
+    bind:
+      source: config
+      field: o2heaterPin
+- type: section
+  props:
+    title: O2 Sensor 2 I/O
+  children:
+  - type: scalar-field
+    id: afr-hwchannel2
+    props:
+      label: Input channel
+    bind:
+      source: config
+      field: afr_hwChannel2
+- type: scalar-field
+  id: afrexpaveragealpha
+  props:
+    label: Smoothing Factor
+  bind:
+    source: config
+    field: afrExpAverageAlpha

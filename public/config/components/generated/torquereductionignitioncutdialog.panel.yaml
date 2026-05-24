@@ -1,0 +1,17 @@
+id: torqueReductionIgnitionCutDialog.panel
+description: Torque Reduction Ignition Cut Table
+source:
+  ini_dialog: torqueReductionIgnitionCutDialog
+  menu_path: Advanced › Torque Reduction Ignition Cut Table
+children:
+- type: scalar-field
+  id: torquereductioncutxaxis
+  props:
+    label: X axis
+  bind:
+    source: config
+    field: torqueReductionCutXaxis
+- type: text
+  props:
+    variant: hint
+    text: Панель «torqueReductionIgnitionCutTlb» — нет определения в INI

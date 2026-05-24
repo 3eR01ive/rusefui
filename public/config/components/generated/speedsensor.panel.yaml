@@ -1,0 +1,155 @@
+id: speedSensor.panel
+description: Speed sensor
+source:
+  ini_dialog: speedSensor
+  menu_path: Sensors › Chassis sensors › Vehicle speed sensor
+children:
+- type: section
+  props:
+    title: speedSensorLeft
+  children:
+  - type: section
+    props:
+      title: Speed sensor
+    children:
+    - type: scalar-field
+      id: vehiclespeedsensorinputpin
+      props:
+        label: Input
+      bind:
+        source: config
+        field: vehicleSpeedSensorInputPin
+    - type: scalar-field
+      id: vssfilterreciprocal
+      props:
+        label: Filter parameter
+      bind:
+        source: config
+        field: vssFilterReciprocal
+    - type: scalar-field
+      id: drivewheelrevperkm
+      props:
+        label: Wheel revolutions per kilometer
+      bind:
+        source: config
+        field: driveWheelRevPerKm
+    - type: scalar-field
+      id: vssgearratio
+      props:
+        label: Speed sensor gear ratio
+      bind:
+        source: config
+        field: vssGearRatio
+    - type: scalar-field
+      id: vsstoothcount
+      props:
+        label: Speed sensor tooth count
+      bind:
+        source: config
+        field: vssToothCount
+  - type: section
+    props:
+      title: CAN Vehicle Speed
+    children:
+    - type: scalar-field
+      id: enablecanvss
+      props:
+        label: Enable CAN VSS
+      bind:
+        source: config
+        field: enableCanVss
+    - type: scalar-field
+      id: canvssnbctype
+      props:
+        label: CAN VSS type
+      bind:
+        source: config
+        field: canVssNbcType
+    - type: scalar-field
+      id: canvssscaling
+      props:
+        label: CAN VSS scaling
+      bind:
+        source: config
+        field: canVssScaling
+- type: section
+  props:
+    title: Gear Detection
+  children:
+  - type: scalar-field
+    id: drivewheelrevperkm
+    props:
+      label: Wheel revolutions per kilometer
+    bind:
+      source: config
+      field: driveWheelRevPerKm
+  - type: scalar-field
+    id: finalgearratio
+    props:
+      label: Final drive ratio
+    bind:
+      source: config
+      field: finalGearRatio
+  - type: scalar-field
+    id: totalgearscount
+    props:
+      label: Forward gear count
+    bind:
+      source: config
+      field: totalGearsCount
+  - type: scalar-field
+    id: gearratio1
+    props:
+      label: 1st gear
+    bind:
+      source: config
+      field: gearRatio1
+  - type: scalar-field
+    id: gearratio2
+    props:
+      label: 2nd gear
+    bind:
+      source: config
+      field: gearRatio2
+  - type: scalar-field
+    id: gearratio3
+    props:
+      label: 3rd gear
+    bind:
+      source: config
+      field: gearRatio3
+  - type: scalar-field
+    id: gearratio4
+    props:
+      label: 4th gear
+    bind:
+      source: config
+      field: gearRatio4
+  - type: scalar-field
+    id: gearratio5
+    props:
+      label: 5th gear
+    bind:
+      source: config
+      field: gearRatio5
+  - type: scalar-field
+    id: gearratio6
+    props:
+      label: 6th gear
+    bind:
+      source: config
+      field: gearRatio6
+  - type: scalar-field
+    id: gearratio7
+    props:
+      label: 7th gear
+    bind:
+      source: config
+      field: gearRatio7
+  - type: scalar-field
+    id: gearratio8
+    props:
+      label: 8th gear
+    bind:
+      source: config
+      field: gearRatio8

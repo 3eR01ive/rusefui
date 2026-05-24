@@ -1,0 +1,56 @@
+id: baroSettings.panel
+description: Baro sensor
+source:
+  ini_dialog: baroSettings
+  menu_path: Sensors › Chassis sensors › Baro sensor
+children:
+- type: section
+  props:
+    title: Analog Sensor
+  children:
+  - type: scalar-field
+    id: barosensor-hwchannel
+    props:
+      label: Baro input
+    bind:
+      source: config
+      field: baroSensor_hwChannel
+  - type: scalar-field
+    id: barosensor-lowvalue
+    props:
+      label: Low Value
+    bind:
+      source: config
+      field: baroSensor_lowValue
+  - type: scalar-field
+    id: barosensor-highvalue
+    props:
+      label: High Value
+    bind:
+      source: config
+      field: baroSensor_highValue
+  - type: scalar-field
+    id: barosensor-type
+    props:
+      label: Type
+    bind:
+      source: config
+      field: baroSensor_type
+- type: section
+  props:
+    title: Digital Sensor
+  children:
+  - type: scalar-field
+    id: lps25barosensorscl
+    props:
+      label: LPS2x Baro SCL
+    bind:
+      source: config
+      field: lps25BaroSensorScl
+  - type: scalar-field
+    id: lps25barosensorsda
+    props:
+      label: LPS2x Baro SDA
+    bind:
+      source: config
+      field: lps25BaroSensorSda

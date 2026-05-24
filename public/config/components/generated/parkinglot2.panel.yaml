@@ -1,0 +1,55 @@
+id: parkingLot2.panel
+description: Experimental 2
+source:
+  ini_dialog: parkingLot2
+  menu_path: Controller › Experimental 2
+children:
+- type: scalar-field
+  id: dacoutputpins1
+  props:
+    label: dacOutputPins1
+  bind:
+    source: config
+    field: dacOutputPins1
+- type: scalar-field
+  id: dacoutputpins2
+  props:
+    label: dacOutputPins2
+  bind:
+    source: config
+    field: dacOutputPins2
+- type: scalar-field
+  id: luacanrxworkaround
+  props:
+    label: luaCanRxWorkaround CAN performance hack
+  bind:
+    source: config
+    field: luaCanRxWorkaround
+- type: scalar-field
+  id: caninputbcm
+  props:
+    label: Read RPM matching VSS profile
+  bind:
+    source: config
+    field: canInputBCM
+- type: scalar-field
+  id: auxspeed1multiplier
+  props:
+    label: auxSpeed1Multiplier
+  bind:
+    source: config
+    field: auxSpeed1Multiplier
+- type: scalar-field
+  id: magicnumberavailablefordevtricks
+  props:
+    label: magicNumberAvailableForDevTricks
+  bind:
+    source: config
+    field: magicNumberAvailableForDevTricks
+- type: scalar-field
+  id: brakemeaneffectivepressuredifferential
+  props:
+    label: brakeMeanEffectivePressureDifferential
+  bind:
+    source: config
+    field: brakeMeanEffectivePressureDifferential

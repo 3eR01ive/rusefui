@@ -1,0 +1,17 @@
+id: scriptCurve3Settings.panel
+description: 'Script Curve #3'
+source:
+  ini_dialog: scriptCurve3Settings
+  menu_path: 'Advanced › Lua Calibrations › Script Curve #3'
+children:
+- type: scalar-field
+  id: scriptcurvename3
+  props:
+    label: Name
+  bind:
+    source: config
+    field: scriptCurveName3
+- type: text
+  props:
+    variant: hint
+    text: Таблица/кривая «scriptCurve3» — редактор пока не реализован

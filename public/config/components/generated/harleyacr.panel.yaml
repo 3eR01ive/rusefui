@@ -1,0 +1,54 @@
+id: harleyAcr.panel
+description: Harley Automatic Compression Release
+source:
+  ini_dialog: harleyAcr
+  menu_path: Controller › Harley
+children:
+- type: scalar-field
+  id: acrpin
+  props:
+    label: Pin
+  bind:
+    source: config
+    field: acrPin
+- type: scalar-field
+  id: acrpin2
+  props:
+    label: Pin 2
+  bind:
+    source: config
+    field: acrPin2
+- type: text
+  props:
+    variant: hint
+    text: ACR is disabled after the specified number
+- type: text
+  props:
+    text: of revolutions, plus degrees of engine phase
+    variant: hint
+- type: scalar-field
+  id: acrrevolutions
+  props:
+    label: Disable after revolutions
+  bind:
+    source: config
+    field: acrRevolutions
+- type: scalar-field
+  id: acrdisablephase
+  props:
+    label: Disable after engine phase
+  bind:
+    source: config
+    field: acrDisablePhase
+- type: text
+  props:
+    variant: hint
+    text: 'Кнопка: Test ACR #1 (cmd_test_acr_valve)'
+- type: text
+  props:
+    variant: hint
+    text: 'Кнопка: Test ACR #2 (cmd_test_acr2_valve)'
+- type: text
+  props:
+    text: Панель «acrActiveDiagPanel» — нет определения в INI
+    variant: hint

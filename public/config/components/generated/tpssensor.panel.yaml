@@ -1,0 +1,152 @@
+id: tpsSensor.panel
+description: TPS
+source:
+  ini_dialog: tpsSensor
+  menu_path: Sensors › Chassis sensors › TPS
+children:
+- type: section
+  props:
+    title: tpsSensorLeft
+  children:
+  - type: section
+    props:
+      title: TPS/PPS Limits
+    children:
+    - type: scalar-field
+      id: tpserrordetectiontoolow
+      props:
+        label: TPS/PPS minimum valid value
+      bind:
+        source: config
+        field: tpsErrorDetectionTooLow
+    - type: scalar-field
+      id: tpserrordetectiontoohigh
+      props:
+        label: TPS/PPS maximum valid value
+      bind:
+        source: config
+        field: tpsErrorDetectionTooHigh
+    - type: scalar-field
+      id: etbsplit
+      props:
+        label: TPS/PPS Error Detection Threshold
+      bind:
+        source: config
+        field: etbSplit
+    - type: scalar-field
+      id: usefordredundanttps
+      props:
+        label: Ford/Toyota redundant TPS mode
+      bind:
+        source: config
+        field: useFordRedundantTps
+    - type: scalar-field
+      id: tpssecondarymaximum
+      props:
+        label: Secondary TPS maximum
+      bind:
+        source: config
+        field: tpsSecondaryMaximum
+  - type: section
+    props:
+      title: 'Throttle Body #1'
+    children:
+    - type: scalar-field
+      id: tps1-1adcchannel
+      props:
+        label: Primary sensor
+      bind:
+        source: config
+        field: tps1_1AdcChannel
+    - type: scalar-field
+      id: tpsmin
+      props:
+        label: Primary min
+      bind:
+        source: config
+        field: tpsMin
+    - type: scalar-field
+      id: tpsmax
+      props:
+        label: Primary max
+      bind:
+        source: config
+        field: tpsMax
+    - type: scalar-field
+      id: tps1-2adcchannel
+      props:
+        label: Secondary sensor
+      bind:
+        source: config
+        field: tps1_2AdcChannel
+    - type: scalar-field
+      id: tps1secondarymin
+      props:
+        label: Secondary min
+      bind:
+        source: config
+        field: tps1SecondaryMin
+    - type: scalar-field
+      id: tps1secondarymax
+      props:
+        label: Secondary max
+      bind:
+        source: config
+        field: tps1SecondaryMax
+    - type: text
+      props:
+        variant: hint
+        text: 'Кнопка: Auto Calibrate ETB 1 (cmd_etb_auto_calibrate)'
+  - type: section
+    props:
+      title: 'Throttle Body #2'
+    children:
+    - type: scalar-field
+      id: tps2-1adcchannel
+      props:
+        label: Primary sensor
+      bind:
+        source: config
+        field: tps2_1AdcChannel
+    - type: scalar-field
+      id: tps2min
+      props:
+        label: Primary min
+      bind:
+        source: config
+        field: tps2Min
+    - type: scalar-field
+      id: tps2max
+      props:
+        label: Primary max
+      bind:
+        source: config
+        field: tps2Max
+    - type: scalar-field
+      id: tps2-2adcchannel
+      props:
+        label: Secondary sensor
+      bind:
+        source: config
+        field: tps2_2AdcChannel
+    - type: scalar-field
+      id: tps2secondarymin
+      props:
+        label: Secondary min
+      bind:
+        source: config
+        field: tps2SecondaryMin
+    - type: scalar-field
+      id: tps2secondarymax
+      props:
+        label: Secondary max
+      bind:
+        source: config
+        field: tps2SecondaryMax
+    - type: text
+      props:
+        text: 'Кнопка: Auto Calibrate ETB 2 (cmd_etb_auto_calibrate_2)'
+        variant: hint
+- type: section
+  props:
+    title: tpsGauges

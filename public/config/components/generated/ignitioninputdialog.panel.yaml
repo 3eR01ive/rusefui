@@ -1,0 +1,20 @@
+id: ignitionInputDialog.panel
+description: Ignition key input Settings
+source:
+  ini_dialog: ignitionInputDialog
+  menu_path: Setup › Limits and protection › Ignition key input Settings
+children:
+- type: scalar-field
+  id: ignkeyadcchannel
+  props:
+    label: Ignition Key ADC input
+  bind:
+    source: config
+    field: ignKeyAdcChannel
+- type: scalar-field
+  id: ignkeyadcdivider
+  props:
+    label: Ignition Key ADC Divider
+  bind:
+    source: config
+    field: ignKeyAdcDivider

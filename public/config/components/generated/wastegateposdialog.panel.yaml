@@ -1,0 +1,34 @@
+id: wastegatePosDialog.panel
+description: Electronic Wastegate position sensor
+source:
+  ini_dialog: wastegatePosDialog
+  menu_path: Sensors › Turbo sensors › Electronic Wastegate position sensor
+children:
+- type: section
+  props:
+    title: wastegatePosConfig
+  children:
+  - type: scalar-field
+    id: wastegatepositionsensor
+    props:
+      label: Input
+    bind:
+      source: config
+      field: wastegatePositionSensor
+  - type: scalar-field
+    id: wastegatepositionclosedvoltage
+    props:
+      label: Min (fully closed, most boost)
+    bind:
+      source: config
+      field: wastegatePositionClosedVoltage
+  - type: scalar-field
+    id: wastegatepositionopenedvoltage
+    props:
+      label: Max (fully open, least boost)
+    bind:
+      source: config
+      field: wastegatePositionOpenedVoltage
+- type: section
+  props:
+    title: wastegatePosGauges

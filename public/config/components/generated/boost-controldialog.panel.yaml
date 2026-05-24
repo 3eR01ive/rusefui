@@ -1,0 +1,10 @@
+id: boost_controlDialog.panel
+description: boost_control
+source:
+  ini_dialog: boost_controlDialog
+  menu_path: View › boost_control
+children:
+- type: text
+  props:
+    text: Панель «boost_controlIndicatorPanel» — нет определения в INI
+    variant: hint

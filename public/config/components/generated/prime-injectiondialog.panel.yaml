@@ -1,0 +1,10 @@
+id: prime_injectionDialog.panel
+description: prime_injection
+source:
+  ini_dialog: prime_injectionDialog
+  menu_path: View › prime_injection
+children:
+- type: text
+  props:
+    text: Панель «prime_injectionIndicatorPanel» — нет определения в INI
+    variant: hint

@@ -1,0 +1,27 @@
+id: spiDevices.panel
+description: SPI devices settings
+source:
+  ini_dialog: spiDevices
+  menu_path: Controller › SPI Devices
+children:
+- type: scalar-field
+  id: usespiimu
+  props:
+    label: Use SPI accelerometer
+  bind:
+    source: config
+    field: useSpiImu
+- type: scalar-field
+  id: accelerometerspidevice
+  props:
+    label: Accelerometer SPI
+  bind:
+    source: config
+    field: accelerometerSpiDevice
+- type: scalar-field
+  id: accelerometercspin
+  props:
+    label: Accelerometer CS pin
+  bind:
+    source: config
+    field: accelerometerCsPin

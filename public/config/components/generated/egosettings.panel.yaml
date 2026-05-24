@@ -1,0 +1,130 @@
+id: egoSettings.panel
+description: CAN O2 sensors
+source:
+  ini_dialog: egoSettings
+  menu_path: Sensors › Chassis sensors › CAN O2 sensors
+children:
+- type: section
+  props:
+    title: CAN UEGO 1
+  children:
+  - type: section
+    props:
+      title: uegoCan0ConfigPanel
+    children:
+    - type: scalar-field
+      id: canwbo1-type
+      props:
+        label: UEGO type
+      bind:
+        source: config
+        field: canWbo1_type
+    - type: scalar-field
+      id: canwbo1-reid
+      props:
+        label: RusEFI WBO ID
+      bind:
+        source: config
+        field: canWbo1_reId
+    - type: scalar-field
+      id: canwbo1-aemid
+      props:
+        label: AEM ID
+      bind:
+        source: config
+        field: canWbo1_aemId
+  - type: section
+    props:
+      title: uegoCan0Gauges
+  - type: section
+    props:
+      title: uegoCan0IndicatorPanel
+    children:
+    - type: text
+      props:
+        variant: hint
+        text: Панель «uegoCan0Indicators» — нет определения в INI
+    - type: text
+      props:
+        text: Панель «uegoCan0IndicatorsExt» — нет определения в INI
+        variant: hint
+- type: section
+  props:
+    title: CAN O2 sensors
+  children:
+  - type: scalar-field
+    id: support-for-aem-or-rusefi-can-uego
+    props:
+      label: Support for AEM or RusEFI CAN UEGO
+    bind:
+      source: config
+      field: Support for AEM or RusEFI CAN UEGO
+  - type: scalar-field
+    id: enableaemxseries
+    props:
+      label: Enable CAN Wideband
+    bind:
+      source: config
+      field: enableAemXSeries
+  - type: scalar-field
+    id: widebandonsecondbus
+    props:
+      label: Wideband CAN bus
+    bind:
+      source: config
+      field: widebandOnSecondBus
+  - type: scalar-field
+    id: forceo2heating
+    props:
+      label: Force O2 sensor heating
+    bind:
+      source: config
+      field: forceO2Heating
+  - type: text
+    props:
+      variant: hint
+      text: 'Кнопка: Update 2023 Firmware (cmd_wideband_firmare_update)'
+- type: section
+  props:
+    title: CAN UEGO 2
+  children:
+  - type: section
+    props:
+      title: uegoCan1ConfigPanel
+    children:
+    - type: scalar-field
+      id: canwbo2-type
+      props:
+        label: UEGO type
+      bind:
+        source: config
+        field: canWbo2_type
+    - type: scalar-field
+      id: canwbo2-reid
+      props:
+        label: RusEFI WBO ID
+      bind:
+        source: config
+        field: canWbo2_reId
+    - type: scalar-field
+      id: canwbo2-aemid
+      props:
+        label: AEM ID
+      bind:
+        source: config
+        field: canWbo2_aemId
+  - type: section
+    props:
+      title: uegoCan1IndicatorPanel
+    children:
+    - type: text
+      props:
+        variant: hint
+        text: Панель «uegoCan1Indicators» — нет определения в INI
+    - type: text
+      props:
+        variant: hint
+        text: Панель «uegoCan1IndicatorsExt» — нет определения в INI
+  - type: section
+    props:
+      title: uegoCan1Gauges

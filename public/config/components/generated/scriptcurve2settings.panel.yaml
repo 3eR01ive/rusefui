@@ -1,0 +1,17 @@
+id: scriptCurve2Settings.panel
+description: 'Script Curve #2'
+source:
+  ini_dialog: scriptCurve2Settings
+  menu_path: 'Advanced › Lua Calibrations › Script Curve #2'
+children:
+- type: scalar-field
+  id: scriptcurvename2
+  props:
+    label: Name
+  bind:
+    source: config
+    field: scriptCurveName2
+- type: text
+  props:
+    variant: hint
+    text: Таблица/кривая «scriptCurve2» — редактор пока не реализован

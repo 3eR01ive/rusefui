@@ -1,0 +1,119 @@
+id: injectorNonlinear.panel
+description: Injector small-pulse correction
+source:
+  ini_dialog: injectorNonlinear
+  menu_path: Fuel › Injector small-pulse correction
+children:
+- type: scalar-field
+  id: injectornonlinearmode
+  props:
+    label: Small pulse correction mode
+  bind:
+    source: config
+    field: injectorNonlinearMode
+- type: section
+  props:
+    title: Polynomial Adder
+  children:
+  - type: scalar-field
+    id: also-known-as-gm-mode
+    props:
+      label: Also known as GM mode
+    bind:
+      source: config
+      field: Also known as GM mode
+  - type: scalar-field
+    id: applynonlinearbelowpulse
+    props:
+      label: Add nonlinearity below pulse
+    bind:
+      source: config
+      field: applyNonlinearBelowPulse
+  - type: scalar-field
+    id: injectorcorrectionpolynomial1
+    props:
+      label: constant offset
+    bind:
+      source: config
+      field: injectorCorrectionPolynomial1
+  - type: scalar-field
+    id: injectorcorrectionpolynomial2
+    props:
+      label: multiplier for pulsewidth
+    bind:
+      source: config
+      field: injectorCorrectionPolynomial2
+  - type: scalar-field
+    id: injectorcorrectionpolynomial3
+    props:
+      label: multiplier for pulsewidth^2
+    bind:
+      source: config
+      field: injectorCorrectionPolynomial3
+  - type: scalar-field
+    id: injectorcorrectionpolynomial4
+    props:
+      label: multiplier for pulsewidth^3
+    bind:
+      source: config
+      field: injectorCorrectionPolynomial4
+  - type: scalar-field
+    id: injectorcorrectionpolynomial5
+    props:
+      label: multiplier for pulsewidth^4
+    bind:
+      source: config
+      field: injectorCorrectionPolynomial5
+  - type: scalar-field
+    id: injectorcorrectionpolynomial6
+    props:
+      label: multiplier for pulsewidth^5
+    bind:
+      source: config
+      field: injectorCorrectionPolynomial6
+  - type: scalar-field
+    id: injectorcorrectionpolynomial7
+    props:
+      label: multiplier for pulsewidth^6
+    bind:
+      source: config
+      field: injectorCorrectionPolynomial7
+  - type: scalar-field
+    id: injectorcorrectionpolynomial8
+    props:
+      label: multiplier for pulsewidth^7
+    bind:
+      source: config
+      field: injectorCorrectionPolynomial8
+- type: section
+  props:
+    title: Ford-model Small Pulse Correction
+  children:
+  - type: scalar-field
+    id: fordinjectorsmallpulseslope
+    props:
+      label: Small pulse slope (ALOSL)
+    bind:
+      source: config
+      field: fordInjectorSmallPulseSlope
+  - type: scalar-field
+    id: injectorflowasmassflow
+    props:
+      label: Set this to 'mass flow'
+    bind:
+      source: config
+      field: injectorFlowAsMassFlow
+  - type: scalar-field
+    id: injector-flow
+    props:
+      label: Large pulse slope (AHISL)
+    bind:
+      source: config
+      field: injector_flow
+  - type: scalar-field
+    id: fordinjectorsmallpulsebreakpoint
+    props:
+      label: Small pulse breakpoint (FUEL_BKPT)
+    bind:
+      source: config
+      field: fordInjectorSmallPulseBreakPoint

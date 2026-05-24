@@ -1,0 +1,34 @@
+id: idleValvePosDialog.panel
+description: ETB-style Idle valve position sensor
+source:
+  ini_dialog: idleValvePosDialog
+  menu_path: Sensors › Chassis sensors › ETB-style Idle valve position sensor
+children:
+- type: section
+  props:
+    title: idleValvePosConfig
+  children:
+  - type: scalar-field
+    id: idlepositionchannel
+    props:
+      label: Input
+    bind:
+      source: config
+      field: idlePositionChannel
+  - type: scalar-field
+    id: idlepositionmin
+    props:
+      label: Min (valve closed, low idle)
+    bind:
+      source: config
+      field: idlePositionMin
+  - type: scalar-field
+    id: idlepositionmax
+    props:
+      label: Max (valve open, high idle)
+    bind:
+      source: config
+      field: idlePositionMax
+- type: section
+  props:
+    title: idleValvePosGauges

@@ -1,0 +1,21 @@
+id: tpsTpsDialog.panel
+description: TPS/TPS acceleration extra fuel
+source:
+  ini_dialog: tpsTpsDialog
+  menu_path: Fuel › Target AFR adder tables › TPS/TPS acceleration extra fuel
+children:
+- type: section
+  props:
+    title: tpsTpsModeSelector
+  children:
+  - type: scalar-field
+    id: accelenrichmentmode
+    props:
+      label: Mode
+    bind:
+      source: config
+      field: accelEnrichmentMode
+- type: text
+  props:
+    text: Таблица/кривая «tpsTpsAccelTbl» — редактор пока не реализован
+    variant: hint

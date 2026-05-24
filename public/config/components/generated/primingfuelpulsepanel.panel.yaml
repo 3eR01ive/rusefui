@@ -1,0 +1,17 @@
+id: primingFuelPulsePanel.panel
+description: Priming fuel pulse
+source:
+  ini_dialog: primingFuelPulsePanel
+  menu_path: Cranking › Priming pulse
+children:
+- type: scalar-field
+  id: primingdelay
+  props:
+    label: Priming delay
+  bind:
+    source: config
+    field: primingDelay
+- type: text
+  props:
+    text: Панель «primingPulse» — нет определения в INI
+    variant: hint

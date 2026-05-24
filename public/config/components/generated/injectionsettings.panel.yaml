@@ -1,0 +1,173 @@
+id: injectionSettings.panel
+description: Injection hardware
+source:
+  ini_dialog: injectionSettings
+  menu_path: Fuel › Injection hardware
+children:
+- type: section
+  props:
+    title: injectionSettingsWest
+  children:
+  - type: section
+    props:
+      title: Injector Outputs
+    children:
+    - type: scalar-field
+      id: use-only-first-half-of-outputs-for-batch-mode
+      props:
+        label: Use only first half of outputs for batch mode
+      bind:
+        source: config
+        field: Use only first half of outputs for batch mode
+    - type: text
+      props:
+        variant: hint
+        text: wire each output to the corresponding cylinder number
+    - type: text
+      props:
+        text: rusEFI handles firing order
+        variant: hint
+    - type: scalar-field
+      id: injectionpins1
+      props:
+        label: Injection Output 1
+      bind:
+        source: config
+        field: injectionPins1
+    - type: scalar-field
+      id: injectionpins2
+      props:
+        label: Injection Output 2
+      bind:
+        source: config
+        field: injectionPins2
+    - type: scalar-field
+      id: injectionpins3
+      props:
+        label: Injection Output 3
+      bind:
+        source: config
+        field: injectionPins3
+    - type: scalar-field
+      id: injectionpins4
+      props:
+        label: Injection Output 4
+      bind:
+        source: config
+        field: injectionPins4
+    - type: scalar-field
+      id: injectionpins5
+      props:
+        label: 'Injection Output 5 '
+      bind:
+        source: config
+        field: injectionPins5
+    - type: scalar-field
+      id: injectionpins6
+      props:
+        label: 'Injection Output 6 '
+      bind:
+        source: config
+        field: injectionPins6
+    - type: scalar-field
+      id: injectionpins7
+      props:
+        label: 'Injection Output 7 '
+      bind:
+        source: config
+        field: injectionPins7
+    - type: scalar-field
+      id: injectionpins8
+      props:
+        label: 'Injection Output 8 '
+      bind:
+        source: config
+        field: injectionPins8
+    - type: scalar-field
+      id: injectionpins9
+      props:
+        label: 'Injection Output 9 '
+      bind:
+        source: config
+        field: injectionPins9
+    - type: scalar-field
+      id: injectionpins10
+      props:
+        label: 'Injection Output 10 '
+      bind:
+        source: config
+        field: injectionPins10
+    - type: scalar-field
+      id: injectionpins11
+      props:
+        label: 'Injection Output 11 '
+      bind:
+        source: config
+        field: injectionPins11
+    - type: scalar-field
+      id: injectionpins12
+      props:
+        label: 'Injection Output 12 '
+      bind:
+        source: config
+        field: injectionPins12
+- type: section
+  props:
+    title: injectionSettingsEast
+  children:
+  - type: section
+    props:
+      title: Injector Test
+    children:
+    - type: text
+      props:
+        text: 'Кнопка: Injector #1 (cmd_test_inj1)'
+        variant: hint
+    - type: text
+      props:
+        text: 'Кнопка: Injector #2 (cmd_test_inj2)'
+        variant: hint
+    - type: text
+      props:
+        text: 'Кнопка: Injector #3 (cmd_test_inj3)'
+        variant: hint
+    - type: text
+      props:
+        variant: hint
+        text: 'Кнопка: Injector #4 (cmd_test_inj4)'
+    - type: text
+      props:
+        text: 'Кнопка: Injector #5 (cmd_test_inj5)'
+        variant: hint
+    - type: text
+      props:
+        variant: hint
+        text: 'Кнопка: Injector #6 (cmd_test_inj6)'
+    - type: text
+      props:
+        variant: hint
+        text: 'Кнопка: Injector #7 (cmd_test_inj7)'
+    - type: text
+      props:
+        variant: hint
+        text: 'Кнопка: Injector #8 (cmd_test_inj8)'
+    - type: text
+      props:
+        variant: hint
+        text: 'Кнопка: Injector #9 (cmd_test_inj9)'
+    - type: text
+      props:
+        text: 'Кнопка: Injector #10 (cmd_test_inj10)'
+        variant: hint
+    - type: text
+      props:
+        variant: hint
+        text: 'Кнопка: Injector #11 (cmd_test_inj11)'
+    - type: text
+      props:
+        variant: hint
+        text: 'Кнопка: Injector #12 (cmd_test_inj12)'
+    - type: text
+      props:
+        variant: hint
+        text: 'Кнопка: Abort test (cmd_test_cancel)'

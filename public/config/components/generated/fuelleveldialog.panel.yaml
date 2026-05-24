@@ -1,0 +1,52 @@
+id: fuelLevelDialog.panel
+description: Fuel Level Sensor
+source:
+  ini_dialog: fuelLevelDialog
+  menu_path: Sensors › Fuel sensors › Fuel level sensor
+children:
+- type: section
+  props:
+    title: fuelLevelSettings
+  children:
+  - type: scalar-field
+    id: fuellevelsensor
+    props:
+      label: Input channel
+    bind:
+      source: config
+      field: fuelLevelSensor
+  - type: scalar-field
+    id: fuellevellowthresholdvoltage
+    props:
+      label: Low threshold
+    bind:
+      source: config
+      field: fuelLevelLowThresholdVoltage
+  - type: scalar-field
+    id: fuellevelhighthresholdvoltage
+    props:
+      label: High threshold
+    bind:
+      source: config
+      field: fuelLevelHighThresholdVoltage
+  - type: scalar-field
+    id: fuellevelaveragingalpha
+    props:
+      label: Filter Alpha
+    bind:
+      source: config
+      field: fuelLevelAveragingAlpha
+  - type: scalar-field
+    id: fuellevelupdateperiodsec
+    props:
+      label: Update period
+    bind:
+      source: config
+      field: fuelLevelUpdatePeriodSec
+  - type: text
+    props:
+      variant: hint
+      text: Таблица/кривая «fuelLevelCurve» — редактор пока не реализован
+- type: section
+  props:
+    title: fuelLevelGauges

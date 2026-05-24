@@ -1,0 +1,93 @@
+id: fuelLTFCDialog.panel
+description: Long term fuel trims
+source:
+  ini_dialog: fuelLTFCDialog
+  menu_path: Fuel › Target AFR adder tables › Long term fuel trims
+children:
+- type: section
+  props:
+    title: Trim bank 1
+- type: section
+  props:
+    title: fuelLTFCConfig
+  children:
+  - type: scalar-field
+    id: short-term-fuel-trims-should-be-enabled-and-configured
+    props:
+      label: Short term fuel trims should be enabled and configured
+    bind:
+      source: config
+      field: Short term fuel trims should be enabled and configured
+  - type: section
+    props:
+      title: Long term fuel trim
+    children:
+    - type: scalar-field
+      id: ltft-enabled
+      props:
+        label: Enable learning
+      bind:
+        source: config
+        field: ltft_enabled
+    - type: scalar-field
+      id: ltft-timeconstant
+      props:
+        label: Time const
+      bind:
+        source: config
+        field: ltft_timeConstant
+    - type: scalar-field
+      id: ltft-maxadd
+      props:
+        label: Max add
+      bind:
+        source: config
+        field: ltft_maxAdd
+    - type: scalar-field
+      id: ltft-maxremove
+      props:
+        label: Max remove
+      bind:
+        source: config
+        field: ltft_maxRemove
+    - type: scalar-field
+      id: ltft-deadband
+      props:
+        label: Learning deadband
+      bind:
+        source: config
+        field: ltft_deadband
+    - type: scalar-field
+      id: ltft-correctionenabled
+      props:
+        label: Enable correction
+      bind:
+        source: config
+        field: ltft_correctionEnabled
+  - type: section
+    props:
+      title: Commands
+    children:
+    - type: text
+      props:
+        text: 'Кнопка: Reset LTFT trims (cmd_ltft_reset)'
+        variant: hint
+    - type: text
+      props:
+        text: 'Кнопка: Apply LTFT to VE and reset (cmd_ltft_apply_to_ve)'
+        variant: hint
+  - type: section
+    props:
+      title: Status
+    children:
+    - type: text
+      props:
+        variant: hint
+        text: Панель «ltftIndicatorsPanel» — нет определения в INI
+    - type: text
+      props:
+        text: Панель «ltftValuesReadoutPanel» — нет определения в INI
+        variant: hint
+- type: section
+  props:
+    title: Trim bank 2

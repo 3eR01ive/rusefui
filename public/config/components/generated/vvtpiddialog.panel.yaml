@@ -1,0 +1,181 @@
+id: vvtPidDialog.panel
+description: VVT Configuration & PID
+source:
+  ini_dialog: vvtPidDialog
+  menu_path: Advanced › Boost blend tables › VVT outputs and PID
+children:
+- type: section
+  props:
+    title: Configuration
+  children:
+  - type: scalar-field
+    id: vvtactivationdelayms
+    props:
+      label: Activation Delay
+    bind:
+      source: config
+      field: vvtActivationDelayMs
+  - type: scalar-field
+    id: vvtcontrolminrpm
+    props:
+      label: Do not control below RPM
+    bind:
+      source: config
+      field: vvtControlMinRpm
+  - type: scalar-field
+    id: vvtcontrolminclt
+    props:
+      label: Do not control below CLT
+    bind:
+      source: config
+      field: vvtControlMinClt
+  - type: scalar-field
+    id: vvtpins1
+    props:
+      label: VVT solenoid bank 1 intake
+    bind:
+      source: config
+      field: vvtPins1
+  - type: scalar-field
+    id: vvtpins2
+    props:
+      label: VVT solenoid bank 1 exhaust
+    bind:
+      source: config
+      field: vvtPins2
+  - type: scalar-field
+    id: vvtpins3
+    props:
+      label: VVT solenoid bank 2 intake
+    bind:
+      source: config
+      field: vvtPins3
+  - type: scalar-field
+    id: vvtpins4
+    props:
+      label: VVT solenoid bank 2 exhaust
+    bind:
+      source: config
+      field: vvtPins4
+  - type: scalar-field
+    id: invertvvtcontrolintake
+    props:
+      label: VVT solenoid intake cams control direction
+    bind:
+      source: config
+      field: invertVvtControlIntake
+  - type: scalar-field
+    id: invertvvtcontrolexhaust
+    props:
+      label: VVT solenoid exhaust cams control direction
+    bind:
+      source: config
+      field: invertVvtControlExhaust
+- type: section
+  props:
+    title: Intake PID
+  children:
+  - type: scalar-field
+    id: auxpid1-offset
+    props:
+      label: offset
+    bind:
+      source: config
+      field: auxPid1_offset
+  - type: scalar-field
+    id: auxpid1-pfactor
+    props:
+      label: P factor
+    bind:
+      source: config
+      field: auxPid1_pFactor
+  - type: scalar-field
+    id: auxpid1-ifactor
+    props:
+      label: I factor
+    bind:
+      source: config
+      field: auxPid1_iFactor
+  - type: scalar-field
+    id: auxpid1-dfactor
+    props:
+      label: D factor
+    bind:
+      source: config
+      field: auxPid1_dFactor
+  - type: scalar-field
+    id: auxpid1-minvalue
+    props:
+      label: Min
+    bind:
+      source: config
+      field: auxPid1_minValue
+  - type: scalar-field
+    id: auxpid1-maxvalue
+    props:
+      label: Max
+    bind:
+      source: config
+      field: auxPid1_maxValue
+  - type: text
+    props:
+      text: 'Кнопка: Bench bank 1 (cmd_test_vvt0_valve)'
+      variant: hint
+  - type: text
+    props:
+      text: 'Кнопка: Bench bank 2 (cmd_test_vvt2_valve)'
+      variant: hint
+- type: section
+  props:
+    title: Exhaust PID
+  children:
+  - type: scalar-field
+    id: auxpid2-offset
+    props:
+      label: offset
+    bind:
+      source: config
+      field: auxPid2_offset
+  - type: scalar-field
+    id: auxpid2-pfactor
+    props:
+      label: P factor
+    bind:
+      source: config
+      field: auxPid2_pFactor
+  - type: scalar-field
+    id: auxpid2-ifactor
+    props:
+      label: I factor
+    bind:
+      source: config
+      field: auxPid2_iFactor
+  - type: scalar-field
+    id: auxpid2-dfactor
+    props:
+      label: D factor
+    bind:
+      source: config
+      field: auxPid2_dFactor
+  - type: scalar-field
+    id: auxpid2-minvalue
+    props:
+      label: Min
+    bind:
+      source: config
+      field: auxPid2_minValue
+  - type: scalar-field
+    id: auxpid2-maxvalue
+    props:
+      label: Max
+    bind:
+      source: config
+      field: auxPid2_maxValue
+  - type: text
+    props:
+      variant: hint
+      text: 'Кнопка: Bench bank 1 (cmd_test_vvt1_valve)'
+  - type: text
+    props:
+      text: 'Кнопка: Bench bank 2 (cmd_test_vvt3_valve)'
+      variant: hint

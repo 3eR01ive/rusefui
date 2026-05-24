@@ -1,0 +1,38 @@
+id: stagedInjection.panel
+description: Staged injection
+source:
+  ini_dialog: stagedInjection
+  menu_path: Fuel › Staged injection
+children:
+- type: scalar-field
+  id: enablestagedinjection
+  props:
+    label: Enable
+  bind:
+    source: config
+    field: enableStagedInjection
+- type: scalar-field
+  id: injectorsecondary-flow
+  props:
+    label: Secondary injector flow
+  bind:
+    source: config
+    field: injectorSecondary_flow
+- type: scalar-field
+  id: secondaryinjectorcompensationmode
+  props:
+    label: Secondary injector flow compensation mode
+  bind:
+    source: config
+    field: secondaryInjectorCompensationMode
+- type: scalar-field
+  id: secondaryinjectorfuelreferencepressure
+  props:
+    label: Secondary injector reference pressure
+  bind:
+    source: config
+    field: secondaryInjectorFuelReferencePressure
+- type: text
+  props:
+    text: Панель «injectorsSecondaryDeadTime» — нет определения в INI
+    variant: hint

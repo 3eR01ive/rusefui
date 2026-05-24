@@ -1,0 +1,10 @@
+id: dc_motorsDialog.panel
+description: dc_motors
+source:
+  ini_dialog: dc_motorsDialog
+  menu_path: View › dc_motors
+children:
+- type: text
+  props:
+    variant: hint
+    text: Панель «dc_motorsIndicatorPanel» — нет определения в INI

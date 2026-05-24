@@ -1,0 +1,52 @@
+id: boostOpenBlend2Cfg.panel
+description: Boost open loop blend 2 config
+source:
+  ini_dialog: boostOpenBlend2Cfg
+  menu_path: Advanced › Boost blend tables › Open loop 2 bias
+children:
+- type: text
+  props:
+    text: The bias table controls how much of the blend table
+    variant: hint
+- type: text
+  props:
+    variant: hint
+    text: is mixed in to the open loop boost table. For example, a value of
+- type: text
+  props:
+    text: +10 in the table, with 50 as the current bias will result
+    variant: hint
+- type: text
+  props:
+    variant: hint
+    text: in +5.0 added to the boost open loop %.
+- type: text
+  props:
+    variant: hint
+    text: The X axis of the bias table is controlled by the selected blend
+- type: text
+  props:
+    text: parameter below.
+    variant: hint
+- type: text
+  props:
+    variant: hint
+    text: Панель «isBoostControlledPanel» — нет определения в INI
+- type: scalar-field
+  id: boostopenloopblends2-blendparameter
+  props:
+    label: Blend parameter
+  bind:
+    source: config
+    field: boostOpenLoopBlends2_blendParameter
+- type: scalar-field
+  id: boostopenloopblends2-yaxisoverride
+  props:
+    label: Y axis override (set Zero for no override)
+  bind:
+    source: config
+    field: boostOpenLoopBlends2_yAxisOverride
+- type: text
+  props:
+    text: Панель «boostOpenLoopBlend2Bias» — нет определения в INI
+    variant: hint

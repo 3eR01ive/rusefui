@@ -1,0 +1,17 @@
+id: scriptCurve1Settings.panel
+description: 'Script Curve #1'
+source:
+  ini_dialog: scriptCurve1Settings
+  menu_path: 'Advanced › Lua Calibrations › Script Curve #1'
+children:
+- type: scalar-field
+  id: scriptcurvename1
+  props:
+    label: Name
+  bind:
+    source: config
+    field: scriptCurveName1
+- type: text
+  props:
+    variant: hint
+    text: Таблица/кривая «scriptCurve1» — редактор пока не реализован

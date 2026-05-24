@@ -1,0 +1,10 @@
+id: wideband_state1Dialog.panel
+description: wideband_state1
+source:
+  ini_dialog: wideband_state1Dialog
+  menu_path: View › wideband_state1
+children:
+- type: text
+  props:
+    variant: hint
+    text: Панель «wideband_state1IndicatorPanel» — нет определения в INI

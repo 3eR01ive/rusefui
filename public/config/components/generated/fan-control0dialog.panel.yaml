@@ -1,0 +1,10 @@
+id: fan_control0Dialog.panel
+description: fan_control0
+source:
+  ini_dialog: fan_control0Dialog
+  menu_path: View › fan_control0
+children:
+- type: text
+  props:
+    text: Панель «fan_control0IndicatorPanel» — нет определения в INI
+    variant: hint

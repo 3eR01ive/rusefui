@@ -1,0 +1,6 @@
+id: short_term_fuel_trim_stateDialog.panel
+description: short_term_fuel_trim_state
+source:
+  ini_dialog: short_term_fuel_trim_stateDialog
+  menu_path: View › short_term_fuel_trim_state
+children: []

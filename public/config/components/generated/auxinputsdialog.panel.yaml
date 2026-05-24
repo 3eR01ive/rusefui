@@ -1,0 +1,62 @@
+id: auxInputsDialog.panel
+description: Lua Analog Inputs
+source:
+  ini_dialog: auxInputsDialog
+  menu_path: Advanced › Lua › Lua Analog Inputs
+children:
+- type: scalar-field
+  id: auxanaloginputs1
+  props:
+    label: 'ADC #1'
+  bind:
+    source: config
+    field: auxAnalogInputs1
+- type: scalar-field
+  id: auxanaloginputs2
+  props:
+    label: 'ADC #2'
+  bind:
+    source: config
+    field: auxAnalogInputs2
+- type: scalar-field
+  id: auxanaloginputs3
+  props:
+    label: 'ADC #3'
+  bind:
+    source: config
+    field: auxAnalogInputs3
+- type: scalar-field
+  id: auxanaloginputs4
+  props:
+    label: 'ADC #4'
+  bind:
+    source: config
+    field: auxAnalogInputs4
+- type: scalar-field
+  id: auxanaloginputs5
+  props:
+    label: 'ADC #5'
+  bind:
+    source: config
+    field: auxAnalogInputs5
+- type: scalar-field
+  id: auxanaloginputs6
+  props:
+    label: 'ADC #6'
+  bind:
+    source: config
+    field: auxAnalogInputs6
+- type: scalar-field
+  id: auxanaloginputs7
+  props:
+    label: 'ADC #7'
+  bind:
+    source: config
+    field: auxAnalogInputs7
+- type: scalar-field
+  id: auxanaloginputs8
+  props:
+    label: 'ADC #8'
+  bind:
+    source: config
+    field: auxAnalogInputs8

@@ -1,0 +1,76 @@
+id: otherSensorInputs.panel
+description: Other Sensor Inputs
+source:
+  ini_dialog: otherSensorInputs
+  menu_path: Sensors › Chassis sensors › Misc sensors
+children:
+- type: scalar-field
+  id: clutchdownpin
+  props:
+    label: Clutch Down
+  bind:
+    source: config
+    field: clutchDownPin
+- type: scalar-field
+  id: clutchdownpinmode
+  props:
+    label: Clutch Down mode
+  bind:
+    source: config
+    field: clutchDownPinMode
+- type: scalar-field
+  id: clutchuppin
+  props:
+    label: Clutch Up
+  bind:
+    source: config
+    field: clutchUpPin
+- type: scalar-field
+  id: clutchuppinmode
+  props:
+    label: Clutch Up mode
+  bind:
+    source: config
+    field: clutchUpPinMode
+- type: scalar-field
+  id: brakepedalpin
+  props:
+    label: Brake Pedal
+  bind:
+    source: config
+    field: brakePedalPin
+- type: scalar-field
+  id: brakepedalpinmode
+  props:
+    label: Brake Pedal Mode
+  bind:
+    source: config
+    field: brakePedalPinMode
+- type: scalar-field
+  id: turbospeedsensorinputpin
+  props:
+    label: Turbo Speed Sensor
+  bind:
+    source: config
+    field: turboSpeedSensorInputPin
+- type: scalar-field
+  id: turbospeedsensormultiplier
+  props:
+    label: Turbo Speed Multiplier
+  bind:
+    source: config
+    field: turboSpeedSensorMultiplier
+- type: scalar-field
+  id: throttleinletpressurechannel
+  props:
+    label: Throttle inlet pressure sensor
+  bind:
+    source: config
+    field: throttleInletPressureChannel
+- type: scalar-field
+  id: compressordischargepressurechannel
+  props:
+    label: Compressor discharge pressure sensor
+  bind:
+    source: config
+    field: compressorDischargePressureChannel

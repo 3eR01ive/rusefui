@@ -1,0 +1,10 @@
+id: afterCrankingIACtaperDurationDialog.panel
+description: Idle Valve Crank-to-Run Taper
+source:
+  ini_dialog: afterCrankingIACtaperDurationDialog
+  menu_path: Idle › Idle Valve Crank-to-Run Taper
+children:
+- type: text
+  props:
+    text: Таблица/кривая «afterCrankingIACtaperCurve» — редактор пока не реализован
+    variant: hint

@@ -1,0 +1,6 @@
+id: trigger_state3Dialog.panel
+description: trigger_state3
+source:
+  ini_dialog: trigger_state3Dialog
+  menu_path: View › trigger_state3
+children: []

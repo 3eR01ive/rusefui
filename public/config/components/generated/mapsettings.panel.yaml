@@ -1,0 +1,102 @@
+id: mapSettings.panel
+description: MAP sensor
+source:
+  ini_dialog: mapSettings
+  menu_path: Sensors › Chassis sensors › MAP sensor
+children:
+- type: section
+  props:
+    title: mapSettingsLeft
+  children:
+  - type: section
+    props:
+      title: MAP common settings
+    children:
+    - type: scalar-field
+      id: maperrordetectiontoolow
+      props:
+        label: Low value threshold
+      bind:
+        source: config
+        field: mapErrorDetectionTooLow
+    - type: scalar-field
+      id: maperrordetectiontoohigh
+      props:
+        label: High value threshold
+      bind:
+        source: config
+        field: mapErrorDetectionTooHigh
+    - type: text
+      props:
+        text: Панель «mapValidIndicators» — нет определения в INI
+        variant: hint
+    - type: scalar-field
+      id: measuremaponlyinonecylinder
+      props:
+        label: Measure Map Only In One Cylinder
+      bind:
+        source: config
+        field: measureMapOnlyInOneCylinder
+    - type: scalar-field
+      id: mapminbufferlength
+      props:
+        label: Cylinder count to sample MAP
+      bind:
+        source: config
+        field: mapMinBufferLength
+    - type: scalar-field
+      id: mapexpaveragealpha
+      props:
+        label: mapExpAverageAlpha
+      bind:
+        source: config
+        field: mapExpAverageAlpha
+  - type: section
+    props:
+      title: MAP sensor
+    children:
+    - type: scalar-field
+      id: map-sensor-hwchannel
+      props:
+        label: MAP input
+      bind:
+        source: config
+        field: map_sensor_hwChannel
+    - type: scalar-field
+      id: map-sensor-type
+      props:
+        label: MAP type
+      bind:
+        source: config
+        field: map_sensor_type
+    - type: scalar-field
+      id: map-sensor-lowvalue
+      props:
+        label: MAP value low point
+      bind:
+        source: config
+        field: map_sensor_lowValue
+    - type: scalar-field
+      id: maplowvaluevoltage
+      props:
+        label: MAP voltage low point
+      bind:
+        source: config
+        field: mapLowValueVoltage
+    - type: scalar-field
+      id: map-sensor-highvalue
+      props:
+        label: MAP value high point
+      bind:
+        source: config
+        field: map_sensor_highValue
+    - type: scalar-field
+      id: maphighvaluevoltage
+      props:
+        label: MAP voltage high value
+      bind:
+        source: config
+        field: mapHighValueVoltage
+- type: section
+  props:
+    title: mapGauges

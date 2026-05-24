@@ -1,0 +1,69 @@
+id: boostDialog.panel
+description: Boost control
+source:
+  ini_dialog: boostDialog
+  menu_path: Advanced › Boost control
+children:
+- type: scalar-field
+  id: isboostcontrolenabled
+  props:
+    label: Enable
+  bind:
+    source: config
+    field: isBoostControlEnabled
+- type: scalar-field
+  id: boosttype
+  props:
+    label: Control Mode
+  bind:
+    source: config
+    field: boostType
+- type: scalar-field
+  id: boostcontrolpin
+  props:
+    label: Output
+  bind:
+    source: config
+    field: boostControlPin
+- type: scalar-field
+  id: boostcontrolpinmode
+  props:
+    label: Output Mode
+  bind:
+    source: config
+    field: boostControlPinMode
+- type: scalar-field
+  id: boostpwmfrequency
+  props:
+    label: Frequency
+  bind:
+    source: config
+    field: boostPwmFrequency
+- type: scalar-field
+  id: boostcontrolsafedutycycle
+  props:
+    label: Safe duty cycle
+  bind:
+    source: config
+    field: boostControlSafeDutyCycle
+- type: scalar-field
+  id: boostcontrolminrpm
+  props:
+    label: No boost control below RPM
+  bind:
+    source: config
+    field: boostControlMinRpm
+- type: scalar-field
+  id: boostcontrolmintps
+  props:
+    label: No boost control below TPS
+  bind:
+    source: config
+    field: boostControlMinTps
+- type: scalar-field
+  id: boostcontrolminmap
+  props:
+    label: No boost control below MAP
+  bind:
+    source: config
+    field: boostControlMinMap

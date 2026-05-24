@@ -1,0 +1,20 @@
+id: egtInputsCan.panel
+description: CAN EGT sensors
+source:
+  ini_dialog: egtInputsCan
+  menu_path: CAN-bus › CAN EGT sensors
+children:
+- type: scalar-field
+  id: can-support-egt1-to-egt6-inputs
+  props:
+    label: CAN support EGT1 to EGT6 inputs
+  bind:
+    source: config
+    field: CAN support EGT1 to EGT6 inputs
+- type: scalar-field
+  id: enableaemxseriesegt
+  props:
+    label: CAN EGT (AEM X series of RusEFI)
+  bind:
+    source: config
+    field: enableAemXSeriesEgt

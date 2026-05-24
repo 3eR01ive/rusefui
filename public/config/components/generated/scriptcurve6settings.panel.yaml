@@ -1,0 +1,17 @@
+id: scriptCurve6Settings.panel
+description: 'Script Curve #6'
+source:
+  ini_dialog: scriptCurve6Settings
+  menu_path: 'Advanced › Lua Calibrations › Script Curve #6'
+children:
+- type: scalar-field
+  id: scriptcurvename6
+  props:
+    label: Name
+  bind:
+    source: config
+    field: scriptCurveName6
+- type: text
+  props:
+    variant: hint
+    text: Таблица/кривая «scriptCurve6» — редактор пока не реализован

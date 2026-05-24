@@ -1,0 +1,17 @@
+id: analogInputSettings.panel
+description: Analog Input Settings
+source:
+  ini_dialog: analogInputSettings
+  menu_path: Sensors › Chassis sensors › Analog input settings
+children:
+- type: text
+  props:
+    variant: hint
+    text: ECU reboot needed to apply these settings
+- type: scalar-field
+  id: usefixedbarocorrfrommap
+  props:
+    label: Grab baro value from MAP
+  bind:
+    source: config
+    field: useFixedBaroCorrFromMap

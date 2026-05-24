@@ -1,0 +1,48 @@
+id: ignAdder1Cfg.panel
+description: Ignition adder 1 config
+source:
+  ini_dialog: ignAdder1Cfg
+  menu_path: Ignition › Ignition blend tables › Ignition blend 1 bias
+children:
+- type: text
+  props:
+    text: The bias table controls how much of the blend table
+    variant: hint
+- type: text
+  props:
+    variant: hint
+    text: is mixed in to the base ignition table. For example, a value of
+- type: text
+  props:
+    text: +10 in the table, with 50 as the current bias will result
+    variant: hint
+- type: text
+  props:
+    text: in 5.0 degrees of ignition timing added.
+    variant: hint
+- type: text
+  props:
+    variant: hint
+    text: The X axis of the bias table is controlled by the selected blend
+- type: text
+  props:
+    variant: hint
+    text: parameter below.
+- type: scalar-field
+  id: ignblends1-blendparameter
+  props:
+    label: Blend parameter
+  bind:
+    source: config
+    field: ignBlends1_blendParameter
+- type: scalar-field
+  id: ignblends1-yaxisoverride
+  props:
+    label: Y axis override (set Zero for no override)
+  bind:
+    source: config
+    field: ignBlends1_yAxisOverride
+- type: text
+  props:
+    variant: hint
+    text: Панель «ignAdder1Bias» — нет определения в INI

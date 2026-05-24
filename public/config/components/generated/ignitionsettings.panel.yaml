@@ -1,0 +1,166 @@
+id: ignitionSettings.panel
+description: Ignition settings
+source:
+  ini_dialog: ignitionSettings
+  menu_path: Ignition › Ignition settings
+children:
+- type: section
+  props:
+    title: ignitionBasic
+  children:
+  - type: scalar-field
+    id: isignitionenabled
+    props:
+      label: Enabled
+    bind:
+      source: config
+      field: isIgnitionEnabled
+  - type: scalar-field
+    id: ignitionmode
+    props:
+      label: Mode
+    bind:
+      source: config
+      field: ignitionMode
+  - type: scalar-field
+    id: sparkhardwarelatencycorrection
+    props:
+      label: Spark hardware latency correction
+    bind:
+      source: config
+      field: sparkHardwareLatencyCorrection
+  - type: scalar-field
+    id: twowirebatchignition
+    props:
+      label: Individually wired Wasted Spark
+    bind:
+      source: config
+      field: twoWireBatchIgnition
+  - type: scalar-field
+    id: ignoverridemode
+    props:
+      label: Override ignition table load axis
+    bind:
+      source: config
+      field: ignOverrideMode
+  - type: text
+    props:
+      text: Use fixed timing while validating with a timing gun
+      variant: hint
+  - type: scalar-field
+    id: timingmode
+    props:
+      label: Timing Mode
+    bind:
+      source: config
+      field: timingMode
+  - type: scalar-field
+    id: fixedtiming
+    props:
+      label: Fixed Timing
+    bind:
+      source: config
+      field: fixedTiming
+- type: section
+  props:
+    title: Ignition Outputs
+  children:
+  - type: text
+    props:
+      variant: hint
+      text: wire each output to the corresponding cylinder number
+  - type: text
+    props:
+      text: rusEFI handles firing order
+      variant: hint
+  - type: scalar-field
+    id: ignitionpinmode
+    props:
+      label: Ignition Output Mode
+    bind:
+      source: config
+      field: ignitionPinMode
+  - type: scalar-field
+    id: ignitionpins1
+    props:
+      label: Ignition Output 1
+    bind:
+      source: config
+      field: ignitionPins1
+  - type: scalar-field
+    id: ignitionpins2
+    props:
+      label: Ignition Output 2
+    bind:
+      source: config
+      field: ignitionPins2
+  - type: scalar-field
+    id: ignitionpins3
+    props:
+      label: Ignition Output 3
+    bind:
+      source: config
+      field: ignitionPins3
+  - type: scalar-field
+    id: ignitionpins4
+    props:
+      label: Ignition Output 4
+    bind:
+      source: config
+      field: ignitionPins4
+  - type: scalar-field
+    id: ignitionpins5
+    props:
+      label: Ignition Output 5
+    bind:
+      source: config
+      field: ignitionPins5
+  - type: scalar-field
+    id: ignitionpins6
+    props:
+      label: Ignition Output 6
+    bind:
+      source: config
+      field: ignitionPins6
+  - type: scalar-field
+    id: ignitionpins7
+    props:
+      label: Ignition Output 7
+    bind:
+      source: config
+      field: ignitionPins7
+  - type: scalar-field
+    id: ignitionpins8
+    props:
+      label: Ignition Output 8
+    bind:
+      source: config
+      field: ignitionPins8
+  - type: scalar-field
+    id: ignitionpins9
+    props:
+      label: Ignition Output 9
+    bind:
+      source: config
+      field: ignitionPins9
+  - type: scalar-field
+    id: ignitionpins10
+    props:
+      label: Ignition Output 10
+    bind:
+      source: config
+      field: ignitionPins10
+  - type: scalar-field
+    id: ignitionpins11
+    props:
+      label: Ignition Output 11
+    bind:
+      source: config
+      field: ignitionPins11
+  - type: scalar-field
+    id: ignitionpins12
+    props:
+      label: Ignition Output 12
+    bind:
+      source: config
+      field: ignitionPins12

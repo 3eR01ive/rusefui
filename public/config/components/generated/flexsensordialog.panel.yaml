@@ -1,0 +1,6 @@
+id: flexSensorDialog.panel
+description: Flex Sensor
+source:
+  ini_dialog: flexSensorDialog
+  menu_path: Sensors › Fuel sensors › Flex
+children: []

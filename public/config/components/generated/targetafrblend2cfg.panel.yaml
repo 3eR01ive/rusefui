@@ -1,0 +1,48 @@
+id: targetAfrBlend2Cfg.panel
+description: Target AFR adder 2 config
+source:
+  ini_dialog: targetAfrBlend2Cfg
+  menu_path: Fuel › Target AFR adder tables › Target AFR 2 bias
+children:
+- type: text
+  props:
+    text: The bias table controls how much of the adder table
+    variant: hint
+- type: text
+  props:
+    text: is mixed in to the target AFR table. For example, a value of
+    variant: hint
+- type: text
+  props:
+    text: +10 in the table, with 50 as the current bias will result
+    variant: hint
+- type: text
+  props:
+    variant: hint
+    text: in +5.0 added to target AFR %.
+- type: text
+  props:
+    variant: hint
+    text: The X axis of the bias table is controlled by the selected blend
+- type: text
+  props:
+    text: parameter below.
+    variant: hint
+- type: scalar-field
+  id: targetafrblends2-blendparameter
+  props:
+    label: Blend parameter
+  bind:
+    source: config
+    field: targetAfrBlends2_blendParameter
+- type: scalar-field
+  id: targetafrblends2-yaxisoverride
+  props:
+    label: Y axis override (set Zero for no override)
+  bind:
+    source: config
+    field: targetAfrBlends2_yAxisOverride
+- type: text
+  props:
+    variant: hint
+    text: Панель «targetAfrBlend2Bias» — нет определения в INI

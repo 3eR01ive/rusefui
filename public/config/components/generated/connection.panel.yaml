@@ -1,0 +1,20 @@
+id: connection.panel
+description: Connection
+source:
+  ini_dialog: connection
+  menu_path: Controller › Connection
+children:
+- type: scalar-field
+  id: uartconsoleserialspeed
+  props:
+    label: uartConsoleSerialSpeed
+  bind:
+    source: config
+    field: uartConsoleSerialSpeed
+- type: scalar-field
+  id: enablekline
+  props:
+    label: enableKline
+  bind:
+    source: config
+    field: enableKline

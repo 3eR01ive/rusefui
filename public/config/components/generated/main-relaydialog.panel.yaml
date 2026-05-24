@@ -1,0 +1,10 @@
+id: main_relayDialog.panel
+description: main_relay
+source:
+  ini_dialog: main_relayDialog
+  menu_path: View › main_relay
+children:
+- type: text
+  props:
+    variant: hint
+    text: Панель «main_relayIndicatorPanel» — нет определения в INI

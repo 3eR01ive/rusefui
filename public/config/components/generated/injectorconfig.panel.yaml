@@ -1,0 +1,117 @@
+id: injectorConfig.panel
+description: Injection configuration
+source:
+  ini_dialog: injectorConfig
+  menu_path: Fuel › Injection configuration
+children:
+- type: section
+  props:
+    title: Injection
+  children:
+  - type: scalar-field
+    id: isinjectionenabled
+    props:
+      label: Enabled
+    bind:
+      source: config
+      field: isInjectionEnabled
+  - type: scalar-field
+    id: injectionmode
+    props:
+      label: Mode
+    bind:
+      source: config
+      field: injectionMode
+  - type: text
+    props:
+      text: Batch injection with individual wiring
+      variant: hint
+  - type: scalar-field
+    id: alphanuseiat
+    props:
+      label: Alpha-N uses IAT density correction
+    bind:
+      source: config
+      field: alphaNUseIat
+  - type: scalar-field
+    id: veoverridemode
+    props:
+      label: Override VE table load axis
+    bind:
+      source: config
+      field: veOverrideMode
+  - type: scalar-field
+    id: afroverridemode
+    props:
+      label: Override AFR table load axis
+    bind:
+      source: config
+      field: afrOverrideMode
+  - type: scalar-field
+    id: injectiontimingmode
+    props:
+      label: Injection timing control mode
+    bind:
+      source: config
+      field: injectionTimingMode
+- type: section
+  props:
+    title: Injector Settings
+  children:
+  - type: scalar-field
+    id: injector-flow
+    props:
+      label: Injector flow
+    bind:
+      source: config
+      field: injector_flow
+  - type: scalar-field
+    id: injectorflowasmassflow
+    props:
+      label: Injector flow units
+    bind:
+      source: config
+      field: injectorFlowAsMassFlow
+  - type: scalar-field
+    id: injectorpressuretype
+    props:
+      label: Fuel rail pressure sensor
+    bind:
+      source: config
+      field: injectorPressureType
+  - type: scalar-field
+    id: injectorcompensationmode
+    props:
+      label: Injector flow compensation mode
+    bind:
+      source: config
+      field: injectorCompensationMode
+  - type: scalar-field
+    id: fuelreferencepressure
+    props:
+      label: Injector reference pressure
+    bind:
+      source: config
+      field: fuelReferencePressure
+- type: section
+  props:
+    title: Fuel characteristics
+  children:
+  - type: scalar-field
+    id: stoichratioprimary
+    props:
+      label: Stoichiometric ratio
+    bind:
+      source: config
+      field: stoichRatioPrimary
+  - type: scalar-field
+    id: stoichratiosecondary
+    props:
+      label: E100 stoichiometric ratio
+    bind:
+      source: config
+      field: stoichRatioSecondary
+- type: text
+  props:
+    variant: hint
+    text: Панель «injectorsDeadTime» — нет определения в INI

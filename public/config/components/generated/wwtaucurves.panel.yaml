@@ -1,0 +1,18 @@
+id: wwTauCurves.panel
+description: Wall wetting AE evaporation time
+source:
+  ini_dialog: wwTauCurves
+  menu_path: Fuel › Wall wetting AE › Evap time
+children:
+- type: text
+  props:
+    text: Set a base evaporation time based on coolant temperature, and a multiplier based on MAP.
+    variant: hint
+- type: text
+  props:
+    variant: hint
+    text: Таблица/кривая «wwTauCltCurve» — редактор пока не реализован
+- type: text
+  props:
+    variant: hint
+    text: Таблица/кривая «wwTauMapCurve» — редактор пока не реализован

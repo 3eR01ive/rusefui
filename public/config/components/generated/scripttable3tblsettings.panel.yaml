@@ -1,0 +1,17 @@
+id: scriptTable3TblSettings.panel
+description: 'Script Table #3'
+source:
+  ini_dialog: scriptTable3TblSettings
+  menu_path: 'Advanced › Lua Calibrations › Script Table #3'
+children:
+- type: scalar-field
+  id: scripttablename3
+  props:
+    label: Name
+  bind:
+    source: config
+    field: scriptTableName3
+- type: text
+  props:
+    text: Таблица/кривая «scriptTable3Tbl» — редактор пока не реализован
+    variant: hint

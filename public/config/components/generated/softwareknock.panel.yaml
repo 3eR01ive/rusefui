@@ -1,0 +1,130 @@
+id: softwareKnock.panel
+description: Software Knock
+source:
+  ini_dialog: softwareKnock
+  menu_path: Ignition › Cylinder ign trims › Knock Control
+children:
+- type: section
+  props:
+    title: softwareKnockLeft
+  children:
+  - type: section
+    props:
+      title: Sense
+    children:
+    - type: scalar-field
+      id: enablesoftwareknock
+      props:
+        label: Enable
+      bind:
+        source: config
+        field: enableSoftwareKnock
+    - type: scalar-field
+      id: cylinderbore
+      props:
+        label: Cylinder Bore
+      bind:
+        source: config
+        field: cylinderBore
+    - type: scalar-field
+      id: knockfrequency
+      props:
+        label: Estimated Knock Frequency
+      bind:
+        source: config
+        field: knockFrequency
+    - type: scalar-field
+      id: knockdetectionusedoublefrequency
+      props:
+        label: Detection mode
+      bind:
+        source: config
+        field: knockDetectionUseDoubleFrequency
+    - type: scalar-field
+      id: knockdetectionwindowstart
+      props:
+        label: Detection Window Start
+      bind:
+        source: config
+        field: knockDetectionWindowStart
+    - type: scalar-field
+      id: knocksamplingduration
+      props:
+        label: Sampling Duration
+      bind:
+        source: config
+        field: knockSamplingDuration
+    - type: scalar-field
+      id: enableknockspectrogram
+      props:
+        label: Enable Knock Spectrogram
+      bind:
+        source: config
+        field: enableKnockSpectrogram
+    - type: scalar-field
+      id: enableknockspectrogramfilter
+      props:
+        label: Enable Knock Spectrogram Filter
+      bind:
+        source: config
+        field: enableKnockSpectrogramFilter
+    - type: scalar-field
+      id: knockspectrumsensitivity
+      props:
+        label: Knock Spectrum Sensitivity
+      bind:
+        source: config
+        field: knockSpectrumSensitivity
+    - type: section
+      props:
+        title: Select the nearest sensor for each cylinder
+  - type: section
+    props:
+      title: Response
+    children:
+    - type: scalar-field
+      id: knockretardaggression
+      props:
+        label: knockRetardAggression
+      bind:
+        source: config
+        field: knockRetardAggression
+    - type: scalar-field
+      id: knockretardreapplyrate
+      props:
+        label: knockRetardReapplyRate
+      bind:
+        source: config
+        field: knockRetardReapplyRate
+    - type: scalar-field
+      id: knockfueltrimaggression
+      props:
+        label: knockFuelTrimAggression
+      bind:
+        source: config
+        field: knockFuelTrimAggression
+    - type: scalar-field
+      id: knockfueltrimreapplyrate
+      props:
+        label: knockFuelTrimReapplyRate
+      bind:
+        source: config
+        field: knockFuelTrimReapplyRate
+    - type: scalar-field
+      id: knockfueltrim
+      props:
+        label: knockFuelTrim
+      bind:
+        source: config
+        field: knockFuelTrim
+    - type: scalar-field
+      id: knocksuppressmintps
+      props:
+        label: knockSuppressMinTps
+      bind:
+        source: config
+        field: knockSuppressMinTps
+- type: text
+  props:
+    text: Таблица/кривая «knockThresholdCurve» — редактор пока не реализован
+    variant: hint

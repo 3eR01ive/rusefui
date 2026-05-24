@@ -1,0 +1,10 @@
+id: long_term_fuel_trim_stateDialog.panel
+description: long_term_fuel_trim_state
+source:
+  ini_dialog: long_term_fuel_trim_stateDialog
+  menu_path: View › long_term_fuel_trim_state
+children:
+- type: text
+  props:
+    variant: hint
+    text: Панель «long_term_fuel_trim_stateIndicatorPanel» — нет определения в INI

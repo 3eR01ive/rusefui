@@ -1,0 +1,21 @@
+id: boostOpenLoopDialog.panel
+description: Boost control open loop
+source:
+  ini_dialog: boostOpenLoopDialog
+  menu_path: Advanced › Boost control open loop
+children:
+- type: section
+  props:
+    title: boostOpenLoopYAxisSelector
+  children:
+  - type: scalar-field
+    id: boostopenloopyaxis
+    props:
+      label: Y Axis
+    bind:
+      source: config
+      field: boostOpenLoopYAxis
+- type: text
+  props:
+    text: Таблица/кривая «boostTableTbl» — редактор пока не реализован
+    variant: hint

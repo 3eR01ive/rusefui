@@ -1,0 +1,14 @@
+id: dwellSettings.panel
+description: Dwell
+source:
+  ini_dialog: dwellSettings
+  menu_path: Ignition › Dwell
+children:
+- type: text
+  props:
+    variant: hint
+    text: Панель «dwellCorrection» — нет определения в INI
+- type: text
+  props:
+    variant: hint
+    text: Панель «dwellVoltageCorrection» — нет определения в INI

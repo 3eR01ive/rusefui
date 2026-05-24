@@ -1,0 +1,86 @@
+id: ewgDialog.panel
+description: Electronic Wastegate actuator
+source:
+  ini_dialog: ewgDialog
+  menu_path: Advanced › Boost blend tables › Electronic Wastegate actuator
+children:
+- type: section
+  props:
+    title: ewgDialogLeft
+  children:
+  - type: scalar-field
+    id: no-one-lives-here
+    props:
+      label: No one lives here
+    bind:
+      source: config
+      field: No one lives here
+- type: section
+  props:
+    title: ewgDialogRight
+  children:
+  - type: section
+    props:
+      title: PID settings
+    children:
+    - type: scalar-field
+      id: this-pid-is-controlling-how-ewg-actuator-dc-motor-reaches-desired-position
+      props:
+        label: This PID is controlling how EWG Actuator DC motor reaches desired position
+      bind:
+        source: config
+        field: This PID is controlling how EWG Actuator DC motor reaches desired position
+    - type: text
+      props:
+        variant: hint
+        text: This section is for advanced users only!
+    - type: scalar-field
+      id: etbwastegatepid-pfactor
+      props:
+        label: P gain
+      bind:
+        source: config
+        field: etbWastegatePid_pFactor
+    - type: scalar-field
+      id: etbwastegatepid-ifactor
+      props:
+        label: I gain
+      bind:
+        source: config
+        field: etbWastegatePid_iFactor
+    - type: scalar-field
+      id: etbwastegatepid-dfactor
+      props:
+        label: D gain
+      bind:
+        source: config
+        field: etbWastegatePid_dFactor
+    - type: scalar-field
+      id: etbwastegatepid-minvalue
+      props:
+        label: PID min
+      bind:
+        source: config
+        field: etbWastegatePid_minValue
+    - type: scalar-field
+      id: etbwastegatepid-maxvalue
+      props:
+        label: PID max
+      bind:
+        source: config
+        field: etbWastegatePid_maxValue
+  - type: section
+    props:
+      title: Sensor autotune
+    children:
+    - type: scalar-field
+      id: first-step--calibrate-ewg-position-sensor-and-hit--burn
+      props:
+        label: 'First step: calibrate EWG position sensor and hit ''Burn'''
+      bind:
+        source: config
+        field: 'First step: calibrate EWG position sensor and hit ''Burn'''
+    - type: text
+      props:
+        variant: hint
+        text: 'Кнопка: Auto Calibrate EWG (cmd_ewg_auto_calibrate_1)'

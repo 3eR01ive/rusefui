@@ -1,0 +1,216 @@
+id: triggerConfiguration.panel
+description: Trigger
+source:
+  ini_dialog: triggerConfiguration
+  menu_path: Setup › Limits and protection › Trigger
+children:
+- type: section
+  props:
+    title: Primary Trigger
+  children:
+  - type: scalar-field
+    id: twostroke
+    props:
+      label: Strokes
+    bind:
+      source: config
+      field: twoStroke
+  - type: scalar-field
+    id: trigger-type
+    props:
+      label: Trigger type
+    bind:
+      source: config
+      field: trigger_type
+  - type: scalar-field
+    id: trigger-customtotaltoothcount
+    props:
+      label: Total tooth count
+    bind:
+      source: config
+      field: trigger_customTotalToothCount
+  - type: scalar-field
+    id: trigger-customskippedtoothcount
+    props:
+      label: Missing/skipped tooth count
+    bind:
+      source: config
+      field: trigger_customSkippedToothCount
+  - type: scalar-field
+    id: skippedwheeloncam
+    props:
+      label: Skipped wheel location
+    bind:
+      source: config
+      field: skippedWheelOnCam
+  - type: text
+    props:
+      variant: hint
+      text: Reminder that 4-stroke cycle is 720 degrees
+  - type: text
+    props:
+      variant: hint
+      text: For well-known trigger types use '0' trigger angle offset
+  - type: scalar-field
+    id: globaltriggerangleoffset
+    props:
+      label: Trigger Angle Advance
+    bind:
+      source: config
+      field: globalTriggerAngleOffset
+  - type: text
+    props:
+      variant: hint
+      text: Cam is primary if you have cam sensor as part of trigger shape
+  - type: scalar-field
+    id: triggerinputpins1
+    props:
+      label: Cam Sensor (Primary channel)
+    bind:
+      source: config
+      field: triggerInputPins1
+  - type: scalar-field
+    id: triggerinputpins1
+    props:
+      label: Crank Sensor (Primary channel)
+    bind:
+      source: config
+      field: triggerInputPins1
+  - type: scalar-field
+    id: invertprimarytriggersignal
+    props:
+      label: Primary Edge
+    bind:
+      source: config
+      field: invertPrimaryTriggerSignal
+  - type: scalar-field
+    id: triggerinputpins2
+    props:
+      label: Secondary channel
+    bind:
+      source: config
+      field: triggerInputPins2
+  - type: scalar-field
+    id: invertsecondarytriggersignal
+    props:
+      label: Secondary Edge
+    bind:
+      source: config
+      field: invertSecondaryTriggerSignal
+- type: section
+  props:
+    title: Cam Inputs
+  children:
+  - type: text
+    props:
+      text: <html><a href=https://rusefi.com/s/vvt>https://rusefi.com/s/vvt</a></html>
+      variant: hint
+  - type: scalar-field
+    id: vvtmode1
+    props:
+      label: Cam mode (intake)
+    bind:
+      source: config
+      field: vvtMode1
+  - type: scalar-field
+    id: camdecoder2jzposition
+    props:
+      label: 2JZ Tooth Detection Position
+    bind:
+      source: config
+      field: camDecoder2jzPosition
+  - type: scalar-field
+    id: camdecoder2jzprecision
+    props:
+      label: 2JZ Detection Precision
+    bind:
+      source: config
+      field: camDecoder2jzPrecision
+  - type: scalar-field
+    id: vvtmode2
+    props:
+      label: Cam mode (exhaust)
+    bind:
+      source: config
+      field: vvtMode2
+  - type: scalar-field
+    id: caminputs1
+    props:
+      label: Cam sensor bank 1 intake
+    bind:
+      source: config
+      field: camInputs1
+  - type: scalar-field
+    id: caminputs2
+    props:
+      label: Cam sensor bank 1 exhaust
+    bind:
+      source: config
+      field: camInputs2
+  - type: scalar-field
+    id: caminputs3
+    props:
+      label: Cam sensor bank 2 intake
+    bind:
+      source: config
+      field: camInputs3
+  - type: scalar-field
+    id: caminputs4
+    props:
+      label: Cam sensor bank 2 exhaust
+    bind:
+      source: config
+      field: camInputs4
+  - type: scalar-field
+    id: invertcamvvtsignal
+    props:
+      label: intake Cam Edge Select
+    bind:
+      source: config
+      field: invertCamVVTSignal
+  - type: scalar-field
+    id: invertexhaustcamvvtsignal
+    props:
+      label: exhaust Cam Edge Select
+    bind:
+      source: config
+      field: invertExhaustCamVVTSignal
+  - type: text
+    props:
+      text: Set offset so VVT indicates 0 degrees in default position
+      variant: hint
+  - type: scalar-field
+    id: vvtoffsets1
+    props:
+      label: VVT offset bank 1 intake
+    bind:
+      source: config
+      field: vvtOffsets1
+  - type: scalar-field
+    id: vvtoffsets2
+    props:
+      label: VVT offset bank 1 exhaust
+    bind:
+      source: config
+      field: vvtOffsets2
+  - type: scalar-field
+    id: vvtoffsets3
+    props:
+      label: VVT offset bank 2 intake
+    bind:
+      source: config
+      field: vvtOffsets3
+  - type: scalar-field
+    id: vvtoffsets4
+    props:
+      label: VVT offset bank 2 exhaust
+    bind:
+      source: config
+      field: vvtOffsets4
+  - type: scalar-field
+    id: enginesynccam
+    props:
+      label: Cam for engine sync resolution
+    bind:
+      source: config
+      field: engineSyncCam

@@ -1,0 +1,119 @@
+id: ShiftTorqueReductionDialog.panel
+description: Shift Torque Reduction (Flat Shift)
+source:
+  ini_dialog: ShiftTorqueReductionDialog
+  menu_path: Advanced › Shift Torque Reduction (Flat Shift)
+children:
+- type: section
+  props:
+    title: ShiftTorqueReductionSettingsDialog
+  children:
+  - type: scalar-field
+    id: torquereductionenabled
+    props:
+      label: Enable Shift Torque Reduction
+    bind:
+      source: config
+      field: torqueReductionEnabled
+  - type: section
+    props:
+      title: Activation
+    children:
+    - type: scalar-field
+      id: torquereductionactivationmode
+      props:
+        label: Activation Mode
+      bind:
+        source: config
+        field: torqueReductionActivationMode
+    - type: scalar-field
+      id: torquereductionactivationtemperature
+      props:
+        label: Minimal Engine Temperature
+      bind:
+        source: config
+        field: torqueReductionActivationTemperature
+    - type: section
+      props:
+        title: Torque Reduction Button
+      children:
+      - type: scalar-field
+        id: torquereductiontriggerpin
+        props:
+          label: Torque Reduction Button
+        bind:
+          source: config
+          field: torqueReductionTriggerPin
+    - type: section
+      props:
+        title: Launch Button
+      children:
+      - type: scalar-field
+        id: launchactivatepin
+        props:
+          label: Launch Button
+        bind:
+          source: config
+          field: launchActivatePin
+    - type: section
+      props:
+        title: Clutch Down
+      children:
+      - type: scalar-field
+        id: clutchdownpin
+        props:
+          label: Clutch Down
+        bind:
+          source: config
+          field: clutchDownPin
+      - type: scalar-field
+        id: clutchdownpinmode
+        props:
+          label: Clutch Down Mode
+        bind:
+          source: config
+          field: clutchDownPinMode
+    - type: section
+      props:
+        title: Clutch Up
+      children:
+      - type: scalar-field
+        id: clutchuppin
+        props:
+          label: Clutch Up
+        bind:
+          source: config
+          field: clutchUpPin
+      - type: scalar-field
+        id: clutchuppinmode
+        props:
+          label: Clutch Up Mode
+        bind:
+          source: config
+          field: clutchUpPinMode
+  - type: section
+    props:
+      title: Settings
+    children:
+    - type: scalar-field
+      id: torquereductionarmingrpm
+      props:
+        label: Torque Reduction Arming RPM
+      bind:
+        source: config
+        field: torqueReductionArmingRpm
+    - type: scalar-field
+      id: torquereductionarmingapp
+      props:
+        label: Torque Reduction Arming APP
+      bind:
+        source: config
+        field: torqueReductionArmingApp
+- type: section
+  props:
+    title: shift_torque_reduction_state
+  children:
+  - type: text
+    props:
+      variant: hint
+      text: Панель «shift_torque_reduction_stateIndicatorPanel» — нет определения в INI

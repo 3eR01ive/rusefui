@@ -1,0 +1,6 @@
+id: wall_fuel_stateDialog.panel
+description: wall_fuel_state
+source:
+  ini_dialog: wall_fuel_stateDialog
+  menu_path: View › wall_fuel_state
+children: []

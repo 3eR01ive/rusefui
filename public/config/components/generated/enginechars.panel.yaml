@@ -1,0 +1,89 @@
+id: engineChars.panel
+description: Vehicle Information
+source:
+  ini_dialog: engineChars
+  menu_path: Setup › Vehicle Information
+children:
+- type: scalar-field
+  id: uimode
+  props:
+    label: Tuning View
+  bind:
+    source: config
+    field: uiMode
+- type: section
+  props:
+    title: Engine Configuration
+  children:
+  - type: scalar-field
+    id: cylinderscount
+    props:
+      label: Number of cylinders
+    bind:
+      source: config
+      field: cylindersCount
+  - type: scalar-field
+    id: displacement
+    props:
+      label: Displacement
+    bind:
+      source: config
+      field: displacement
+  - type: scalar-field
+    id: firingorder
+    props:
+      label: Firing order
+    bind:
+      source: config
+      field: firingOrder
+- type: section
+  props:
+    title: Engine Metadata
+  children:
+  - type: text
+    props:
+      variant: hint
+      text: These metadata are used by rusEFI Online
+  - type: scalar-field
+    id: enginemake
+    props:
+      label: Engine Make
+    bind:
+      source: config
+      field: engineMake
+  - type: scalar-field
+    id: enginecode
+    props:
+      label: Manufacturer Engine Code
+    bind:
+      source: config
+      field: engineCode
+  - type: scalar-field
+    id: vehiclename
+    props:
+      label: Vehicle Name
+    bind:
+      source: config
+      field: vehicleName
+  - type: scalar-field
+    id: vinnumber
+    props:
+      label: VIN
+    bind:
+      source: config
+      field: vinNumber
+- type: section
+  props:
+    title: Fuel
+  children:
+  - type: text
+    props:
+      variant: hint
+      text: https://rusefi.com/s/fuel
+  - type: scalar-field
+    id: fuelalgorithm
+    props:
+      label: Fuel strategy
+    bind:
+      source: config
+      field: fuelAlgorithm

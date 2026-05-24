@@ -1,0 +1,6 @@
+id: mc33810_stateDialog.panel
+description: mc33810_state
+source:
+  ini_dialog: mc33810_stateDialog
+  menu_path: View › mc33810_state
+children: []

@@ -1,0 +1,78 @@
+id: luaOutputs.panel
+description: Lua Outputs
+source:
+  ini_dialog: luaOutputs
+  menu_path: Advanced › Lua › Lua Script PWM Outputs
+children:
+- type: text
+  props:
+    variant: hint
+    text: Use rusEFI console for Lua script editing
+- type: text
+  props:
+    text: Call startPwm to initialize, then call
+    variant: hint
+- type: text
+  props:
+    text: setPwmDuty and setPwmFreq to vary duty/freq
+    variant: hint
+- type: text
+  props:
+    text: See rusefi.com/s/lua for more info
+    variant: hint
+- type: scalar-field
+  id: luaoutputpins1
+  props:
+    label: 'output #0'
+  bind:
+    source: config
+    field: luaOutputPins1
+- type: scalar-field
+  id: luaoutputpins2
+  props:
+    label: 'output #1'
+  bind:
+    source: config
+    field: luaOutputPins2
+- type: scalar-field
+  id: luaoutputpins3
+  props:
+    label: 'output #2'
+  bind:
+    source: config
+    field: luaOutputPins3
+- type: scalar-field
+  id: luaoutputpins4
+  props:
+    label: 'output #3'
+  bind:
+    source: config
+    field: luaOutputPins4
+- type: scalar-field
+  id: luaoutputpins5
+  props:
+    label: 'output #4'
+  bind:
+    source: config
+    field: luaOutputPins5
+- type: scalar-field
+  id: luaoutputpins6
+  props:
+    label: 'output #5'
+  bind:
+    source: config
+    field: luaOutputPins6
+- type: scalar-field
+  id: luaoutputpins7
+  props:
+    label: 'output #6'
+  bind:
+    source: config
+    field: luaOutputPins7
+- type: scalar-field
+  id: luaoutputpins8
+  props:
+    label: 'output #7'
+  bind:
+    source: config
+    field: luaOutputPins8

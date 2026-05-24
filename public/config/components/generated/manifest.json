@@ -1,0 +1,1134 @@
+{
+  "iniSource": "test_data/rusefi_proteus_f7.ini",
+  "panelCount": 188,
+  "panels": [
+    {
+      "id": "engineChars",
+      "file": "enginechars.panel.yaml",
+      "title": "Vehicle Information",
+      "menuPath": "Setup › Vehicle Information"
+    },
+    {
+      "id": "limitsAndFallback",
+      "file": "limitsandfallback.panel.yaml",
+      "title": "Limits and fallbacks",
+      "menuPath": "Setup › Limits and protection › Limits and fallbacks"
+    },
+    {
+      "id": "lowOilPressureProtection",
+      "file": "lowoilpressureprotection.panel.yaml",
+      "title": "Low oil pressure protection",
+      "menuPath": "Setup › Limits and protection › Low oil pressure protection"
+    },
+    {
+      "id": "highOilPressureProtection",
+      "file": "highoilpressureprotection.panel.yaml",
+      "title": "High oil pressure protection",
+      "menuPath": "Setup › Limits and protection › High oil pressure protection"
+    },
+    {
+      "id": "lambdaProtection",
+      "file": "lambdaprotection.panel.yaml",
+      "title": "Lambda protection",
+      "menuPath": "Setup › Limits and protection › Lambda protection"
+    },
+    {
+      "id": "triggerConfiguration",
+      "file": "triggerconfiguration.panel.yaml",
+      "title": "Trigger",
+      "menuPath": "Setup › Limits and protection › Trigger"
+    },
+    {
+      "id": "trigger_advanced",
+      "file": "trigger-advanced.panel.yaml",
+      "title": "Advanced Trigger",
+      "menuPath": "Setup › Limits and protection › Advanced Trigger"
+    },
+    {
+      "id": "triggerConfiguration_gap",
+      "file": "triggerconfiguration-gap.panel.yaml",
+      "title": "Trigger Gap Override",
+      "menuPath": "Setup › Limits and protection › Trigger Gap Override"
+    },
+    {
+      "id": "energySystems",
+      "file": "energysystems.panel.yaml",
+      "title": "Battery and alternator",
+      "menuPath": "Setup › Limits and protection › Battery and alternator"
+    },
+    {
+      "id": "ignitionInputDialog",
+      "file": "ignitioninputdialog.panel.yaml",
+      "title": "Ignition key input Settings",
+      "menuPath": "Setup › Limits and protection › Ignition key input Settings"
+    },
+    {
+      "id": "outputsDialog",
+      "file": "outputsdialog.panel.yaml",
+      "title": "Outputs",
+      "menuPath": "Setup › Limits and protection › Outputs"
+    },
+    {
+      "id": "acSettings",
+      "file": "acsettings.panel.yaml",
+      "title": "Air Conditioning",
+      "menuPath": "Setup › Limits and protection › Air Conditioning"
+    },
+    {
+      "id": "statusLeds",
+      "file": "statusleds.panel.yaml",
+      "title": "Status LEDs",
+      "menuPath": "Setup › Limits and protection › Status LEDs"
+    },
+    {
+      "id": "injectorConfig",
+      "file": "injectorconfig.panel.yaml",
+      "title": "Injection configuration",
+      "menuPath": "Fuel › Injection configuration"
+    },
+    {
+      "id": "injectionSettings",
+      "file": "injectionsettings.panel.yaml",
+      "title": "Injection hardware",
+      "menuPath": "Fuel › Injection hardware"
+    },
+    {
+      "id": "cylinderBankSelect",
+      "file": "cylinderbankselect.panel.yaml",
+      "title": "Cylinder bank selection",
+      "menuPath": "Fuel › Cylinder bank selection"
+    },
+    {
+      "id": "injectorNonlinear",
+      "file": "injectornonlinear.panel.yaml",
+      "title": "Injector small-pulse correction",
+      "menuPath": "Fuel › Injector small-pulse correction"
+    },
+    {
+      "id": "stagedInjection",
+      "file": "stagedinjection.panel.yaml",
+      "title": "Staged injection",
+      "menuPath": "Fuel › Staged injection"
+    },
+    {
+      "id": "stagedInjectionOutputs",
+      "file": "stagedinjectionoutputs.panel.yaml",
+      "title": "Staged injection outputs",
+      "menuPath": "Fuel › Staged injection outputs"
+    },
+    {
+      "id": "veTableDialog",
+      "file": "vetabledialog.panel.yaml",
+      "title": "VE",
+      "menuPath": "Fuel › Cylinder fuel trims › VE"
+    },
+    {
+      "id": "veBlend1Cfg",
+      "file": "veblend1cfg.panel.yaml",
+      "title": "VE blend 1 bias",
+      "menuPath": "Fuel › VE blend tables › VE blend 1 bias"
+    },
+    {
+      "id": "veBlend2Cfg",
+      "file": "veblend2cfg.panel.yaml",
+      "title": "VE blend 2 bias",
+      "menuPath": "Fuel › VE blend tables › VE blend 2 bias"
+    },
+    {
+      "id": "veBlend3Cfg",
+      "file": "veblend3cfg.panel.yaml",
+      "title": "VE blend 3 bias",
+      "menuPath": "Fuel › VE blend tables › VE blend 3 bias"
+    },
+    {
+      "id": "veBlend4Cfg",
+      "file": "veblend4cfg.panel.yaml",
+      "title": "VE blend 4 bias",
+      "menuPath": "Fuel › VE blend tables › VE blend 4 bias"
+    },
+    {
+      "id": "targetAfrBlend1Cfg",
+      "file": "targetafrblend1cfg.panel.yaml",
+      "title": "Target AFR 1 bias",
+      "menuPath": "Fuel › Target AFR adder tables › Target AFR 1 bias"
+    },
+    {
+      "id": "targetAfrBlend2Cfg",
+      "file": "targetafrblend2cfg.panel.yaml",
+      "title": "Target AFR 2 bias",
+      "menuPath": "Fuel › Target AFR adder tables › Target AFR 2 bias"
+    },
+    {
+      "id": "tChargeSettings",
+      "file": "tchargesettings.panel.yaml",
+      "title": "Charge temperature estimation",
+      "menuPath": "Fuel › Target AFR adder tables › Charge temperature estimation"
+    },
+    {
+      "id": "cltFuelCorrCurveDialog",
+      "file": "cltfuelcorrcurvedialog.panel.yaml",
+      "title": "Warmup enrichment",
+      "menuPath": "Fuel › Target AFR adder tables › Warmup enrichment"
+    },
+    {
+      "id": "coastingFuelCutControl",
+      "file": "coastingfuelcutcontrol.panel.yaml",
+      "title": "Deceleration fuel cutoff (DFCO)",
+      "menuPath": "Fuel › Target AFR adder tables › Deceleration fuel cutoff (DFCO)"
+    },
+    {
+      "id": "fuelClosedLoopDialog",
+      "file": "fuelclosedloopdialog.panel.yaml",
+      "title": "Short term fuel trim/Closed loop",
+      "menuPath": "Fuel › Target AFR adder tables › Short term fuel trim/Closed loop"
+    },
+    {
+      "id": "fuelLTFCDialog",
+      "file": "fuelltfcdialog.panel.yaml",
+      "title": "Long term fuel trims",
+      "menuPath": "Fuel › Target AFR adder tables › Long term fuel trims"
+    },
+    {
+      "id": "AccelEnrich",
+      "file": "accelenrich.panel.yaml",
+      "title": "Acceleration enrichment",
+      "menuPath": "Fuel › Target AFR adder tables › Acceleration enrichment"
+    },
+    {
+      "id": "tpsTpsDialog",
+      "file": "tpstpsdialog.panel.yaml",
+      "title": "TPS/TPS acceleration extra fuel",
+      "menuPath": "Fuel › Target AFR adder tables › TPS/TPS acceleration extra fuel"
+    },
+    {
+      "id": "wwTauCurves",
+      "file": "wwtaucurves.panel.yaml",
+      "title": "Evap time",
+      "menuPath": "Fuel › Wall wetting AE › Evap time"
+    },
+    {
+      "id": "wwBetaCurves",
+      "file": "wwbetacurves.panel.yaml",
+      "title": "Impact fraction",
+      "menuPath": "Fuel › Wall wetting AE › Impact fraction"
+    },
+    {
+      "id": "ignitionSettings",
+      "file": "ignitionsettings.panel.yaml",
+      "title": "Ignition settings",
+      "menuPath": "Ignition › Ignition settings"
+    },
+    {
+      "id": "IgnitionTableDialog",
+      "file": "ignitiontabledialog.panel.yaml",
+      "title": "Ignition advance",
+      "menuPath": "Ignition › Ignition advance"
+    },
+    {
+      "id": "dwellSettings",
+      "file": "dwellsettings.panel.yaml",
+      "title": "Dwell",
+      "menuPath": "Ignition › Dwell"
+    },
+    {
+      "id": "ignAdder1Cfg",
+      "file": "ignadder1cfg.panel.yaml",
+      "title": "Ignition blend 1 bias",
+      "menuPath": "Ignition › Ignition blend tables › Ignition blend 1 bias"
+    },
+    {
+      "id": "ignAdder2Cfg",
+      "file": "ignadder2cfg.panel.yaml",
+      "title": "Ignition blend 2 bias",
+      "menuPath": "Ignition › Ignition blend tables › Ignition blend 2 bias"
+    },
+    {
+      "id": "ignAdder3Cfg",
+      "file": "ignadder3cfg.panel.yaml",
+      "title": "Ignition blend 3 bias",
+      "menuPath": "Ignition › Ignition blend tables › Ignition blend 3 bias"
+    },
+    {
+      "id": "ignAdder4Cfg",
+      "file": "ignadder4cfg.panel.yaml",
+      "title": "Ignition blend 4 bias",
+      "menuPath": "Ignition › Ignition blend tables › Ignition blend 4 bias"
+    },
+    {
+      "id": "multisparkSettings",
+      "file": "multisparksettings.panel.yaml",
+      "title": "Multispark",
+      "menuPath": "Ignition › Cylinder ign trims › Multispark"
+    },
+    {
+      "id": "softwareKnock",
+      "file": "softwareknock.panel.yaml",
+      "title": "Knock Control",
+      "menuPath": "Ignition › Cylinder ign trims › Knock Control"
+    },
+    {
+      "id": "crankingDialog",
+      "file": "crankingdialog.panel.yaml",
+      "title": "Cranking settings",
+      "menuPath": "Cranking › Cranking settings"
+    },
+    {
+      "id": "primingFuelPulsePanel",
+      "file": "primingfuelpulsepanel.panel.yaml",
+      "title": "Priming pulse",
+      "menuPath": "Cranking › Priming pulse"
+    },
+    {
+      "id": "idleSettings",
+      "file": "idlesettings.panel.yaml",
+      "title": "Idle settings",
+      "menuPath": "Idle › Idle settings"
+    },
+    {
+      "id": "idlehw",
+      "file": "idlehw.panel.yaml",
+      "title": "Idle hardware",
+      "menuPath": "Idle › Idle hardware"
+    },
+    {
+      "id": "cltCrankingCurveDialog",
+      "file": "cltcrankingcurvedialog.panel.yaml",
+      "title": "Cranking Idle Valve Curve",
+      "menuPath": "Idle › Cranking Idle Valve Curve"
+    },
+    {
+      "id": "afterCrankingIACtaperDurationDialog",
+      "file": "aftercrankingiactaperdurationdialog.panel.yaml",
+      "title": "Idle Valve Crank-to-Run Taper",
+      "menuPath": "Idle › Idle Valve Crank-to-Run Taper"
+    },
+    {
+      "id": "idleTimingPidCorrDialog",
+      "file": "idletimingpidcorrdialog.panel.yaml",
+      "title": "Closed-loop idle timing",
+      "menuPath": "Idle › Closed-loop idle timing"
+    },
+    {
+      "id": "smLaunchControl",
+      "file": "smlaunchcontrol.panel.yaml",
+      "title": "Launch Control",
+      "menuPath": "Advanced › Launch Control"
+    },
+    {
+      "id": "ShiftTorqueReductionDialog",
+      "file": "shifttorquereductiondialog.panel.yaml",
+      "title": "Shift Torque Reduction (Flat Shift)",
+      "menuPath": "Advanced › Shift Torque Reduction (Flat Shift)"
+    },
+    {
+      "id": "torqueReductionTimeDialog",
+      "file": "torquereductiontimedialog.panel.yaml",
+      "title": "Shift Torque Reduction Time table",
+      "menuPath": "Advanced › Shift Torque Reduction Time table"
+    },
+    {
+      "id": "torqueReductionIgnitionRetardDialog",
+      "file": "torquereductionignitionretarddialog.panel.yaml",
+      "title": "Torque Reduction Ignition Retard Table",
+      "menuPath": "Advanced › Torque Reduction Ignition Retard Table"
+    },
+    {
+      "id": "torqueReductionIgnitionCutDialog",
+      "file": "torquereductionignitioncutdialog.panel.yaml",
+      "title": "Torque Reduction Ignition Cut Table",
+      "menuPath": "Advanced › Torque Reduction Ignition Cut Table"
+    },
+    {
+      "id": "NitrousControlDialog",
+      "file": "nitrouscontroldialog.panel.yaml",
+      "title": "Nitrous Control",
+      "menuPath": "Advanced › Nitrous Control"
+    },
+    {
+      "id": "VvlControlDialog",
+      "file": "vvlcontroldialog.panel.yaml",
+      "title": "VVL Control",
+      "menuPath": "Advanced › VVL Control"
+    },
+    {
+      "id": "ignitionCylExtra",
+      "file": "ignitioncylextra.panel.yaml",
+      "title": "Cylinder offsets",
+      "menuPath": "Advanced › Cylinder offsets"
+    },
+    {
+      "id": "boostDialog",
+      "file": "boostdialog.panel.yaml",
+      "title": "Boost control",
+      "menuPath": "Advanced › Boost control"
+    },
+    {
+      "id": "boostOpenLoopDialog",
+      "file": "boostopenloopdialog.panel.yaml",
+      "title": "Boost control open loop",
+      "menuPath": "Advanced › Boost control open loop"
+    },
+    {
+      "id": "boostOpenLoopGearAdderDialog",
+      "file": "boostopenloopgearadderdialog.panel.yaml",
+      "title": "Boost control open loop gear adder",
+      "menuPath": "Advanced › Boost control open loop gear adder"
+    },
+    {
+      "id": "boostPidDialog",
+      "file": "boostpiddialog.panel.yaml",
+      "title": "Boost control PID",
+      "menuPath": "Advanced › Boost control PID"
+    },
+    {
+      "id": "boostTargetDialog",
+      "file": "boosttargetdialog.panel.yaml",
+      "title": "Boost control target",
+      "menuPath": "Advanced › Boost control target"
+    },
+    {
+      "id": "boostOpenBlend1Cfg",
+      "file": "boostopenblend1cfg.panel.yaml",
+      "title": "Open loop 1 bias",
+      "menuPath": "Advanced › Boost blend tables › Open loop 1 bias"
+    },
+    {
+      "id": "boostOpenBlend2Cfg",
+      "file": "boostopenblend2cfg.panel.yaml",
+      "title": "Open loop 2 bias",
+      "menuPath": "Advanced › Boost blend tables › Open loop 2 bias"
+    },
+    {
+      "id": "boostClosedBlend1Cfg",
+      "file": "boostclosedblend1cfg.panel.yaml",
+      "title": "Closed loop 1 bias",
+      "menuPath": "Advanced › Boost blend tables › Closed loop 1 bias"
+    },
+    {
+      "id": "boostClosedBlend2Cfg",
+      "file": "boostclosedblend2cfg.panel.yaml",
+      "title": "Closed loop 2 bias",
+      "menuPath": "Advanced › Boost blend tables › Closed loop 2 bias"
+    },
+    {
+      "id": "gppwm1",
+      "file": "gppwm1.panel.yaml",
+      "title": "General Purpose PWM 1",
+      "menuPath": "Advanced › Boost blend tables › General Purpose PWM 1"
+    },
+    {
+      "id": "gppwm2",
+      "file": "gppwm2.panel.yaml",
+      "title": "General Purpose PWM 2",
+      "menuPath": "Advanced › Boost blend tables › General Purpose PWM 2"
+    },
+    {
+      "id": "gppwm3",
+      "file": "gppwm3.panel.yaml",
+      "title": "General Purpose PWM 3",
+      "menuPath": "Advanced › Boost blend tables › General Purpose PWM 3"
+    },
+    {
+      "id": "gppwm4",
+      "file": "gppwm4.panel.yaml",
+      "title": "General Purpose PWM 4",
+      "menuPath": "Advanced › Boost blend tables › General Purpose PWM 4"
+    },
+    {
+      "id": "dcMotorActuatorFunction",
+      "file": "dcmotoractuatorfunction.panel.yaml",
+      "title": "DC motor actuator(s) function",
+      "menuPath": "Advanced › Boost blend tables › DC motor actuator(s) function"
+    },
+    {
+      "id": "etbDialog",
+      "file": "etbdialog.panel.yaml",
+      "title": "Electronic Throttle Body actuator",
+      "menuPath": "Advanced › Boost blend tables › Electronic Throttle Body actuator"
+    },
+    {
+      "id": "ewgDialog",
+      "file": "ewgdialog.panel.yaml",
+      "title": "Electronic Wastegate actuator",
+      "menuPath": "Advanced › Boost blend tables › Electronic Wastegate actuator"
+    },
+    {
+      "id": "vvtPidDialog",
+      "file": "vvtpiddialog.panel.yaml",
+      "title": "VVT outputs and PID",
+      "menuPath": "Advanced › Boost blend tables › VVT outputs and PID"
+    },
+    {
+      "id": "auxInputsDialog",
+      "file": "auxinputsdialog.panel.yaml",
+      "title": "Lua Analog Inputs",
+      "menuPath": "Advanced › Lua › Lua Analog Inputs"
+    },
+    {
+      "id": "luaDigitalInputsDialog",
+      "file": "luadigitalinputsdialog.panel.yaml",
+      "title": "Lua Digital Inputs",
+      "menuPath": "Advanced › Lua › Lua Digital Inputs"
+    },
+    {
+      "id": "luaOutputs",
+      "file": "luaoutputs.panel.yaml",
+      "title": "Lua Script PWM Outputs",
+      "menuPath": "Advanced › Lua › Lua Script PWM Outputs"
+    },
+    {
+      "id": "luaCommands",
+      "file": "luacommands.panel.yaml",
+      "title": "Lua Buttons",
+      "menuPath": "Advanced › Lua › Lua Buttons"
+    },
+    {
+      "id": "scriptSetting",
+      "file": "scriptsetting.panel.yaml",
+      "title": "Lua Script Settings",
+      "menuPath": "Advanced › Lua Calibrations › Lua Script Settings"
+    },
+    {
+      "id": "scriptTable1TblSettings",
+      "file": "scripttable1tblsettings.panel.yaml",
+      "title": "Script Table #1",
+      "menuPath": "Advanced › Lua Calibrations › Script Table #1"
+    },
+    {
+      "id": "scriptTable2TblSettings",
+      "file": "scripttable2tblsettings.panel.yaml",
+      "title": "Script Table #2",
+      "menuPath": "Advanced › Lua Calibrations › Script Table #2"
+    },
+    {
+      "id": "scriptTable3TblSettings",
+      "file": "scripttable3tblsettings.panel.yaml",
+      "title": "Script Table #3",
+      "menuPath": "Advanced › Lua Calibrations › Script Table #3"
+    },
+    {
+      "id": "scriptTable4TblSettings",
+      "file": "scripttable4tblsettings.panel.yaml",
+      "title": "Script Table #4",
+      "menuPath": "Advanced › Lua Calibrations › Script Table #4"
+    },
+    {
+      "id": "scriptCurve1Settings",
+      "file": "scriptcurve1settings.panel.yaml",
+      "title": "Script Curve #1",
+      "menuPath": "Advanced › Lua Calibrations › Script Curve #1"
+    },
+    {
+      "id": "scriptCurve2Settings",
+      "file": "scriptcurve2settings.panel.yaml",
+      "title": "Script Curve #2",
+      "menuPath": "Advanced › Lua Calibrations › Script Curve #2"
+    },
+    {
+      "id": "scriptCurve3Settings",
+      "file": "scriptcurve3settings.panel.yaml",
+      "title": "Script Curve #3",
+      "menuPath": "Advanced › Lua Calibrations › Script Curve #3"
+    },
+    {
+      "id": "scriptCurve4Settings",
+      "file": "scriptcurve4settings.panel.yaml",
+      "title": "Script Curve #4",
+      "menuPath": "Advanced › Lua Calibrations › Script Curve #4"
+    },
+    {
+      "id": "scriptCurve5Settings",
+      "file": "scriptcurve5settings.panel.yaml",
+      "title": "Script Curve #5",
+      "menuPath": "Advanced › Lua Calibrations › Script Curve #5"
+    },
+    {
+      "id": "scriptCurve6Settings",
+      "file": "scriptcurve6settings.panel.yaml",
+      "title": "Script Curve #6",
+      "menuPath": "Advanced › Lua Calibrations › Script Curve #6"
+    },
+    {
+      "id": "otherSensorInputs",
+      "file": "othersensorinputs.panel.yaml",
+      "title": "Misc sensors",
+      "menuPath": "Sensors › Chassis sensors › Misc sensors"
+    },
+    {
+      "id": "speedSensor",
+      "file": "speedsensor.panel.yaml",
+      "title": "Vehicle speed sensor",
+      "menuPath": "Sensors › Chassis sensors › Vehicle speed sensor"
+    },
+    {
+      "id": "ambientTempSensor",
+      "file": "ambienttempsensor.panel.yaml",
+      "title": "Ambient temp sensor",
+      "menuPath": "Sensors › Chassis sensors › Ambient temp sensor"
+    },
+    {
+      "id": "acPressureSensor",
+      "file": "acpressuresensor.panel.yaml",
+      "title": "A/C Pressure",
+      "menuPath": "Sensors › Chassis sensors › A/C Pressure"
+    },
+    {
+      "id": "analogInputSettings",
+      "file": "analoginputsettings.panel.yaml",
+      "title": "Analog input settings",
+      "menuPath": "Sensors › Chassis sensors › Analog input settings"
+    },
+    {
+      "id": "cltSensor",
+      "file": "cltsensor.panel.yaml",
+      "title": "CLT sensor",
+      "menuPath": "Sensors › Chassis sensors › CLT sensor"
+    },
+    {
+      "id": "iatSensor",
+      "file": "iatsensor.panel.yaml",
+      "title": "IAT sensor",
+      "menuPath": "Sensors › Chassis sensors › IAT sensor"
+    },
+    {
+      "id": "tpsSensor",
+      "file": "tpssensor.panel.yaml",
+      "title": "TPS",
+      "menuPath": "Sensors › Chassis sensors › TPS"
+    },
+    {
+      "id": "pedalSensor",
+      "file": "pedalsensor.panel.yaml",
+      "title": "Accelerator pedal",
+      "menuPath": "Sensors › Chassis sensors › Accelerator pedal"
+    },
+    {
+      "id": "mapSettings",
+      "file": "mapsettings.panel.yaml",
+      "title": "MAP sensor",
+      "menuPath": "Sensors › Chassis sensors › MAP sensor"
+    },
+    {
+      "id": "mapCurves",
+      "file": "mapcurves.panel.yaml",
+      "title": "MAP sampling",
+      "menuPath": "Sensors › Chassis sensors › MAP sampling"
+    },
+    {
+      "id": "baroSettings",
+      "file": "barosettings.panel.yaml",
+      "title": "Baro sensor",
+      "menuPath": "Sensors › Chassis sensors › Baro sensor"
+    },
+    {
+      "id": "mafSettings",
+      "file": "mafsettings.panel.yaml",
+      "title": "MAF sensor",
+      "menuPath": "Sensors › Chassis sensors › MAF sensor"
+    },
+    {
+      "id": "egoSettings",
+      "file": "egosettings.panel.yaml",
+      "title": "CAN O2 sensors",
+      "menuPath": "Sensors › Chassis sensors › CAN O2 sensors"
+    },
+    {
+      "id": "analogEgoSettings",
+      "file": "analogegosettings.panel.yaml",
+      "title": "Analog O2 sensor",
+      "menuPath": "Sensors › Chassis sensors › Analog O2 sensor"
+    },
+    {
+      "id": "canReWidebandTools",
+      "file": "canrewidebandtools.panel.yaml",
+      "title": "rusEFI Wideband Tools",
+      "menuPath": "Sensors › Chassis sensors › rusEFI Wideband Tools"
+    },
+    {
+      "id": "idleValvePosDialog",
+      "file": "idlevalveposdialog.panel.yaml",
+      "title": "ETB-style Idle valve position sensor",
+      "menuPath": "Sensors › Chassis sensors › ETB-style Idle valve position sensor"
+    },
+    {
+      "id": "sentInputs",
+      "file": "sentinputs.panel.yaml",
+      "title": "SENT inputs",
+      "menuPath": "Sensors › Chassis sensors › SENT inputs"
+    },
+    {
+      "id": "oilPressureSensor",
+      "file": "oilpressuresensor.panel.yaml",
+      "title": "Oil pressure",
+      "menuPath": "Sensors › Oil sensors › Oil pressure"
+    },
+    {
+      "id": "oilTempSensor",
+      "file": "oiltempsensor.panel.yaml",
+      "title": "Oil temp sensor",
+      "menuPath": "Sensors › Oil sensors › Oil temp sensor"
+    },
+    {
+      "id": "flexSensorDialog",
+      "file": "flexsensordialog.panel.yaml",
+      "title": "Flex",
+      "menuPath": "Sensors › Fuel sensors › Flex"
+    },
+    {
+      "id": "fuelPressureSensor",
+      "file": "fuelpressuresensor.panel.yaml",
+      "title": "Fuel pressure",
+      "menuPath": "Sensors › Fuel sensors › Fuel pressure"
+    },
+    {
+      "id": "fuelTempSensor",
+      "file": "fueltempsensor.panel.yaml",
+      "title": "Fuel temp sensor",
+      "menuPath": "Sensors › Fuel sensors › Fuel temp sensor"
+    },
+    {
+      "id": "fuelLevelDialog",
+      "file": "fuelleveldialog.panel.yaml",
+      "title": "Fuel level sensor",
+      "menuPath": "Sensors › Fuel sensors › Fuel level sensor"
+    },
+    {
+      "id": "egtInputs",
+      "file": "egtinputs.panel.yaml",
+      "title": "EGT",
+      "menuPath": "Sensors › Turbo sensors › EGT"
+    },
+    {
+      "id": "wastegatePosDialog",
+      "file": "wastegateposdialog.panel.yaml",
+      "title": "Electronic Wastegate position sensor",
+      "menuPath": "Sensors › Turbo sensors › Electronic Wastegate position sensor"
+    },
+    {
+      "id": "compressorDischargeTemperature",
+      "file": "compressordischargetemperature.panel.yaml",
+      "title": "Compressor discharge temp",
+      "menuPath": "Sensors › Turbo sensors › Compressor discharge temp"
+    },
+    {
+      "id": "auxTempSensor1Sensor",
+      "file": "auxtempsensor1sensor.panel.yaml",
+      "title": "AuxTemp1 sensor",
+      "menuPath": "Sensors › Aux sensors › AuxTemp1 sensor"
+    },
+    {
+      "id": "auxTempSensor2Sensor",
+      "file": "auxtempsensor2sensor.panel.yaml",
+      "title": "AuxTemp2 sensor",
+      "menuPath": "Sensors › Aux sensors › AuxTemp2 sensor"
+    },
+    {
+      "id": "auxLinearSensors",
+      "file": "auxlinearsensors.panel.yaml",
+      "title": "Aux Sensors",
+      "menuPath": "Sensors › Aux sensors › Aux Sensors"
+    },
+    {
+      "id": "canBusMain",
+      "file": "canbusmain.panel.yaml",
+      "title": "CAN Bus Settings",
+      "menuPath": "CAN-bus › CAN Bus Settings"
+    },
+    {
+      "id": "speedSensorCan",
+      "file": "speedsensorcan.panel.yaml",
+      "title": "CAN Vehicle speed sensor",
+      "menuPath": "CAN-bus › CAN Vehicle speed sensor"
+    },
+    {
+      "id": "uegoCan",
+      "file": "uegocan.panel.yaml",
+      "title": "CAN O2 sensors",
+      "menuPath": "CAN-bus › CAN O2 sensors"
+    },
+    {
+      "id": "egtInputsCan",
+      "file": "egtinputscan.panel.yaml",
+      "title": "CAN EGT sensors",
+      "menuPath": "CAN-bus › CAN EGT sensors"
+    },
+    {
+      "id": "msIoBox",
+      "file": "msiobox.panel.yaml",
+      "title": "CAN MS IO-Box Settings",
+      "menuPath": "CAN-bus › CAN MS IO-Box Settings"
+    },
+    {
+      "id": "ecuStimulator",
+      "file": "ecustimulator.panel.yaml",
+      "title": "ECU stimulator",
+      "menuPath": "Controller › ECU stimulator"
+    },
+    {
+      "id": "ioTest",
+      "file": "iotest.panel.yaml",
+      "title": "Bench test",
+      "menuPath": "Controller › Bench test"
+    },
+    {
+      "id": "injTest",
+      "file": "injtest.panel.yaml",
+      "title": "Injector test",
+      "menuPath": "Controller › Injector test"
+    },
+    {
+      "id": "engineTypeDialog",
+      "file": "enginetypedialog.panel.yaml",
+      "title": "Popular vehicles",
+      "menuPath": "Controller › Popular vehicles"
+    },
+    {
+      "id": "spiBuses",
+      "file": "spibuses.panel.yaml",
+      "title": "SPI Buses",
+      "menuPath": "Controller › SPI Buses"
+    },
+    {
+      "id": "spiDevices",
+      "file": "spidevices.panel.yaml",
+      "title": "SPI Devices",
+      "menuPath": "Controller › SPI Devices"
+    },
+    {
+      "id": "monitoringSettings",
+      "file": "monitoringsettings.panel.yaml",
+      "title": "rusEFI console",
+      "menuPath": "Controller › rusEFI console"
+    },
+    {
+      "id": "sdCard",
+      "file": "sdcard.panel.yaml",
+      "title": "SD Card Logger",
+      "menuPath": "Controller › SD Card Logger"
+    },
+    {
+      "id": "connection",
+      "file": "connection.panel.yaml",
+      "title": "Connection",
+      "menuPath": "Controller › Connection"
+    },
+    {
+      "id": "mc33Dialog",
+      "file": "mc33dialog.panel.yaml",
+      "title": "GDI Injector Control",
+      "menuPath": "Controller › GDI Injector Control"
+    },
+    {
+      "id": "hpfpCamDialog",
+      "file": "hpfpcamdialog.panel.yaml",
+      "title": "HPFP Cam Configuration",
+      "menuPath": "Controller › HPFP Cam Configuration"
+    },
+    {
+      "id": "hpfpPumpDialog",
+      "file": "hpfppumpdialog.panel.yaml",
+      "title": "HPFP Pump Configuration",
+      "menuPath": "Controller › HPFP Pump Configuration"
+    },
+    {
+      "id": "tractionIgnitionSkipDialog",
+      "file": "tractionignitionskipdialog.panel.yaml",
+      "title": "Traction Control Skip Ignition",
+      "menuPath": "Controller › Traction Control Skip Ignition"
+    },
+    {
+      "id": "parkingLot",
+      "file": "parkinglot.panel.yaml",
+      "title": "Experimental 1",
+      "menuPath": "Controller › Experimental 1"
+    },
+    {
+      "id": "parkingLot2",
+      "file": "parkinglot2.panel.yaml",
+      "title": "Experimental 2",
+      "menuPath": "Controller › Experimental 2"
+    },
+    {
+      "id": "parkingLot3",
+      "file": "parkinglot3.panel.yaml",
+      "title": "Experimental 3",
+      "menuPath": "Controller › Experimental 3"
+    },
+    {
+      "id": "harleyAcr",
+      "file": "harleyacr.panel.yaml",
+      "title": "Harley",
+      "menuPath": "Controller › Harley"
+    },
+    {
+      "id": "antiLagDialog",
+      "file": "antilagdialog.panel.yaml",
+      "title": "Anti-Lag ALS",
+      "menuPath": "Controller › Anti-Lag ALS"
+    },
+    {
+      "id": "rotaryDialog",
+      "file": "rotarydialog.panel.yaml",
+      "title": "Rotary",
+      "menuPath": "Controller › Rotary"
+    },
+    {
+      "id": "dynoChars",
+      "file": "dynochars.panel.yaml",
+      "title": "Virtual Dyno engine",
+      "menuPath": "Controller › Torque › Virtual Dyno engine"
+    },
+    {
+      "id": "fuel_computerDialog",
+      "file": "fuel-computerdialog.panel.yaml",
+      "title": "fuel_computer",
+      "menuPath": "View › fuel_computer"
+    },
+    {
+      "id": "ignition_stateDialog",
+      "file": "ignition-statedialog.panel.yaml",
+      "title": "ignition_state",
+      "menuPath": "View › ignition_state"
+    },
+    {
+      "id": "knock_controllerDialog",
+      "file": "knock-controllerdialog.panel.yaml",
+      "title": "knock_controller",
+      "menuPath": "View › knock_controller"
+    },
+    {
+      "id": "prime_injectionDialog",
+      "file": "prime-injectiondialog.panel.yaml",
+      "title": "prime_injection",
+      "menuPath": "View › prime_injection"
+    },
+    {
+      "id": "tcu_controllerDialog",
+      "file": "tcu-controllerdialog.panel.yaml",
+      "title": "tcu_controller",
+      "menuPath": "View › tcu_controller"
+    },
+    {
+      "id": "throttle_modelDialog",
+      "file": "throttle-modeldialog.panel.yaml",
+      "title": "throttle_model",
+      "menuPath": "View › throttle_model"
+    },
+    {
+      "id": "high_pressure_fuel_pumpDialog",
+      "file": "high-pressure-fuel-pumpdialog.panel.yaml",
+      "title": "high_pressure_fuel_pump",
+      "menuPath": "View › high_pressure_fuel_pump"
+    },
+    {
+      "id": "injector_modelDialog",
+      "file": "injector-modeldialog.panel.yaml",
+      "title": "injector_model",
+      "menuPath": "View › injector_model"
+    },
+    {
+      "id": "launch_control_stateDialog",
+      "file": "launch-control-statedialog.panel.yaml",
+      "title": "launch_control_state",
+      "menuPath": "View › launch_control_state"
+    },
+    {
+      "id": "shift_torque_reduction_stateDialog",
+      "file": "shift-torque-reduction-statedialog.panel.yaml",
+      "title": "shift_torque_reduction_state",
+      "menuPath": "View › shift_torque_reduction_state"
+    },
+    {
+      "id": "antilag_system_stateDialog",
+      "file": "antilag-system-statedialog.panel.yaml",
+      "title": "antilag_system_state",
+      "menuPath": "View › antilag_system_state"
+    },
+    {
+      "id": "boost_controlDialog",
+      "file": "boost-controldialog.panel.yaml",
+      "title": "boost_control",
+      "menuPath": "View › boost_control"
+    },
+    {
+      "id": "ac_controlDialog",
+      "file": "ac-controldialog.panel.yaml",
+      "title": "ac_control",
+      "menuPath": "View › ac_control"
+    },
+    {
+      "id": "nitrous_control_stateDialog",
+      "file": "nitrous-control-statedialog.panel.yaml",
+      "title": "nitrous_control_state",
+      "menuPath": "View › nitrous_control_state"
+    },
+    {
+      "id": "fan_control0Dialog",
+      "file": "fan-control0dialog.panel.yaml",
+      "title": "fan_control0",
+      "menuPath": "View › fan_control0"
+    },
+    {
+      "id": "fan_control1Dialog",
+      "file": "fan-control1dialog.panel.yaml",
+      "title": "fan_control1",
+      "menuPath": "View › fan_control1"
+    },
+    {
+      "id": "fuel_pump_controlDialog",
+      "file": "fuel-pump-controldialog.panel.yaml",
+      "title": "fuel_pump_control",
+      "menuPath": "View › fuel_pump_control"
+    },
+    {
+      "id": "main_relayDialog",
+      "file": "main-relaydialog.panel.yaml",
+      "title": "main_relay",
+      "menuPath": "View › main_relay"
+    },
+    {
+      "id": "tps_accel_stateDialog",
+      "file": "tps-accel-statedialog.panel.yaml",
+      "title": "tps_accel_state",
+      "menuPath": "View › tps_accel_state"
+    },
+    {
+      "id": "trigger_centralDialog",
+      "file": "trigger-centraldialog.panel.yaml",
+      "title": "trigger_central",
+      "menuPath": "View › trigger_central"
+    },
+    {
+      "id": "trigger_state0Dialog",
+      "file": "trigger-state0dialog.panel.yaml",
+      "title": "trigger_state0",
+      "menuPath": "View › trigger_state0"
+    },
+    {
+      "id": "trigger_state1Dialog",
+      "file": "trigger-state1dialog.panel.yaml",
+      "title": "trigger_state1",
+      "menuPath": "View › trigger_state1"
+    },
+    {
+      "id": "trigger_state2Dialog",
+      "file": "trigger-state2dialog.panel.yaml",
+      "title": "trigger_state2",
+      "menuPath": "View › trigger_state2"
+    },
+    {
+      "id": "trigger_state3Dialog",
+      "file": "trigger-state3dialog.panel.yaml",
+      "title": "trigger_state3",
+      "menuPath": "View › trigger_state3"
+    },
+    {
+      "id": "trigger_state4Dialog",
+      "file": "trigger-state4dialog.panel.yaml",
+      "title": "trigger_state4",
+      "menuPath": "View › trigger_state4"
+    },
+    {
+      "id": "trigger_state_primaryDialog",
+      "file": "trigger-state-primarydialog.panel.yaml",
+      "title": "trigger_state_primary",
+      "menuPath": "View › trigger_state_primary"
+    },
+    {
+      "id": "wall_fuel_stateDialog",
+      "file": "wall-fuel-statedialog.panel.yaml",
+      "title": "wall_fuel_state",
+      "menuPath": "View › wall_fuel_state"
+    },
+    {
+      "id": "closed_loop_idleDialog",
+      "file": "closed-loop-idledialog.panel.yaml",
+      "title": "closed_loop_idle",
+      "menuPath": "View › closed_loop_idle"
+    },
+    {
+      "id": "live_data_exampleDialog",
+      "file": "live-data-exampledialog.panel.yaml",
+      "title": "live_data_example",
+      "menuPath": "View › live_data_example"
+    },
+    {
+      "id": "idle_stateDialog",
+      "file": "idle-statedialog.panel.yaml",
+      "title": "idle_state",
+      "menuPath": "View › idle_state"
+    },
+    {
+      "id": "electronic_throttle0Dialog",
+      "file": "electronic-throttle0dialog.panel.yaml",
+      "title": "electronic_throttle0",
+      "menuPath": "View › electronic_throttle0"
+    },
+    {
+      "id": "electronic_throttle1Dialog",
+      "file": "electronic-throttle1dialog.panel.yaml",
+      "title": "electronic_throttle1",
+      "menuPath": "View › electronic_throttle1"
+    },
+    {
+      "id": "wideband_state0Dialog",
+      "file": "wideband-state0dialog.panel.yaml",
+      "title": "wideband_state0",
+      "menuPath": "View › wideband_state0"
+    },
+    {
+      "id": "wideband_state1Dialog",
+      "file": "wideband-state1dialog.panel.yaml",
+      "title": "wideband_state1",
+      "menuPath": "View › wideband_state1"
+    },
+    {
+      "id": "dc_motorsDialog",
+      "file": "dc-motorsdialog.panel.yaml",
+      "title": "dc_motors",
+      "menuPath": "View › dc_motors"
+    },
+    {
+      "id": "sent_stateDialog",
+      "file": "sent-statedialog.panel.yaml",
+      "title": "sent_state",
+      "menuPath": "View › sent_state"
+    },
+    {
+      "id": "vvtDialog",
+      "file": "vvtdialog.panel.yaml",
+      "title": "vvt",
+      "menuPath": "View › vvt"
+    },
+    {
+      "id": "lambda_monitorDialog",
+      "file": "lambda-monitordialog.panel.yaml",
+      "title": "lambda_monitor",
+      "menuPath": "View › lambda_monitor"
+    },
+    {
+      "id": "mc33810_stateDialog",
+      "file": "mc33810-statedialog.panel.yaml",
+      "title": "mc33810_state",
+      "menuPath": "View › mc33810_state"
+    },
+    {
+      "id": "long_term_fuel_trim_stateDialog",
+      "file": "long-term-fuel-trim-statedialog.panel.yaml",
+      "title": "long_term_fuel_trim_state",
+      "menuPath": "View › long_term_fuel_trim_state"
+    },
+    {
+      "id": "short_term_fuel_trim_stateDialog",
+      "file": "short-term-fuel-trim-statedialog.panel.yaml",
+      "title": "short_term_fuel_trim_state",
+      "menuPath": "View › short_term_fuel_trim_state"
+    },
+    {
+      "id": "vvl_controller_stateDialog",
+      "file": "vvl-controller-statedialog.panel.yaml",
+      "title": "vvl_controller_state",
+      "menuPath": "View › vvl_controller_state"
+    }
+  ]
+}

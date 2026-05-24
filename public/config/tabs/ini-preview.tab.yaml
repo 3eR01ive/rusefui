@@ -1,0 +1,6 @@
+tab:
+  id: ini-preview
+  title: INI (preview)
+
+root:
+  $component: ini-preview.panel

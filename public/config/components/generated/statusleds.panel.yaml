@@ -1,0 +1,20 @@
+id: statusLeds.panel
+description: Status LEDs
+source:
+  ini_dialog: statusLeds
+  menu_path: Setup › Limits and protection › Status LEDs
+children:
+- type: scalar-field
+  id: triggererrorpin
+  props:
+    label: Trigger error LED
+  bind:
+    source: config
+    field: triggerErrorPin
+- type: scalar-field
+  id: debugtriggersync
+  props:
+    label: Debug Trigger Sync
+  bind:
+    source: config
+    field: debugTriggerSync

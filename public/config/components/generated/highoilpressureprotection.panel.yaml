@@ -1,0 +1,17 @@
+id: highOilPressureProtection.panel
+description: High oil pressure protection
+source:
+  ini_dialog: highOilPressureProtection
+  menu_path: Setup › Limits and protection › High oil pressure protection
+children:
+- type: scalar-field
+  id: maxoilpressuretimeout
+  props:
+    label: High oil pressure protection timeout
+  bind:
+    source: config
+    field: maxOilPressureTimeout
+- type: text
+  props:
+    variant: hint
+    text: Панель «maximumOilPressure» — нет определения в INI

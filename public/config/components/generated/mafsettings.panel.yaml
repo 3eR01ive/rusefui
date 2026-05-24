@@ -1,0 +1,31 @@
+id: mafSettings.panel
+description: MAF sensor
+source:
+  ini_dialog: mafSettings
+  menu_path: Sensors › Chassis sensors › MAF sensor
+children:
+- type: text
+  props:
+    text: <html><a href=https://github.com/rusefi/rusefi/wiki/MAF>https://github.com/rusefi/rusefi/wiki/MAF</a></html>
+    variant: hint
+- type: scalar-field
+  id: mafadcchannel
+  props:
+    label: MAF ADC input
+  bind:
+    source: config
+    field: mafAdcChannel
+- type: scalar-field
+  id: maf2adcchannel
+  props:
+    label: MAF 2 ADC input
+  bind:
+    source: config
+    field: maf2AdcChannel
+- type: scalar-field
+  id: maffilterparameter
+  props:
+    label: MAF filter parameter
+  bind:
+    source: config
+    field: mafFilterParameter

@@ -1,0 +1,112 @@
+id: acSettings.panel
+description: Air Conditioning
+source:
+  ini_dialog: acSettings
+  menu_path: Setup › Limits and protection › Air Conditioning
+children:
+- type: section
+  props:
+    title: A/C Settings
+  children:
+  - type: scalar-field
+    id: acswitch
+    props:
+      label: A/C switch
+    bind:
+      source: config
+      field: acSwitch
+  - type: scalar-field
+    id: acswitchmode
+    props:
+      label: A/C switch mode
+    bind:
+      source: config
+      field: acSwitchMode
+  - type: scalar-field
+    id: acrelaypin
+    props:
+      label: A/C Relay
+    bind:
+      source: config
+      field: acRelayPin
+  - type: scalar-field
+    id: acrelaypinmode
+    props:
+      label: A/C Relay Mode
+    bind:
+      source: config
+      field: acRelayPinMode
+  - type: scalar-field
+    id: acdelay
+    props:
+      label: A/C compressor delay
+    bind:
+      source: config
+      field: acDelay
+  - type: scalar-field
+    id: maxacrpm
+    props:
+      label: Max RPM
+    bind:
+      source: config
+      field: maxAcRpm
+  - type: scalar-field
+    id: maxacclt
+    props:
+      label: Max CLT
+    bind:
+      source: config
+      field: maxAcClt
+  - type: scalar-field
+    id: maxactps
+    props:
+      label: Max TPS
+    bind:
+      source: config
+      field: maxAcTps
+  - type: scalar-field
+    id: acidleextraoffset
+    props:
+      label: A/C Idle adder
+    bind:
+      source: config
+      field: acIdleExtraOffset
+  - type: scalar-field
+    id: acidlerpmtarget
+    props:
+      label: A/C Idle RPM
+    bind:
+      source: config
+      field: acIdleRpmTarget
+  - type: scalar-field
+    id: aclowrpmlimit
+    props:
+      label: RPM low threshold
+    bind:
+      source: config
+      field: acLowRpmLimit
+  - type: scalar-field
+    id: minacpressure
+    props:
+      label: Pressure Low disable
+    bind:
+      source: config
+      field: minAcPressure
+  - type: scalar-field
+    id: maxacpressure
+    props:
+      label: Pressure High disable
+    bind:
+      source: config
+      field: maxAcPressure
+  - type: scalar-field
+    id: acpressureenablehyst
+    props:
+      label: A/C Pressure Enable Hysteresis
+    bind:
+      source: config
+      field: acPressureEnableHyst
+- type: text
+  props:
+    variant: hint
+    text: Панель «ac_controlIndicatorPanel» — нет определения в INI

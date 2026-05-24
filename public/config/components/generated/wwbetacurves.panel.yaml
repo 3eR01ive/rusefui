@@ -1,0 +1,18 @@
+id: wwBetaCurves.panel
+description: Wall wetting AE impact fraction
+source:
+  ini_dialog: wwBetaCurves
+  menu_path: Fuel › Wall wetting AE › Impact fraction
+children:
+- type: text
+  props:
+    text: Set a base impact fraction based on coolant temperature, and a multiplier based on MAP.
+    variant: hint
+- type: text
+  props:
+    text: Таблица/кривая «wwBetaCltCurve» — редактор пока не реализован
+    variant: hint
+- type: text
+  props:
+    text: Таблица/кривая «wwBetaMapCurve» — редактор пока не реализован
+    variant: hint

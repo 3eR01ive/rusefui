@@ -1,0 +1,10 @@
+id: launch_control_stateDialog.panel
+description: launch_control_state
+source:
+  ini_dialog: launch_control_stateDialog
+  menu_path: View › launch_control_state
+children:
+- type: text
+  props:
+    variant: hint
+    text: Панель «launch_control_stateIndicatorPanel» — нет определения в INI

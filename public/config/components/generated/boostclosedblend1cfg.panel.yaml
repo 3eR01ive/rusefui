@@ -1,0 +1,48 @@
+id: boostClosedBlend1Cfg.panel
+description: Boost closed loop blend 1 config
+source:
+  ini_dialog: boostClosedBlend1Cfg
+  menu_path: Advanced › Boost blend tables › Closed loop 1 bias
+children:
+- type: text
+  props:
+    variant: hint
+    text: The bias table controls how much of the blend table
+- type: text
+  props:
+    text: is mixed in to the closed loop boost table. For example, a value of
+    variant: hint
+- type: text
+  props:
+    variant: hint
+    text: +10 in the table, with 50 as the current bias will result
+- type: text
+  props:
+    text: in +5.0 added to the boost closed loop %.
+    variant: hint
+- type: text
+  props:
+    text: The X axis of the bias table is controlled by the selected blend
+    variant: hint
+- type: text
+  props:
+    variant: hint
+    text: parameter below.
+- type: scalar-field
+  id: boostclosedloopblends1-blendparameter
+  props:
+    label: Blend parameter
+  bind:
+    source: config
+    field: boostClosedLoopBlends1_blendParameter
+- type: scalar-field
+  id: boostclosedloopblends1-yaxisoverride
+  props:
+    label: Y axis override (set Zero for no override)
+  bind:
+    source: config
+    field: boostClosedLoopBlends1_yAxisOverride
+- type: text
+  props:
+    variant: hint
+    text: Панель «boostClosedLoopBlend1Bias» — нет определения в INI

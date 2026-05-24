@@ -1,0 +1,31 @@
+id: lowOilPressureProtection.panel
+description: Low oil pressure protection
+source:
+  ini_dialog: lowOilPressureProtection
+  menu_path: Setup › Limits and protection › Low oil pressure protection
+children:
+- type: scalar-field
+  id: minoilpressureafterstart
+  props:
+    label: Minimum oil pressure after start
+  bind:
+    source: config
+    field: minOilPressureAfterStart
+- type: scalar-field
+  id: enableoilpressureprotect
+  props:
+    label: Enable low oil pressure protection
+  bind:
+    source: config
+    field: enableOilPressureProtect
+- type: scalar-field
+  id: minimumoilpressuretimeout
+  props:
+    label: Low oil pressure protection timeout
+  bind:
+    source: config
+    field: minimumOilPressureTimeout
+- type: text
+  props:
+    text: Панель «minimumOilPressure» — нет определения в INI
+    variant: hint

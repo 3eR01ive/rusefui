@@ -1,0 +1,24 @@
+id: msIoBox.panel
+description: CAN MS IO-Box Settings
+source:
+  ini_dialog: msIoBox
+  menu_path: CAN-bus › CAN MS IO-Box Settings
+children:
+- type: section
+  props:
+    title: MS IO box 1
+  children:
+  - type: scalar-field
+    id: msiobox0-id
+    props:
+      label: Base CAN identifier
+    bind:
+      source: config
+      field: msIoBox0_id
+  - type: scalar-field
+    id: msiobox0-vss
+    props:
+      label: VSS settings
+    bind:
+      source: config
+      field: msIoBox0_vss
