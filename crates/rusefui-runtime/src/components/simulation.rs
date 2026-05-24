@@ -75,7 +75,7 @@ impl SimulationLogic {
         }
     }
 
-    /// INI `cmd_enable_self_stim`: запись triggerSimulatorRpm + `Z` subsystem X14.
+    /// INI `cmd_enable_self_stim`: `C` triggerSimulatorRpm (без burn) + `Z` subsystem X14.
     fn start(&mut self) -> Result<(), String> {
         self.require_connected()?;
         self.session.output().stop();
@@ -85,7 +85,12 @@ impl SimulationLogic {
 
         let rpm = self.rpm;
         let result = (|| {
-            self.session.config().set_scalar(
+            // TS: RPM через `C` (Java всегда шлёт page=0), enable — `Z`. Без burn до enable.
+            self.session.with_link(|link| {
+                let _ = link.execute_ts_command(TS_SUBSYSTEM_X14, TS_X14_TRIGGER_STIMULATOR_DISABLE);
+                Ok(())
+            })?;
+            self.session.config().write_scalar(
                 &self.session,
                 "triggerSimulatorRpm",
                 f64::from(rpm),

@@ -8,16 +8,34 @@ children:
   props:
     title: MS IO box 1
   children:
-  - type: scalar-field
+  - type: enum-field
     id: msiobox0-id
     props:
       label: Base CAN identifier
+      options:
+      - value: 0
+        label: Off
+      - value: 1
+        label: ID1 (0x200)
+      - value: 2
+        label: ID2 (0x220)
+      - value: 3
+        label: ID3 (0x240)
     bind:
       source: config
       field: msIoBox0_id
-  - type: scalar-field
+  - type: enum-field
     id: msiobox0-vss
     props:
+      options:
+      - value: 0
+        label: Off
+      - value: 1
+        label: VR speed in (1, 2)
+      - value: 2
+        label: Hall speed in (3, 4)
+      - value: 3
+        label: All (1, 2, 3, 4)
       label: VSS settings
     bind:
       source: config

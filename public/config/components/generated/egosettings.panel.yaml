@@ -12,23 +12,98 @@ children:
     props:
       title: uegoCan0ConfigPanel
     children:
-    - type: scalar-field
+    - type: enum-field
       id: canwbo1-type
       props:
         label: UEGO type
+        options:
+        - value: 0
+          label: RusEFI
+        - value: 1
+          label: AEM X-series
+        - value: 2
+          label: Disabled/Analog
+        - value: 3
+          label: INVALID
       bind:
         source: config
         field: canWbo1_type
-    - type: scalar-field
+    - type: enum-field
       id: canwbo1-reid
       props:
         label: RusEFI WBO ID
+        options:
+        - value: 0
+          label: ID1 0x190/191
+        - value: 1
+          label: ID2 0x192/193
+        - value: 2
+          label: ID3 0x194/195
+        - value: 3
+          label: ID4 0x196/197
+        - value: 4
+          label: ID5 0x198/199
+        - value: 5
+          label: ID6 0x19A/19B
+        - value: 6
+          label: ID7 0x19C/19D
+        - value: 7
+          label: ID8 0x19E/19F
+        - value: 8
+          label: ID9 0x200/201
+        - value: 9
+          label: ID10 0x202/203
+        - value: 10
+          label: ID11 0x204/205
+        - value: 11
+          label: ID12 0x206/207
+        - value: 12
+          label: ID13 0x208/209
+        - value: 13
+          label: ID14 0x20A/20B
+        - value: 14
+          label: ID15 0x20C/20D
+        - value: 15
+          label: ID16 0x20E/20F
       bind:
         source: config
         field: canWbo1_reId
-    - type: scalar-field
+    - type: enum-field
       id: canwbo1-aemid
       props:
+        options:
+        - value: 0
+          label: ID1 0x0000180
+        - value: 1
+          label: ID2 0x0000181
+        - value: 2
+          label: ID3 0x0000182
+        - value: 3
+          label: ID4 0x0000183
+        - value: 4
+          label: ID5 0x0000184
+        - value: 5
+          label: ID6 0x0000185
+        - value: 6
+          label: ID7 0x0000186
+        - value: 7
+          label: ID8 0x0000187
+        - value: 8
+          label: ID9 0x0000188
+        - value: 9
+          label: ID10 0x0000189
+        - value: 10
+          label: ID11 0x000018A
+        - value: 11
+          label: ID12 0x000018B
+        - value: 12
+          label: ID13 0x000018C
+        - value: 13
+          label: ID14 0x000018D
+        - value: 14
+          label: ID15 0x000018E
+        - value: 15
+          label: ID16 0x000018F
         label: AEM ID
       bind:
         source: config
@@ -46,8 +121,8 @@ children:
         text: Панель «uegoCan0Indicators» — нет определения в INI
     - type: text
       props:
-        text: Панель «uegoCan0IndicatorsExt» — нет определения в INI
         variant: hint
+        text: Панель «uegoCan0IndicatorsExt» — нет определения в INI
 - type: section
   props:
     title: CAN O2 sensors
@@ -59,31 +134,46 @@ children:
     bind:
       source: config
       field: Support for AEM or RusEFI CAN UEGO
-  - type: scalar-field
+  - type: enum-field
     id: enableaemxseries
     props:
       label: Enable CAN Wideband
+      options:
+      - value: 0
+        label: 'false'
+      - value: 1
+        label: 'true'
     bind:
       source: config
       field: enableAemXSeries
-  - type: scalar-field
+  - type: enum-field
     id: widebandonsecondbus
     props:
       label: Wideband CAN bus
+      options:
+      - value: 0
+        label: CAN1
+      - value: 1
+        label: CAN2
     bind:
       source: config
       field: widebandOnSecondBus
-  - type: scalar-field
+  - type: enum-field
     id: forceo2heating
     props:
+      options:
+      - value: 0
+        label: no
+      - value: 1
+        label: yes
       label: Force O2 sensor heating
     bind:
       source: config
       field: forceO2Heating
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Update 2023 Firmware (cmd_wideband_firmare_update)'
+      variant: hint
 - type: section
   props:
     title: CAN UEGO 2
@@ -92,23 +182,98 @@ children:
     props:
       title: uegoCan1ConfigPanel
     children:
-    - type: scalar-field
+    - type: enum-field
       id: canwbo2-type
       props:
         label: UEGO type
+        options:
+        - value: 0
+          label: RusEFI
+        - value: 1
+          label: AEM X-series
+        - value: 2
+          label: Disabled/Analog
+        - value: 3
+          label: INVALID
       bind:
         source: config
         field: canWbo2_type
-    - type: scalar-field
+    - type: enum-field
       id: canwbo2-reid
       props:
+        options:
+        - value: 0
+          label: ID1 0x190/191
+        - value: 1
+          label: ID2 0x192/193
+        - value: 2
+          label: ID3 0x194/195
+        - value: 3
+          label: ID4 0x196/197
+        - value: 4
+          label: ID5 0x198/199
+        - value: 5
+          label: ID6 0x19A/19B
+        - value: 6
+          label: ID7 0x19C/19D
+        - value: 7
+          label: ID8 0x19E/19F
+        - value: 8
+          label: ID9 0x200/201
+        - value: 9
+          label: ID10 0x202/203
+        - value: 10
+          label: ID11 0x204/205
+        - value: 11
+          label: ID12 0x206/207
+        - value: 12
+          label: ID13 0x208/209
+        - value: 13
+          label: ID14 0x20A/20B
+        - value: 14
+          label: ID15 0x20C/20D
+        - value: 15
+          label: ID16 0x20E/20F
         label: RusEFI WBO ID
       bind:
         source: config
         field: canWbo2_reId
-    - type: scalar-field
+    - type: enum-field
       id: canwbo2-aemid
       props:
+        options:
+        - value: 0
+          label: ID1 0x0000180
+        - value: 1
+          label: ID2 0x0000181
+        - value: 2
+          label: ID3 0x0000182
+        - value: 3
+          label: ID4 0x0000183
+        - value: 4
+          label: ID5 0x0000184
+        - value: 5
+          label: ID6 0x0000185
+        - value: 6
+          label: ID7 0x0000186
+        - value: 7
+          label: ID8 0x0000187
+        - value: 8
+          label: ID9 0x0000188
+        - value: 9
+          label: ID10 0x0000189
+        - value: 10
+          label: ID11 0x000018A
+        - value: 11
+          label: ID12 0x000018B
+        - value: 12
+          label: ID13 0x000018C
+        - value: 13
+          label: ID14 0x000018D
+        - value: 14
+          label: ID15 0x000018E
+        - value: 15
+          label: ID16 0x000018F
         label: AEM ID
       bind:
         source: config
@@ -119,12 +284,12 @@ children:
     children:
     - type: text
       props:
-        variant: hint
         text: Панель «uegoCan1Indicators» — нет определения в INI
+        variant: hint
     - type: text
       props:
-        variant: hint
         text: Панель «uegoCan1IndicatorsExt» — нет определения в INI
+        variant: hint
   - type: section
     props:
       title: uegoCan1Gauges

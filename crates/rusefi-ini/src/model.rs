@@ -10,10 +10,29 @@ pub struct IniFile {
     /// `pageReadCommand` для page 0 включает `%2i` (новый формат с номером страницы).
     /// Старый `"R%2o%2c"` (длина 7) — только offset+count, как в Java `BinaryProtocol`.
     pub page_read_has_page_index: bool,
-    /// `pageChunkWrite` содержит `%2i` (новый формат с page). Старый `"C%2o%2c%v"` — offset+count+data.
+    /// `pageChunkWrite` содержит `%2i` (формат INI для TunerStudio). Протокол `C` всё равно шлёт page=0 (Java).
     pub page_chunk_write_has_page_index: bool,
     pub output_channels: OutputChannels,
-    pub config_scalars: HashMap<String, ScalarField>,
+    /// Поля page 0: скаляры и bits/enum из секции `[Constants]`.
+    pub config_fields: HashMap<String, ConfigFieldKind>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum ConfigFieldKind {
+    Scalar(ScalarField),
+    Enum(EnumField),
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct EnumField {
+    pub bits: BitsField,
+    pub options: Vec<EnumOption>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct EnumOption {
+    pub value: u32,
+    pub label: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

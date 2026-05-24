@@ -13,5 +13,5 @@ children:
     field: scriptCurveName6
 - type: text
   props:
-    variant: hint
     text: Таблица/кривая «scriptCurve6» — редактор пока не реализован
+    variant: hint

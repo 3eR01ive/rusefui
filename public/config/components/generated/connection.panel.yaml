@@ -11,9 +11,14 @@ children:
   bind:
     source: config
     field: uartConsoleSerialSpeed
-- type: scalar-field
+- type: enum-field
   id: enablekline
   props:
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
     label: enableKline
   bind:
     source: config

@@ -11,9 +11,14 @@ children:
   bind:
     source: config
     field: CAN support EGT1 to EGT6 inputs
-- type: scalar-field
+- type: enum-field
   id: enableaemxseriesegt
   props:
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
     label: CAN EGT (AEM X series of RusEFI)
   bind:
     source: config

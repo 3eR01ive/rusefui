@@ -30,9 +30,14 @@ children:
       props:
         text: Панель «mapValidIndicators» — нет определения в INI
         variant: hint
-    - type: scalar-field
+    - type: enum-field
       id: measuremaponlyinonecylinder
       props:
+        options:
+        - value: 0
+          label: 'false'
+        - value: 1
+          label: 'true'
         label: Measure Map Only In One Cylinder
       bind:
         source: config
@@ -55,16 +60,116 @@ children:
     props:
       title: MAP sensor
     children:
-    - type: scalar-field
+    - type: enum-field
       id: map-sensor-hwchannel
       props:
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
         label: MAP input
       bind:
         source: config
         field: map_sensor_hwChannel
-    - type: scalar-field
+    - type: enum-field
       id: map-sensor-type
       props:
+        options:
+        - value: 0
+          label: Custom
+        - value: 1
+          label: DENSO183
+        - value: 2
+          label: MPX4250
+        - value: 3
+          label: HONDA3BAR
+        - value: 4
+          label: NEON_2003
+        - value: 5
+          label: 22012AA090
+        - value: 6
+          label: GM 3 Bar
+        - value: 7
+          label: MPX4100
+        - value: 8
+          label: Toyota 89420-02010
+        - value: 9
+          label: MPX4250A
+        - value: 10
+          label: Bosch 2.5
+        - value: 11
+          label: Mazda1Bar
+        - value: 12
+          label: GM 2 Bar
+        - value: 13
+          label: GM 1 Bar
+        - value: 14
+          label: MPXH6400
+        - value: 15
+          label: MPXH6300
+        - value: 16
+          label: INVALID
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
         label: MAP type
       bind:
         source: config

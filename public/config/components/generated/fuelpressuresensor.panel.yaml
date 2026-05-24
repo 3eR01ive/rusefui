@@ -12,17 +12,61 @@ children:
     props:
       title: Fuel Low Pressure Sensor
     children:
-    - type: scalar-field
+    - type: enum-field
       id: lowpressurefuel-hwchannel
       props:
         label: Analog input
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
       bind:
         source: config
         field: lowPressureFuel_hwChannel
-    - type: scalar-field
+    - type: enum-field
       id: fuelpressuresensormode
       props:
         label: sensor type
+        options:
+        - value: 0
+          label: Absolute
+        - value: 1
+          label: Gauge
+        - value: 2
+          label: Differential
+        - value: 3
+          label: INVALID
       bind:
         source: config
         field: fuelPressureSensorMode
@@ -64,19 +108,71 @@ children:
     children:
     - type: text
       props:
-        text: "\"Sensor SENT type\"\t\t\t\t\t\tFuelHighPressureSentType"
         variant: hint
-    - type: scalar-field
+        text: "\"Sensor SENT type\"\t\t\t\t\t\tFuelHighPressureSentType"
+    - type: enum-field
       id: fuelhighpressuresentinput
       props:
+        options:
+        - value: 0
+          label: None
+        - value: 1
+          label: SENT input 1
+        - value: 2
+          label: SENT input 2
+        - value: 3
+          label: SENT input 3
+        - value: 4
+          label: SENT input 4
+        - value: 5
+          label: SENT input 5
+        - value: 6
+          label: SENT input 6
+        - value: 7
+          label: SENT input 7
         label: Sensor SENT input
       bind:
         source: config
         field: FuelHighPressureSentInput
-    - type: scalar-field
+    - type: enum-field
       id: highpressurefuel-hwchannel
       props:
         label: Analog input
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
       bind:
         source: config
         field: highPressureFuel_hwChannel

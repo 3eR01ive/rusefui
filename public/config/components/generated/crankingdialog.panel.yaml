@@ -15,16 +15,30 @@ children:
   props:
     title: Fuel
   children:
-  - type: scalar-field
+  - type: enum-field
     id: crankinginjectionmode
     props:
+      options:
+      - value: 0
+        label: Simultaneous
+      - value: 1
+        label: Sequential
+      - value: 2
+        label: Batch
+      - value: 3
+        label: Single Point
       label: Injection mode
     bind:
       source: config
       field: crankingInjectionMode
-  - type: scalar-field
+  - type: enum-field
     id: userunningmathforcranking
     props:
+      options:
+      - value: 0
+        label: Fixed
+      - value: 1
+        label: Fuel Map
       label: Fuel Source For Cranking
     bind:
       source: config
@@ -33,9 +47,14 @@ children:
   props:
     title: Ignition
   children:
-  - type: scalar-field
+  - type: enum-field
     id: useseparateadvanceforcranking
     props:
+      options:
+      - value: 0
+        label: Fixed (auto taper)
+      - value: 1
+        label: Table
       label: Timing Advance mode
     bind:
       source: config
@@ -58,30 +77,50 @@ children:
   props:
     title: Advanced
   children:
-  - type: scalar-field
+  - type: enum-field
     id: iscylindercleanupenabled
     props:
+      options:
+      - value: 0
+        label: 'false'
+      - value: 1
+        label: 'true'
       label: Enable flood clear
     bind:
       source: config
       field: isCylinderCleanupEnabled
-  - type: scalar-field
+  - type: enum-field
     id: isfasterenginespinupenabled
     props:
+      options:
+      - value: 0
+        label: 'false'
+      - value: 1
+        label: 'true'
       label: Enable faster engine spin-up
     bind:
       source: config
       field: isFasterEngineSpinUpEnabled
-  - type: scalar-field
+  - type: enum-field
     id: useadvancecorrectionsforcranking
     props:
+      options:
+      - value: 0
+        label: 'false'
+      - value: 1
+        label: 'true'
       label: Use Advance Corrections for cranking
     bind:
       source: config
       field: useAdvanceCorrectionsForCranking
-  - type: scalar-field
+  - type: enum-field
     id: flexcranking
     props:
+      options:
+      - value: 0
+        label: 'false'
+      - value: 1
+        label: 'true'
       label: Use Flex Fuel cranking table
     bind:
       source: config

@@ -4,44 +4,82 @@ source:
   ini_dialog: parkingLot
   menu_path: Controller › Experimental 1
 children:
-- type: scalar-field
+- type: enum-field
   id: uimode
   props:
+    options:
+    - value: 0
+      label: Full
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: Tuning
+    - value: 3
+      label: INVALID
     label: uiMode
   bind:
     source: config
     field: uiMode
-- type: scalar-field
+- type: enum-field
   id: can1listenmode
   props:
     label: can1ListenMode
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: can1ListenMode
-- type: scalar-field
+- type: enum-field
   id: can2listenmode
   props:
     label: can2ListenMode
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: can2ListenMode
-- type: scalar-field
+- type: enum-field
   id: rethrowhardfault
   props:
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
     label: rethrowHardFault
   bind:
     source: config
     field: rethrowHardFault
-- type: scalar-field
+- type: enum-field
   id: cangpiotype
   props:
+    options:
+    - value: 0
+      label: None
+    - value: 1
+      label: DRT protocol
+    - value: 2
+      label: MS protocol
+    - value: 3
+      label: INVALID
     label: canGpioType
   bind:
     source: config
     field: canGpioType
-- type: scalar-field
+- type: enum-field
   id: yesunderstandlocking
   props:
+    options:
+    - value: 0
+      label: no
+    - value: 1
+      label: yes
     label: I understand ECU Locking
   bind:
     source: config
@@ -57,69 +95,114 @@ children:
   bind:
     source: config
     field: tuneHidingKey
-- type: scalar-field
+- type: enum-field
   id: verbosequad
   props:
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
     label: verboseQuad
   bind:
     source: config
     field: verboseQuad
 - type: text
   props:
-    variant: hint
     text: System hacks
-- type: scalar-field
+    variant: hint
+- type: enum-field
   id: vvtbooleanforveryspecialcases
   props:
     label: vvtBooleanForVerySpecialCases
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: vvtBooleanForVerySpecialCases
-- type: scalar-field
+- type: enum-field
   id: watchoutforlineartime
   props:
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
     label: watchOutForLinearTime
   bind:
     source: config
     field: watchOutForLinearTime
-- type: scalar-field
+- type: enum-field
   id: verboseisotp
   props:
     label: TS over CAN debug
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: verboseIsoTp
-- type: scalar-field
+- type: enum-field
   id: consumeobdsensors
   props:
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
     label: consumeObdSensors
   bind:
     source: config
     field: consumeObdSensors
-- type: scalar-field
+- type: enum-field
   id: allowidenticalpps
   props:
     label: BRZ/FRS/GT86 pedal
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: allowIdenticalPps
-- type: scalar-field
+- type: enum-field
   id: artificialtestmisfire
   props:
     label: Artificial Misfire
+    options:
+    - value: 0
+      label: No thank you
+    - value: 1
+      label: Danger Mode
   bind:
     source: config
     field: artificialTestMisfire
-- type: scalar-field
+- type: enum-field
   id: alwaysinstantrpm
   props:
     label: Always use instant RPM
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: alwaysInstantRpm
-- type: scalar-field
+- type: enum-field
   id: modeledflowidle
   props:
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
     label: Modeled flow idle
   bind:
     source: config
@@ -152,16 +235,26 @@ children:
   bind:
     source: config
     field: auxFrequencyFilter
-- type: scalar-field
+- type: enum-field
   id: usebiquadonauxspeedsensors
   props:
     label: useBiQuadOnAuxSpeedSensors
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: useBiQuadOnAuxSpeedSensors
-- type: scalar-field
+- type: enum-field
   id: kickstartcranking
   props:
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
     label: TODO KS mode 4569
   bind:
     source: config

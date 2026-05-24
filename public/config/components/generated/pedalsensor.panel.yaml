@@ -8,10 +8,45 @@ children:
   props:
     title: Accelerator pedal
   children:
-  - type: scalar-field
+  - type: enum-field
     id: throttlepedalpositionadcchannel
     props:
       label: Accelerator position sensor
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: Analog Volt 5
+      - value: 2
+        label: Analog Volt 6
+      - value: 3
+        label: Analog Volt 7
+      - value: 4
+        label: Analog Volt 8
+      - value: 5
+        label: Analog Volt 9
+      - value: 6
+        label: Analog Volt 10
+      - value: 7
+        label: Analog Volt 11
+      - value: 8
+        label: Battery Sense
+      - value: 9
+        label: Analog Temp 3
+      - value: 10
+        label: Analog Temp 4
+      - value: 11
+        label: Analog Volt 1
+      - value: 12
+        label: Analog Volt 2
+      - value: 13
+        label: Analog Volt 3
+      - value: 14
+        label: Analog Volt 4
+      - value: 15
+        label: Analog Temp 1
+      - value: 16
+        label: Analog Temp 2
     bind:
       source: config
       field: throttlePedalPositionAdcChannel
@@ -35,11 +70,46 @@ children:
       field: throttlePedalWOTVoltage
   - type: text
     props:
-      text: 'Кнопка: Grab WOT/Down (cmd_calibrate_pedal_down)'
       variant: hint
-  - type: scalar-field
+      text: 'Кнопка: Grab WOT/Down (cmd_calibrate_pedal_down)'
+  - type: enum-field
     id: throttlepedalpositionsecondadcchannel
     props:
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: Analog Volt 5
+      - value: 2
+        label: Analog Volt 6
+      - value: 3
+        label: Analog Volt 7
+      - value: 4
+        label: Analog Volt 8
+      - value: 5
+        label: Analog Volt 9
+      - value: 6
+        label: Analog Volt 10
+      - value: 7
+        label: Analog Volt 11
+      - value: 8
+        label: Battery Sense
+      - value: 9
+        label: Analog Temp 3
+      - value: 10
+        label: Analog Temp 4
+      - value: 11
+        label: Analog Volt 1
+      - value: 12
+        label: Analog Volt 2
+      - value: 13
+        label: Analog Volt 3
+      - value: 14
+        label: Analog Volt 4
+      - value: 15
+        label: Analog Temp 1
+      - value: 16
+        label: Analog Temp 2
       label: Accelerator position 2nd sensor
     bind:
       source: config
@@ -65,10 +135,15 @@ children:
     bind:
       source: config
       field: ppsExpAverageAlpha
-  - type: scalar-field
+  - type: enum-field
     id: usefordredundantpps
     props:
       label: Ford/Toyota redundant PPS mode
+      options:
+      - value: 0
+        label: 'false'
+      - value: 1
+        label: 'true'
     bind:
       source: config
       field: useFordRedundantPps
@@ -104,10 +179,15 @@ children:
       bind:
         source: config
         field: etbSplit
-    - type: scalar-field
+    - type: enum-field
       id: usefordredundanttps
       props:
         label: Ford/Toyota redundant TPS mode
+        options:
+        - value: 0
+          label: 'false'
+        - value: 1
+          label: 'true'
       bind:
         source: config
         field: useFordRedundantTps

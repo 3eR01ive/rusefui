@@ -12,24 +12,39 @@ children:
     props:
       title: Limits
     children:
-    - type: scalar-field
+    - type: enum-field
       id: cutfuelonhardlimit
       props:
+        options:
+        - value: 0
+          label: no
+        - value: 1
+          label: yes
         label: Cut fuel on RPM limit
       bind:
         source: config
         field: cutFuelOnHardLimit
-    - type: scalar-field
+    - type: enum-field
       id: cutsparkonhardlimit
       props:
+        options:
+        - value: 0
+          label: no
+        - value: 1
+          label: yes
         label: Cut spark on RPM limit
       bind:
         source: config
         field: cutSparkOnHardLimit
-    - type: scalar-field
+    - type: enum-field
       id: usecltbasedrpmlimit
       props:
         label: Use Engine Temperature RPM limit curve
+        options:
+        - value: 0
+          label: no
+        - value: 1
+          label: yes
       bind:
         source: config
         field: useCltBasedRpmLimit
@@ -142,5 +157,5 @@ children:
   children:
   - type: text
     props:
-      text: Таблица/кривая «cltRevLimitCurve» — редактор пока не реализован
       variant: hint
+      text: Таблица/кривая «cltRevLimitCurve» — редактор пока не реализован

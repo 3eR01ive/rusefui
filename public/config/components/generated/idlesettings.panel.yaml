@@ -4,21 +4,26 @@ source:
   ini_dialog: idleSettings
   menu_path: Idle › Idle settings
 children:
-- type: scalar-field
+- type: enum-field
   id: idlemode
   props:
+    options:
+    - value: 0
+      label: Open Loop + Closed Loop
+    - value: 1
+      label: Open Loop
     label: Idle control mode
   bind:
     source: config
     field: idleMode
 - type: text
   props:
-    variant: hint
     text: Solenoid idle control is disabled at zero RPM
+    variant: hint
 - type: text
   props:
-    variant: hint
     text: <html><a href=https://github.com/rusefi/rusefi/wiki/Idle-Control>https://github.com/rusefi/rusefi/wiki/Idle-Control</a></html>
+    variant: hint
 - type: section
   props:
     title: Idle Detection Thresholds
@@ -143,9 +148,14 @@ children:
     bind:
       source: config
       field: pidExtraForLowRpm
-  - type: scalar-field
+  - type: enum-field
     id: useiacpidmulttable
     props:
+      options:
+      - value: 0
+        label: 'false'
+      - value: 1
+        label: 'true'
       label: Use IAC PID Multiplier Table
     bind:
       source: config
@@ -154,37 +164,66 @@ children:
   props:
     title: Extra Idle Features
   children:
-  - type: scalar-field
+  - type: enum-field
     id: useseparateadvanceforidle
     props:
       label: Use idle ignition table
+      options:
+      - value: 0
+        label: 'false'
+      - value: 1
+        label: 'true'
     bind:
       source: config
       field: useSeparateAdvanceForIdle
-  - type: scalar-field
+  - type: enum-field
     id: useidleadvancewhilecoasting
     props:
+      options:
+      - value: 0
+        label: 'false'
+      - value: 1
+        label: 'true'
       label: Use idle ignition table while coasting
     bind:
       source: config
       field: useIdleAdvanceWhileCoasting
-  - type: scalar-field
+  - type: enum-field
     id: useseparateveforidle
     props:
       label: Use idle VE table
+      options:
+      - value: 0
+        label: 'false'
+      - value: 1
+        label: 'true'
     bind:
       source: config
       field: useSeparateVeForIdle
-  - type: scalar-field
+  - type: enum-field
     id: idleveoverridemode
     props:
+      options:
+      - value: 0
+        label: None
+      - value: 1
+        label: MAP
+      - value: 2
+        label: TPS
+      - value: 3
+        label: INVALID
       label: Override Idle VE table load axis
     bind:
       source: config
       field: idleVeOverrideMode
-  - type: scalar-field
+  - type: enum-field
     id: idlereturntargetramp
     props:
+      options:
+      - value: 0
+        label: no
+      - value: 1
+        label: yes
       label: Ramp target on return to idle
     bind:
       source: config
@@ -196,17 +235,27 @@ children:
     bind:
       source: config
       field: idleReturnTargetRampDuration
-  - type: scalar-field
+  - type: enum-field
     id: useseparateidletablesforcrankingtaper
     props:
+      options:
+      - value: 0
+        label: 'false'
+      - value: 1
+        label: 'true'
       label: Use idle tables for cranking taper
     bind:
       source: config
       field: useSeparateIdleTablesForCrankingTaper
-  - type: scalar-field
+  - type: enum-field
     id: useiactableforcoasting
     props:
       label: Use coasting idle table
+      options:
+      - value: 0
+        label: 'false'
+      - value: 1
+        label: 'true'
     bind:
       source: config
       field: useIacTableForCoasting

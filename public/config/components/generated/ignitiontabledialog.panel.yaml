@@ -6,9 +6,9 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: Таблица/кривая «ignitionTableIndicators» — редактор пока не реализован
+    variant: hint
 - type: text
   props:
-    variant: hint
     text: Таблица/кривая «ignitionTableTbl» — редактор пока не реализован
+    variant: hint

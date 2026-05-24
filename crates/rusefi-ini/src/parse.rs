@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 
+use crate::defines::parse_ini_defines;
+use crate::enum_options::parse_enum_options;
 use crate::error::IniError;
 use crate::model::{
-    BitsField, FieldKind, IniFile, OutputChannelField, OutputChannels, ScalarField, ScalarType,
+    BitsField, ConfigFieldKind, EnumField, FieldKind, IniFile, OutputChannelField, OutputChannels,
+    ScalarField, ScalarType,
 };
 
 #[derive(PartialEq, Eq)]
@@ -15,6 +18,7 @@ enum Section {
 }
 
 pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
+    let defines = parse_ini_defines(text);
     let mut section = Section::None;
     let mut signature = None;
     let mut och_block_size = 2044u16;
@@ -23,7 +27,7 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
     let mut page_read_has_page_index = true;
     let mut page_chunk_write_has_page_index = true;
     let mut fields = Vec::new();
-    let mut config_scalars = HashMap::new();
+    let mut config_fields = HashMap::new();
 
     for (line_no, raw) in text.lines().enumerate() {
         let line = raw.trim();
@@ -88,13 +92,18 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
             }
         }
 
-        if line.contains('=') && line.contains("scalar,") {
-            match parse_output_line(line) {
+        if line.contains('=') && (line.contains("scalar,") || line.contains("bits,")) {
+            match parse_config_or_output_line(line, &defines) {
                 Ok(field) => {
                     if section == Section::OutputChannels {
-                        fields.push(field);
-                    } else if let FieldKind::Scalar(scalar) = field.kind {
-                        config_scalars.insert(field.name, scalar);
+                        fields.push(OutputChannelField {
+                            name: field.name,
+                            kind: field.kind,
+                        });
+                    } else if section == Section::Constants {
+                        if let Some((name, kind)) = field.into_config_kind() {
+                            config_fields.insert(name, kind);
+                        }
                     }
                 }
                 Err(e) => {
@@ -105,21 +114,6 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
                 }
             }
             continue;
-        }
-
-        if section == Section::OutputChannels
-            && line.contains('=')
-            && line.contains("bits,")
-        {
-            match parse_output_line(line) {
-                Ok(field) => fields.push(field),
-                Err(e) => {
-                    return Err(IniError::Parse(format!(
-                        "line {}: {e} — `{line}`",
-                        line_no + 1
-                    )));
-                }
-            }
         }
     }
 
@@ -137,8 +131,35 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
         page_read_has_page_index,
         page_chunk_write_has_page_index,
         output_channels,
-        config_scalars,
+        config_fields,
     })
+}
+
+struct ParsedIniField {
+    name: String,
+    kind: FieldKind,
+    enum_options: Vec<crate::model::EnumOption>,
+}
+
+impl ParsedIniField {
+    fn into_config_kind(self) -> Option<(String, ConfigFieldKind)> {
+        match self.kind {
+            FieldKind::Scalar(scalar) => Some((self.name, ConfigFieldKind::Scalar(scalar))),
+            FieldKind::Bits(bits) => {
+                if self.enum_options.is_empty() {
+                    None
+                } else {
+                    Some((
+                        self.name,
+                        ConfigFieldKind::Enum(EnumField {
+                            bits,
+                            options: self.enum_options,
+                        }),
+                    ))
+                }
+            }
+        }
+    }
 }
 
 fn parse_key_value(line: &str, key: &str) -> Option<String> {
@@ -170,15 +191,18 @@ fn parse_key_first_quoted(line: &str, key: &str) -> Option<String> {
     Some(first.trim_matches('"').to_string())
 }
 
-fn parse_output_line(line: &str) -> Result<OutputChannelField, String> {
-    let (name, rest) = line
-        .split_once('=')
-        .ok_or("missing '='")?;
+fn parse_config_or_output_line(
+    line: &str,
+    defines: &HashMap<String, Vec<String>>,
+) -> Result<ParsedIniField, String> {
+    let (name, rest) = line.split_once('=').ok_or("missing '='")?;
     let name = name.trim().to_string();
     let parts = split_ini_args(rest.trim())?;
     if parts.is_empty() {
         return Err("empty definition".into());
     }
+
+    let mut enum_options = Vec::new();
 
     let kind = match parts[0].as_str() {
         "scalar" => {
@@ -211,6 +235,7 @@ fn parse_output_line(line: &str) -> Result<OutputChannelField, String> {
             let ty = ScalarType::parse(&parts[1]).ok_or("unknown bits type")?;
             let offset: u32 = parts[2].parse().map_err(|_| "bad offset")?;
             let (low, high) = parse_bit_range(&parts[3])?;
+            enum_options = parse_enum_options(&parts[4..], defines);
             FieldKind::Bits(BitsField {
                 ty,
                 offset,
@@ -221,7 +246,11 @@ fn parse_output_line(line: &str) -> Result<OutputChannelField, String> {
         other => return Err(format!("unknown field kind: {other}")),
     };
 
-    Ok(OutputChannelField { name, kind })
+    Ok(ParsedIniField {
+        name,
+        kind,
+        enum_options,
+    })
 }
 
 fn parse_bit_range(s: &str) -> Result<(u8, u8), String> {
@@ -291,8 +320,17 @@ mod tests {
         assert!(ini.output_channels.field("coolant").is_some());
         assert_eq!(ini.page_size, 63900);
         assert!(ini.page_read_has_page_index);
-        assert!(ini.config_scalars.len() > 50);
-        assert!(ini.config_scalars.get("triggerSimulatorRpm").is_some());
+        assert!(ini.config_fields.len() > 200);
+        assert!(
+            ini.config_fields
+                .get("triggerSimulatorRpm")
+                .is_some_and(|k| matches!(k, ConfigFieldKind::Scalar(_)))
+        );
+        assert!(
+            ini.config_fields
+                .get("injectionMode")
+                .is_some_and(|k| matches!(k, ConfigFieldKind::Enum(_)))
+        );
     }
 
     #[test]

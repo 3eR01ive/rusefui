@@ -4,14 +4,19 @@ source:
   ini_dialog: tractionIgnitionSkipDialog
   menu_path: Controller › Traction Control Skip Ignition
 children:
-- type: scalar-field
+- type: enum-field
   id: usehardskipintraction
   props:
     label: useHardSkipInTraction
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: useHardSkipInTraction
 - type: text
   props:
-    text: Таблица/кривая «tractionIgnitionSkipTableTbl» — редактор пока не реализован
     variant: hint
+    text: Таблица/кривая «tractionIgnitionSkipTableTbl» — редактор пока не реализован

@@ -4,59 +4,339 @@ source:
   ini_dialog: auxInputsDialog
   menu_path: Advanced › Lua › Lua Analog Inputs
 children:
-- type: scalar-field
+- type: enum-field
   id: auxanaloginputs1
   props:
     label: 'ADC #1'
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: Analog Volt 5
+    - value: 2
+      label: Analog Volt 6
+    - value: 3
+      label: Analog Volt 7
+    - value: 4
+      label: Analog Volt 8
+    - value: 5
+      label: Analog Volt 9
+    - value: 6
+      label: Analog Volt 10
+    - value: 7
+      label: Analog Volt 11
+    - value: 8
+      label: Battery Sense
+    - value: 9
+      label: Analog Temp 3
+    - value: 10
+      label: Analog Temp 4
+    - value: 11
+      label: Analog Volt 1
+    - value: 12
+      label: Analog Volt 2
+    - value: 13
+      label: Analog Volt 3
+    - value: 14
+      label: Analog Volt 4
+    - value: 15
+      label: Analog Temp 1
+    - value: 16
+      label: Analog Temp 2
   bind:
     source: config
     field: auxAnalogInputs1
-- type: scalar-field
+- type: enum-field
   id: auxanaloginputs2
   props:
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: Analog Volt 5
+    - value: 2
+      label: Analog Volt 6
+    - value: 3
+      label: Analog Volt 7
+    - value: 4
+      label: Analog Volt 8
+    - value: 5
+      label: Analog Volt 9
+    - value: 6
+      label: Analog Volt 10
+    - value: 7
+      label: Analog Volt 11
+    - value: 8
+      label: Battery Sense
+    - value: 9
+      label: Analog Temp 3
+    - value: 10
+      label: Analog Temp 4
+    - value: 11
+      label: Analog Volt 1
+    - value: 12
+      label: Analog Volt 2
+    - value: 13
+      label: Analog Volt 3
+    - value: 14
+      label: Analog Volt 4
+    - value: 15
+      label: Analog Temp 1
+    - value: 16
+      label: Analog Temp 2
     label: 'ADC #2'
   bind:
     source: config
     field: auxAnalogInputs2
-- type: scalar-field
+- type: enum-field
   id: auxanaloginputs3
   props:
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: Analog Volt 5
+    - value: 2
+      label: Analog Volt 6
+    - value: 3
+      label: Analog Volt 7
+    - value: 4
+      label: Analog Volt 8
+    - value: 5
+      label: Analog Volt 9
+    - value: 6
+      label: Analog Volt 10
+    - value: 7
+      label: Analog Volt 11
+    - value: 8
+      label: Battery Sense
+    - value: 9
+      label: Analog Temp 3
+    - value: 10
+      label: Analog Temp 4
+    - value: 11
+      label: Analog Volt 1
+    - value: 12
+      label: Analog Volt 2
+    - value: 13
+      label: Analog Volt 3
+    - value: 14
+      label: Analog Volt 4
+    - value: 15
+      label: Analog Temp 1
+    - value: 16
+      label: Analog Temp 2
     label: 'ADC #3'
   bind:
     source: config
     field: auxAnalogInputs3
-- type: scalar-field
+- type: enum-field
   id: auxanaloginputs4
   props:
     label: 'ADC #4'
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: Analog Volt 5
+    - value: 2
+      label: Analog Volt 6
+    - value: 3
+      label: Analog Volt 7
+    - value: 4
+      label: Analog Volt 8
+    - value: 5
+      label: Analog Volt 9
+    - value: 6
+      label: Analog Volt 10
+    - value: 7
+      label: Analog Volt 11
+    - value: 8
+      label: Battery Sense
+    - value: 9
+      label: Analog Temp 3
+    - value: 10
+      label: Analog Temp 4
+    - value: 11
+      label: Analog Volt 1
+    - value: 12
+      label: Analog Volt 2
+    - value: 13
+      label: Analog Volt 3
+    - value: 14
+      label: Analog Volt 4
+    - value: 15
+      label: Analog Temp 1
+    - value: 16
+      label: Analog Temp 2
   bind:
     source: config
     field: auxAnalogInputs4
-- type: scalar-field
+- type: enum-field
   id: auxanaloginputs5
   props:
     label: 'ADC #5'
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: Analog Volt 5
+    - value: 2
+      label: Analog Volt 6
+    - value: 3
+      label: Analog Volt 7
+    - value: 4
+      label: Analog Volt 8
+    - value: 5
+      label: Analog Volt 9
+    - value: 6
+      label: Analog Volt 10
+    - value: 7
+      label: Analog Volt 11
+    - value: 8
+      label: Battery Sense
+    - value: 9
+      label: Analog Temp 3
+    - value: 10
+      label: Analog Temp 4
+    - value: 11
+      label: Analog Volt 1
+    - value: 12
+      label: Analog Volt 2
+    - value: 13
+      label: Analog Volt 3
+    - value: 14
+      label: Analog Volt 4
+    - value: 15
+      label: Analog Temp 1
+    - value: 16
+      label: Analog Temp 2
   bind:
     source: config
     field: auxAnalogInputs5
-- type: scalar-field
+- type: enum-field
   id: auxanaloginputs6
   props:
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: Analog Volt 5
+    - value: 2
+      label: Analog Volt 6
+    - value: 3
+      label: Analog Volt 7
+    - value: 4
+      label: Analog Volt 8
+    - value: 5
+      label: Analog Volt 9
+    - value: 6
+      label: Analog Volt 10
+    - value: 7
+      label: Analog Volt 11
+    - value: 8
+      label: Battery Sense
+    - value: 9
+      label: Analog Temp 3
+    - value: 10
+      label: Analog Temp 4
+    - value: 11
+      label: Analog Volt 1
+    - value: 12
+      label: Analog Volt 2
+    - value: 13
+      label: Analog Volt 3
+    - value: 14
+      label: Analog Volt 4
+    - value: 15
+      label: Analog Temp 1
+    - value: 16
+      label: Analog Temp 2
     label: 'ADC #6'
   bind:
     source: config
     field: auxAnalogInputs6
-- type: scalar-field
+- type: enum-field
   id: auxanaloginputs7
   props:
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: Analog Volt 5
+    - value: 2
+      label: Analog Volt 6
+    - value: 3
+      label: Analog Volt 7
+    - value: 4
+      label: Analog Volt 8
+    - value: 5
+      label: Analog Volt 9
+    - value: 6
+      label: Analog Volt 10
+    - value: 7
+      label: Analog Volt 11
+    - value: 8
+      label: Battery Sense
+    - value: 9
+      label: Analog Temp 3
+    - value: 10
+      label: Analog Temp 4
+    - value: 11
+      label: Analog Volt 1
+    - value: 12
+      label: Analog Volt 2
+    - value: 13
+      label: Analog Volt 3
+    - value: 14
+      label: Analog Volt 4
+    - value: 15
+      label: Analog Temp 1
+    - value: 16
+      label: Analog Temp 2
     label: 'ADC #7'
   bind:
     source: config
     field: auxAnalogInputs7
-- type: scalar-field
+- type: enum-field
   id: auxanaloginputs8
   props:
     label: 'ADC #8'
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: Analog Volt 5
+    - value: 2
+      label: Analog Volt 6
+    - value: 3
+      label: Analog Volt 7
+    - value: 4
+      label: Analog Volt 8
+    - value: 5
+      label: Analog Volt 9
+    - value: 6
+      label: Analog Volt 10
+    - value: 7
+      label: Analog Volt 11
+    - value: 8
+      label: Battery Sense
+    - value: 9
+      label: Analog Temp 3
+    - value: 10
+      label: Analog Temp 4
+    - value: 11
+      label: Analog Volt 1
+    - value: 12
+      label: Analog Volt 2
+    - value: 13
+      label: Analog Volt 3
+    - value: 14
+      label: Analog Volt 4
+    - value: 15
+      label: Analog Temp 1
+    - value: 16
+      label: Analog Temp 2
   bind:
     source: config
     field: auxAnalogInputs8

@@ -11,10 +11,15 @@ children:
   bind:
     source: config
     field: minOilPressureAfterStart
-- type: scalar-field
+- type: enum-field
   id: enableoilpressureprotect
   props:
     label: Enable low oil pressure protection
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: enableOilPressureProtect

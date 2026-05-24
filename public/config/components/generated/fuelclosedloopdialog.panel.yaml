@@ -14,8 +14,8 @@ children:
     children:
     - type: text
       props:
-        text: Панель «fuelClosedLoopInputIndicatorsPanelBank1» — нет определения в INI
         variant: hint
+        text: Панель «fuelClosedLoopInputIndicatorsPanelBank1» — нет определения в INI
   - type: section
     props:
       title: Output correction
@@ -29,8 +29,8 @@ children:
         field: 'Correction state:'
     - type: text
       props:
-        text: Панель «fuelClosedLoopOutputIndicatorsPanel» — нет определения в INI
         variant: hint
+        text: Панель «fuelClosedLoopOutputIndicatorsPanel» — нет определения в INI
 - type: section
   props:
     title: fuelClosedLoopConfig
@@ -39,10 +39,15 @@ children:
     props:
       title: Short term fuel trim
     children:
-    - type: scalar-field
+    - type: enum-field
       id: fuelclosedloopcorrectionenabled
       props:
         label: Enabled
+        options:
+        - value: 0
+          label: 'false'
+        - value: 1
+          label: 'true'
       bind:
         source: config
         field: fuelClosedLoopCorrectionEnabled
@@ -62,8 +67,8 @@ children:
         field: stft_minClt
     - type: text
       props:
-        text: "\"Startup delay\"\t\t\t\t\t\t\tstft_startupDelay"
         variant: hint
+        text: "\"Startup delay\"\t\t\t\t\t\t\tstft_startupDelay"
     - type: scalar-field
       id: nofueltrimafterdfcotime
       props:
@@ -106,10 +111,15 @@ children:
       bind:
         source: config
         field: stft_deadband
-    - type: scalar-field
+    - type: enum-field
       id: stftignoreerrormagnitude
       props:
         label: Ignore error magnitude
+        options:
+        - value: 0
+          label: 'false'
+        - value: 1
+          label: 'true'
       bind:
         source: config
         field: stftIgnoreErrorMagnitude
@@ -256,8 +266,8 @@ children:
     children:
     - type: text
       props:
-        variant: hint
         text: Панель «fuelClosedLoopInputIndicatorsPanelBank2» — нет определения в INI
+        variant: hint
   - type: section
     props:
       title: Output correction

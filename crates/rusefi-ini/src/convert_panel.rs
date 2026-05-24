@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use serde::Serialize;
 
 use crate::menu::{DialogItem, IniMenu, MenuEntry};
+use crate::model::{ConfigFieldKind, EnumOption};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -62,7 +63,11 @@ pub struct ConvertResult {
     pub files: HashMap<String, String>,
 }
 
-pub fn convert_menu_panels(menu: &IniMenu, ini_source: &str) -> ConvertResult {
+pub fn convert_menu_panels(
+    menu: &IniMenu,
+    config_fields: &HashMap<String, ConfigFieldKind>,
+    ini_source: &str,
+) -> ConvertResult {
     let mut seen = HashSet::new();
     let mut manifest_entries = Vec::new();
     let mut files = HashMap::new();
@@ -76,7 +81,7 @@ pub fn convert_menu_panels(menu: &IniMenu, ini_source: &str) -> ConvertResult {
         }
 
         let file_name = format!("{}.panel.yaml", slugify(&entry.dialog_id));
-        let panel = build_panel_yaml(menu, entry);
+        let panel = build_panel_yaml(menu, entry, config_fields);
         let yaml = serde_yaml::to_string(&panel).expect("panel yaml");
         files.insert(file_name.clone(), yaml);
         manifest_entries.push(PanelManifestEntry {
@@ -96,14 +101,13 @@ pub fn convert_menu_panels(menu: &IniMenu, ini_source: &str) -> ConvertResult {
     ConvertResult { manifest, files }
 }
 
-fn build_panel_yaml(menu: &IniMenu, entry: &MenuEntry) -> PanelYamlFile {
+fn build_panel_yaml(
+    menu: &IniMenu,
+    entry: &MenuEntry,
+    config_fields: &HashMap<String, ConfigFieldKind>,
+) -> PanelYamlFile {
     let mut visited = HashSet::new();
-    let children = convert_dialog_items(
-        menu,
-        &entry.dialog_id,
-        &mut visited,
-        0,
-    );
+    let children = convert_dialog_items(menu, &entry.dialog_id, config_fields, &mut visited, 0);
 
     let dialog = menu.dialogs.get(&entry.dialog_id);
     let description = dialog
@@ -130,6 +134,7 @@ fn build_panel_yaml(menu: &IniMenu, entry: &MenuEntry) -> PanelYamlFile {
 fn convert_dialog_items(
     menu: &IniMenu,
     dialog_id: &str,
+    config_fields: &HashMap<String, ConfigFieldKind>,
     visited: &mut HashSet<String>,
     depth: usize,
 ) -> Vec<YamlNode> {
@@ -146,7 +151,7 @@ fn convert_dialog_items(
         match item {
             DialogItem::Field(f) => {
                 if let Some(name) = &f.field_name {
-                    out.push(scalar_node(name, &f.label));
+                    out.push(field_node(config_fields, name, &f.label));
                 } else if !f.label.is_empty() {
                     out.push(hint_node(&f.label));
                 }
@@ -157,7 +162,13 @@ fn convert_dialog_items(
                 }
             }
             DialogItem::Panel(p) => {
-                out.extend(convert_panel_ref(menu, &p.panel_id, visited, depth + 1));
+                out.extend(convert_panel_ref(
+                    menu,
+                    &p.panel_id,
+                    config_fields,
+                    visited,
+                    depth + 1,
+                ));
             }
             DialogItem::CommandButton { label, command } => {
                 out.push(hint_node(&format!("Кнопка: {label} ({command})")));
@@ -170,6 +181,7 @@ fn convert_dialog_items(
 fn convert_panel_ref(
     menu: &IniMenu,
     panel_id: &str,
+    config_fields: &HashMap<String, ConfigFieldKind>,
     visited: &mut HashSet<String>,
     depth: usize,
 ) -> Vec<YamlNode> {
@@ -189,7 +201,7 @@ fn convert_panel_ref(
         } else {
             nested.title.clone()
         };
-        let children = convert_dialog_items(menu, panel_id, visited, depth);
+        let children = convert_dialog_items(menu, panel_id, config_fields, visited, depth);
         visited.remove(panel_id);
         return vec![section_node(&title, children)];
     }
@@ -205,6 +217,57 @@ fn is_table_panel(id: &str) -> bool {
         || lower.ends_with("map")
         || lower.contains("table")
         || lower.contains("curve")
+}
+
+fn field_node(
+    config_fields: &HashMap<String, ConfigFieldKind>,
+    field: &str,
+    label: &str,
+) -> YamlNode {
+    if let Some(ConfigFieldKind::Enum(e)) = config_fields.get(field) {
+        if !e.options.is_empty() {
+            return enum_node(field, label, &e.options);
+        }
+    }
+    scalar_node(field, label)
+}
+
+fn enum_node(field: &str, label: &str, options: &[EnumOption]) -> YamlNode {
+    let option_values: Vec<serde_yaml::Value> = options
+        .iter()
+        .map(|o| {
+            serde_yaml::Mapping::from_iter([
+                (
+                    serde_yaml::Value::String("value".into()),
+                    serde_yaml::Value::Number(o.value.into()),
+                ),
+                (
+                    serde_yaml::Value::String("label".into()),
+                    serde_yaml::Value::String(o.label.clone()),
+                ),
+            ])
+            .into()
+        })
+        .collect();
+
+    YamlNode {
+        node_type: "enum-field".into(),
+        id: Some(slugify(field)),
+        props: Some({
+            let mut m = HashMap::new();
+            m.insert(
+                "label".into(),
+                serde_yaml::Value::String(label.to_string()),
+            );
+            m.insert("options".into(), serde_yaml::Value::Sequence(option_values));
+            m
+        }),
+        bind: Some(YamlBind {
+            source: "config".into(),
+            field: field.to_string(),
+        }),
+        children: None,
+    }
 }
 
 fn scalar_node(field: &str, label: &str) -> YamlNode {
@@ -278,13 +341,17 @@ fn slugify(s: &str) -> String {
 mod tests {
     use super::*;
     use crate::menu::parse_menu_section;
+    use crate::parse_ini;
 
     #[test]
     fn convert_proteus_panels() {
         let text = std::fs::read_to_string(crate::default_test_ini_path()).unwrap();
         let menu = parse_menu_section(&text).unwrap();
-        let result = convert_menu_panels(&menu, "test.ini");
+        let ini = parse_ini(&text).unwrap();
+        let result = convert_menu_panels(&menu, &ini.config_fields, "test.ini");
         assert!(result.manifest.panel_count > 50);
         assert!(result.files.contains_key("enginechars.panel.yaml"));
+        let has_enum = result.files.values().any(|yaml| yaml.contains("enum-field"));
+        assert!(has_enum, "expected at least one enum-field in converted panels");
     }
 }

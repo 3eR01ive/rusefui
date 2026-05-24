@@ -10,5 +10,5 @@ children:
     variant: hint
 - type: text
   props:
-    variant: hint
     text: Once you send the command, please reconnect to rusEFI controller in order to read fresh values
+    variant: hint

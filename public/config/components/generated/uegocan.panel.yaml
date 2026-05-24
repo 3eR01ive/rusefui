@@ -11,28 +11,43 @@ children:
   bind:
     source: config
     field: Support for AEM or RusEFI CAN UEGO
-- type: scalar-field
+- type: enum-field
   id: enableaemxseries
   props:
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
     label: Enable CAN Wideband
   bind:
     source: config
     field: enableAemXSeries
-- type: scalar-field
+- type: enum-field
   id: widebandonsecondbus
   props:
+    options:
+    - value: 0
+      label: CAN1
+    - value: 1
+      label: CAN2
     label: Wideband CAN bus
   bind:
     source: config
     field: widebandOnSecondBus
-- type: scalar-field
+- type: enum-field
   id: forceo2heating
   props:
+    options:
+    - value: 0
+      label: no
+    - value: 1
+      label: yes
     label: Force O2 sensor heating
   bind:
     source: config
     field: forceO2Heating
 - type: text
   props:
-    variant: hint
     text: 'Кнопка: Update 2023 Firmware (cmd_wideband_firmare_update)'
+    variant: hint

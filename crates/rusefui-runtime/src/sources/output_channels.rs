@@ -4,7 +4,9 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-use rusefi_ini::{decode_output_channels, FieldKind, IniFile, OutputChannels, ScalarField};
+use rusefi_ini::{
+    decode_output_channels, ConfigFieldKind, FieldKind, IniFile, OutputChannels, ScalarField,
+};
 use serde::Serialize;
 use serde_json::{json, Value};
 
@@ -50,7 +52,7 @@ pub struct IniContext {
     pub page_size: u32,
     pub page_read_has_page_index: bool,
     pub page_chunk_write_has_page_index: bool,
-    pub config_scalars: HashMap<String, ScalarField>,
+    pub config_fields: HashMap<String, ConfigFieldKind>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -100,7 +102,7 @@ impl IniContext {
             page_size: 64_000,
             page_read_has_page_index: true,
             page_chunk_write_has_page_index: true,
-            config_scalars: HashMap::new(),
+            config_fields: HashMap::new(),
         }
     }
 
@@ -113,7 +115,7 @@ impl IniContext {
             page_size: ini.page_size,
             page_read_has_page_index: ini.page_read_has_page_index,
             page_chunk_write_has_page_index: ini.page_chunk_write_has_page_index,
-            config_scalars: ini.config_scalars.clone(),
+            config_fields: ini.config_fields.clone(),
         }
     }
 }

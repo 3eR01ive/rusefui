@@ -1,8 +1,24 @@
 use std::collections::HashMap;
 
-use crate::model::{BitsField, FieldKind, OutputChannels, ScalarField, ScalarType};
+use crate::model::{
+    BitsField, ConfigFieldKind, EnumField, FieldKind, OutputChannels, ScalarField, ScalarType,
+};
 
-/// Декодирует scalar-поля конфигурации (секция `[Constants]`).
+/// Декодирует поля конфигурации (секция `[Constants]`).
+pub fn decode_config_fields(
+    fields: &HashMap<String, ConfigFieldKind>,
+    bytes: &[u8],
+) -> HashMap<String, f64> {
+    let mut out = HashMap::new();
+    for (name, field) in fields {
+        if let Some(v) = decode_config_field(field, bytes) {
+            out.insert(name.clone(), v);
+        }
+    }
+    out
+}
+
+/// Декодирует только scalar-поля (совместимость).
 pub fn decode_config_scalars(
     scalars: &HashMap<String, ScalarField>,
     bytes: &[u8],
@@ -14,6 +30,30 @@ pub fn decode_config_scalars(
         }
     }
     out
+}
+
+/// Декодирует одно config-поле из образа page 0.
+pub fn decode_config_at(field: &ConfigFieldKind, page: &[u8]) -> Option<f64> {
+    decode_config_field(field, page)
+}
+
+fn decode_config_field(field: &ConfigFieldKind, bytes: &[u8]) -> Option<f64> {
+    match field {
+        ConfigFieldKind::Scalar(s) => decode_scalar(s, bytes),
+        ConfigFieldKind::Enum(e) => decode_bits(&e.bits, bytes),
+    }
+}
+
+/// Кодирует значение config-поля (scalar или enum/bits).
+pub fn encode_config_value(
+    field: &ConfigFieldKind,
+    value: f64,
+    current_bytes: &[u8],
+) -> Option<Vec<u8>> {
+    match field {
+        ConfigFieldKind::Scalar(s) => encode_scalar_value(s, value),
+        ConfigFieldKind::Enum(e) => encode_bits_value(&e.bits, value, current_bytes),
+    }
 }
 
 /// Кодирует пользовательское значение в raw bytes для записи через `C`.
@@ -64,6 +104,46 @@ fn decode_scalar(field: &ScalarField, bytes: &[u8]) -> Option<f64> {
     Some(raw * field.scale + field.translate)
 }
 
+/// Кодирует bits-поле с read-modify-write по текущему образу page.
+pub fn encode_bits_value(field: &BitsField, value: f64, current_bytes: &[u8]) -> Option<Vec<u8>> {
+    let size = field.ty.size_bytes();
+    let off = field.offset as usize;
+    let mut buf = vec![0u8; size];
+    if off + size <= current_bytes.len() {
+        buf.copy_from_slice(&current_bytes[off..off + size]);
+    }
+    let raw = read_raw(field.ty, 0, &buf)? as u32;
+    let width = field.bit_high.saturating_sub(field.bit_low) + 1;
+    let mask = if width >= 32 {
+        u32::MAX
+    } else {
+        (1u32 << width) - 1
+    };
+    let v = (value as u32) & mask;
+    let cleared = raw & !(mask << field.bit_low);
+    let new_raw = cleared | (v << field.bit_low);
+    write_raw(field.ty, 0, new_raw, &mut buf)?;
+    Some(buf)
+}
+
+fn write_raw(ty: ScalarType, offset: u32, value: u32, bytes: &mut [u8]) -> Option<()> {
+    let off = offset as usize;
+    let size = ty.size_bytes();
+    if off + size > bytes.len() {
+        return None;
+    }
+    match (size, ty.is_signed()) {
+        (1, false) => bytes[off] = value as u8,
+        (1, true) => bytes[off] = value as i8 as u8,
+        (2, false) => bytes[off..off + 2].copy_from_slice(&(value as u16).to_le_bytes()),
+        (2, true) => bytes[off..off + 2].copy_from_slice(&(value as i16).to_le_bytes()),
+        (4, false) => bytes[off..off + 4].copy_from_slice(&value.to_le_bytes()),
+        (4, true) => bytes[off..off + 4].copy_from_slice(&(value as i32).to_le_bytes()),
+        _ => return None,
+    }
+    Some(())
+}
+
 fn decode_bits(field: &BitsField, bytes: &[u8]) -> Option<f64> {
     let raw = read_raw(field.ty, field.offset, bytes)? as u32;
     let width = field.bit_high.saturating_sub(field.bit_low) + 1;
@@ -102,6 +182,7 @@ fn read_raw(ty: ScalarType, offset: u32, bytes: &[u8]) -> Option<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::model::ConfigFieldKind;
     use crate::IniFile;
 
     #[test]
@@ -125,13 +206,25 @@ mod tests {
     #[test]
     fn decode_trigger_simulator_rpm_from_constants() {
         let ini = IniFile::load_test_proteus().unwrap();
-        let field = ini.config_scalars.get("triggerSimulatorRpm").unwrap();
+        let ConfigFieldKind::Scalar(field) = ini.config_fields.get("triggerSimulatorRpm").unwrap()
+        else {
+            panic!("not scalar");
+        };
         assert_eq!(field.offset, 436);
 
         let mut bytes = vec![0u8; 512];
         bytes[436] = 0x20;
         bytes[437] = 0x03;
-        let map = decode_config_scalars(&ini.config_scalars, &bytes);
+        let map = decode_config_fields(&ini.config_fields, &bytes);
         assert_eq!(map.get("triggerSimulatorRpm"), Some(&800.0));
+
+        let ConfigFieldKind::Enum(injection) = ini.config_fields.get("injectionMode").unwrap()
+        else {
+            panic!("injectionMode should be enum");
+        };
+        assert_eq!(injection.options.len(), 4);
+        bytes[455] = 0x02;
+        let map = decode_config_fields(&ini.config_fields, &bytes);
+        assert_eq!(map.get("injectionMode"), Some(&2.0));
     }
 }

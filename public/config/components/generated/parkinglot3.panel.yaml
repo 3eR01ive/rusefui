@@ -11,59 +11,99 @@ children:
   bind:
     source: config
     field: triggerEventsTimeoutMs
-- type: scalar-field
+- type: enum-field
   id: devbit0
   props:
     label: devBit0
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: devBit0
-- type: scalar-field
+- type: enum-field
   id: devbit1
   props:
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
     label: devBit1
   bind:
     source: config
     field: devBit1
-- type: scalar-field
+- type: enum-field
   id: devbit2
   props:
     label: devBit2
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: devBit2
-- type: scalar-field
+- type: enum-field
   id: devbit3
   props:
     label: devBit3
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: devBit3
-- type: scalar-field
+- type: enum-field
   id: devbit4
   props:
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
     label: devBit4
   bind:
     source: config
     field: devBit4
-- type: scalar-field
+- type: enum-field
   id: devbit5
   props:
     label: devBit5
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: devBit5
-- type: scalar-field
+- type: enum-field
   id: devbit6
   props:
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
     label: devBit6
   bind:
     source: config
     field: devBit6
-- type: scalar-field
+- type: enum-field
   id: devbit7
   props:
     label: devBit7
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: devBit7

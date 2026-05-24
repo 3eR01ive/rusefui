@@ -4,9 +4,14 @@ source:
   ini_dialog: idleTimingPidCorrDialog
   menu_path: Idle › Closed-loop idle timing
 children:
-- type: scalar-field
+- type: enum-field
   id: useidletimingpidcontrol
   props:
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
     label: Enable closed loop idle ignition timing
   bind:
     source: config
@@ -17,8 +22,8 @@ children:
     variant: hint
 - type: text
   props:
-    variant: hint
     text: A good starting point is 0.1 = 10 deg per 100 rpm
+    variant: hint
 - type: scalar-field
   id: idletimingpid-pfactor
   props:

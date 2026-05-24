@@ -8,17 +8,279 @@ children:
   props:
     title: Primary Trigger
   children:
-  - type: scalar-field
+  - type: enum-field
     id: twostroke
     props:
+      options:
+      - value: 0
+        label: Four Stroke
+      - value: 1
+        label: Two Stroke
       label: Strokes
     bind:
       source: config
       field: twoStroke
-  - type: scalar-field
+  - type: enum-field
     id: trigger-type
     props:
       label: Trigger type
+      options:
+      - value: 0
+        label: custom toothed wheel
+      - value: 1
+        label: Ford Aspire
+      - value: 2
+        label: Dodge Neon 1995
+      - value: 3
+        label: Miata NA
+      - value: 4
+        label: INVALID
+      - value: 5
+        label: GM_7X
+      - value: 6
+        label: Daihatsu 3 cylinder
+      - value: 7
+        label: Mazda SOHC 4
+      - value: 8
+        label: 60-2
+      - value: 9
+        label: 36-1
+      - value: 10
+        label: Mercedes Two Segment
+      - value: 11
+        label: Single Tooth
+      - value: 12
+        label: EZ30
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: Dodge Neon 2003
+      - value: 15
+        label: Mazda DOHC 1+4
+      - value: 16
+        label: 1+1
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: Half Moon
+      - value: 19
+        label: Dodge Ram 1+16
+      - value: 20
+        label: 60-2 Wrong Polarity
+      - value: 21
+        label: Benelli Tre
+      - value: 22
+        label: Dodge Stratus
+      - value: 23
+        label: 36_2_2_2
+      - value: 24
+        label: Nissan Primera
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: Rover K
+      - value: 27
+        label: GM 24x 5 degree
+      - value: 28
+        label: Honda CBR 600 Cam
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: probably broken ChryslerNGC 36-2-2
+      - value: 31
+        label: 3-1 skipped
+      - value: 32
+        label: Dodge Neon 2003 crank
+      - value: 33
+        label: Miata NB
+      - value: 34
+        label: INVALID
+      - value: 35
+        label: INVALID
+      - value: 36
+        label: Subaru 7+6
+      - value: 37
+        label: Jeep 18-2-2-2
+      - value: 38
+        label: 12crank/24cam
+      - value: 39
+        label: Dodge Neon 1995 crank only
+      - value: 40
+        label: Jeep XJ 4 cyl
+      - value: 41
+        label: FiatIAQ_P8
+      - value: 42
+        label: Mazda Z5
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: Renix 44-2-2
+      - value: 45
+        label: Renix 66-2-2-2
+      - value: 46
+        label: Honda K 12+1
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: 36-2
+      - value: 49
+        label: Subaru SVX
+      - value: 50
+        label: Suzuki K6A
+      - value: 51
+        label: Subaru 7 without 6
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: GM 60-2-2-2
+      - value: 55
+        label: Skoda Favorit
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: Kawa KX450F
+      - value: 58
+        label: Nissan VQ35
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: Nissan VQ30
+      - value: 61
+        label: Nissan QR25
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: Subaru SVX Crank 1
+      - value: 64
+        label: Subaru SVX Cam VVT
+      - value: 65
+        label: Ford PIP
+      - value: 66
+        label: Suzuki G13B
+      - value: 67
+        label: Honda K 4+1
+      - value: 68
+        label: Nissan MR18 Crank
+      - value: 69
+        label: 32-2
+      - value: 70
+        label: 36-2-1
+      - value: 71
+        label: 36-2-1-1
+      - value: 72
+        label: 3-0
+      - value: 73
+        label: INVALID
+      - value: 74
+        label: GM 24x 3 degree
+      - value: 75
+        label: 60-2-2 F3R
+      - value: 76
+        label: Mitsu 4G63 Crank
+      - value: 77
+        label: x2 30 Deg camshaft BTDC
+      - value: 78
+        label: INVALID
+      - value: 79
+        label: INVALID
+      - value: 80
+        label: 6-0
+      - value: 81
+        label: Daihatsu 4 cylinder
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: dev
+      - value: 84
+        label: Nissan HR
+      - value: 85
+        label: Arctic Cat
+      - value: 86
+        label: HR12 in
+      - value: 87
+        label: HONDA J30A2
+      - value: 88
+        label: trg88
+      - value: 89
+        label: trg89
+      - value: 90
+        label: Dodge/Chrysler/Jeep V8 5.7L
+      - value: 91
+        label: Toyota UZ 3 tooth
+      - value: 92
+        label: Jeep EVD 36-2-2
+      - value: 93
+        label: Jeep 66-2-2-2
+      - value: 94
+        label: Subaru 6 tooth Crank
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: trigger_type
@@ -36,9 +298,14 @@ children:
     bind:
       source: config
       field: trigger_customSkippedToothCount
-  - type: scalar-field
+  - type: enum-field
     id: skippedwheeloncam
     props:
+      options:
+      - value: 0
+        label: On crankshaft
+      - value: 1
+        label: On camshaft
       label: Skipped wheel location
     bind:
       source: config
@@ -49,8 +316,8 @@ children:
       text: Reminder that 4-stroke cycle is 720 degrees
   - type: text
     props:
-      variant: hint
       text: For well-known trigger types use '0' trigger angle offset
+      variant: hint
   - type: scalar-field
     id: globaltriggerangleoffset
     props:
@@ -60,40 +327,545 @@ children:
       field: globalTriggerAngleOffset
   - type: text
     props:
-      variant: hint
       text: Cam is primary if you have cam sensor as part of trigger shape
-  - type: scalar-field
+      variant: hint
+  - type: enum-field
     id: triggerinputpins1
     props:
       label: Cam Sensor (Primary channel)
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: INVALID
+      - value: 3
+        label: INVALID
+      - value: 4
+        label: INVALID
+      - value: 5
+        label: INVALID
+      - value: 6
+        label: INVALID
+      - value: 7
+        label: INVALID
+      - value: 8
+        label: INVALID
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: INVALID
+      - value: 35
+        label: INVALID
+      - value: 36
+        label: INVALID
+      - value: 37
+        label: INVALID
+      - value: 38
+        label: INVALID
+      - value: 39
+        label: INVALID
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: VR 1
+      - value: 74
+        label: VR 2
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
     bind:
       source: config
       field: triggerInputPins1
-  - type: scalar-field
+  - type: enum-field
     id: triggerinputpins1
     props:
       label: Crank Sensor (Primary channel)
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: INVALID
+      - value: 3
+        label: INVALID
+      - value: 4
+        label: INVALID
+      - value: 5
+        label: INVALID
+      - value: 6
+        label: INVALID
+      - value: 7
+        label: INVALID
+      - value: 8
+        label: INVALID
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: INVALID
+      - value: 35
+        label: INVALID
+      - value: 36
+        label: INVALID
+      - value: 37
+        label: INVALID
+      - value: 38
+        label: INVALID
+      - value: 39
+        label: INVALID
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: VR 1
+      - value: 74
+        label: VR 2
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
     bind:
       source: config
       field: triggerInputPins1
-  - type: scalar-field
+  - type: enum-field
     id: invertprimarytriggersignal
     props:
       label: Primary Edge
+      options:
+      - value: 0
+        label: Rising
+      - value: 1
+        label: Falling
     bind:
       source: config
       field: invertPrimaryTriggerSignal
-  - type: scalar-field
+  - type: enum-field
     id: triggerinputpins2
     props:
       label: Secondary channel
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: INVALID
+      - value: 3
+        label: INVALID
+      - value: 4
+        label: INVALID
+      - value: 5
+        label: INVALID
+      - value: 6
+        label: INVALID
+      - value: 7
+        label: INVALID
+      - value: 8
+        label: INVALID
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: INVALID
+      - value: 35
+        label: INVALID
+      - value: 36
+        label: INVALID
+      - value: 37
+        label: INVALID
+      - value: 38
+        label: INVALID
+      - value: 39
+        label: INVALID
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: VR 1
+      - value: 74
+        label: VR 2
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
     bind:
       source: config
       field: triggerInputPins2
-  - type: scalar-field
+  - type: enum-field
     id: invertsecondarytriggersignal
     props:
       label: Secondary Edge
+      options:
+      - value: 0
+        label: Rising
+      - value: 1
+        label: Falling
     bind:
       source: config
       field: invertSecondaryTriggerSignal
@@ -105,9 +877,138 @@ children:
     props:
       text: <html><a href=https://rusefi.com/s/vvt>https://rusefi.com/s/vvt</a></html>
       variant: hint
-  - type: scalar-field
+  - type: enum-field
     id: vvtmode1
     props:
+      options:
+      - value: 0
+        label: Inactive
+      - value: 1
+        label: Single Tooth
+      - value: 2
+        label: Toyota 3 Tooth Even/2JZ
+      - value: 3
+        label: Miata NB2
+      - value: 4
+        label: Mitsu 4G69
+      - value: 5
+        label: Bosch Quick Start
+      - value: 6
+        label: 4/1
+      - value: 7
+        label: ST 170
+      - value: 8
+        label: Ford Barra 3+1
+      - value: 9
+        label: Nissan VQ
+      - value: 10
+        label: Honda K Intake
+      - value: 11
+        label: Nissan MR18
+      - value: 12
+        label: Mitsu 3A92
+      - value: 13
+        label: Sync by MAP
+      - value: 14
+        label: Chrysler Phaser
+      - value: 15
+        label: Mazda Skyactiv
+      - value: 16
+        label: Honda K Exhaust
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: Mitsubishi 4G63
+      - value: 19
+        label: Ford Coyote
+      - value: 20
+        label: Mitsu 6G72
+      - value: 21
+        label: Honda 600
+      - value: 22
+        label: Mazda L
+      - value: 23
+        label: Dev
+      - value: 24
+        label: HR12DDR In
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: Toyota 3 Tooth UZ
+      - value: 28
+        label: Subaru 3-1-2-1
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: INVALID
+      - value: 35
+        label: INVALID
+      - value: 36
+        label: INVALID
+      - value: 37
+        label: INVALID
+      - value: 38
+        label: INVALID
+      - value: 39
+        label: INVALID
+      - value: 40
+        label: INVALID
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
       label: Cam mode (intake)
     bind:
       source: config
@@ -126,59 +1027,858 @@ children:
     bind:
       source: config
       field: camDecoder2jzPrecision
-  - type: scalar-field
+  - type: enum-field
     id: vvtmode2
     props:
+      options:
+      - value: 0
+        label: Inactive
+      - value: 1
+        label: Single Tooth
+      - value: 2
+        label: Toyota 3 Tooth Even/2JZ
+      - value: 3
+        label: Miata NB2
+      - value: 4
+        label: Mitsu 4G69
+      - value: 5
+        label: Bosch Quick Start
+      - value: 6
+        label: 4/1
+      - value: 7
+        label: ST 170
+      - value: 8
+        label: Ford Barra 3+1
+      - value: 9
+        label: Nissan VQ
+      - value: 10
+        label: Honda K Intake
+      - value: 11
+        label: Nissan MR18
+      - value: 12
+        label: Mitsu 3A92
+      - value: 13
+        label: Sync by MAP
+      - value: 14
+        label: Chrysler Phaser
+      - value: 15
+        label: Mazda Skyactiv
+      - value: 16
+        label: Honda K Exhaust
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: Mitsubishi 4G63
+      - value: 19
+        label: Ford Coyote
+      - value: 20
+        label: Mitsu 6G72
+      - value: 21
+        label: Honda 600
+      - value: 22
+        label: Mazda L
+      - value: 23
+        label: Dev
+      - value: 24
+        label: HR12DDR In
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: Toyota 3 Tooth UZ
+      - value: 28
+        label: Subaru 3-1-2-1
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: INVALID
+      - value: 35
+        label: INVALID
+      - value: 36
+        label: INVALID
+      - value: 37
+        label: INVALID
+      - value: 38
+        label: INVALID
+      - value: 39
+        label: INVALID
+      - value: 40
+        label: INVALID
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
       label: Cam mode (exhaust)
     bind:
       source: config
       field: vvtMode2
-  - type: scalar-field
+  - type: enum-field
     id: caminputs1
     props:
       label: Cam sensor bank 1 intake
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: INVALID
+      - value: 3
+        label: INVALID
+      - value: 4
+        label: INVALID
+      - value: 5
+        label: INVALID
+      - value: 6
+        label: INVALID
+      - value: 7
+        label: INVALID
+      - value: 8
+        label: INVALID
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: INVALID
+      - value: 35
+        label: INVALID
+      - value: 36
+        label: INVALID
+      - value: 37
+        label: INVALID
+      - value: 38
+        label: INVALID
+      - value: 39
+        label: INVALID
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: VR 1
+      - value: 74
+        label: VR 2
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
     bind:
       source: config
       field: camInputs1
-  - type: scalar-field
+  - type: enum-field
     id: caminputs2
     props:
       label: Cam sensor bank 1 exhaust
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: INVALID
+      - value: 3
+        label: INVALID
+      - value: 4
+        label: INVALID
+      - value: 5
+        label: INVALID
+      - value: 6
+        label: INVALID
+      - value: 7
+        label: INVALID
+      - value: 8
+        label: INVALID
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: INVALID
+      - value: 35
+        label: INVALID
+      - value: 36
+        label: INVALID
+      - value: 37
+        label: INVALID
+      - value: 38
+        label: INVALID
+      - value: 39
+        label: INVALID
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: VR 1
+      - value: 74
+        label: VR 2
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
     bind:
       source: config
       field: camInputs2
-  - type: scalar-field
+  - type: enum-field
     id: caminputs3
     props:
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: INVALID
+      - value: 3
+        label: INVALID
+      - value: 4
+        label: INVALID
+      - value: 5
+        label: INVALID
+      - value: 6
+        label: INVALID
+      - value: 7
+        label: INVALID
+      - value: 8
+        label: INVALID
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: INVALID
+      - value: 35
+        label: INVALID
+      - value: 36
+        label: INVALID
+      - value: 37
+        label: INVALID
+      - value: 38
+        label: INVALID
+      - value: 39
+        label: INVALID
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: VR 1
+      - value: 74
+        label: VR 2
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
       label: Cam sensor bank 2 intake
     bind:
       source: config
       field: camInputs3
-  - type: scalar-field
+  - type: enum-field
     id: caminputs4
     props:
       label: Cam sensor bank 2 exhaust
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: INVALID
+      - value: 3
+        label: INVALID
+      - value: 4
+        label: INVALID
+      - value: 5
+        label: INVALID
+      - value: 6
+        label: INVALID
+      - value: 7
+        label: INVALID
+      - value: 8
+        label: INVALID
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: INVALID
+      - value: 35
+        label: INVALID
+      - value: 36
+        label: INVALID
+      - value: 37
+        label: INVALID
+      - value: 38
+        label: INVALID
+      - value: 39
+        label: INVALID
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: VR 1
+      - value: 74
+        label: VR 2
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
     bind:
       source: config
       field: camInputs4
-  - type: scalar-field
+  - type: enum-field
     id: invertcamvvtsignal
     props:
       label: intake Cam Edge Select
+      options:
+      - value: 0
+        label: Rising
+      - value: 1
+        label: Falling
     bind:
       source: config
       field: invertCamVVTSignal
-  - type: scalar-field
+  - type: enum-field
     id: invertexhaustcamvvtsignal
     props:
+      options:
+      - value: 0
+        label: Rising
+      - value: 1
+        label: Falling
       label: exhaust Cam Edge Select
     bind:
       source: config
       field: invertExhaustCamVVTSignal
   - type: text
     props:
-      text: Set offset so VVT indicates 0 degrees in default position
       variant: hint
+      text: Set offset so VVT indicates 0 degrees in default position
   - type: scalar-field
     id: vvtoffsets1
     props:
@@ -207,9 +1907,18 @@ children:
     bind:
       source: config
       field: vvtOffsets4
-  - type: scalar-field
+  - type: enum-field
     id: enginesynccam
     props:
+      options:
+      - value: 0
+        label: Intake First Bank
+      - value: 1
+        label: Exhaust First Bank
+      - value: 2
+        label: Intake Second Bank
+      - value: 3
+        label: Exhaust Second Bank
       label: Cam for engine sync resolution
     bind:
       source: config

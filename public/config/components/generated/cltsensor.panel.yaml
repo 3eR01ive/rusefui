@@ -8,9 +8,44 @@ children:
   props:
     title: CLT sensor
   children:
-  - type: scalar-field
+  - type: enum-field
     id: clt-adcchannel
     props:
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: Analog Volt 5
+      - value: 2
+        label: Analog Volt 6
+      - value: 3
+        label: Analog Volt 7
+      - value: 4
+        label: Analog Volt 8
+      - value: 5
+        label: Analog Volt 9
+      - value: 6
+        label: Analog Volt 10
+      - value: 7
+        label: Analog Volt 11
+      - value: 8
+        label: Battery Sense
+      - value: 9
+        label: Analog Temp 3
+      - value: 10
+        label: Analog Temp 4
+      - value: 11
+        label: Analog Volt 1
+      - value: 12
+        label: Analog Volt 2
+      - value: 13
+        label: Analog Volt 3
+      - value: 14
+        label: Analog Volt 4
+      - value: 15
+        label: Analog Temp 1
+      - value: 16
+        label: Analog Temp 2
       label: Input channel
     bind:
       source: config
@@ -21,8 +56,8 @@ children:
       text: Input three pairs of thermistor temperature and resistance.
   - type: text
     props:
-      variant: hint
       text: Typical temperatures are -40 deg C, 0 deg C and 100 deg C
+      variant: hint
   - type: scalar-field
     id: clt-tempc-1
     props:
@@ -65,9 +100,14 @@ children:
     bind:
       source: config
       field: clt_resistance_3
-  - type: scalar-field
+  - type: enum-field
     id: uselinearcltsensor
     props:
+      options:
+      - value: 0
+        label: 'false'
+      - value: 1
+        label: 'true'
       label: Linear characteristic
     bind:
       source: config

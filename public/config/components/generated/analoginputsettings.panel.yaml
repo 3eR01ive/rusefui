@@ -8,10 +8,15 @@ children:
   props:
     variant: hint
     text: ECU reboot needed to apply these settings
-- type: scalar-field
+- type: enum-field
   id: usefixedbarocorrfrommap
   props:
     label: Grab baro value from MAP
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: useFixedBaroCorrFromMap

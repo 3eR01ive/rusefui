@@ -2,16 +2,24 @@
 
 mod convert_panel;
 mod decode;
+mod defines;
+mod enum_options;
 mod error;
 mod menu;
 mod model;
 mod parse;
 
 pub use convert_panel::{convert_menu_panels, ConvertResult, PanelManifest, PanelManifestEntry};
-pub use decode::{decode_config_scalars, decode_output_channels, decode_scalar_at, encode_scalar_value};
+pub use decode::{
+    decode_config_at, decode_config_fields, decode_config_scalars, decode_output_channels,
+    decode_scalar_at, encode_bits_value, encode_config_value, encode_scalar_value,
+};
 pub use error::IniError;
 pub use menu::{parse_menu_section, IniMenu};
-pub use model::{FieldKind, IniFile, OutputChannelField, OutputChannels, ScalarField, ScalarType};
+pub use model::{
+    ConfigFieldKind, EnumField, EnumOption, FieldKind, IniFile, OutputChannelField, OutputChannels,
+    ScalarField, ScalarType,
+};
 pub use parse::{parse_ini, split_ini_args};
 
 /// Путь к тестовому INI в репозитории (`test_data/rusefi_proteus_f7.ini`).

@@ -4,16 +4,26 @@ source:
   ini_dialog: trigger_advanced
   menu_path: Setup › Limits and protection › Advanced Trigger
 children:
-- type: scalar-field
+- type: enum-field
   id: isphasesyncrequiredforignition
   props:
     label: Require cam/VVT sync for ignition
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: isPhaseSyncRequiredForIgnition
-- type: scalar-field
+- type: enum-field
   id: camsynconsecondcrankrevolution
   props:
+    options:
+    - value: 0
+      label: first
+    - value: 1
+      label: second
     label: Cam sync crank revolution
   bind:
     source: config
@@ -39,9 +49,14 @@ children:
   bind:
     source: config
     field: mapSyncThreshold
-- type: scalar-field
+- type: enum-field
   id: usenoiselesstriggerdecoder
   props:
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
     label: Enable noise filtering
   bind:
     source: config

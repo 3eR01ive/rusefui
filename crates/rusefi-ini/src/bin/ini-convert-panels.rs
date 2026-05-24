@@ -9,7 +9,7 @@
 use std::fs;
 use std::path::PathBuf;
 
-use rusefi_ini::{convert_menu_panels, parse_menu_section};
+use rusefi_ini::{convert_menu_panels, parse_ini, parse_menu_section};
 
 fn main() {
     let mut ini_path = PathBuf::from("test_data/rusefi_proteus_f7.ini");
@@ -52,8 +52,13 @@ fn main() {
         std::process::exit(1);
     });
 
+    let ini = parse_ini(&text).unwrap_or_else(|e| {
+        eprintln!("INI parse error: {e}");
+        std::process::exit(1);
+    });
+
     let ini_source = ini_path.display().to_string();
-    let result = convert_menu_panels(&menu, &ini_source);
+    let result = convert_menu_panels(&menu, &ini.config_fields, &ini_source);
 
     fs::create_dir_all(&out_dir).unwrap_or_else(|e| {
         eprintln!("Cannot create {}: {e}", out_dir.display());

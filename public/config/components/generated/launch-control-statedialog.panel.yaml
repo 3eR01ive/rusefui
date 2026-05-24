@@ -6,5 +6,5 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: Панель «launch_control_stateIndicatorPanel» — нет определения в INI
+    variant: hint

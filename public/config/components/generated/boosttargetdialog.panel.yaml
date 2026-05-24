@@ -6,5 +6,5 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: Таблица/кривая «boostClosedTbl» — редактор пока не реализован
+    variant: hint

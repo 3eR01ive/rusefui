@@ -17,33 +17,693 @@ children:
     variant: hint
 - type: text
   props:
-    text: 'Кнопка: Disable trigger simulation (cmd_disable_self_stim)'
     variant: hint
-- type: scalar-field
+    text: 'Кнопка: Disable trigger simulation (cmd_disable_self_stim)'
+- type: enum-field
   id: logicanalyzerpins1
   props:
     label: Logic input channel 1
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: INVALID
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVALID
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
+    - value: 8
+      label: INVALID
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: INVALID
+    - value: 11
+      label: INVALID
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: INVALID
+    - value: 35
+      label: INVALID
+    - value: 36
+      label: INVALID
+    - value: 37
+      label: INVALID
+    - value: 38
+      label: INVALID
+    - value: 39
+      label: INVALID
+    - value: 40
+      label: Digital 1
+    - value: 41
+      label: INVALID
+    - value: 42
+      label: INVALID
+    - value: 43
+      label: INVALID
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: INVALID
+    - value: 54
+      label: INVALID
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: INVALID
+    - value: 58
+      label: INVALID
+    - value: 59
+      label: INVALID
+    - value: 60
+      label: INVALID
+    - value: 61
+      label: INVALID
+    - value: 62
+      label: INVALID
+    - value: 63
+      label: INVALID
+    - value: 64
+      label: INVALID
+    - value: 65
+      label: INVALID
+    - value: 66
+      label: INVALID
+    - value: 67
+      label: INVALID
+    - value: 68
+      label: INVALID
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: VR 1
+    - value: 74
+      label: VR 2
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: Digital 2
+    - value: 78
+      label: Digital 3
+    - value: 79
+      label: Digital 5
+    - value: 80
+      label: Digital 4
+    - value: 81
+      label: Digital 6
   bind:
     source: config
     field: logicAnalyzerPins1
-- type: scalar-field
+- type: enum-field
   id: logicanalyzerpins2
   props:
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: INVALID
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVALID
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
+    - value: 8
+      label: INVALID
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: INVALID
+    - value: 11
+      label: INVALID
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: INVALID
+    - value: 35
+      label: INVALID
+    - value: 36
+      label: INVALID
+    - value: 37
+      label: INVALID
+    - value: 38
+      label: INVALID
+    - value: 39
+      label: INVALID
+    - value: 40
+      label: Digital 1
+    - value: 41
+      label: INVALID
+    - value: 42
+      label: INVALID
+    - value: 43
+      label: INVALID
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: INVALID
+    - value: 54
+      label: INVALID
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: INVALID
+    - value: 58
+      label: INVALID
+    - value: 59
+      label: INVALID
+    - value: 60
+      label: INVALID
+    - value: 61
+      label: INVALID
+    - value: 62
+      label: INVALID
+    - value: 63
+      label: INVALID
+    - value: 64
+      label: INVALID
+    - value: 65
+      label: INVALID
+    - value: 66
+      label: INVALID
+    - value: 67
+      label: INVALID
+    - value: 68
+      label: INVALID
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: VR 1
+    - value: 74
+      label: VR 2
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: Digital 2
+    - value: 78
+      label: Digital 3
+    - value: 79
+      label: Digital 5
+    - value: 80
+      label: Digital 4
+    - value: 81
+      label: Digital 6
     label: Logic input channel 2
   bind:
     source: config
     field: logicAnalyzerPins2
-- type: scalar-field
+- type: enum-field
   id: logicanalyzerpins3
   props:
     label: Logic input channel 3
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: INVALID
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVALID
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
+    - value: 8
+      label: INVALID
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: INVALID
+    - value: 11
+      label: INVALID
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: INVALID
+    - value: 35
+      label: INVALID
+    - value: 36
+      label: INVALID
+    - value: 37
+      label: INVALID
+    - value: 38
+      label: INVALID
+    - value: 39
+      label: INVALID
+    - value: 40
+      label: Digital 1
+    - value: 41
+      label: INVALID
+    - value: 42
+      label: INVALID
+    - value: 43
+      label: INVALID
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: INVALID
+    - value: 54
+      label: INVALID
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: INVALID
+    - value: 58
+      label: INVALID
+    - value: 59
+      label: INVALID
+    - value: 60
+      label: INVALID
+    - value: 61
+      label: INVALID
+    - value: 62
+      label: INVALID
+    - value: 63
+      label: INVALID
+    - value: 64
+      label: INVALID
+    - value: 65
+      label: INVALID
+    - value: 66
+      label: INVALID
+    - value: 67
+      label: INVALID
+    - value: 68
+      label: INVALID
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: VR 1
+    - value: 74
+      label: VR 2
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: Digital 2
+    - value: 78
+      label: Digital 3
+    - value: 79
+      label: Digital 5
+    - value: 80
+      label: Digital 4
+    - value: 81
+      label: Digital 6
   bind:
     source: config
     field: logicAnalyzerPins3
-- type: scalar-field
+- type: enum-field
   id: logicanalyzerpins4
   props:
     label: Logic input channel 4
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: INVALID
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVALID
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
+    - value: 8
+      label: INVALID
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: INVALID
+    - value: 11
+      label: INVALID
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: INVALID
+    - value: 35
+      label: INVALID
+    - value: 36
+      label: INVALID
+    - value: 37
+      label: INVALID
+    - value: 38
+      label: INVALID
+    - value: 39
+      label: INVALID
+    - value: 40
+      label: Digital 1
+    - value: 41
+      label: INVALID
+    - value: 42
+      label: INVALID
+    - value: 43
+      label: INVALID
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: INVALID
+    - value: 54
+      label: INVALID
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: INVALID
+    - value: 58
+      label: INVALID
+    - value: 59
+      label: INVALID
+    - value: 60
+      label: INVALID
+    - value: 61
+      label: INVALID
+    - value: 62
+      label: INVALID
+    - value: 63
+      label: INVALID
+    - value: 64
+      label: INVALID
+    - value: 65
+      label: INVALID
+    - value: 66
+      label: INVALID
+    - value: 67
+      label: INVALID
+    - value: 68
+      label: INVALID
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: VR 1
+    - value: 74
+      label: VR 2
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: Digital 2
+    - value: 78
+      label: Digital 3
+    - value: 79
+      label: Digital 5
+    - value: 80
+      label: Digital 4
+    - value: 81
+      label: Digital 6
   bind:
     source: config
     field: logicAnalyzerPins4

@@ -4,16 +4,50 @@ source:
   ini_dialog: dcMotorActuatorFunction
   menu_path: Advanced › Boost blend tables › DC motor actuator(s) function
 children:
-- type: scalar-field
+- type: enum-field
   id: etbfunctions1
   props:
     label: 'H-Bridge #1 function'
+    options:
+    - value: 0
+      label: None
+    - value: 1
+      label: Throttle 1
+    - value: 2
+      label: Throttle 2
+    - value: 3
+      label: Idle Valve
+    - value: 4
+      label: Wastegate
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
   bind:
     source: config
     field: etbFunctions1
-- type: scalar-field
+- type: enum-field
   id: etbfunctions2
   props:
+    options:
+    - value: 0
+      label: None
+    - value: 1
+      label: Throttle 1
+    - value: 2
+      label: Throttle 2
+    - value: 3
+      label: Idle Valve
+    - value: 4
+      label: Wastegate
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
     label: 'H-Bridge #2 function'
   bind:
     source: config

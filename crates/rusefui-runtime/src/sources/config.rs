@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::thread::{self, sleep, JoinHandle};
 use std::time::Duration;
 
-use rusefi_ini::{decode_config_scalars, decode_scalar_at, encode_scalar_value};
+use rusefi_ini::{decode_config_at, decode_config_fields, encode_config_value, ConfigFieldKind};
 use rusefi_protocol::{ProtocolError, TS_PAGE_SETTINGS};
 use serde::Serialize;
 
@@ -19,10 +19,19 @@ const INTER_WRITE_DELAY_MS: u64 = 15;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ConfigEnumOption {
+    pub value: u32,
+    pub label: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ConfigFieldInfo {
     pub name: String,
     pub units: Option<String>,
     pub ty: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub options: Option<Vec<ConfigEnumOption>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -52,7 +61,7 @@ impl ConfigSnapshot {
             bytes_total: 0,
             raw_len: 0,
             values: HashMap::new(),
-            field_count: ini.config_scalars.len(),
+            field_count: ini.config_fields.len(),
             last_error: None,
         }
     }
@@ -85,16 +94,33 @@ impl ConfigSource {
         self.ini
             .lock()
             .unwrap()
-            .config_scalars
+            .config_fields
             .iter()
-            .map(|(name, f)| ConfigFieldInfo {
-                name: name.clone(),
-                units: if f.units.is_empty() {
-                    None
-                } else {
-                    Some(f.units.clone())
+            .map(|(name, f)| match f {
+                ConfigFieldKind::Scalar(s) => ConfigFieldInfo {
+                    name: name.clone(),
+                    units: if s.units.is_empty() {
+                        None
+                    } else {
+                        Some(s.units.clone())
+                    },
+                    ty: "scalar".into(),
+                    options: None,
                 },
-                ty: format!("{:?}", f.ty),
+                ConfigFieldKind::Enum(e) => ConfigFieldInfo {
+                    name: name.clone(),
+                    units: None,
+                    ty: "enum".into(),
+                    options: Some(
+                        e.options
+                            .iter()
+                            .map(|o| ConfigEnumOption {
+                                value: o.value,
+                                label: o.label.clone(),
+                            })
+                            .collect(),
+                    ),
+                },
             })
             .collect()
     }
@@ -136,7 +162,7 @@ impl ConfigSource {
         }
 
         let ini = self.ini.lock().unwrap().clone();
-        let field_count = ini.config_scalars.len();
+        let field_count = ini.config_fields.len();
         let page_size = ini.page_size;
         let chunk_size = ini.blocking_factor;
         let read_has_page_index = ini.page_read_has_page_index;
@@ -156,7 +182,7 @@ impl ConfigSource {
         let snapshot = Arc::clone(&self.snapshot);
         let raw_store = Arc::clone(&self.raw);
         let on_update = Arc::new(on_update);
-        let scalars = ini.config_scalars.clone();
+        let config_fields = ini.config_fields.clone();
 
         let handle = thread::Builder::new()
             .name("rusefui-config-load".into())
@@ -194,7 +220,7 @@ impl ConfigSource {
                         )
                     }) {
                         Ok(bytes) => {
-                            let values = decode_config_scalars(&scalars, &bytes);
+                            let values = decode_config_fields(&config_fields, &bytes);
                             *raw_store.lock().unwrap() = bytes.clone();
                             snap = ConfigSnapshot {
                                 connected: true,
@@ -227,6 +253,55 @@ impl ConfigSource {
         *self.thread.lock().unwrap() = Some(handle);
     }
 
+    /// Запись скаляра в RAM ECU (`C`) без verify-read и burn — как правка поля в TunerStudio до Save.
+    pub fn write_scalar(
+        &self,
+        session: &EcuSession,
+        name: &str,
+        value: f64,
+    ) -> Result<(), String> {
+        let ini = self.ini.lock().unwrap().clone();
+        let field = ini
+            .config_fields
+            .get(name)
+            .ok_or_else(|| format!("unknown config field: {name}"))?;
+        let offset = config_field_offset(field);
+        let current = self.raw.lock().unwrap().clone();
+        let encoded = encode_config_value(field, value, &current)
+            .ok_or_else(|| format!("cannot encode value for {name}"))?;
+
+        if offset > u16::MAX as u32 {
+            return Err(format!("offset {name} exceeds protocol limit"));
+        }
+
+        session.with_link(|link| {
+            link.write_config_chunk(
+                TS_PAGE_SETTINGS,
+                offset as u16,
+                &encoded,
+                true,
+            )?;
+            sleep(Duration::from_millis(INTER_WRITE_DELAY_MS));
+            Ok(())
+        })?;
+
+        {
+            let mut raw = self.raw.lock().unwrap();
+            let off = offset as usize;
+            if off + encoded.len() > raw.len() {
+                raw.resize(off + encoded.len(), 0);
+            }
+            raw[off..off + encoded.len()].copy_from_slice(&encoded);
+        }
+
+        {
+            let mut snap = self.snapshot.write().unwrap();
+            snap.values.insert(name.to_string(), value);
+        }
+
+        Ok(())
+    }
+
     pub fn set_scalar(
         &self,
         session: &EcuSession,
@@ -235,57 +310,57 @@ impl ConfigSource {
     ) -> Result<(), String> {
         let ini = self.ini.lock().unwrap().clone();
         let field = ini
-            .config_scalars
+            .config_fields
             .get(name)
             .ok_or_else(|| format!("unknown config field: {name}"))?;
-        let encoded = encode_scalar_value(field, value)
+        let offset = config_field_offset(field);
+        let current = self.raw.lock().unwrap().clone();
+        let encoded = encode_config_value(field, value, &current)
             .ok_or_else(|| format!("cannot encode value for {name}"))?;
 
-        if field.offset > u16::MAX as u32 {
+        if offset > u16::MAX as u32 {
             return Err(format!("offset {name} exceeds protocol limit"));
         }
 
         let chunk_count = u16::try_from(encoded.len())
             .map_err(|_| format!("encoded value for {name} too large"))?;
 
-        // `R` и `C` — по INI (`pageReadCommand` / `pageChunkWrite`). Legacy без `%2i` — только offset+count.
         let read_has_page_index = ini.page_read_has_page_index;
-        let write_has_page_index = ini.page_chunk_write_has_page_index;
 
         let actual = session.with_link(|link| {
             link.write_config_chunk(
                 TS_PAGE_SETTINGS,
-                field.offset as u16,
+                offset as u16,
                 &encoded,
-                write_has_page_index,
+                true,
             )?;
             sleep(Duration::from_millis(INTER_WRITE_DELAY_MS));
 
             let read_back = link.read_config_chunk(
                 TS_PAGE_SETTINGS,
-                field.offset as u16,
+                offset as u16,
                 chunk_count,
                 read_has_page_index,
             )?;
 
-            let off = field.offset as usize;
+            let off = offset as usize;
             let mut page = self.raw.lock().unwrap().clone();
             if off + read_back.len() > page.len() {
                 page.resize(off + read_back.len(), 0);
             }
             page[off..off + read_back.len()].copy_from_slice(&read_back);
 
-            let actual = decode_scalar_at(&field, &page).ok_or_else(|| {
+            let actual = decode_config_at(field, &page).ok_or_else(|| {
                 ProtocolError::InvalidPacket(format!(
                     "config write verify decode failed at offset {} for {name}",
-                    field.offset
+                    offset
                 ))
             })?;
 
             if (actual - value).abs() > 1e-4 {
                 return Err(ProtocolError::InvalidPacket(format!(
                     "config write verify failed for {name}: expected {value}, ECU has {actual} (offset {})",
-                    field.offset
+                    offset
                 )));
             }
 
@@ -315,7 +390,7 @@ impl ConfigSource {
 
         {
             let mut raw = self.raw.lock().unwrap();
-            let off = field.offset as usize;
+            let off = offset as usize;
             if off + encoded.len() <= raw.len() {
                 raw[off..off + encoded.len()].copy_from_slice(&encoded);
             }
@@ -327,5 +402,12 @@ impl ConfigSource {
         }
 
         Ok(())
+    }
+}
+
+fn config_field_offset(field: &ConfigFieldKind) -> u32 {
+    match field {
+        ConfigFieldKind::Scalar(s) => s.offset,
+        ConfigFieldKind::Enum(e) => e.bits.offset,
     }
 }

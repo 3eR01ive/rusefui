@@ -15,10 +15,16 @@ export interface ConfigSnapshot {
   lastError?: string | null;
 }
 
+export interface ConfigEnumOption {
+  value: number;
+  label: string;
+}
+
 export interface ConfigFieldInfo {
   name: string;
   units?: string | null;
   ty: string;
+  options?: ConfigEnumOption[] | null;
 }
 
 const snapshot = shallowRef<ConfigSnapshot>({

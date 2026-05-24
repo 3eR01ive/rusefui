@@ -4,52 +4,757 @@ source:
   ini_dialog: otherSensorInputs
   menu_path: Sensors › Chassis sensors › Misc sensors
 children:
-- type: scalar-field
+- type: enum-field
   id: clutchdownpin
   props:
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: Analog Volt 5
+    - value: 3
+      label: Analog Volt 6
+    - value: 4
+      label: Analog Volt 7
+    - value: 5
+      label: Analog Volt 8
+    - value: 6
+      label: Analog Volt 9
+    - value: 7
+      label: Analog Volt 10
+    - value: 8
+      label: Analog Volt 11
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: INVALID
+    - value: 11
+      label: INVALID
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: Analog Temp 3
+    - value: 19
+      label: Analog Temp 4
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: Analog Volt 1
+    - value: 35
+      label: Analog Volt 2
+    - value: 36
+      label: Analog Volt 3
+    - value: 37
+      label: Analog Volt 4
+    - value: 38
+      label: Analog Temp 1
+    - value: 39
+      label: Analog Temp 2
+    - value: 40
+      label: Digital 1
+    - value: 41
+      label: INVALID
+    - value: 42
+      label: INVALID
+    - value: 43
+      label: INVALID
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: INVALID
+    - value: 54
+      label: INVALID
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: INVALID
+    - value: 58
+      label: INVALID
+    - value: 59
+      label: INVALID
+    - value: 60
+      label: INVALID
+    - value: 61
+      label: INVALID
+    - value: 62
+      label: INVALID
+    - value: 63
+      label: INVALID
+    - value: 64
+      label: INVALID
+    - value: 65
+      label: INVALID
+    - value: 66
+      label: INVALID
+    - value: 67
+      label: INVALID
+    - value: 68
+      label: INVALID
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: INVALID
+    - value: 74
+      label: INVALID
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: Digital 2
+    - value: 78
+      label: Digital 3
+    - value: 79
+      label: Digital 5
+    - value: 80
+      label: Digital 4
+    - value: 81
+      label: Digital 6
     label: Clutch Down
   bind:
     source: config
     field: clutchDownPin
-- type: scalar-field
+- type: enum-field
   id: clutchdownpinmode
   props:
     label: Clutch Down mode
+    options:
+    - value: 0
+      label: DEFAULT
+    - value: 1
+      label: PULLUP
+    - value: 2
+      label: PULLDOWN
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVERTED DEFAULT
+    - value: 5
+      label: INVERTED PULLUP
+    - value: 6
+      label: INVERTED PULLDOWN
   bind:
     source: config
     field: clutchDownPinMode
-- type: scalar-field
+- type: enum-field
   id: clutchuppin
   props:
     label: Clutch Up
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: Analog Volt 5
+    - value: 3
+      label: Analog Volt 6
+    - value: 4
+      label: Analog Volt 7
+    - value: 5
+      label: Analog Volt 8
+    - value: 6
+      label: Analog Volt 9
+    - value: 7
+      label: Analog Volt 10
+    - value: 8
+      label: Analog Volt 11
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: INVALID
+    - value: 11
+      label: INVALID
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: Analog Temp 3
+    - value: 19
+      label: Analog Temp 4
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: Analog Volt 1
+    - value: 35
+      label: Analog Volt 2
+    - value: 36
+      label: Analog Volt 3
+    - value: 37
+      label: Analog Volt 4
+    - value: 38
+      label: Analog Temp 1
+    - value: 39
+      label: Analog Temp 2
+    - value: 40
+      label: Digital 1
+    - value: 41
+      label: INVALID
+    - value: 42
+      label: INVALID
+    - value: 43
+      label: INVALID
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: INVALID
+    - value: 54
+      label: INVALID
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: INVALID
+    - value: 58
+      label: INVALID
+    - value: 59
+      label: INVALID
+    - value: 60
+      label: INVALID
+    - value: 61
+      label: INVALID
+    - value: 62
+      label: INVALID
+    - value: 63
+      label: INVALID
+    - value: 64
+      label: INVALID
+    - value: 65
+      label: INVALID
+    - value: 66
+      label: INVALID
+    - value: 67
+      label: INVALID
+    - value: 68
+      label: INVALID
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: INVALID
+    - value: 74
+      label: INVALID
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: Digital 2
+    - value: 78
+      label: Digital 3
+    - value: 79
+      label: Digital 5
+    - value: 80
+      label: Digital 4
+    - value: 81
+      label: Digital 6
   bind:
     source: config
     field: clutchUpPin
-- type: scalar-field
+- type: enum-field
   id: clutchuppinmode
   props:
+    options:
+    - value: 0
+      label: DEFAULT
+    - value: 1
+      label: PULLUP
+    - value: 2
+      label: PULLDOWN
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVERTED DEFAULT
+    - value: 5
+      label: INVERTED PULLUP
+    - value: 6
+      label: INVERTED PULLDOWN
     label: Clutch Up mode
   bind:
     source: config
     field: clutchUpPinMode
-- type: scalar-field
+- type: enum-field
   id: brakepedalpin
   props:
     label: Brake Pedal
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: Analog Volt 5
+    - value: 3
+      label: Analog Volt 6
+    - value: 4
+      label: Analog Volt 7
+    - value: 5
+      label: Analog Volt 8
+    - value: 6
+      label: Analog Volt 9
+    - value: 7
+      label: Analog Volt 10
+    - value: 8
+      label: Analog Volt 11
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: INVALID
+    - value: 11
+      label: INVALID
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: Analog Temp 3
+    - value: 19
+      label: Analog Temp 4
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: Analog Volt 1
+    - value: 35
+      label: Analog Volt 2
+    - value: 36
+      label: Analog Volt 3
+    - value: 37
+      label: Analog Volt 4
+    - value: 38
+      label: Analog Temp 1
+    - value: 39
+      label: Analog Temp 2
+    - value: 40
+      label: Digital 1
+    - value: 41
+      label: INVALID
+    - value: 42
+      label: INVALID
+    - value: 43
+      label: INVALID
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: INVALID
+    - value: 54
+      label: INVALID
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: INVALID
+    - value: 58
+      label: INVALID
+    - value: 59
+      label: INVALID
+    - value: 60
+      label: INVALID
+    - value: 61
+      label: INVALID
+    - value: 62
+      label: INVALID
+    - value: 63
+      label: INVALID
+    - value: 64
+      label: INVALID
+    - value: 65
+      label: INVALID
+    - value: 66
+      label: INVALID
+    - value: 67
+      label: INVALID
+    - value: 68
+      label: INVALID
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: INVALID
+    - value: 74
+      label: INVALID
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: Digital 2
+    - value: 78
+      label: Digital 3
+    - value: 79
+      label: Digital 5
+    - value: 80
+      label: Digital 4
+    - value: 81
+      label: Digital 6
   bind:
     source: config
     field: brakePedalPin
-- type: scalar-field
+- type: enum-field
   id: brakepedalpinmode
   props:
     label: Brake Pedal Mode
+    options:
+    - value: 0
+      label: DEFAULT
+    - value: 1
+      label: PULLUP
+    - value: 2
+      label: PULLDOWN
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVERTED DEFAULT
+    - value: 5
+      label: INVERTED PULLUP
+    - value: 6
+      label: INVERTED PULLDOWN
   bind:
     source: config
     field: brakePedalPinMode
-- type: scalar-field
+- type: enum-field
   id: turbospeedsensorinputpin
   props:
     label: Turbo Speed Sensor
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: INVALID
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVALID
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
+    - value: 8
+      label: INVALID
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: INVALID
+    - value: 11
+      label: INVALID
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: INVALID
+    - value: 35
+      label: INVALID
+    - value: 36
+      label: INVALID
+    - value: 37
+      label: INVALID
+    - value: 38
+      label: INVALID
+    - value: 39
+      label: INVALID
+    - value: 40
+      label: Digital 1
+    - value: 41
+      label: INVALID
+    - value: 42
+      label: INVALID
+    - value: 43
+      label: INVALID
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: INVALID
+    - value: 54
+      label: INVALID
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: INVALID
+    - value: 58
+      label: INVALID
+    - value: 59
+      label: INVALID
+    - value: 60
+      label: INVALID
+    - value: 61
+      label: INVALID
+    - value: 62
+      label: INVALID
+    - value: 63
+      label: INVALID
+    - value: 64
+      label: INVALID
+    - value: 65
+      label: INVALID
+    - value: 66
+      label: INVALID
+    - value: 67
+      label: INVALID
+    - value: 68
+      label: INVALID
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: VR 1
+    - value: 74
+      label: VR 2
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: Digital 2
+    - value: 78
+      label: Digital 3
+    - value: 79
+      label: Digital 5
+    - value: 80
+      label: Digital 4
+    - value: 81
+      label: Digital 6
   bind:
     source: config
     field: turboSpeedSensorInputPin
@@ -60,16 +765,86 @@ children:
   bind:
     source: config
     field: turboSpeedSensorMultiplier
-- type: scalar-field
+- type: enum-field
   id: throttleinletpressurechannel
   props:
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: Analog Volt 5
+    - value: 2
+      label: Analog Volt 6
+    - value: 3
+      label: Analog Volt 7
+    - value: 4
+      label: Analog Volt 8
+    - value: 5
+      label: Analog Volt 9
+    - value: 6
+      label: Analog Volt 10
+    - value: 7
+      label: Analog Volt 11
+    - value: 8
+      label: Battery Sense
+    - value: 9
+      label: Analog Temp 3
+    - value: 10
+      label: Analog Temp 4
+    - value: 11
+      label: Analog Volt 1
+    - value: 12
+      label: Analog Volt 2
+    - value: 13
+      label: Analog Volt 3
+    - value: 14
+      label: Analog Volt 4
+    - value: 15
+      label: Analog Temp 1
+    - value: 16
+      label: Analog Temp 2
     label: Throttle inlet pressure sensor
   bind:
     source: config
     field: throttleInletPressureChannel
-- type: scalar-field
+- type: enum-field
   id: compressordischargepressurechannel
   props:
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: Analog Volt 5
+    - value: 2
+      label: Analog Volt 6
+    - value: 3
+      label: Analog Volt 7
+    - value: 4
+      label: Analog Volt 8
+    - value: 5
+      label: Analog Volt 9
+    - value: 6
+      label: Analog Volt 10
+    - value: 7
+      label: Analog Volt 11
+    - value: 8
+      label: Battery Sense
+    - value: 9
+      label: Analog Temp 3
+    - value: 10
+      label: Analog Temp 4
+    - value: 11
+      label: Analog Volt 1
+    - value: 12
+      label: Analog Volt 2
+    - value: 13
+      label: Analog Volt 3
+    - value: 14
+      label: Analog Volt 4
+    - value: 15
+      label: Analog Temp 1
+    - value: 16
+      label: Analog Temp 2
     label: Compressor discharge pressure sensor
   bind:
     source: config

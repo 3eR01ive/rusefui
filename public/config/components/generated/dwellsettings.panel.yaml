@@ -6,9 +6,9 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: Панель «dwellCorrection» — нет определения в INI
+    variant: hint
 - type: text
   props:
-    variant: hint
     text: Панель «dwellVoltageCorrection» — нет определения в INI
+    variant: hint

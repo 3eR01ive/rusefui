@@ -4,23 +4,400 @@ source:
   ini_dialog: spiDevices
   menu_path: Controller › SPI Devices
 children:
-- type: scalar-field
+- type: enum-field
   id: usespiimu
   props:
     label: Use SPI accelerometer
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: useSpiImu
-- type: scalar-field
+- type: enum-field
   id: accelerometerspidevice
   props:
     label: Accelerometer SPI
+    options:
+    - value: 0
+      label: Off
+    - value: 1
+      label: SPI1
+    - value: 2
+      label: SPI2
+    - value: 3
+      label: SPI3
+    - value: 4
+      label: SPI4
+    - value: 5
+      label: SPI5
+    - value: 6
+      label: SPI6
   bind:
     source: config
     field: accelerometerSpiDevice
-- type: scalar-field
+- type: enum-field
   id: accelerometercspin
   props:
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: PA0
+    - value: 3
+      label: PA1
+    - value: 4
+      label: PA2
+    - value: 5
+      label: PA3
+    - value: 6
+      label: PA4
+    - value: 7
+      label: PA5
+    - value: 8
+      label: PA6
+    - value: 9
+      label: PA7
+    - value: 10
+      label: PA8
+    - value: 11
+      label: PA9
+    - value: 12
+      label: PA10
+    - value: 13
+      label: PA11
+    - value: 14
+      label: PA12
+    - value: 15
+      label: PA13
+    - value: 16
+      label: PA14
+    - value: 17
+      label: PA15
+    - value: 18
+      label: PB0
+    - value: 19
+      label: PB1
+    - value: 20
+      label: PB2
+    - value: 21
+      label: PB3
+    - value: 22
+      label: PB4
+    - value: 23
+      label: PB5
+    - value: 24
+      label: PB6
+    - value: 25
+      label: PB7
+    - value: 26
+      label: PB8
+    - value: 27
+      label: PB9
+    - value: 28
+      label: PB10
+    - value: 29
+      label: PB11
+    - value: 30
+      label: PB12
+    - value: 31
+      label: PB13
+    - value: 32
+      label: PB14
+    - value: 33
+      label: PB15
+    - value: 34
+      label: PC0
+    - value: 35
+      label: PC1
+    - value: 36
+      label: PC2
+    - value: 37
+      label: PC3
+    - value: 38
+      label: PC4
+    - value: 39
+      label: PC5
+    - value: 40
+      label: PC6
+    - value: 41
+      label: PC7
+    - value: 42
+      label: PC8
+    - value: 43
+      label: PC9
+    - value: 44
+      label: PC10
+    - value: 45
+      label: PC11
+    - value: 46
+      label: PC12
+    - value: 47
+      label: PC13
+    - value: 48
+      label: PC14
+    - value: 49
+      label: PC15
+    - value: 50
+      label: PD0
+    - value: 51
+      label: PD1
+    - value: 52
+      label: PD2
+    - value: 53
+      label: PD3
+    - value: 54
+      label: PD4
+    - value: 55
+      label: PD5
+    - value: 56
+      label: PD6
+    - value: 57
+      label: PD7
+    - value: 58
+      label: PD8
+    - value: 59
+      label: PD9
+    - value: 60
+      label: PD10
+    - value: 61
+      label: PD11
+    - value: 62
+      label: PD12
+    - value: 63
+      label: PD13
+    - value: 64
+      label: PD14
+    - value: 65
+      label: PD15
+    - value: 66
+      label: PE0
+    - value: 67
+      label: PE1
+    - value: 68
+      label: PE2
+    - value: 69
+      label: PE3
+    - value: 70
+      label: PE4
+    - value: 71
+      label: PE5
+    - value: 72
+      label: PE6
+    - value: 73
+      label: PE7
+    - value: 74
+      label: PE8
+    - value: 75
+      label: PE9
+    - value: 76
+      label: PE10
+    - value: 77
+      label: PE11
+    - value: 78
+      label: PE12
+    - value: 79
+      label: PE13
+    - value: 80
+      label: PE14
+    - value: 81
+      label: PE15
+    - value: 82
+      label: PF0
+    - value: 83
+      label: PF1
+    - value: 84
+      label: PF2
+    - value: 85
+      label: PF3
+    - value: 86
+      label: PF4
+    - value: 87
+      label: PF5
+    - value: 88
+      label: PF6
+    - value: 89
+      label: PF7
+    - value: 90
+      label: PF8
+    - value: 91
+      label: PF9
+    - value: 92
+      label: PF10
+    - value: 93
+      label: PF11
+    - value: 94
+      label: PF12
+    - value: 95
+      label: PF13
+    - value: 96
+      label: PF14
+    - value: 97
+      label: PF15
+    - value: 98
+      label: PG0
+    - value: 99
+      label: PG1
+    - value: 100
+      label: PG2
+    - value: 101
+      label: PG3
+    - value: 102
+      label: PG4
+    - value: 103
+      label: PG5
+    - value: 104
+      label: PG6
+    - value: 105
+      label: PG7
+    - value: 106
+      label: PG8
+    - value: 107
+      label: PG9
+    - value: 108
+      label: PG10
+    - value: 109
+      label: PG11
+    - value: 110
+      label: PG12
+    - value: 111
+      label: PG13
+    - value: 112
+      label: PG14
+    - value: 113
+      label: PG15
+    - value: 114
+      label: PH0
+    - value: 115
+      label: PH1
+    - value: 116
+      label: PH2
+    - value: 117
+      label: PH3
+    - value: 118
+      label: PH4
+    - value: 119
+      label: PH5
+    - value: 120
+      label: PH6
+    - value: 121
+      label: PH7
+    - value: 122
+      label: PH8
+    - value: 123
+      label: PH9
+    - value: 124
+      label: PH10
+    - value: 125
+      label: PH11
+    - value: 126
+      label: PH12
+    - value: 127
+      label: PH13
+    - value: 128
+      label: PH14
+    - value: 129
+      label: PH15
+    - value: 130
+      label: PI0
+    - value: 131
+      label: PI1
+    - value: 132
+      label: PI2
+    - value: 133
+      label: PI3
+    - value: 134
+      label: PI4
+    - value: 135
+      label: PI5
+    - value: 136
+      label: PI6
+    - value: 137
+      label: PI7
+    - value: 138
+      label: PI8
+    - value: 139
+      label: PI9
+    - value: 140
+      label: PI10
+    - value: 141
+      label: PI11
+    - value: 142
+      label: PI12
+    - value: 143
+      label: PI13
+    - value: 144
+      label: PI14
+    - value: 145
+      label: PI15
+    - value: 146
+      label: PJ0
+    - value: 147
+      label: PJ1
+    - value: 148
+      label: PJ2
+    - value: 149
+      label: PJ3
+    - value: 150
+      label: PJ4
+    - value: 151
+      label: PJ5
+    - value: 152
+      label: PJ6
+    - value: 153
+      label: PJ7
+    - value: 154
+      label: PJ8
+    - value: 155
+      label: PJ9
+    - value: 156
+      label: PJ10
+    - value: 157
+      label: PJ11
+    - value: 158
+      label: PJ12
+    - value: 159
+      label: PJ13
+    - value: 160
+      label: PJ14
+    - value: 161
+      label: PJ15
+    - value: 162
+      label: PK0
+    - value: 163
+      label: PK1
+    - value: 164
+      label: PK2
+    - value: 165
+      label: PK3
+    - value: 166
+      label: PK4
+    - value: 167
+      label: PK5
+    - value: 168
+      label: PK6
+    - value: 169
+      label: PK7
+    - value: 170
+      label: PK8
+    - value: 171
+      label: PK9
+    - value: 172
+      label: PK10
+    - value: 173
+      label: PK11
+    - value: 174
+      label: PK12
+    - value: 175
+      label: PK13
+    - value: 176
+      label: PK14
+    - value: 177
+      label: PK15
     label: Accelerometer CS pin
   bind:
     source: config

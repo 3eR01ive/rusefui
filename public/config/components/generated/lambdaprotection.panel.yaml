@@ -8,10 +8,15 @@ children:
   props:
     title: lambdaProtectionLeft
   children:
-  - type: scalar-field
+  - type: enum-field
     id: lambdaprotectionenable
     props:
       label: Enable lambda protection
+      options:
+      - value: 0
+        label: 'false'
+      - value: 1
+        label: 'true'
     bind:
       source: config
       field: lambdaProtectionEnable
@@ -38,8 +43,8 @@ children:
       field: lambdaProtectionMinRpm
   - type: text
     props:
-      variant: hint
       text: and after delay
+      variant: hint
   - type: scalar-field
     id: then-cut-fuel-until
     props:

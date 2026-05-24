@@ -294,23 +294,20 @@ impl SerialLink {
         Ok(buf)
     }
 
-    /// `C` — запись фрагмента page 0. Legacy INI (`C%2o%2c%v`) — offset+count+data без page;
-    /// новый (`C%2i%2o%2c%v`) — page+offset+count+data (как Java `WriteCommand`).
+    /// `C` — запись фрагмента settings page. Как Java `WriteCommand.getWritePacket`:
+    /// всегда page+offset+count+data (page=0 для settings), даже если INI `pageChunkWrite = "C%2o%2c%v"`.
     pub fn write_config_chunk(
         &mut self,
         page: u16,
         offset: u16,
         data: &[u8],
-        chunk_write_has_page_index: bool,
+        _chunk_write_has_page_index: bool,
     ) -> Result<(), ProtocolError> {
         let count = u16::try_from(data.len())
             .map_err(|_| ProtocolError::InvalidPacket("chunk too large".into()))?;
-        let header_len = if chunk_write_has_page_index { 6 } else { 4 };
-        let mut payload = Vec::with_capacity(1 + header_len + data.len());
+        let mut payload = Vec::with_capacity(1 + 6 + data.len());
         payload.push(TS_CHUNK_WRITE_COMMAND);
-        if chunk_write_has_page_index {
-            payload.extend_from_slice(&page.to_le_bytes());
-        }
+        payload.extend_from_slice(&page.to_le_bytes());
         payload.extend_from_slice(&offset.to_le_bytes());
         payload.extend_from_slice(&count.to_le_bytes());
         payload.extend_from_slice(data);
@@ -509,6 +506,24 @@ mod tests {
             ]
         }
         assert_eq!(r_payload(0, 1024), [b'R', 0, 0, 0, 4]);
+    }
+
+    /// Как Java `WriteCommand` / `ByteRange.packPageOffsetAndSize` — page=0 всегда в теле `C`.
+    #[test]
+    fn write_config_request_always_includes_page_zero() {
+        fn c_payload(page: u16, offset: u16, data: &[u8]) -> Vec<u8> {
+            let count = data.len() as u16;
+            let mut payload = vec![TS_CHUNK_WRITE_COMMAND];
+            payload.extend_from_slice(&page.to_le_bytes());
+            payload.extend_from_slice(&offset.to_le_bytes());
+            payload.extend_from_slice(&count.to_le_bytes());
+            payload.extend_from_slice(data);
+            payload
+        }
+        assert_eq!(
+            c_payload(0, 412, &[0xdc, 0x05]),
+            vec![b'C', 0, 0, 0x9c, 0x01, 0x02, 0x00, 0xdc, 0x05]
+        );
     }
 
     #[test]

@@ -12,9 +12,14 @@ children:
     props:
       title: Sense
     children:
-    - type: scalar-field
+    - type: enum-field
       id: enablesoftwareknock
       props:
+        options:
+        - value: 0
+          label: 'false'
+        - value: 1
+          label: 'true'
         label: Enable
       bind:
         source: config
@@ -33,10 +38,15 @@ children:
       bind:
         source: config
         field: knockFrequency
-    - type: scalar-field
+    - type: enum-field
       id: knockdetectionusedoublefrequency
       props:
         label: Detection mode
+        options:
+        - value: 0
+          label: first harmonic
+        - value: 1
+          label: second harmonic
       bind:
         source: config
         field: knockDetectionUseDoubleFrequency
@@ -54,17 +64,27 @@ children:
       bind:
         source: config
         field: knockSamplingDuration
-    - type: scalar-field
+    - type: enum-field
       id: enableknockspectrogram
       props:
         label: Enable Knock Spectrogram
+        options:
+        - value: 0
+          label: no
+        - value: 1
+          label: yes
       bind:
         source: config
         field: enableKnockSpectrogram
-    - type: scalar-field
+    - type: enum-field
       id: enableknockspectrogramfilter
       props:
         label: Enable Knock Spectrogram Filter
+        options:
+        - value: 0
+          label: 'false'
+        - value: 1
+          label: 'true'
       bind:
         source: config
         field: enableKnockSpectrogramFilter

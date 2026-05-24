@@ -4,10 +4,15 @@ source:
   ini_dialog: mapCurves
   menu_path: Sensors › Chassis sensors › MAP sampling
 children:
-- type: scalar-field
+- type: enum-field
   id: ismapaveragingenabled
   props:
     label: Window averaging
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
   bind:
     source: config
     field: isMapAveragingEnabled
@@ -24,5 +29,5 @@ children:
     text: Таблица/кривая «map_samplingAngleCurve» — редактор пока не реализован
 - type: text
   props:
-    text: Таблица/кривая «map_samplingWindowCurve» — редактор пока не реализован
     variant: hint
+    text: Таблица/кривая «map_samplingWindowCurve» — редактор пока не реализован

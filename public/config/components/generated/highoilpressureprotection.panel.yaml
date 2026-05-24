@@ -13,5 +13,5 @@ children:
     field: maxOilPressureTimeout
 - type: text
   props:
-    variant: hint
     text: Панель «maximumOilPressure» — нет определения в INI
+    variant: hint

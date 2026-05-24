@@ -4,9 +4,14 @@ source:
   ini_dialog: stagedInjection
   menu_path: Fuel › Staged injection
 children:
-- type: scalar-field
+- type: enum-field
   id: enablestagedinjection
   props:
+    options:
+    - value: 0
+      label: 'false'
+    - value: 1
+      label: 'true'
     label: Enable
   bind:
     source: config
@@ -18,10 +23,19 @@ children:
   bind:
     source: config
     field: injectorSecondary_flow
-- type: scalar-field
+- type: enum-field
   id: secondaryinjectorcompensationmode
   props:
     label: Secondary injector flow compensation mode
+    options:
+    - value: 0
+      label: None
+    - value: 1
+      label: Fixed rail pressure
+    - value: 2
+      label: Sensed Rail Pressure
+    - value: 3
+      label: HPFP fuel mass compensation
   bind:
     source: config
     field: secondaryInjectorCompensationMode
@@ -34,5 +48,5 @@ children:
     field: secondaryInjectorFuelReferencePressure
 - type: text
   props:
-    text: Панель «injectorsSecondaryDeadTime» — нет определения в INI
     variant: hint
+    text: Панель «injectorsSecondaryDeadTime» — нет определения в INI

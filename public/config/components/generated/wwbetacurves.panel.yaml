@@ -10,8 +10,8 @@ children:
     variant: hint
 - type: text
   props:
-    text: Таблица/кривая «wwBetaCltCurve» — редактор пока не реализован
     variant: hint
+    text: Таблица/кривая «wwBetaCltCurve» — редактор пока не реализован
 - type: text
   props:
     text: Таблица/кривая «wwBetaMapCurve» — редактор пока не реализован

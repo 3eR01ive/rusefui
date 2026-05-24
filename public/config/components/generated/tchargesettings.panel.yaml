@@ -8,17 +8,26 @@ children:
   props:
     title: tChargeGeneralSettings
   children:
-  - type: scalar-field
+  - type: enum-field
     id: tchargemode
     props:
       label: Mode
+      options:
+      - value: 0
+        label: RPM+TPS (Default)
+      - value: 1
+        label: Air Mass Interpolation
+      - value: 2
+        label: Table
+      - value: 3
+        label: INVALID
     bind:
       source: config
       field: tChargeMode
   - type: text
     props:
-      variant: hint
       text: These two parameters limit the estimate's rate of change
+      variant: hint
   - type: scalar-field
     id: tchargeairincrlimit
     props:
@@ -106,5 +115,5 @@ children:
       field: tChargeAirFlowMax
 - type: text
   props:
-    variant: hint
     text: Таблица/кривая «tchargeCurve» — редактор пока не реализован
+    variant: hint

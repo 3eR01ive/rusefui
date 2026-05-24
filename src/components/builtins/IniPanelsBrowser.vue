@@ -118,6 +118,21 @@ watch(manifest, (m) => {
 const selectedEntry = computed(() =>
   manifest.value?.panels.find((p) => p.id === selectedId.value),
 );
+
+const expandedGroups = ref(new Set<string>());
+
+function isGroupExpanded(group: string): boolean {
+  if (filter.value.trim()) return true;
+  return expandedGroups.value.has(group);
+}
+
+function toggleGroup(group: string): void {
+  if (filter.value.trim()) return;
+  const next = new Set(expandedGroups.value);
+  if (next.has(group)) next.delete(group);
+  else next.add(group);
+  expandedGroups.value = next;
+}
 </script>
 
 <template>
@@ -139,18 +154,29 @@ const selectedEntry = computed(() =>
       <p v-if="loadError" class="err">{{ loadError }}</p>
       <div v-else class="panel-list">
         <div v-for="[group, items] in groupedPanels" :key="group" class="group">
-          <p class="group-title">{{ group }}</p>
           <button
-            v-for="p in items"
-            :key="p.id"
             type="button"
-            class="panel-btn"
-            :class="{ active: p.id === selectedId }"
-            @click="selectedId = p.id"
+            class="group-title"
+            :aria-expanded="isGroupExpanded(group)"
+            @click="toggleGroup(group)"
           >
-            <span class="panel-btn-title">{{ p.title }}</span>
-            <span class="panel-btn-path">{{ p.menuPath }}</span>
+            <span class="group-chevron" :class="{ expanded: isGroupExpanded(group) }">›</span>
+            <span class="group-title-text">{{ group }}</span>
+            <span class="group-count">{{ items.length }}</span>
           </button>
+          <div v-show="isGroupExpanded(group)" class="group-items">
+            <button
+              v-for="p in items"
+              :key="p.id"
+              type="button"
+              class="panel-btn"
+              :class="{ active: p.id === selectedId }"
+              @click="selectedId = p.id"
+            >
+              <span class="panel-btn-title">{{ p.title }}</span>
+              <span class="panel-btn-path">{{ p.menuPath }}</span>
+            </button>
+          </div>
         </div>
       </div>
     </aside>
@@ -227,12 +253,55 @@ const selectedEntry = computed(() =>
 }
 
 .group-title {
-  margin: 0 0 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.35rem 0.25rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
   font-size: 0.68rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--color-gray);
   font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.group-title:hover {
+  background: var(--color-bg-muted);
+}
+
+.group-chevron {
+  display: inline-block;
+  font-size: 0.85rem;
+  line-height: 1;
+  transition: transform 0.15s ease;
+  transform: rotate(0deg);
+}
+
+.group-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.group-title-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.group-count {
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: var(--color-text-subtle);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.group-items {
+  padding-left: 0.5rem;
 }
 
 .panel-btn {

@@ -19,10 +19,15 @@ children:
       bind:
         source: config
         field: https://rusefi.com/s/etb
-    - type: scalar-field
+    - type: enum-field
       id: disableetbwhenenginestopped
       props:
         label: Disable ETB if engine is stopped
+        options:
+        - value: 0
+          label: 'false'
+        - value: 1
+          label: 'true'
       bind:
         source: config
         field: disableEtbWhenEngineStopped
@@ -85,8 +90,8 @@ children:
         field: Disables jam detection for testing until the next power cycle
     - type: text
       props:
-        text: 'Кнопка: Temporarily disable jam detection (cmd_etb_disable_jam_detect)'
         variant: hint
+        text: 'Кнопка: Temporarily disable jam detection (cmd_etb_disable_jam_detect)'
   - type: text
     props:
       text: Панель «etbIndicatorPanel» — нет определения в INI
@@ -168,8 +173,8 @@ children:
         field: Should first OPEN, then CLOSE
     - type: text
       props:
-        variant: hint
         text: Please check with your eyes that throttle first OPENS and then CLOSES
+        variant: hint
     - type: text
       props:
         variant: hint
@@ -198,16 +203,16 @@ children:
         field: Should first OPEN, then CLOSE
     - type: text
       props:
-        variant: hint
         text: Please check with your eyes that throttle first OPENS and then CLOSES
+        variant: hint
     - type: text
       props:
+        variant: hint
         text: If order is reversed swap ETB+/ETB- wires
-        variant: hint
     - type: text
       props:
-        text: 'Кнопка: Auto Calibrate ETB 2 (cmd_etb_auto_calibrate_2)'
         variant: hint
+        text: 'Кнопка: Auto Calibrate ETB 2 (cmd_etb_auto_calibrate_2)'
   - type: section
     props:
       title: Sensor/PID autotune
@@ -239,5 +244,5 @@ children:
         text: 'Кнопка: Start ETB PID Autotune (cmd_etb_autotune)'
     - type: text
       props:
-        text: 'Кнопка: Stop ETB PID Autotune (cmd_etb_autotune_stop)'
         variant: hint
+        text: 'Кнопка: Stop ETB PID Autotune (cmd_etb_autotune_stop)'

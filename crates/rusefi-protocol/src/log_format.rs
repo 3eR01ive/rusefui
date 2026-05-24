@@ -25,16 +25,20 @@ pub fn describe_payload(payload: &[u8]) -> String {
                 format!("read offset={offset} count={count}")
             }
         }
-        b'C' if payload.len() >= 7 => {
-            let page = u16::from_le_bytes([payload[1], payload[2]]);
-            let offset = u16::from_le_bytes([payload[3], payload[4]]);
-            let count = u16::from_le_bytes([payload[5], payload[6]]);
-            format!("write page={page} offset={offset} count={count}")
-        }
         b'C' if payload.len() >= 5 => {
             let offset = u16::from_le_bytes([payload[1], payload[2]]);
             let count = u16::from_le_bytes([payload[3], payload[4]]);
-            format!("write offset={offset} count={count}")
+            // Legacy `C%2o%2c%v`: len = 5 + count. Paged `C%2i%2o%2c%v`: len = 7 + count.
+            if payload.len() == 5 + count as usize {
+                format!("write offset={offset} count={count}")
+            } else if payload.len() >= 7 {
+                let page = u16::from_le_bytes([payload[1], payload[2]]);
+                let off = u16::from_le_bytes([payload[3], payload[4]]);
+                let cnt = u16::from_le_bytes([payload[5], payload[6]]);
+                format!("write page={page} offset={off} count={cnt}")
+            } else {
+                format!("write len={}", payload.len())
+            }
         }
         b'B' if payload.len() >= 3 => {
             let page = u16::from_le_bytes([payload[1], payload[2]]);

@@ -8,10 +8,19 @@ children:
   props:
     title: tpsTpsModeSelector
   children:
-  - type: scalar-field
+  - type: enum-field
     id: accelenrichmentmode
     props:
       label: Mode
+      options:
+      - value: 0
+        label: MS Adder
+      - value: 1
+        label: Percent Adder
+      - value: 2
+        label: MAP Prediction
+      - value: 3
+        label: INVALID
     bind:
       source: config
       field: accelEnrichmentMode

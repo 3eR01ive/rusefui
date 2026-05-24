@@ -4,10 +4,19 @@ source:
   ini_dialog: injectorNonlinear
   menu_path: Fuel › Injector small-pulse correction
 children:
-- type: scalar-field
+- type: enum-field
   id: injectornonlinearmode
   props:
     label: Small pulse correction mode
+    options:
+    - value: 0
+      label: None
+    - value: 1
+      label: Polynomial
+    - value: 2
+      label: Ford (dual slope)
+    - value: 3
+      label: INVALID
   bind:
     source: config
     field: injectorNonlinearMode
@@ -96,10 +105,15 @@ children:
     bind:
       source: config
       field: fordInjectorSmallPulseSlope
-  - type: scalar-field
+  - type: enum-field
     id: injectorflowasmassflow
     props:
       label: Set this to 'mass flow'
+      options:
+      - value: 0
+        label: cc/min
+      - value: 1
+        label: grams per second
     bind:
       source: config
       field: injectorFlowAsMassFlow

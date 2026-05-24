@@ -4,86 +4,2810 @@ source:
   ini_dialog: stagedInjectionOutputs
   menu_path: Fuel › Staged injection outputs
 children:
-- type: scalar-field
+- type: enum-field
   id: injectionpinsstage21
   props:
     label: Injection Stage 2 Output 1
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: INVALID
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVALID
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
+    - value: 8
+      label: INVALID
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: Highside 2
+    - value: 11
+      label: Highside 1
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: Lowside 8
+    - value: 23
+      label: Lowside 9
+    - value: 24
+      label: Lowside 10
+    - value: 25
+      label: Lowside 11
+    - value: 26
+      label: Lowside 12
+    - value: 27
+      label: Lowside 13
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: INVALID
+    - value: 35
+      label: INVALID
+    - value: 36
+      label: INVALID
+    - value: 37
+      label: INVALID
+    - value: 38
+      label: INVALID
+    - value: 39
+      label: INVALID
+    - value: 40
+      label: INVALID
+    - value: 41
+      label: Ign 5
+    - value: 42
+      label: Ign 4
+    - value: 43
+      label: Ign 3
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: Ign 2
+    - value: 54
+      label: Ign 1
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: Lowside 1
+    - value: 58
+      label: STM32 PD8
+    - value: 59
+      label: STM32 PD9
+    - value: 60
+      label: STM32 PD10
+    - value: 61
+      label: STM32 PD11
+    - value: 62
+      label: STM32 PD12
+    - value: 63
+      label: STM32 PD13
+    - value: 64
+      label: Highside 4
+    - value: 65
+      label: Highside 3
+    - value: 66
+      label: Lowside 14 or starter
+    - value: 67
+      label: Lowside 15
+    - value: 68
+      label: Lowside 16
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: INVALID
+    - value: 74
+      label: INVALID
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: INVALID
+    - value: 78
+      label: INVALID
+    - value: 79
+      label: INVALID
+    - value: 80
+      label: INVALID
+    - value: 81
+      label: INVALID
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: Ign 12
+    - value: 101
+      label: Ign 11
+    - value: 102
+      label: Ign 10
+    - value: 103
+      label: Ign 9
+    - value: 104
+      label: Ign 8
+    - value: 105
+      label: Ign 7
+    - value: 106
+      label: Ign 6
+    - value: 107
+      label: Lowside 2
+    - value: 108
+      label: Lowside 3
+    - value: 109
+      label: Lowside 4
+    - value: 110
+      label: Lowside 5
+    - value: 111
+      label: Lowside 6
+    - value: 112
+      label: Lowside 7
   bind:
     source: config
     field: injectionPinsStage21
-- type: scalar-field
+- type: enum-field
   id: injectionpinsstage22
   props:
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: INVALID
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVALID
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
+    - value: 8
+      label: INVALID
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: Highside 2
+    - value: 11
+      label: Highside 1
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: Lowside 8
+    - value: 23
+      label: Lowside 9
+    - value: 24
+      label: Lowside 10
+    - value: 25
+      label: Lowside 11
+    - value: 26
+      label: Lowside 12
+    - value: 27
+      label: Lowside 13
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: INVALID
+    - value: 35
+      label: INVALID
+    - value: 36
+      label: INVALID
+    - value: 37
+      label: INVALID
+    - value: 38
+      label: INVALID
+    - value: 39
+      label: INVALID
+    - value: 40
+      label: INVALID
+    - value: 41
+      label: Ign 5
+    - value: 42
+      label: Ign 4
+    - value: 43
+      label: Ign 3
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: Ign 2
+    - value: 54
+      label: Ign 1
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: Lowside 1
+    - value: 58
+      label: STM32 PD8
+    - value: 59
+      label: STM32 PD9
+    - value: 60
+      label: STM32 PD10
+    - value: 61
+      label: STM32 PD11
+    - value: 62
+      label: STM32 PD12
+    - value: 63
+      label: STM32 PD13
+    - value: 64
+      label: Highside 4
+    - value: 65
+      label: Highside 3
+    - value: 66
+      label: Lowside 14 or starter
+    - value: 67
+      label: Lowside 15
+    - value: 68
+      label: Lowside 16
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: INVALID
+    - value: 74
+      label: INVALID
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: INVALID
+    - value: 78
+      label: INVALID
+    - value: 79
+      label: INVALID
+    - value: 80
+      label: INVALID
+    - value: 81
+      label: INVALID
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: Ign 12
+    - value: 101
+      label: Ign 11
+    - value: 102
+      label: Ign 10
+    - value: 103
+      label: Ign 9
+    - value: 104
+      label: Ign 8
+    - value: 105
+      label: Ign 7
+    - value: 106
+      label: Ign 6
+    - value: 107
+      label: Lowside 2
+    - value: 108
+      label: Lowside 3
+    - value: 109
+      label: Lowside 4
+    - value: 110
+      label: Lowside 5
+    - value: 111
+      label: Lowside 6
+    - value: 112
+      label: Lowside 7
     label: Injection Stage 2 Output 2
   bind:
     source: config
     field: injectionPinsStage22
-- type: scalar-field
+- type: enum-field
   id: injectionpinsstage23
   props:
     label: Injection Stage 2 Output 3
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: INVALID
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVALID
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
+    - value: 8
+      label: INVALID
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: Highside 2
+    - value: 11
+      label: Highside 1
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: Lowside 8
+    - value: 23
+      label: Lowside 9
+    - value: 24
+      label: Lowside 10
+    - value: 25
+      label: Lowside 11
+    - value: 26
+      label: Lowside 12
+    - value: 27
+      label: Lowside 13
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: INVALID
+    - value: 35
+      label: INVALID
+    - value: 36
+      label: INVALID
+    - value: 37
+      label: INVALID
+    - value: 38
+      label: INVALID
+    - value: 39
+      label: INVALID
+    - value: 40
+      label: INVALID
+    - value: 41
+      label: Ign 5
+    - value: 42
+      label: Ign 4
+    - value: 43
+      label: Ign 3
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: Ign 2
+    - value: 54
+      label: Ign 1
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: Lowside 1
+    - value: 58
+      label: STM32 PD8
+    - value: 59
+      label: STM32 PD9
+    - value: 60
+      label: STM32 PD10
+    - value: 61
+      label: STM32 PD11
+    - value: 62
+      label: STM32 PD12
+    - value: 63
+      label: STM32 PD13
+    - value: 64
+      label: Highside 4
+    - value: 65
+      label: Highside 3
+    - value: 66
+      label: Lowside 14 or starter
+    - value: 67
+      label: Lowside 15
+    - value: 68
+      label: Lowside 16
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: INVALID
+    - value: 74
+      label: INVALID
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: INVALID
+    - value: 78
+      label: INVALID
+    - value: 79
+      label: INVALID
+    - value: 80
+      label: INVALID
+    - value: 81
+      label: INVALID
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: Ign 12
+    - value: 101
+      label: Ign 11
+    - value: 102
+      label: Ign 10
+    - value: 103
+      label: Ign 9
+    - value: 104
+      label: Ign 8
+    - value: 105
+      label: Ign 7
+    - value: 106
+      label: Ign 6
+    - value: 107
+      label: Lowside 2
+    - value: 108
+      label: Lowside 3
+    - value: 109
+      label: Lowside 4
+    - value: 110
+      label: Lowside 5
+    - value: 111
+      label: Lowside 6
+    - value: 112
+      label: Lowside 7
   bind:
     source: config
     field: injectionPinsStage23
-- type: scalar-field
+- type: enum-field
   id: injectionpinsstage24
   props:
     label: Injection Stage 2 Output 4
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: INVALID
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVALID
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
+    - value: 8
+      label: INVALID
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: Highside 2
+    - value: 11
+      label: Highside 1
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: Lowside 8
+    - value: 23
+      label: Lowside 9
+    - value: 24
+      label: Lowside 10
+    - value: 25
+      label: Lowside 11
+    - value: 26
+      label: Lowside 12
+    - value: 27
+      label: Lowside 13
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: INVALID
+    - value: 35
+      label: INVALID
+    - value: 36
+      label: INVALID
+    - value: 37
+      label: INVALID
+    - value: 38
+      label: INVALID
+    - value: 39
+      label: INVALID
+    - value: 40
+      label: INVALID
+    - value: 41
+      label: Ign 5
+    - value: 42
+      label: Ign 4
+    - value: 43
+      label: Ign 3
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: Ign 2
+    - value: 54
+      label: Ign 1
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: Lowside 1
+    - value: 58
+      label: STM32 PD8
+    - value: 59
+      label: STM32 PD9
+    - value: 60
+      label: STM32 PD10
+    - value: 61
+      label: STM32 PD11
+    - value: 62
+      label: STM32 PD12
+    - value: 63
+      label: STM32 PD13
+    - value: 64
+      label: Highside 4
+    - value: 65
+      label: Highside 3
+    - value: 66
+      label: Lowside 14 or starter
+    - value: 67
+      label: Lowside 15
+    - value: 68
+      label: Lowside 16
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: INVALID
+    - value: 74
+      label: INVALID
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: INVALID
+    - value: 78
+      label: INVALID
+    - value: 79
+      label: INVALID
+    - value: 80
+      label: INVALID
+    - value: 81
+      label: INVALID
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: Ign 12
+    - value: 101
+      label: Ign 11
+    - value: 102
+      label: Ign 10
+    - value: 103
+      label: Ign 9
+    - value: 104
+      label: Ign 8
+    - value: 105
+      label: Ign 7
+    - value: 106
+      label: Ign 6
+    - value: 107
+      label: Lowside 2
+    - value: 108
+      label: Lowside 3
+    - value: 109
+      label: Lowside 4
+    - value: 110
+      label: Lowside 5
+    - value: 111
+      label: Lowside 6
+    - value: 112
+      label: Lowside 7
   bind:
     source: config
     field: injectionPinsStage24
-- type: scalar-field
+- type: enum-field
   id: injectionpinsstage25
   props:
     label: 'Injection Stage 2 Output 5 '
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: INVALID
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVALID
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
+    - value: 8
+      label: INVALID
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: Highside 2
+    - value: 11
+      label: Highside 1
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: Lowside 8
+    - value: 23
+      label: Lowside 9
+    - value: 24
+      label: Lowside 10
+    - value: 25
+      label: Lowside 11
+    - value: 26
+      label: Lowside 12
+    - value: 27
+      label: Lowside 13
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: INVALID
+    - value: 35
+      label: INVALID
+    - value: 36
+      label: INVALID
+    - value: 37
+      label: INVALID
+    - value: 38
+      label: INVALID
+    - value: 39
+      label: INVALID
+    - value: 40
+      label: INVALID
+    - value: 41
+      label: Ign 5
+    - value: 42
+      label: Ign 4
+    - value: 43
+      label: Ign 3
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: Ign 2
+    - value: 54
+      label: Ign 1
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: Lowside 1
+    - value: 58
+      label: STM32 PD8
+    - value: 59
+      label: STM32 PD9
+    - value: 60
+      label: STM32 PD10
+    - value: 61
+      label: STM32 PD11
+    - value: 62
+      label: STM32 PD12
+    - value: 63
+      label: STM32 PD13
+    - value: 64
+      label: Highside 4
+    - value: 65
+      label: Highside 3
+    - value: 66
+      label: Lowside 14 or starter
+    - value: 67
+      label: Lowside 15
+    - value: 68
+      label: Lowside 16
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: INVALID
+    - value: 74
+      label: INVALID
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: INVALID
+    - value: 78
+      label: INVALID
+    - value: 79
+      label: INVALID
+    - value: 80
+      label: INVALID
+    - value: 81
+      label: INVALID
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: Ign 12
+    - value: 101
+      label: Ign 11
+    - value: 102
+      label: Ign 10
+    - value: 103
+      label: Ign 9
+    - value: 104
+      label: Ign 8
+    - value: 105
+      label: Ign 7
+    - value: 106
+      label: Ign 6
+    - value: 107
+      label: Lowside 2
+    - value: 108
+      label: Lowside 3
+    - value: 109
+      label: Lowside 4
+    - value: 110
+      label: Lowside 5
+    - value: 111
+      label: Lowside 6
+    - value: 112
+      label: Lowside 7
   bind:
     source: config
     field: injectionPinsStage25
-- type: scalar-field
+- type: enum-field
   id: injectionpinsstage26
   props:
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: INVALID
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVALID
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
+    - value: 8
+      label: INVALID
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: Highside 2
+    - value: 11
+      label: Highside 1
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: Lowside 8
+    - value: 23
+      label: Lowside 9
+    - value: 24
+      label: Lowside 10
+    - value: 25
+      label: Lowside 11
+    - value: 26
+      label: Lowside 12
+    - value: 27
+      label: Lowside 13
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: INVALID
+    - value: 35
+      label: INVALID
+    - value: 36
+      label: INVALID
+    - value: 37
+      label: INVALID
+    - value: 38
+      label: INVALID
+    - value: 39
+      label: INVALID
+    - value: 40
+      label: INVALID
+    - value: 41
+      label: Ign 5
+    - value: 42
+      label: Ign 4
+    - value: 43
+      label: Ign 3
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: Ign 2
+    - value: 54
+      label: Ign 1
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: Lowside 1
+    - value: 58
+      label: STM32 PD8
+    - value: 59
+      label: STM32 PD9
+    - value: 60
+      label: STM32 PD10
+    - value: 61
+      label: STM32 PD11
+    - value: 62
+      label: STM32 PD12
+    - value: 63
+      label: STM32 PD13
+    - value: 64
+      label: Highside 4
+    - value: 65
+      label: Highside 3
+    - value: 66
+      label: Lowside 14 or starter
+    - value: 67
+      label: Lowside 15
+    - value: 68
+      label: Lowside 16
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: INVALID
+    - value: 74
+      label: INVALID
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: INVALID
+    - value: 78
+      label: INVALID
+    - value: 79
+      label: INVALID
+    - value: 80
+      label: INVALID
+    - value: 81
+      label: INVALID
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: Ign 12
+    - value: 101
+      label: Ign 11
+    - value: 102
+      label: Ign 10
+    - value: 103
+      label: Ign 9
+    - value: 104
+      label: Ign 8
+    - value: 105
+      label: Ign 7
+    - value: 106
+      label: Ign 6
+    - value: 107
+      label: Lowside 2
+    - value: 108
+      label: Lowside 3
+    - value: 109
+      label: Lowside 4
+    - value: 110
+      label: Lowside 5
+    - value: 111
+      label: Lowside 6
+    - value: 112
+      label: Lowside 7
     label: 'Injection Stage 2 Output 6 '
   bind:
     source: config
     field: injectionPinsStage26
-- type: scalar-field
+- type: enum-field
   id: injectionpinsstage27
   props:
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: INVALID
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVALID
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
+    - value: 8
+      label: INVALID
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: Highside 2
+    - value: 11
+      label: Highside 1
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: Lowside 8
+    - value: 23
+      label: Lowside 9
+    - value: 24
+      label: Lowside 10
+    - value: 25
+      label: Lowside 11
+    - value: 26
+      label: Lowside 12
+    - value: 27
+      label: Lowside 13
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: INVALID
+    - value: 35
+      label: INVALID
+    - value: 36
+      label: INVALID
+    - value: 37
+      label: INVALID
+    - value: 38
+      label: INVALID
+    - value: 39
+      label: INVALID
+    - value: 40
+      label: INVALID
+    - value: 41
+      label: Ign 5
+    - value: 42
+      label: Ign 4
+    - value: 43
+      label: Ign 3
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: Ign 2
+    - value: 54
+      label: Ign 1
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: Lowside 1
+    - value: 58
+      label: STM32 PD8
+    - value: 59
+      label: STM32 PD9
+    - value: 60
+      label: STM32 PD10
+    - value: 61
+      label: STM32 PD11
+    - value: 62
+      label: STM32 PD12
+    - value: 63
+      label: STM32 PD13
+    - value: 64
+      label: Highside 4
+    - value: 65
+      label: Highside 3
+    - value: 66
+      label: Lowside 14 or starter
+    - value: 67
+      label: Lowside 15
+    - value: 68
+      label: Lowside 16
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: INVALID
+    - value: 74
+      label: INVALID
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: INVALID
+    - value: 78
+      label: INVALID
+    - value: 79
+      label: INVALID
+    - value: 80
+      label: INVALID
+    - value: 81
+      label: INVALID
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: Ign 12
+    - value: 101
+      label: Ign 11
+    - value: 102
+      label: Ign 10
+    - value: 103
+      label: Ign 9
+    - value: 104
+      label: Ign 8
+    - value: 105
+      label: Ign 7
+    - value: 106
+      label: Ign 6
+    - value: 107
+      label: Lowside 2
+    - value: 108
+      label: Lowside 3
+    - value: 109
+      label: Lowside 4
+    - value: 110
+      label: Lowside 5
+    - value: 111
+      label: Lowside 6
+    - value: 112
+      label: Lowside 7
     label: 'Injection Stage 2 Output 7 '
   bind:
     source: config
     field: injectionPinsStage27
-- type: scalar-field
+- type: enum-field
   id: injectionpinsstage28
   props:
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: INVALID
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVALID
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
+    - value: 8
+      label: INVALID
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: Highside 2
+    - value: 11
+      label: Highside 1
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: Lowside 8
+    - value: 23
+      label: Lowside 9
+    - value: 24
+      label: Lowside 10
+    - value: 25
+      label: Lowside 11
+    - value: 26
+      label: Lowside 12
+    - value: 27
+      label: Lowside 13
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: INVALID
+    - value: 35
+      label: INVALID
+    - value: 36
+      label: INVALID
+    - value: 37
+      label: INVALID
+    - value: 38
+      label: INVALID
+    - value: 39
+      label: INVALID
+    - value: 40
+      label: INVALID
+    - value: 41
+      label: Ign 5
+    - value: 42
+      label: Ign 4
+    - value: 43
+      label: Ign 3
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: Ign 2
+    - value: 54
+      label: Ign 1
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: Lowside 1
+    - value: 58
+      label: STM32 PD8
+    - value: 59
+      label: STM32 PD9
+    - value: 60
+      label: STM32 PD10
+    - value: 61
+      label: STM32 PD11
+    - value: 62
+      label: STM32 PD12
+    - value: 63
+      label: STM32 PD13
+    - value: 64
+      label: Highside 4
+    - value: 65
+      label: Highside 3
+    - value: 66
+      label: Lowside 14 or starter
+    - value: 67
+      label: Lowside 15
+    - value: 68
+      label: Lowside 16
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: INVALID
+    - value: 74
+      label: INVALID
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: INVALID
+    - value: 78
+      label: INVALID
+    - value: 79
+      label: INVALID
+    - value: 80
+      label: INVALID
+    - value: 81
+      label: INVALID
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: Ign 12
+    - value: 101
+      label: Ign 11
+    - value: 102
+      label: Ign 10
+    - value: 103
+      label: Ign 9
+    - value: 104
+      label: Ign 8
+    - value: 105
+      label: Ign 7
+    - value: 106
+      label: Ign 6
+    - value: 107
+      label: Lowside 2
+    - value: 108
+      label: Lowside 3
+    - value: 109
+      label: Lowside 4
+    - value: 110
+      label: Lowside 5
+    - value: 111
+      label: Lowside 6
+    - value: 112
+      label: Lowside 7
     label: 'Injection Stage 2 Output 8 '
   bind:
     source: config
     field: injectionPinsStage28
-- type: scalar-field
+- type: enum-field
   id: injectionpinsstage29
   props:
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: INVALID
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVALID
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
+    - value: 8
+      label: INVALID
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: Highside 2
+    - value: 11
+      label: Highside 1
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: Lowside 8
+    - value: 23
+      label: Lowside 9
+    - value: 24
+      label: Lowside 10
+    - value: 25
+      label: Lowside 11
+    - value: 26
+      label: Lowside 12
+    - value: 27
+      label: Lowside 13
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: INVALID
+    - value: 35
+      label: INVALID
+    - value: 36
+      label: INVALID
+    - value: 37
+      label: INVALID
+    - value: 38
+      label: INVALID
+    - value: 39
+      label: INVALID
+    - value: 40
+      label: INVALID
+    - value: 41
+      label: Ign 5
+    - value: 42
+      label: Ign 4
+    - value: 43
+      label: Ign 3
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: Ign 2
+    - value: 54
+      label: Ign 1
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: Lowside 1
+    - value: 58
+      label: STM32 PD8
+    - value: 59
+      label: STM32 PD9
+    - value: 60
+      label: STM32 PD10
+    - value: 61
+      label: STM32 PD11
+    - value: 62
+      label: STM32 PD12
+    - value: 63
+      label: STM32 PD13
+    - value: 64
+      label: Highside 4
+    - value: 65
+      label: Highside 3
+    - value: 66
+      label: Lowside 14 or starter
+    - value: 67
+      label: Lowside 15
+    - value: 68
+      label: Lowside 16
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: INVALID
+    - value: 74
+      label: INVALID
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: INVALID
+    - value: 78
+      label: INVALID
+    - value: 79
+      label: INVALID
+    - value: 80
+      label: INVALID
+    - value: 81
+      label: INVALID
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: Ign 12
+    - value: 101
+      label: Ign 11
+    - value: 102
+      label: Ign 10
+    - value: 103
+      label: Ign 9
+    - value: 104
+      label: Ign 8
+    - value: 105
+      label: Ign 7
+    - value: 106
+      label: Ign 6
+    - value: 107
+      label: Lowside 2
+    - value: 108
+      label: Lowside 3
+    - value: 109
+      label: Lowside 4
+    - value: 110
+      label: Lowside 5
+    - value: 111
+      label: Lowside 6
+    - value: 112
+      label: Lowside 7
     label: 'Injection Stage 2 Output 9 '
   bind:
     source: config
     field: injectionPinsStage29
-- type: scalar-field
+- type: enum-field
   id: injectionpinsstage210
   props:
     label: 'Injection Stage 2 Output 10 '
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: INVALID
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVALID
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
+    - value: 8
+      label: INVALID
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: Highside 2
+    - value: 11
+      label: Highside 1
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: Lowside 8
+    - value: 23
+      label: Lowside 9
+    - value: 24
+      label: Lowside 10
+    - value: 25
+      label: Lowside 11
+    - value: 26
+      label: Lowside 12
+    - value: 27
+      label: Lowside 13
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: INVALID
+    - value: 35
+      label: INVALID
+    - value: 36
+      label: INVALID
+    - value: 37
+      label: INVALID
+    - value: 38
+      label: INVALID
+    - value: 39
+      label: INVALID
+    - value: 40
+      label: INVALID
+    - value: 41
+      label: Ign 5
+    - value: 42
+      label: Ign 4
+    - value: 43
+      label: Ign 3
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: Ign 2
+    - value: 54
+      label: Ign 1
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: Lowside 1
+    - value: 58
+      label: STM32 PD8
+    - value: 59
+      label: STM32 PD9
+    - value: 60
+      label: STM32 PD10
+    - value: 61
+      label: STM32 PD11
+    - value: 62
+      label: STM32 PD12
+    - value: 63
+      label: STM32 PD13
+    - value: 64
+      label: Highside 4
+    - value: 65
+      label: Highside 3
+    - value: 66
+      label: Lowside 14 or starter
+    - value: 67
+      label: Lowside 15
+    - value: 68
+      label: Lowside 16
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: INVALID
+    - value: 74
+      label: INVALID
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: INVALID
+    - value: 78
+      label: INVALID
+    - value: 79
+      label: INVALID
+    - value: 80
+      label: INVALID
+    - value: 81
+      label: INVALID
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: Ign 12
+    - value: 101
+      label: Ign 11
+    - value: 102
+      label: Ign 10
+    - value: 103
+      label: Ign 9
+    - value: 104
+      label: Ign 8
+    - value: 105
+      label: Ign 7
+    - value: 106
+      label: Ign 6
+    - value: 107
+      label: Lowside 2
+    - value: 108
+      label: Lowside 3
+    - value: 109
+      label: Lowside 4
+    - value: 110
+      label: Lowside 5
+    - value: 111
+      label: Lowside 6
+    - value: 112
+      label: Lowside 7
   bind:
     source: config
     field: injectionPinsStage210
-- type: scalar-field
+- type: enum-field
   id: injectionpinsstage211
   props:
     label: 'Injection Stage 2 Output 11 '
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: INVALID
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVALID
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
+    - value: 8
+      label: INVALID
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: Highside 2
+    - value: 11
+      label: Highside 1
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: Lowside 8
+    - value: 23
+      label: Lowside 9
+    - value: 24
+      label: Lowside 10
+    - value: 25
+      label: Lowside 11
+    - value: 26
+      label: Lowside 12
+    - value: 27
+      label: Lowside 13
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: INVALID
+    - value: 35
+      label: INVALID
+    - value: 36
+      label: INVALID
+    - value: 37
+      label: INVALID
+    - value: 38
+      label: INVALID
+    - value: 39
+      label: INVALID
+    - value: 40
+      label: INVALID
+    - value: 41
+      label: Ign 5
+    - value: 42
+      label: Ign 4
+    - value: 43
+      label: Ign 3
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: Ign 2
+    - value: 54
+      label: Ign 1
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: Lowside 1
+    - value: 58
+      label: STM32 PD8
+    - value: 59
+      label: STM32 PD9
+    - value: 60
+      label: STM32 PD10
+    - value: 61
+      label: STM32 PD11
+    - value: 62
+      label: STM32 PD12
+    - value: 63
+      label: STM32 PD13
+    - value: 64
+      label: Highside 4
+    - value: 65
+      label: Highside 3
+    - value: 66
+      label: Lowside 14 or starter
+    - value: 67
+      label: Lowside 15
+    - value: 68
+      label: Lowside 16
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: INVALID
+    - value: 74
+      label: INVALID
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: INVALID
+    - value: 78
+      label: INVALID
+    - value: 79
+      label: INVALID
+    - value: 80
+      label: INVALID
+    - value: 81
+      label: INVALID
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: Ign 12
+    - value: 101
+      label: Ign 11
+    - value: 102
+      label: Ign 10
+    - value: 103
+      label: Ign 9
+    - value: 104
+      label: Ign 8
+    - value: 105
+      label: Ign 7
+    - value: 106
+      label: Ign 6
+    - value: 107
+      label: Lowside 2
+    - value: 108
+      label: Lowside 3
+    - value: 109
+      label: Lowside 4
+    - value: 110
+      label: Lowside 5
+    - value: 111
+      label: Lowside 6
+    - value: 112
+      label: Lowside 7
   bind:
     source: config
     field: injectionPinsStage211
-- type: scalar-field
+- type: enum-field
   id: injectionpinsstage212
   props:
+    options:
+    - value: 0
+      label: NONE
+    - value: 1
+      label: INVALID
+    - value: 2
+      label: INVALID
+    - value: 3
+      label: INVALID
+    - value: 4
+      label: INVALID
+    - value: 5
+      label: INVALID
+    - value: 6
+      label: INVALID
+    - value: 7
+      label: INVALID
+    - value: 8
+      label: INVALID
+    - value: 9
+      label: INVALID
+    - value: 10
+      label: Highside 2
+    - value: 11
+      label: Highside 1
+    - value: 12
+      label: INVALID
+    - value: 13
+      label: INVALID
+    - value: 14
+      label: INVALID
+    - value: 15
+      label: INVALID
+    - value: 16
+      label: INVALID
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: Lowside 8
+    - value: 23
+      label: Lowside 9
+    - value: 24
+      label: Lowside 10
+    - value: 25
+      label: Lowside 11
+    - value: 26
+      label: Lowside 12
+    - value: 27
+      label: Lowside 13
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    - value: 32
+      label: INVALID
+    - value: 33
+      label: INVALID
+    - value: 34
+      label: INVALID
+    - value: 35
+      label: INVALID
+    - value: 36
+      label: INVALID
+    - value: 37
+      label: INVALID
+    - value: 38
+      label: INVALID
+    - value: 39
+      label: INVALID
+    - value: 40
+      label: INVALID
+    - value: 41
+      label: Ign 5
+    - value: 42
+      label: Ign 4
+    - value: 43
+      label: Ign 3
+    - value: 44
+      label: INVALID
+    - value: 45
+      label: INVALID
+    - value: 46
+      label: INVALID
+    - value: 47
+      label: INVALID
+    - value: 48
+      label: INVALID
+    - value: 49
+      label: INVALID
+    - value: 50
+      label: INVALID
+    - value: 51
+      label: INVALID
+    - value: 52
+      label: INVALID
+    - value: 53
+      label: Ign 2
+    - value: 54
+      label: Ign 1
+    - value: 55
+      label: INVALID
+    - value: 56
+      label: INVALID
+    - value: 57
+      label: Lowside 1
+    - value: 58
+      label: STM32 PD8
+    - value: 59
+      label: STM32 PD9
+    - value: 60
+      label: STM32 PD10
+    - value: 61
+      label: STM32 PD11
+    - value: 62
+      label: STM32 PD12
+    - value: 63
+      label: STM32 PD13
+    - value: 64
+      label: Highside 4
+    - value: 65
+      label: Highside 3
+    - value: 66
+      label: Lowside 14 or starter
+    - value: 67
+      label: Lowside 15
+    - value: 68
+      label: Lowside 16
+    - value: 69
+      label: INVALID
+    - value: 70
+      label: INVALID
+    - value: 71
+      label: INVALID
+    - value: 72
+      label: INVALID
+    - value: 73
+      label: INVALID
+    - value: 74
+      label: INVALID
+    - value: 75
+      label: INVALID
+    - value: 76
+      label: INVALID
+    - value: 77
+      label: INVALID
+    - value: 78
+      label: INVALID
+    - value: 79
+      label: INVALID
+    - value: 80
+      label: INVALID
+    - value: 81
+      label: INVALID
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: Ign 12
+    - value: 101
+      label: Ign 11
+    - value: 102
+      label: Ign 10
+    - value: 103
+      label: Ign 9
+    - value: 104
+      label: Ign 8
+    - value: 105
+      label: Ign 7
+    - value: 106
+      label: Ign 6
+    - value: 107
+      label: Lowside 2
+    - value: 108
+      label: Lowside 3
+    - value: 109
+      label: Lowside 4
+    - value: 110
+      label: Lowside 5
+    - value: 111
+      label: Lowside 6
+    - value: 112
+      label: Lowside 7
     label: 'Injection Stage 2 Output 12 '
   bind:
     source: config

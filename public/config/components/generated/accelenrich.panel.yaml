@@ -8,9 +8,18 @@ children:
   props:
     title: TPS
   children:
-  - type: scalar-field
+  - type: enum-field
     id: accelenrichmentmode
     props:
+      options:
+      - value: 0
+        label: MS Adder
+      - value: 1
+        label: Percent Adder
+      - value: 2
+        label: MAP Prediction
+      - value: 3
+        label: INVALID
       label: Accel Enrichment Mode
     bind:
       source: config
@@ -76,10 +85,15 @@ children:
   props:
     title: Wall Wetting (alpha version)
   children:
-  - type: scalar-field
+  - type: enum-field
     id: complexwallmodel
     props:
       label: Wall fueling model type
+      options:
+      - value: 0
+        label: Basic (constants)
+      - value: 1
+        label: Advanced (tables)
     bind:
       source: config
       field: complexWallModel
