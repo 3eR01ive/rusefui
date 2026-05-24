@@ -23,12 +23,12 @@ children:
 - type: enum-field
   id: can1listenmode
   props:
-    label: can1ListenMode
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: can1ListenMode
   bind:
     source: config
     field: can1ListenMode
@@ -47,18 +47,19 @@ children:
 - type: enum-field
   id: rethrowhardfault
   props:
+    label: rethrowHardFault
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: rethrowHardFault
   bind:
     source: config
     field: rethrowHardFault
 - type: enum-field
   id: cangpiotype
   props:
+    label: canGpioType
     options:
     - value: 0
       label: None
@@ -68,7 +69,6 @@ children:
       label: MS protocol
     - value: 3
       label: INVALID
-    label: canGpioType
   bind:
     source: config
     field: canGpioType
@@ -86,8 +86,8 @@ children:
     field: yesUnderstandLocking
 - type: text
   props:
-    text: Use console for unlocking
     variant: hint
+    text: Use console for unlocking
 - type: scalar-field
   id: tunehidingkey
   props:
@@ -109,8 +109,8 @@ children:
     field: verboseQuad
 - type: text
   props:
-    text: System hacks
     variant: hint
+    text: System hacks
 - type: enum-field
   id: vvtbooleanforveryspecialcases
   props:
@@ -126,12 +126,12 @@ children:
 - type: enum-field
   id: watchoutforlineartime
   props:
+    label: watchOutForLinearTime
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: watchOutForLinearTime
   bind:
     source: config
     field: watchOutForLinearTime
@@ -150,12 +150,12 @@ children:
 - type: enum-field
   id: consumeobdsensors
   props:
+    label: consumeObdSensors
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: consumeObdSensors
   bind:
     source: config
     field: consumeObdSensors
@@ -174,12 +174,12 @@ children:
 - type: enum-field
   id: artificialtestmisfire
   props:
-    label: Artificial Misfire
     options:
     - value: 0
       label: No thank you
     - value: 1
       label: Danger Mode
+    label: Artificial Misfire
   bind:
     source: config
     field: artificialTestMisfire
@@ -198,12 +198,12 @@ children:
 - type: enum-field
   id: modeledflowidle
   props:
+    label: Modeled flow idle
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: Modeled flow idle
   bind:
     source: config
     field: modeledFlowIdle

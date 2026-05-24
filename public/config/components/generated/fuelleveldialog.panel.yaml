@@ -78,10 +78,15 @@ children:
     bind:
       source: config
       field: fuelLevelUpdatePeriodSec
-  - type: text
+  - type: config-table
+    id: fuellevelcurve
     props:
-      variant: hint
-      text: Таблица/кривая «fuelLevelCurve» — редактор пока не реализован
+      variant: curve
+      xBins: fuelLevelBins
+      title: Fuel Level
+      yBins: fuelLevelValues
+      xLabel: Voltage
+      yLabel: '%'
 - type: section
   props:
     title: fuelLevelGauges

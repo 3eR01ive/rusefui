@@ -10,24 +10,24 @@ children:
     text: The bias table controls how much of the blend table
 - type: text
   props:
-    variant: hint
     text: is mixed in to the open loop boost table. For example, a value of
+    variant: hint
 - type: text
   props:
     variant: hint
     text: +10 in the table, with 50 as the current bias will result
 - type: text
   props:
-    variant: hint
     text: in +5.0 added to the boost open loop %.
+    variant: hint
 - type: text
   props:
+    variant: hint
     text: The X axis of the bias table is controlled by the selected blend
-    variant: hint
 - type: text
   props:
-    text: parameter below.
     variant: hint
+    text: parameter below.
 - type: text
   props:
     variant: hint
@@ -188,7 +188,12 @@ children:
   bind:
     source: config
     field: boostOpenLoopBlends1_yAxisOverride
-- type: text
+- type: config-table
+  id: boostopenloopblend1bias
   props:
-    variant: hint
-    text: Панель «boostOpenLoopBlend1Bias» — нет определения в INI
+    title: Boost open loop blend 1 bias
+    yLabel: bias
+    xBins: boostOpenLoopBlends1_blendBins
+    variant: curve
+    yBins: boostOpenLoopBlends1_blendValues
+    xLabel: param

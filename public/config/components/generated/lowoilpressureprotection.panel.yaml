@@ -30,7 +30,12 @@ children:
   bind:
     source: config
     field: minimumOilPressureTimeout
-- type: text
+- type: config-table
+  id: minimumoilpressure
   props:
-    text: Панель «minimumOilPressure» — нет определения в INI
-    variant: hint
+    xBins: minimumOilPressureBins
+    yBins: minimumOilPressureValues
+    xLabel: RPM
+    title: Minimum oil pressure
+    yLabel: min pressure
+    variant: curve

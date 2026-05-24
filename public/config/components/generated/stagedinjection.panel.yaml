@@ -7,12 +7,12 @@ children:
 - type: enum-field
   id: enablestagedinjection
   props:
+    label: Enable
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: Enable
   bind:
     source: config
     field: enableStagedInjection
@@ -46,7 +46,13 @@ children:
   bind:
     source: config
     field: secondaryInjectorFuelReferencePressure
-- type: text
+- type: config-table
+  id: injectorssecondarydeadtime
   props:
-    variant: hint
-    text: Панель «injectorsSecondaryDeadTime» — нет определения в INI
+    xLabel: Battery
+    title: Secondary injector dead time
+    yLabel: Pressure
+    xBins: injectorSecondary_battLagCorrBattBins
+    yBins: injectorSecondary_battLagCorrPressBins
+    zBins: injectorSecondary_battLagCorrTable
+    variant: table

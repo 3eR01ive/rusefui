@@ -7,7 +7,6 @@ children:
 - type: enum-field
   id: etbfunctions1
   props:
-    label: 'H-Bridge #1 function'
     options:
     - value: 0
       label: None
@@ -25,6 +24,7 @@ children:
       label: INVALID
     - value: 7
       label: INVALID
+    label: 'H-Bridge #1 function'
   bind:
     source: config
     field: etbFunctions1

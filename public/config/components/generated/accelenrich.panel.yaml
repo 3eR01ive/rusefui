@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: accelenrichmentmode
     props:
+      label: Accel Enrichment Mode
       options:
       - value: 0
         label: MS Adder
@@ -20,7 +21,6 @@ children:
         label: MAP Prediction
       - value: 3
         label: INVALID
-      label: Accel Enrichment Mode
     bind:
       source: config
       field: accelEnrichmentMode

@@ -11,12 +11,12 @@ children:
 - type: enum-field
   id: usefixedbarocorrfrommap
   props:
-    label: Grab baro value from MAP
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: Grab baro value from MAP
   bind:
     source: config
     field: useFixedBaroCorrFromMap

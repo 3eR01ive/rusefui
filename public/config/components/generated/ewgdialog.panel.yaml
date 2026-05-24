@@ -82,5 +82,5 @@ children:
         field: 'First step: calibrate EWG position sensor and hit ''Burn'''
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Auto Calibrate EWG (cmd_ewg_auto_calibrate_1)'
+        variant: hint

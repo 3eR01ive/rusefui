@@ -23,6 +23,8 @@ pub fn run() {
             runtime_cmds::config_list_fields,
             runtime_cmds::config_start_listener,
             runtime_cmds::config_set_scalar,
+            runtime_cmds::config_get_array,
+            runtime_cmds::config_set_array_value,
             runtime_cmds::ini_get_info,
             runtime_cmds::protocol_log_get,
             runtime_cmds::protocol_log_set_filters,

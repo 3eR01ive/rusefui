@@ -6,8 +6,8 @@ source:
 children:
 - type: text
   props:
-    text: The bias table controls how much of the blend table
     variant: hint
+    text: The bias table controls how much of the blend table
 - type: text
   props:
     variant: hint
@@ -18,16 +18,16 @@ children:
     text: +10 in the table, with 50 as the current bias will result
 - type: text
   props:
-    variant: hint
     text: in 5.0 degrees of ignition timing added.
+    variant: hint
 - type: text
   props:
+    variant: hint
     text: The X axis of the bias table is controlled by the selected blend
-    variant: hint
 - type: text
   props:
-    variant: hint
     text: parameter below.
+    variant: hint
 - type: enum-field
   id: ignblends1-blendparameter
   props:
@@ -109,7 +109,6 @@ children:
 - type: enum-field
   id: ignblends1-yaxisoverride
   props:
-    label: Y axis override (set Zero for no override)
     options:
     - value: 0
       label: Zero
@@ -181,10 +180,16 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
+    label: Y axis override (set Zero for no override)
   bind:
     source: config
     field: ignBlends1_yAxisOverride
-- type: text
+- type: config-table
+  id: ignadder1bias
   props:
-    variant: hint
-    text: Панель «ignAdder1Bias» — нет определения в INI
+    xBins: ignBlends1_blendBins
+    title: Ignition adder 1 bias
+    variant: curve
+    yLabel: bias
+    xLabel: param
+    yBins: ignBlends1_blendValues

@@ -23,11 +23,21 @@ children:
   bind:
     source: config
     field: mapExpAverageAlpha
-- type: text
+- type: config-table
+  id: map-samplinganglecurve
   props:
-    variant: hint
-    text: Таблица/кривая «map_samplingAngleCurve» — редактор пока не реализован
-- type: text
+    title: MAP Sampling Start Angle
+    xBins: map_samplingAngleBins
+    yBins: map_samplingAngle
+    variant: curve
+    xLabel: RPM
+    yLabel: Angle
+- type: config-table
+  id: map-samplingwindowcurve
   props:
-    variant: hint
-    text: Таблица/кривая «map_samplingWindowCurve» — редактор пока не реализован
+    xLabel: RPM
+    title: MAP Sampling Duration
+    yLabel: Window
+    yBins: map_samplingWindow
+    variant: curve
+    xBins: map_samplingWindowBins

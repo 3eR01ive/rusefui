@@ -6,12 +6,12 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: The bias table controls how much of the blend table
+    variant: hint
 - type: text
   props:
-    text: is mixed in to the open loop boost table. For example, a value of
     variant: hint
+    text: is mixed in to the open loop boost table. For example, a value of
 - type: text
   props:
     variant: hint
@@ -26,8 +26,8 @@ children:
     variant: hint
 - type: text
   props:
-    text: parameter below.
     variant: hint
+    text: parameter below.
 - type: text
   props:
     text: Панель «isBoostControlledPanel» — нет определения в INI
@@ -35,7 +35,6 @@ children:
 - type: enum-field
   id: boostopenloopblends2-blendparameter
   props:
-    label: Blend parameter
     options:
     - value: 0
       label: Zero
@@ -107,6 +106,7 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
+    label: Blend parameter
   bind:
     source: config
     field: boostOpenLoopBlends2_blendParameter
@@ -188,7 +188,12 @@ children:
   bind:
     source: config
     field: boostOpenLoopBlends2_yAxisOverride
-- type: text
+- type: config-table
+  id: boostopenloopblend2bias
   props:
-    text: Панель «boostOpenLoopBlend2Bias» — нет определения в INI
-    variant: hint
+    variant: curve
+    xLabel: param
+    yLabel: bias
+    title: Boost open loop blend 2 bias
+    xBins: boostOpenLoopBlends2_blendBins
+    yBins: boostOpenLoopBlends2_blendValues

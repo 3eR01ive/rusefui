@@ -67,12 +67,12 @@ children:
     - type: enum-field
       id: enableknockspectrogram
       props:
-        label: Enable Knock Spectrogram
         options:
         - value: 0
           label: no
         - value: 1
           label: yes
+        label: Enable Knock Spectrogram
       bind:
         source: config
         field: enableKnockSpectrogram
@@ -144,7 +144,12 @@ children:
       bind:
         source: config
         field: knockSuppressMinTps
-- type: text
+- type: config-table
+  id: knockthresholdcurve
   props:
-    text: Таблица/кривая «knockThresholdCurve» — редактор пока не реализован
-    variant: hint
+    variant: curve
+    xLabel: RPM
+    title: Engine Knock Threshold RPM Based
+    yLabel: Threshold
+    xBins: knockNoiseRpmBins
+    yBins: knockBaseNoise

@@ -28,8 +28,8 @@ children:
         field: mapErrorDetectionTooHigh
     - type: text
       props:
-        text: Панель «mapValidIndicators» — нет определения в INI
         variant: hint
+        text: Панель «mapValidIndicators» — нет определения в INI
     - type: enum-field
       id: measuremaponlyinonecylinder
       props:
@@ -105,6 +105,7 @@ children:
     - type: enum-field
       id: map-sensor-type
       props:
+        label: MAP type
         options:
         - value: 0
           label: Custom
@@ -170,7 +171,6 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
-        label: MAP type
       bind:
         source: config
         field: map_sensor_type

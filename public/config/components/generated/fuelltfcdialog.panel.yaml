@@ -65,12 +65,12 @@ children:
     - type: enum-field
       id: ltft-correctionenabled
       props:
+        label: Enable correction
         options:
         - value: 0
           label: 'false'
         - value: 1
           label: 'true'
-        label: Enable correction
       bind:
         source: config
         field: ltft_correctionEnabled
@@ -80,8 +80,8 @@ children:
     children:
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Reset LTFT trims (cmd_ltft_reset)'
+        variant: hint
     - type: text
       props:
         text: 'Кнопка: Apply LTFT to VE and reset (cmd_ltft_apply_to_ve)'
@@ -92,12 +92,12 @@ children:
     children:
     - type: text
       props:
-        variant: hint
         text: Панель «ltftIndicatorsPanel» — нет определения в INI
+        variant: hint
     - type: text
       props:
-        variant: hint
         text: Панель «ltftValuesReadoutPanel» — нет определения в INI
+        variant: hint
 - type: section
   props:
     title: Trim bank 2

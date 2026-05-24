@@ -82,7 +82,13 @@ children:
   bind:
     source: config
     field: torqueReductionCutXaxis
-- type: text
+- type: config-table
+  id: torquereductionignitioncuttlb
   props:
-    text: Панель «torqueReductionIgnitionCutTlb» — нет определения в INI
-    variant: hint
+    xBins: torqueReductionCutXBins
+    yBins: torqueReductionCutGearBins
+    variant: table
+    title: Torque reduction cut table
+    zBins: torqueReductionIgnitionCutTable
+    yLabel: torqueReductionCutXaxis)}
+    xLabel: = {bitStringValue(pwmAxisLabels

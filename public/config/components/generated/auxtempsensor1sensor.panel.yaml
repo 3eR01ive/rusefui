@@ -52,12 +52,12 @@ children:
       field: auxTempSensor1_adcChannel
   - type: text
     props:
-      text: Here is three pairs of thermistor temperature and resistance.
       variant: hint
+      text: Here is three pairs of thermistor temperature and resistance.
   - type: text
     props:
-      text: Typical temperatures is -40 deg C, 0 deg C and 100 deg C
       variant: hint
+      text: Typical temperatures is -40 deg C, 0 deg C and 100 deg C
   - type: scalar-field
     id: auxtempsensor1-tempc-1
     props:

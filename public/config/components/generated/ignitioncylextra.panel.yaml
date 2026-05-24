@@ -20,8 +20,8 @@ children:
     field: engine, like a v-twin or some V6/V10 engines
 - type: text
   props:
-    variant: hint
     text: Positive numbers retard, negative numbers advance
+    variant: hint
 - type: scalar-field
   id: timing-offset-cylinder1
   props:

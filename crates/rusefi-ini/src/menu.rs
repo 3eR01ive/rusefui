@@ -125,7 +125,7 @@ fn leading_indent(line: &str) -> usize {
     line.len() - line.trim_start().len()
 }
 
-fn ini_rhs<'a>(line: &'a str, key: &str) -> Option<&'a str> {
+pub(crate) fn ini_rhs<'a>(line: &'a str, key: &str) -> Option<&'a str> {
     let trimmed = line.trim();
     let prefix = format!("{key}=");
     let prefix_sp = format!("{key} =");

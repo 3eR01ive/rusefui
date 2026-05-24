@@ -11,12 +11,12 @@ children:
   - type: enum-field
     id: widebandonsecondbus
     props:
-      label: Wideband CAN bus
       options:
       - value: 0
         label: CAN1
       - value: 1
         label: CAN2
+      label: Wideband CAN bus
     bind:
       source: config
       field: widebandOnSecondBus
@@ -29,8 +29,8 @@ children:
       field: canReWidebandHwIndex
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Ping/Get FW version (cmd_set_wideband_ping_by_id)'
+      variant: hint
   - type: scalar-field
     id: canrewidebandcanid
     props:
@@ -40,12 +40,12 @@ children:
       field: canReWidebandCanId
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Set Index (cmd_set_wideband_idx_by_id)'
+      variant: hint
   - type: text
     props:
-      text: 'Кнопка: Update 2025 Firmware (cmd_set_wideband_flash_by_id)'
       variant: hint
+      text: 'Кнопка: Update 2025 Firmware (cmd_set_wideband_flash_by_id)'
   - type: scalar-field
     id: fw-version-and-build-date
     props:
@@ -63,16 +63,16 @@ children:
   children:
   - type: text
     props:
-      variant: hint
       text: Please connect exactly one wideband controller before pressing this button!
+      variant: hint
   - type: text
     props:
       text: 'Кнопка: Update 2023 Firmware (cmd_wideband_firmare_update)'
       variant: hint
 - type: text
   props:
-    text: Панель «canReWidebandIndicators» — нет определения в INI
     variant: hint
+    text: Панель «canReWidebandIndicators» — нет определения в INI
 - type: section
   props:
     title: rusEFI Wideband 1 auto remap
@@ -92,7 +92,6 @@ children:
   - type: enum-field
     id: canwbo1-rehwidx
     props:
-      label: rusEFI WBO hardware index
       options:
       - value: 0
         label: Idx 0
@@ -126,12 +125,14 @@ children:
         label: INVALID
       - value: 15
         label: INVALID
+      label: rusEFI WBO hardware index
     bind:
       source: config
       field: canWbo1_reHwidx
   - type: enum-field
     id: canwbo1-reid
     props:
+      label: rusEFI WBO CAN ID
       options:
       - value: 0
         label: ID1 0x190/191
@@ -165,7 +166,6 @@ children:
         label: ID15 0x20C/20D
       - value: 15
         label: ID16 0x20E/20F
-      label: rusEFI WBO CAN ID
     bind:
       source: config
       field: canWbo1_reId
@@ -188,7 +188,6 @@ children:
   - type: enum-field
     id: canwbo2-rehwidx
     props:
-      label: rusEFI WBO hardware index
       options:
       - value: 0
         label: Idx 0
@@ -222,12 +221,14 @@ children:
         label: INVALID
       - value: 15
         label: INVALID
+      label: rusEFI WBO hardware index
     bind:
       source: config
       field: canWbo2_reHwidx
   - type: enum-field
     id: canwbo2-reid
     props:
+      label: rusEFI WBO CAN ID
       options:
       - value: 0
         label: ID1 0x190/191
@@ -261,7 +262,6 @@ children:
         label: ID15 0x20C/20D
       - value: 15
         label: ID16 0x20E/20F
-      label: rusEFI WBO CAN ID
     bind:
       source: config
       field: canWbo2_reId

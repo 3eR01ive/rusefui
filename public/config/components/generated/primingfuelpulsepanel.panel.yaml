@@ -11,7 +11,12 @@ children:
   bind:
     source: config
     field: primingDelay
-- type: text
+- type: config-table
+  id: primingpulse
   props:
-    text: Панель «primingPulse» — нет определения в INI
-    variant: hint
+    xBins: primeBins
+    yBins: primeValues
+    title: Priming pulse fuel mass
+    xLabel: Coolant
+    variant: curve
+    yLabel: Prime Pulse

@@ -7,19 +7,19 @@ children:
 - type: enum-field
   id: useidletimingpidcontrol
   props:
+    label: Enable closed loop idle ignition timing
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: Enable closed loop idle ignition timing
   bind:
     source: config
     field: useIdleTimingPidControl
 - type: text
   props:
-    text: Gain is in degrees advance per rpm away from target
     variant: hint
+    text: Gain is in degrees advance per rpm away from target
 - type: text
   props:
     text: A good starting point is 0.1 = 10 deg per 100 rpm

@@ -4,11 +4,21 @@ source:
   ini_dialog: dwellSettings
   menu_path: Ignition › Dwell
 children:
-- type: text
+- type: config-table
+  id: dwellcorrection
   props:
-    text: Панель «dwellCorrection» — нет определения в INI
-    variant: hint
-- type: text
+    variant: curve
+    title: Dwell time base
+    xLabel: RPM
+    yBins: sparkDwellValues
+    xBins: sparkDwellRpmBins
+    yLabel: Dwell
+- type: config-table
+  id: dwellvoltagecorrection
   props:
-    text: Панель «dwellVoltageCorrection» — нет определения в INI
-    variant: hint
+    yLabel: Multiplier
+    xBins: dwellVoltageCorrVoltBins
+    xLabel: Battery Volts
+    variant: curve
+    yBins: dwellVoltageCorrValues
+    title: Dwell voltage correction

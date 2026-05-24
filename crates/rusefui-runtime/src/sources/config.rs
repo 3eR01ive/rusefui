@@ -4,7 +4,10 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::thread::{self, sleep, JoinHandle};
 use std::time::Duration;
 
-use rusefi_ini::{decode_config_at, decode_config_fields, encode_config_value, ConfigFieldKind};
+use rusefi_ini::{
+    decode_array, decode_config_at, decode_config_fields, encode_array_element,
+    encode_config_value, ArrayShape, ConfigFieldKind,
+};
 use rusefi_protocol::{ProtocolError, TS_PAGE_SETTINGS};
 use serde::Serialize;
 
@@ -32,6 +35,12 @@ pub struct ConfigFieldInfo {
     pub ty: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub options: Option<Vec<ConfigEnumOption>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub array_cols: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub array_rows: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub array_length: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -106,6 +115,9 @@ impl ConfigSource {
                     },
                     ty: "scalar".into(),
                     options: None,
+                    array_cols: None,
+                    array_rows: None,
+                    array_length: None,
                 },
                 ConfigFieldKind::Enum(e) => ConfigFieldInfo {
                     name: name.clone(),
@@ -120,9 +132,89 @@ impl ConfigSource {
                             })
                             .collect(),
                     ),
+                    array_cols: None,
+                    array_rows: None,
+                    array_length: None,
+                },
+                ConfigFieldKind::Array(a) => {
+                    let (array_cols, array_rows, array_length) = match a.shape {
+                        ArrayShape::Vector(n) => (None, None, Some(n)),
+                        ArrayShape::Matrix { cols, rows } => (Some(cols), Some(rows), None),
+                    };
+                    ConfigFieldInfo {
+                        name: name.clone(),
+                        units: if a.units.is_empty() {
+                            None
+                        } else {
+                            Some(a.units.clone())
+                        },
+                        ty: "array".into(),
+                        options: None,
+                        array_cols,
+                        array_rows,
+                        array_length,
+                    }
                 },
             })
             .collect()
+    }
+
+    pub fn get_array(&self, name: &str) -> Result<Vec<f64>, String> {
+        let ini = self.ini.lock().unwrap();
+        let field = ini
+            .config_fields
+            .get(name)
+            .ok_or_else(|| format!("unknown config field: {name}"))?;
+        let ConfigFieldKind::Array(array) = field else {
+            return Err(format!("{name} is not an array field"));
+        };
+        let raw = self.raw.lock().unwrap();
+        Ok(decode_array(array, &raw))
+    }
+
+    pub fn write_array_value(
+        &self,
+        session: &EcuSession,
+        name: &str,
+        index: usize,
+        value: f64,
+    ) -> Result<(), String> {
+        let ini = self.ini.lock().unwrap().clone();
+        let field = ini
+            .config_fields
+            .get(name)
+            .ok_or_else(|| format!("unknown config field: {name}"))?;
+        let ConfigFieldKind::Array(array) = field else {
+            return Err(format!("{name} is not an array field"));
+        };
+        let (offset, encoded) = encode_array_element(array, index, value)
+            .ok_or_else(|| format!("cannot encode array value for {name}[{index}]"))?;
+
+        if offset > u16::MAX as u32 {
+            return Err(format!("offset {name}[{index}] exceeds protocol limit"));
+        }
+
+        session.with_link(|link| {
+            link.write_config_chunk(
+                TS_PAGE_SETTINGS,
+                offset as u16,
+                &encoded,
+                true,
+            )?;
+            sleep(Duration::from_millis(INTER_WRITE_DELAY_MS));
+            Ok(())
+        })?;
+
+        {
+            let mut raw = self.raw.lock().unwrap();
+            let off = offset as usize;
+            if off + encoded.len() > raw.len() {
+                raw.resize(off + encoded.len(), 0);
+            }
+            raw[off..off + encoded.len()].copy_from_slice(&encoded);
+        }
+
+        Ok(())
     }
 
     pub fn stop(&self) {
@@ -409,5 +501,6 @@ fn config_field_offset(field: &ConfigFieldKind) -> u32 {
     match field {
         ConfigFieldKind::Scalar(s) => s.offset,
         ConfigFieldKind::Enum(e) => e.bits.offset,
+        ConfigFieldKind::Array(a) => a.offset,
     }
 }

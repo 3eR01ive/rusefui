@@ -6,11 +6,12 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: <html><a href=https://github.com/rusefi/rusefi/wiki/MAF>https://github.com/rusefi/rusefi/wiki/MAF</a></html>
+    variant: hint
 - type: enum-field
   id: mafadcchannel
   props:
+    label: MAF ADC input
     options:
     - value: 0
       label: NONE
@@ -46,7 +47,6 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
-    label: MAF ADC input
   bind:
     source: config
     field: mafAdcChannel

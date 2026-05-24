@@ -6,12 +6,12 @@ source:
 children:
 - type: text
   props:
-    text: Put this sensor before any turbocharger/supercharger
     variant: hint
+    text: Put this sensor before any turbocharger/supercharger
 - type: text
   props:
-    variant: hint
     text: near the air filter.
+    variant: hint
 - type: enum-field
   id: ambienttempsensor-adcchannel
   props:

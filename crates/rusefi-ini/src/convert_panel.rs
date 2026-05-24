@@ -5,7 +5,7 @@ use std::collections::{HashMap, HashSet};
 use serde::Serialize;
 
 use crate::menu::{DialogItem, IniMenu, MenuEntry};
-use crate::model::{ConfigFieldKind, EnumOption};
+use crate::model::{ConfigFieldKind, EnumOption, IniCurveDef, IniTableDef};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -66,6 +66,8 @@ pub struct ConvertResult {
 pub fn convert_menu_panels(
     menu: &IniMenu,
     config_fields: &HashMap<String, ConfigFieldKind>,
+    tables: &HashMap<String, IniTableDef>,
+    curves: &HashMap<String, IniCurveDef>,
     ini_source: &str,
 ) -> ConvertResult {
     let mut seen = HashSet::new();
@@ -81,7 +83,7 @@ pub fn convert_menu_panels(
         }
 
         let file_name = format!("{}.panel.yaml", slugify(&entry.dialog_id));
-        let panel = build_panel_yaml(menu, entry, config_fields);
+        let panel = build_panel_yaml(menu, entry, config_fields, tables, curves);
         let yaml = serde_yaml::to_string(&panel).expect("panel yaml");
         files.insert(file_name.clone(), yaml);
         manifest_entries.push(PanelManifestEntry {
@@ -105,9 +107,19 @@ fn build_panel_yaml(
     menu: &IniMenu,
     entry: &MenuEntry,
     config_fields: &HashMap<String, ConfigFieldKind>,
+    tables: &HashMap<String, IniTableDef>,
+    curves: &HashMap<String, IniCurveDef>,
 ) -> PanelYamlFile {
     let mut visited = HashSet::new();
-    let children = convert_dialog_items(menu, &entry.dialog_id, config_fields, &mut visited, 0);
+    let children = convert_dialog_items(
+        menu,
+        &entry.dialog_id,
+        config_fields,
+        tables,
+        curves,
+        &mut visited,
+        0,
+    );
 
     let dialog = menu.dialogs.get(&entry.dialog_id);
     let description = dialog
@@ -135,6 +147,8 @@ fn convert_dialog_items(
     menu: &IniMenu,
     dialog_id: &str,
     config_fields: &HashMap<String, ConfigFieldKind>,
+    tables: &HashMap<String, IniTableDef>,
+    curves: &HashMap<String, IniCurveDef>,
     visited: &mut HashSet<String>,
     depth: usize,
 ) -> Vec<YamlNode> {
@@ -166,6 +180,8 @@ fn convert_dialog_items(
                     menu,
                     &p.panel_id,
                     config_fields,
+                    tables,
+                    curves,
                     visited,
                     depth + 1,
                 ));
@@ -182,12 +198,21 @@ fn convert_panel_ref(
     menu: &IniMenu,
     panel_id: &str,
     config_fields: &HashMap<String, ConfigFieldKind>,
+    tables: &HashMap<String, IniTableDef>,
+    curves: &HashMap<String, IniCurveDef>,
     visited: &mut HashSet<String>,
     depth: usize,
 ) -> Vec<YamlNode> {
+    if let Some(table) = tables.get(panel_id) {
+        return vec![config_table_node(table)];
+    }
+    if let Some(curve) = curves.get(panel_id) {
+        return vec![config_curve_node(curve)];
+    }
+
     if is_table_panel(panel_id) {
         return vec![hint_node(&format!(
-            "Таблица/кривая «{panel_id}» — редактор пока не реализован"
+            "Таблица/кривая «{panel_id}» — нет определения в INI"
         ))];
     }
 
@@ -201,7 +226,9 @@ fn convert_panel_ref(
         } else {
             nested.title.clone()
         };
-        let children = convert_dialog_items(menu, panel_id, config_fields, visited, depth);
+        let children = convert_dialog_items(
+            menu, panel_id, config_fields, tables, curves, visited, depth,
+        );
         visited.remove(panel_id);
         return vec![section_node(&title, children)];
     }
@@ -217,6 +244,70 @@ fn is_table_panel(id: &str) -> bool {
         || lower.ends_with("map")
         || lower.contains("table")
         || lower.contains("curve")
+}
+
+fn config_table_node(table: &IniTableDef) -> YamlNode {
+    let mut props = HashMap::new();
+    props.insert(
+        "title".into(),
+        serde_yaml::Value::String(table.title.clone()),
+    );
+    props.insert("variant".into(), serde_yaml::Value::String("table".into()));
+    if let Some(x) = &table.x_label {
+        props.insert("xLabel".into(), serde_yaml::Value::String(x.clone()));
+    }
+    if let Some(y) = &table.y_label {
+        props.insert("yLabel".into(), serde_yaml::Value::String(y.clone()));
+    }
+    if let Some(x) = &table.x_bins {
+        props.insert("xBins".into(), serde_yaml::Value::String(x.clone()));
+    }
+    if let Some(y) = &table.y_bins {
+        props.insert("yBins".into(), serde_yaml::Value::String(y.clone()));
+    }
+    props.insert(
+        "zBins".into(),
+        serde_yaml::Value::String(table.z_bins.clone()),
+    );
+
+    YamlNode {
+        node_type: "config-table".into(),
+        id: Some(slugify(&table.id)),
+        props: Some(props),
+        bind: None,
+        children: None,
+    }
+}
+
+fn config_curve_node(curve: &IniCurveDef) -> YamlNode {
+    let mut props = HashMap::new();
+    props.insert(
+        "title".into(),
+        serde_yaml::Value::String(curve.title.clone()),
+    );
+    props.insert("variant".into(), serde_yaml::Value::String("curve".into()));
+    if let Some(x) = &curve.x_label {
+        props.insert("xLabel".into(), serde_yaml::Value::String(x.clone()));
+    }
+    if let Some(y) = &curve.y_label {
+        props.insert("yLabel".into(), serde_yaml::Value::String(y.clone()));
+    }
+    props.insert(
+        "xBins".into(),
+        serde_yaml::Value::String(curve.x_bins.clone()),
+    );
+    props.insert(
+        "yBins".into(),
+        serde_yaml::Value::String(curve.y_bins.clone()),
+    );
+
+    YamlNode {
+        node_type: "config-table".into(),
+        id: Some(slugify(&curve.id)),
+        props: Some(props),
+        bind: None,
+        children: None,
+    }
 }
 
 fn field_node(
@@ -348,10 +439,16 @@ mod tests {
         let text = std::fs::read_to_string(crate::default_test_ini_path()).unwrap();
         let menu = parse_menu_section(&text).unwrap();
         let ini = parse_ini(&text).unwrap();
-        let result = convert_menu_panels(&menu, &ini.config_fields, "test.ini");
+        let result = convert_menu_panels(
+            &menu,
+            &ini.config_fields,
+            &ini.tables,
+            &ini.curves,
+            "test.ini",
+        );
         assert!(result.manifest.panel_count > 50);
         assert!(result.files.contains_key("enginechars.panel.yaml"));
-        let has_enum = result.files.values().any(|yaml| yaml.contains("enum-field"));
-        assert!(has_enum, "expected at least one enum-field in converted panels");
+        let has_table = result.files.values().any(|yaml| yaml.contains("config-table"));
+        assert!(has_table, "expected config-table in converted panels");
     }
 }

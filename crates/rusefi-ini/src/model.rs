@@ -13,14 +13,70 @@ pub struct IniFile {
     /// `pageChunkWrite` содержит `%2i` (формат INI для TunerStudio). Протокол `C` всё равно шлёт page=0 (Java).
     pub page_chunk_write_has_page_index: bool,
     pub output_channels: OutputChannels,
-    /// Поля page 0: скаляры и bits/enum из секции `[Constants]`.
+    /// Поля page 0: скаляры, enum и массивы из секции `[Constants]`.
     pub config_fields: HashMap<String, ConfigFieldKind>,
+    /// 2D-таблицы из `[TableEditor]`.
+    pub tables: HashMap<String, IniTableDef>,
+    /// 1D-кривые из `[CurveEditor]`.
+    pub curves: HashMap<String, IniCurveDef>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct IniTableDef {
+    pub id: String,
+    pub title: String,
+    pub map_id: Option<String>,
+    pub x_bins: Option<String>,
+    pub y_bins: Option<String>,
+    pub z_bins: String,
+    pub x_label: Option<String>,
+    pub y_label: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct IniCurveDef {
+    pub id: String,
+    pub title: String,
+    pub x_bins: String,
+    pub y_bins: String,
+    pub x_label: Option<String>,
+    pub y_label: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum ArrayShape {
+    Vector(usize),
+    /// `[cols x rows]` как в INI TunerStudio.
+    Matrix { cols: usize, rows: usize },
+}
+
+impl ArrayShape {
+    pub fn element_count(self) -> usize {
+        match self {
+            Self::Vector(n) => n,
+            Self::Matrix { cols, rows } => cols * rows,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ArrayField {
+    pub ty: ScalarType,
+    pub offset: u32,
+    pub shape: ArrayShape,
+    pub units: String,
+    pub scale: f64,
+    pub translate: f64,
+    pub lo: f64,
+    pub hi: f64,
+    pub digits: u8,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub enum ConfigFieldKind {
     Scalar(ScalarField),
     Enum(EnumField),
+    Array(ArrayField),
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -66,6 +122,7 @@ pub struct OutputChannelField {
 pub enum FieldKind {
     Scalar(ScalarField),
     Bits(BitsField),
+    Array(ArrayField),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]

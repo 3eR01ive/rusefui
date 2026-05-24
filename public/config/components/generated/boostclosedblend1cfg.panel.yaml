@@ -6,8 +6,8 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: The bias table controls how much of the blend table
+    variant: hint
 - type: text
   props:
     variant: hint
@@ -26,11 +26,12 @@ children:
     variant: hint
 - type: text
   props:
-    text: parameter below.
     variant: hint
+    text: parameter below.
 - type: enum-field
   id: boostclosedloopblends1-blendparameter
   props:
+    label: Blend parameter
     options:
     - value: 0
       label: Zero
@@ -102,14 +103,12 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
-    label: Blend parameter
   bind:
     source: config
     field: boostClosedLoopBlends1_blendParameter
 - type: enum-field
   id: boostclosedloopblends1-yaxisoverride
   props:
-    label: Y axis override (set Zero for no override)
     options:
     - value: 0
       label: Zero
@@ -181,10 +180,16 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
+    label: Y axis override (set Zero for no override)
   bind:
     source: config
     field: boostClosedLoopBlends1_yAxisOverride
-- type: text
+- type: config-table
+  id: boostclosedloopblend1bias
   props:
-    text: Панель «boostClosedLoopBlend1Bias» — нет определения в INI
-    variant: hint
+    xLabel: param
+    variant: curve
+    yLabel: bias
+    title: Boost Closed loop blend 1 bias
+    xBins: boostClosedLoopBlends1_blendBins
+    yBins: boostClosedLoopBlends1_blendValues

@@ -6,8 +6,8 @@ source:
 children:
 - type: text
   props:
-    text: Use rusEFI console for Lua script editing
     variant: hint
+    text: Use rusEFI console for Lua script editing
 - type: text
   props:
     variant: hint
@@ -23,6 +23,7 @@ children:
 - type: enum-field
   id: luaoutputpins1
   props:
+    label: 'output #0'
     options:
     - value: 0
       label: NONE
@@ -250,7 +251,6 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
-    label: 'output #0'
   bind:
     source: config
     field: luaOutputPins1
@@ -1427,7 +1427,6 @@ children:
 - type: enum-field
   id: luaoutputpins7
   props:
-    label: 'output #6'
     options:
     - value: 0
       label: NONE
@@ -1655,13 +1654,13 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    label: 'output #6'
   bind:
     source: config
     field: luaOutputPins7
 - type: enum-field
   id: luaoutputpins8
   props:
-    label: 'output #7'
     options:
     - value: 0
       label: NONE
@@ -1889,6 +1888,7 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    label: 'output #7'
   bind:
     source: config
     field: luaOutputPins8

@@ -11,7 +11,6 @@ children:
   - type: enum-field
     id: cannbctype
     props:
-      label: CAN dash type
       options:
       - value: 0
         label: None
@@ -77,6 +76,7 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
+      label: CAN dash type
     bind:
       source: config
       field: canNbcType
@@ -155,36 +155,36 @@ children:
   - type: enum-field
     id: canreadenabled
     props:
+      label: CAN read enabled
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: CAN read enabled
     bind:
       source: config
       field: canReadEnabled
   - type: enum-field
     id: canwriteenabled
     props:
+      label: CAN write enabled
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: CAN write enabled
     bind:
       source: config
       field: canWriteEnabled
   - type: enum-field
     id: enableverbosecantx
     props:
+      label: Enable rusEFI CAN broadcast
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: Enable rusEFI CAN broadcast
     bind:
       source: config
       field: enableVerboseCanTx
@@ -245,18 +245,19 @@ children:
   - type: enum-field
     id: verbosecan
     props:
-      label: Verbose Can
       options:
       - value: 0
         label: Do not print
       - value: 1
         label: Print all
+      label: Verbose Can
     bind:
       source: config
       field: verboseCan
   - type: enum-field
     id: canbaudrate
     props:
+      label: Bitrate
       options:
       - value: 0
         label: 33.33kbps
@@ -274,19 +275,18 @@ children:
         label: 500kbps
       - value: 7
         label: 1Mbps
-      label: Bitrate
     bind:
       source: config
       field: canBaudRate
   - type: enum-field
     id: canopenblt
     props:
+      label: Allow OpenBLT
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: Allow OpenBLT
     bind:
       source: config
       field: canOpenBLT
@@ -297,12 +297,12 @@ children:
   - type: enum-field
     id: verbosecan2
     props:
-      label: Verbose Can2
       options:
       - value: 0
         label: Do not print
       - value: 1
         label: Print all
+      label: Verbose Can2
     bind:
       source: config
       field: verboseCan2

@@ -14,12 +14,12 @@ children:
 - type: enum-field
   id: enableaemxseries
   props:
+    label: Enable CAN Wideband
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: Enable CAN Wideband
   bind:
     source: config
     field: enableAemXSeries

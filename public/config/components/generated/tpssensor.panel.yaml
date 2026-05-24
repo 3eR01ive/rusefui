@@ -115,7 +115,6 @@ children:
     - type: enum-field
       id: tps1-2adcchannel
       props:
-        label: Secondary sensor
         options:
         - value: 0
           label: NONE
@@ -151,6 +150,7 @@ children:
           label: Analog Temp 1
         - value: 16
           label: Analog Temp 2
+        label: Secondary sensor
       bind:
         source: config
         field: tps1_2AdcChannel
@@ -170,8 +170,8 @@ children:
         field: tps1SecondaryMax
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Auto Calibrate ETB 1 (cmd_etb_auto_calibrate)'
+        variant: hint
   - type: section
     props:
       title: 'Throttle Body #2'

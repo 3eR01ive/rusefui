@@ -8,17 +8,18 @@ mod error;
 mod menu;
 mod model;
 mod parse;
+mod tables;
 
 pub use convert_panel::{convert_menu_panels, ConvertResult, PanelManifest, PanelManifestEntry};
 pub use decode::{
-    decode_config_at, decode_config_fields, decode_config_scalars, decode_output_channels,
-    decode_scalar_at, encode_bits_value, encode_config_value, encode_scalar_value,
+    decode_array, decode_config_at, decode_config_fields, decode_config_scalars, decode_output_channels,
+    decode_scalar_at, encode_array_element, encode_bits_value, encode_config_value, encode_scalar_value,
 };
 pub use error::IniError;
 pub use menu::{parse_menu_section, IniMenu};
 pub use model::{
-    ConfigFieldKind, EnumField, EnumOption, FieldKind, IniFile, OutputChannelField, OutputChannels,
-    ScalarField, ScalarType,
+    ArrayField, ArrayShape, ConfigFieldKind, EnumField, EnumOption, FieldKind, IniCurveDef,
+    IniFile, IniTableDef, OutputChannelField, OutputChannels, ScalarField, ScalarType,
 };
 pub use parse::{parse_ini, split_ini_args};
 

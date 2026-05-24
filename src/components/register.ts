@@ -8,6 +8,7 @@ import ConnectionPanel from "./builtins/ConnectionPanel.vue";
 import SimulationPanel from "./builtins/SimulationPanel.vue";
 import ScalarField from "./builtins/ScalarField.vue";
 import EnumField from "./builtins/EnumField.vue";
+import ConfigTable from "./builtins/ConfigTable.vue";
 import IniPanelsBrowser from "./builtins/IniPanelsBrowser.vue";
 import OutputChart from "./builtins/OutputChart.vue";
 import OutputValue from "./builtins/OutputValue.vue";
@@ -118,6 +119,17 @@ export function registerBuiltinComponents(): void {
       description: "Перечисление config (bits/enum из INI)",
     },
     EnumField,
+  );
+
+  registerComponent(
+    {
+      type: "config-table",
+      label: "Config table",
+      mode: "edit",
+      isContainer: false,
+      description: "Таблица/кривая калибровки из INI",
+    },
+    ConfigTable,
   );
 
   registerComponent(

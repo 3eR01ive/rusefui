@@ -82,7 +82,13 @@ children:
   bind:
     source: config
     field: torqueReductionIgnitionRetardXaxis
-- type: text
+- type: config-table
+  id: torquereductionignitionretardtlb
   props:
-    text: Панель «torqueReductionIgnitionRetardTlb» — нет определения в INI
-    variant: hint
+    title: Torque reduction ignition retard table
+    xLabel: = {bitStringValue(pwmAxisLabels
+    yLabel: torqueReductionIgnitionRetardXaxis)}
+    xBins: torqueReductionIgnitionRetardXBins
+    yBins: torqueReductionIgnitionRetardGearBins
+    variant: table
+    zBins: torqueReductionIgnitionRetardTable

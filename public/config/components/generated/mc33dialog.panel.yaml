@@ -19,6 +19,7 @@ children:
 - type: enum-field
   id: mc33816-cs
   props:
+    label: SPI Chip Select
     options:
     - value: 0
       label: NONE
@@ -376,14 +377,12 @@ children:
       label: PK14
     - value: 177
       label: PK15
-    label: SPI Chip Select
   bind:
     source: config
     field: mc33816_cs
 - type: enum-field
   id: mc33816spidevice
   props:
-    label: SPI Device
     options:
     - value: 0
       label: Off
@@ -399,6 +398,7 @@ children:
       label: SPI5
     - value: 6
       label: SPI6
+    label: SPI Device
   bind:
     source: config
     field: mc33816spiDevice

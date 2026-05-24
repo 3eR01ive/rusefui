@@ -6,17 +6,17 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: Also known as Rotational Idle
+    variant: hint
 - type: enum-field
   id: antilagenabled
   props:
+    label: Enable AntiLag
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: Enable AntiLag
   bind:
     source: config
     field: antiLagEnabled
@@ -286,15 +286,27 @@ children:
   bind:
     source: config
     field: ALSEtbAdd
-- type: text
+- type: config-table
+  id: fueladdertableals
   props:
-    text: Таблица/кривая «FuelAdderTableALS» — редактор пока не реализован
-    variant: hint
-- type: text
+    variant: table
+    zBins: ALSFuelAdjustment
+    xBins: alsFuelAdjustmentrpmBins
+    title: Fuel adjustment
+    yBins: alsFuelAdjustmentLoadBins
+- type: config-table
+  id: ignretardtableals
   props:
-    text: Таблица/кривая «IgnRetardTableALS» — редактор пока не реализован
-    variant: hint
-- type: text
+    zBins: ALSTimingRetardTable
+    variant: table
+    xBins: alsIgnRetardrpmBins
+    yBins: alsIgnRetardLoadBins
+    title: Ignition adjustment
+- type: config-table
+  id: ignskiptableals
   props:
-    text: Таблица/кривая «IgnSkipTableALS» — редактор пока не реализован
-    variant: hint
+    xBins: alsIgnSkiprpmBins
+    yBins: alsIgnSkipLoadBins
+    variant: table
+    title: Ignition Skip
+    zBins: ALSIgnSkipTable

@@ -11,7 +11,12 @@ children:
   bind:
     source: config
     field: scriptCurveName6
-- type: text
+- type: config-table
+  id: scriptcurve6
   props:
-    text: Таблица/кривая «scriptCurve6» — редактор пока не реализован
-    variant: hint
+    xBins: scriptCurve6Bins
+    yBins: scriptCurve6
+    variant: curve
+    title: 'Script Curve #6'
+    xLabel: X
+    yLabel: Y

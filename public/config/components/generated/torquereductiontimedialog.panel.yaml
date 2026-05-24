@@ -7,6 +7,7 @@ children:
 - type: enum-field
   id: torquereductiontimexaxis
   props:
+    label: X axis
     options:
     - value: 0
       label: Zero
@@ -78,11 +79,16 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
-    label: X axis
   bind:
     source: config
     field: torqueReductionTimeXaxis
-- type: text
+- type: config-table
+  id: torquereductiontimetlb
   props:
-    variant: hint
-    text: Панель «torqueReductionTimeTlb» — нет определения в INI
+    zBins: torqueReductionTimeTable
+    title: Torque reduction time table
+    xLabel: = {bitStringValue(pwmAxisLabels
+    yBins: torqueReductionTimeGearBins
+    variant: table
+    yLabel: torqueReductionTimeXaxis)}
+    xBins: torqueReductionTimeXBins

@@ -15,18 +15,19 @@ children:
   - type: enum-field
     id: launchcontrolenabled
     props:
-      label: Enable Launch Control
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Enable Launch Control
     bind:
       source: config
       field: launchControlEnabled
   - type: enum-field
     id: launchactivationmode
     props:
+      label: Activation Mode
       options:
       - value: 0
         label: Launch Button
@@ -44,7 +45,6 @@ children:
         label: INVALID
       - value: 7
         label: INVALID
-      label: Activation Mode
     bind:
       source: config
       field: launchActivationMode
@@ -223,7 +223,6 @@ children:
   - type: enum-field
     id: launchactivatepinmode
     props:
-      label: Launch Button mode
       options:
       - value: 0
         label: DEFAULT
@@ -239,6 +238,7 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
+      label: Launch Button mode
     bind:
       source: config
       field: launchActivatePinMode
@@ -417,7 +417,6 @@ children:
   - type: enum-field
     id: clutchdownpinmode
     props:
-      label: Clutch Down mode
       options:
       - value: 0
         label: DEFAULT
@@ -433,6 +432,7 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
+      label: Clutch Down mode
     bind:
       source: config
       field: clutchDownPinMode
@@ -467,12 +467,12 @@ children:
   - type: enum-field
     id: enablelaunchretard
     props:
+      label: Ignition Retard enable
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: Ignition Retard enable
     bind:
       source: config
       field: enableLaunchRetard
@@ -560,5 +560,5 @@ children:
   children:
   - type: text
     props:
-      variant: hint
       text: Панель «launch_control_stateIndicatorPanel» — нет определения в INI
+      variant: hint

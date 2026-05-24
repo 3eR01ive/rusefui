@@ -7,6 +7,7 @@ children:
 - type: enum-field
   id: uimode
   props:
+    label: Tuning View
     options:
     - value: 0
       label: Full
@@ -16,7 +17,6 @@ children:
       label: Tuning
     - value: 3
       label: INVALID
-    label: Tuning View
   bind:
     source: config
     field: uiMode
@@ -344,8 +344,8 @@ children:
   children:
   - type: text
     props:
-      variant: hint
       text: https://rusefi.com/s/fuel
+      variant: hint
   - type: enum-field
     id: fuelalgorithm
     props:

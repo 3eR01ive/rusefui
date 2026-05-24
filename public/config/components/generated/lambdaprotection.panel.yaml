@@ -77,7 +77,12 @@ children:
   props:
     title: Lambda Difference Table
   children:
-  - type: text
+  - type: config-table
+    id: lambdamaxdeviationtabletbl
     props:
-      text: Таблица/кривая «lambdaMaxDeviationTableTbl» — редактор пока не реализован
-      variant: hint
+      yBins: lambdaMaxDeviationLoadBins
+      zBins: lambdaMaxDeviationTable
+      title: Maximum Lambda Deviation
+      xLabel: RPM
+      xBins: lambdaMaxDeviationRpmBins
+      variant: table

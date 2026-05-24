@@ -395,7 +395,6 @@ children:
 - type: enum-field
   id: brakepedalpin
   props:
-    label: Brake Pedal
     options:
     - value: 0
       label: NONE
@@ -561,13 +560,13 @@ children:
       label: Digital 4
     - value: 81
       label: Digital 6
+    label: Brake Pedal
   bind:
     source: config
     field: brakePedalPin
 - type: enum-field
   id: brakepedalpinmode
   props:
-    label: Brake Pedal Mode
     options:
     - value: 0
       label: DEFAULT
@@ -583,6 +582,7 @@ children:
       label: INVERTED PULLUP
     - value: 6
       label: INVERTED PULLDOWN
+    label: Brake Pedal Mode
   bind:
     source: config
     field: brakePedalPinMode
@@ -768,6 +768,7 @@ children:
 - type: enum-field
   id: throttleinletpressurechannel
   props:
+    label: Throttle inlet pressure sensor
     options:
     - value: 0
       label: NONE
@@ -803,13 +804,13 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
-    label: Throttle inlet pressure sensor
   bind:
     source: config
     field: throttleInletPressureChannel
 - type: enum-field
   id: compressordischargepressurechannel
   props:
+    label: Compressor discharge pressure sensor
     options:
     - value: 0
       label: NONE
@@ -845,7 +846,6 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
-    label: Compressor discharge pressure sensor
   bind:
     source: config
     field: compressorDischargePressureChannel

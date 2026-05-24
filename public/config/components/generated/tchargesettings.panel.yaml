@@ -26,8 +26,8 @@ children:
       field: tChargeMode
   - type: text
     props:
-      text: These two parameters limit the estimate's rate of change
       variant: hint
+      text: These two parameters limit the estimate's rate of change
   - type: scalar-field
     id: tchargeairincrlimit
     props:
@@ -113,7 +113,12 @@ children:
     bind:
       source: config
       field: tChargeAirFlowMax
-- type: text
+- type: config-table
+  id: tchargecurve
   props:
-    text: Таблица/кривая «tchargeCurve» — редактор пока не реализован
-    variant: hint
+    xBins: tchargeBins
+    yBins: tchargeValues
+    variant: curve
+    xLabel: flow
+    title: Charge temperature estimation coefficient
+    yLabel: coefficient

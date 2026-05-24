@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use crate::model::{
-    BitsField, ConfigFieldKind, EnumField, FieldKind, OutputChannels, ScalarField, ScalarType,
+    ArrayField, BitsField, ConfigFieldKind, FieldKind, OutputChannels, ScalarField,
+    ScalarType,
 };
 
 /// Декодирует поля конфигурации (секция `[Constants]`).
@@ -41,7 +42,45 @@ fn decode_config_field(field: &ConfigFieldKind, bytes: &[u8]) -> Option<f64> {
     match field {
         ConfigFieldKind::Scalar(s) => decode_scalar(s, bytes),
         ConfigFieldKind::Enum(e) => decode_bits(&e.bits, bytes),
+        ConfigFieldKind::Array(_) => None,
     }
+}
+
+/// Декодирует все элементы массива config.
+pub fn decode_array(field: &ArrayField, bytes: &[u8]) -> Vec<f64> {
+    let count = field.shape.element_count();
+    let size = field.ty.size_bytes();
+    let mut out = Vec::with_capacity(count);
+    for i in 0..count {
+        let off = field.offset as usize + i * size;
+        let raw = read_raw_at(field.ty, off, bytes).unwrap_or(0.0);
+        out.push(raw * field.scale + field.translate);
+    }
+    out
+}
+
+/// Кодирует один элемент массива для записи через `C`.
+pub fn encode_array_element(
+    field: &ArrayField,
+    index: usize,
+    value: f64,
+) -> Option<(u32, Vec<u8>)> {
+    if index >= field.shape.element_count() {
+        return None;
+    }
+    let raw = (value - field.translate) / field.scale;
+    let bytes = encode_scalar_value(
+        &ScalarField {
+            ty: field.ty,
+            offset: 0,
+            units: String::new(),
+            scale: 1.0,
+            translate: 0.0,
+        },
+        raw,
+    )?;
+    let offset = field.offset + (index * field.ty.size_bytes()) as u32;
+    Some((offset, bytes))
 }
 
 /// Кодирует значение config-поля (scalar или enum/bits).
@@ -53,6 +92,7 @@ pub fn encode_config_value(
     match field {
         ConfigFieldKind::Scalar(s) => encode_scalar_value(s, value),
         ConfigFieldKind::Enum(e) => encode_bits_value(&e.bits, value, current_bytes),
+        ConfigFieldKind::Array(_) => None,
     }
 }
 
@@ -91,6 +131,7 @@ fn decode_field(kind: &FieldKind, bytes: &[u8]) -> Option<f64> {
     match kind {
         FieldKind::Scalar(s) => decode_scalar(s, bytes),
         FieldKind::Bits(b) => decode_bits(b, bytes),
+        FieldKind::Array(a) => decode_array(a, bytes).first().copied(),
     }
 }
 
@@ -100,7 +141,7 @@ pub fn decode_scalar_at(field: &ScalarField, page: &[u8]) -> Option<f64> {
 }
 
 fn decode_scalar(field: &ScalarField, bytes: &[u8]) -> Option<f64> {
-    let raw = read_raw(field.ty, field.offset, bytes)?;
+    let raw = read_raw_at(field.ty, field.offset as usize, bytes)?;
     Some(raw * field.scale + field.translate)
 }
 
@@ -112,7 +153,7 @@ pub fn encode_bits_value(field: &BitsField, value: f64, current_bytes: &[u8]) ->
     if off + size <= current_bytes.len() {
         buf.copy_from_slice(&current_bytes[off..off + size]);
     }
-    let raw = read_raw(field.ty, 0, &buf)? as u32;
+    let raw = read_raw_at(field.ty, 0, &buf)? as u32;
     let width = field.bit_high.saturating_sub(field.bit_low) + 1;
     let mask = if width >= 32 {
         u32::MAX
@@ -145,7 +186,7 @@ fn write_raw(ty: ScalarType, offset: u32, value: u32, bytes: &mut [u8]) -> Optio
 }
 
 fn decode_bits(field: &BitsField, bytes: &[u8]) -> Option<f64> {
-    let raw = read_raw(field.ty, field.offset, bytes)? as u32;
+    let raw = read_raw_at(field.ty, field.offset as usize, bytes)? as u32;
     let width = field.bit_high.saturating_sub(field.bit_low) + 1;
     let mask = if width >= 32 {
         u32::MAX
@@ -156,13 +197,12 @@ fn decode_bits(field: &BitsField, bytes: &[u8]) -> Option<f64> {
     Some(shifted as f64)
 }
 
-fn read_raw(ty: ScalarType, offset: u32, bytes: &[u8]) -> Option<f64> {
-    let off = offset as usize;
+fn read_raw_at(ty: ScalarType, offset: usize, bytes: &[u8]) -> Option<f64> {
     let size = ty.size_bytes();
-    if off + size > bytes.len() {
+    if offset + size > bytes.len() {
         return None;
     }
-    let slice = &bytes[off..off + size];
+    let slice = &bytes[offset..offset + size];
     if ty.is_float() {
         return Some(f32::from_le_bytes([slice[0], slice[1], slice[2], slice[3]]) as f64);
     }

@@ -14,12 +14,12 @@ children:
 - type: enum-field
   id: devbit0
   props:
-    label: devBit0
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: devBit0
   bind:
     source: config
     field: devBit0
@@ -74,36 +74,36 @@ children:
 - type: enum-field
   id: devbit5
   props:
-    label: devBit5
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: devBit5
   bind:
     source: config
     field: devBit5
 - type: enum-field
   id: devbit6
   props:
+    label: devBit6
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: devBit6
   bind:
     source: config
     field: devBit6
 - type: enum-field
   id: devbit7
   props:
-    label: devBit7
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: devBit7
   bind:
     source: config
     field: devBit7

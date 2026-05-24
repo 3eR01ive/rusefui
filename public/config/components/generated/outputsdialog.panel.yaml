@@ -18,6 +18,7 @@ children:
     - type: enum-field
       id: fanpin
       props:
+        label: Output
         options:
         - value: 0
           label: NONE
@@ -245,7 +246,6 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
-        label: Output
       bind:
         source: config
         field: fanPin
@@ -282,12 +282,12 @@ children:
     - type: enum-field
       id: enablefan1withac
       props:
-        label: Enable with AC
         options:
         - value: 0
           label: 'false'
         - value: 1
           label: 'true'
+        label: Enable with AC
       bind:
         source: config
         field: enableFan1WithAc
@@ -558,7 +558,6 @@ children:
     - type: enum-field
       id: fan2pinmode
       props:
-        label: Output mode
         options:
         - value: 0
           label: default
@@ -568,6 +567,7 @@ children:
           label: open collector
         - value: 3
           label: open collector inverted
+        label: Output mode
       bind:
         source: config
         field: fan2PinMode
@@ -637,8 +637,8 @@ children:
         text: 'Кнопка: Test Fan 2 (cmd_test_fan_2)'
   - type: text
     props:
-      variant: hint
       text: Панель «fanIndicators» — нет определения в INI
+      variant: hint
 - type: section
   props:
     title: outputsDialogRight

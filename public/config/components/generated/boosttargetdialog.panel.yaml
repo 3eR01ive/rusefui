@@ -4,7 +4,11 @@ source:
   ini_dialog: boostTargetDialog
   menu_path: Advanced › Boost control target
 children:
-- type: text
+- type: config-table
+  id: boostclosedtbl
   props:
-    text: Таблица/кривая «boostClosedTbl» — редактор пока не реализован
-    variant: hint
+    xBins: boostRpmBins
+    yBins: boostClosedLoopLoadBins
+    variant: table
+    zBins: boostTableClosedLoop
+    title: Boost control target / Closed Loop (kPa)

@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: acswitch
     props:
+      label: A/C switch
       options:
       - value: 0
         label: NONE
@@ -176,14 +177,12 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
-      label: A/C switch
     bind:
       source: config
       field: acSwitch
   - type: enum-field
     id: acswitchmode
     props:
-      label: A/C switch mode
       options:
       - value: 0
         label: DEFAULT
@@ -199,6 +198,7 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
+      label: A/C switch mode
     bind:
       source: config
       field: acSwitchMode
@@ -439,7 +439,6 @@ children:
   - type: enum-field
     id: acrelaypinmode
     props:
-      label: A/C Relay Mode
       options:
       - value: 0
         label: default
@@ -449,6 +448,7 @@ children:
         label: open collector
       - value: 3
         label: open collector inverted
+      label: A/C Relay Mode
     bind:
       source: config
       field: acRelayPinMode

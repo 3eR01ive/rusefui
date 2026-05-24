@@ -15,7 +15,6 @@ children:
     - type: enum-field
       id: vehiclespeedsensorinputpin
       props:
-        label: Input
         options:
         - value: 0
           label: NONE
@@ -181,6 +180,7 @@ children:
           label: Digital 4
         - value: 81
           label: Digital 6
+        label: Input
       bind:
         source: config
         field: vehicleSpeedSensorInputPin
@@ -219,18 +219,19 @@ children:
     - type: enum-field
       id: enablecanvss
       props:
-        label: Enable CAN VSS
         options:
         - value: 0
           label: 'false'
         - value: 1
           label: 'true'
+        label: Enable CAN VSS
       bind:
         source: config
         field: enableCanVss
     - type: enum-field
       id: canvssnbctype
       props:
+        label: CAN VSS type
         options:
         - value: 0
           label: BMW_e46
@@ -248,7 +249,6 @@ children:
           label: INVALID
         - value: 7
           label: INVALID
-        label: CAN VSS type
       bind:
         source: config
         field: canVssNbcType

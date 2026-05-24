@@ -86,7 +86,12 @@ children:
     bind:
       source: config
       field: boostOpenLoopYAxis
-- type: text
+- type: config-table
+  id: boosttabletbl
   props:
-    text: Таблица/кривая «boostTableTbl» — редактор пока не реализован
-    variant: hint
+    zBins: boostTableOpenLoop
+    title: Boost control duty cycle (open loop)
+    variant: table
+    xBins: boostRpmBins
+    xLabel: = "RPMValue
+    yBins: boostOpenLoopLoadBins

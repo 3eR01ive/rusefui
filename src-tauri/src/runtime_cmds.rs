@@ -260,6 +260,59 @@ pub fn config_set_scalar(
     Ok(snap)
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ConfigArrayFieldParams {
+    pub field: String,
+}
+
+#[tauri::command]
+pub fn config_get_array(
+    params: ConfigArrayFieldParams,
+    state: State<RuntimeState>,
+) -> Result<Vec<f64>, String> {
+    state.session.config().get_array(&params.field)
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ConfigSetArrayValueParams {
+    pub field: String,
+    pub index: usize,
+    pub value: f64,
+}
+
+#[tauri::command]
+pub fn config_set_array_value(
+    params: ConfigSetArrayValueParams,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<ConfigSnapshot, String> {
+    state.session.output().stop();
+
+    let session = Arc::clone(&state.session);
+    let result = state.session.config().write_array_value(
+        &state.session,
+        &params.field,
+        params.index,
+        params.value,
+    );
+
+    if session.is_connected() {
+        let snap = session.config().snapshot();
+        if snap.loaded {
+            sync_output_poll_session(&session, &app);
+        } else {
+            emit_output(&app, &session.output().snapshot());
+        }
+    } else {
+        emit_output(&app, &session.output().snapshot());
+    }
+
+    result?;
+    let snap = state.session.config().snapshot();
+    emit_config(&app, &snap);
+    Ok(snap)
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IniInfo {

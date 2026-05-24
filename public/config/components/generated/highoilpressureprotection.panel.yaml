@@ -11,7 +11,12 @@ children:
   bind:
     source: config
     field: maxOilPressureTimeout
-- type: text
+- type: config-table
+  id: maximumoilpressure
   props:
-    text: Панель «maximumOilPressure» — нет определения в INI
-    variant: hint
+    xBins: maximumOilPressureBins
+    xLabel: RPM
+    yLabel: max pressure
+    variant: curve
+    yBins: maximumOilPressureValues
+    title: Maximum oil pressure

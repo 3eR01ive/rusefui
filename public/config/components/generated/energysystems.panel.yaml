@@ -15,18 +15,19 @@ children:
     - type: enum-field
       id: isalternatorcontrolenabled
       props:
-        label: Enabled
         options:
         - value: 0
           label: 'false'
         - value: 1
           label: 'true'
+        label: Enabled
       bind:
         source: config
         field: isAlternatorControlEnabled
     - type: enum-field
       id: alternatorcontrolpin
       props:
+        label: Control output
         options:
         - value: 0
           label: NONE
@@ -254,7 +255,6 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
-        label: Control output
       bind:
         source: config
         field: alternatorControlPin
@@ -290,8 +290,8 @@ children:
         field: acRelayAlternatorDutyAdder
     - type: text
       props:
-        variant: hint
         text: PID control
+        variant: hint
     - type: scalar-field
       id: alternatorcontrol-offset
       props:
@@ -352,7 +352,11 @@ children:
       props:
         text: '% duty = Pterm + Iterm + Dterm + offset%'
         variant: hint
-  - type: text
+  - type: config-table
+    id: alternatorvoltagetargettabletbl
     props:
-      text: Таблица/кривая «alternatorVoltageTargetTableTbl» — редактор пока не реализован
-      variant: hint
+      xBins: alternatorVoltageTargetRpmBins
+      yBins: alternatorVoltageTargetLoadBins
+      title: Alternator Voltage Target Table
+      variant: table
+      zBins: alternatorVoltageTargetTable

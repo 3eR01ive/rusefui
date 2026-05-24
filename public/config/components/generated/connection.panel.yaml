@@ -14,12 +14,12 @@ children:
 - type: enum-field
   id: enablekline
   props:
+    label: enableKline
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: enableKline
   bind:
     source: config
     field: enableKline

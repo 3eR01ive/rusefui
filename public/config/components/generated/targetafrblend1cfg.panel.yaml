@@ -6,24 +6,24 @@ source:
 children:
 - type: text
   props:
-    text: The bias table controls how much of the adder table
     variant: hint
+    text: The bias table controls how much of the adder table
 - type: text
   props:
     text: is mixed in to the target AFR table. For example, a value of
     variant: hint
 - type: text
   props:
+    variant: hint
     text: +10 in the table, with 50 as the current bias will result
-    variant: hint
 - type: text
   props:
+    variant: hint
     text: in +5.0 added to target AFR %.
-    variant: hint
 - type: text
   props:
-    variant: hint
     text: The X axis of the bias table is controlled by the selected blend
+    variant: hint
 - type: text
   props:
     text: parameter below.
@@ -184,7 +184,11 @@ children:
   bind:
     source: config
     field: targetAfrBlends1_yAxisOverride
-- type: text
+- type: config-table
+  id: targetafrblend1bias
   props:
-    text: Панель «targetAfrBlend1Bias» — нет определения в INI
-    variant: hint
+    yBins: targetAfrBlends1_blendValues
+    xBins: targetAfrBlends1_blendBins
+    variant: curve
+    title: Target AFR adder 1 bias
+    yLabel: targetAfrBlends1_blendParameter)}

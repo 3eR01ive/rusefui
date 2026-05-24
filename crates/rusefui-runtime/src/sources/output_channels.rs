@@ -79,6 +79,7 @@ impl IniContext {
                         (u, "scalar".to_string())
                     }
                     FieldKind::Bits(_) => (None, "bits".to_string()),
+                    FieldKind::Array(_) => (None, "array".to_string()),
                 };
                 OutputFieldInfo {
                     name: f.name.clone(),

@@ -10,8 +10,8 @@ children:
     text: The bias table controls how much of the blend table
 - type: text
   props:
-    variant: hint
     text: is mixed in to the closed loop boost table. For example, a value of
+    variant: hint
 - type: text
   props:
     text: +10 in the table, with 50 as the current bias will result
@@ -26,8 +26,8 @@ children:
     variant: hint
 - type: text
   props:
-    variant: hint
     text: parameter below.
+    variant: hint
 - type: enum-field
   id: boostclosedloopblends2-blendparameter
   props:
@@ -184,7 +184,12 @@ children:
   bind:
     source: config
     field: boostClosedLoopBlends2_yAxisOverride
-- type: text
+- type: config-table
+  id: boostclosedloopblend2bias
   props:
-    variant: hint
-    text: Панель «boostClosedLoopBlend2Bias» — нет определения в INI
+    yBins: boostClosedLoopBlends2_blendValues
+    xLabel: param
+    xBins: boostClosedLoopBlends2_blendBins
+    variant: curve
+    title: Boost Closed loop blend 2 bias
+    yLabel: bias

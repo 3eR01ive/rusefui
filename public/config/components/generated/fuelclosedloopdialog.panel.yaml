@@ -14,8 +14,8 @@ children:
     children:
     - type: text
       props:
-        variant: hint
         text: Панель «fuelClosedLoopInputIndicatorsPanelBank1» — нет определения в INI
+        variant: hint
   - type: section
     props:
       title: Output correction
@@ -114,12 +114,12 @@ children:
     - type: enum-field
       id: stftignoreerrormagnitude
       props:
-        label: Ignore error magnitude
         options:
         - value: 0
           label: 'false'
         - value: 1
           label: 'true'
+        label: Ignore error magnitude
       bind:
         source: config
         field: stftIgnoreErrorMagnitude
@@ -254,8 +254,8 @@ children:
     children:
     - type: text
       props:
-        text: Панель «fuelClosedLoopIndicatorsPanel» — нет определения в INI
         variant: hint
+        text: Панель «fuelClosedLoopIndicatorsPanel» — нет определения в INI
 - type: section
   props:
     title: Bank 2
@@ -266,8 +266,8 @@ children:
     children:
     - type: text
       props:
-        text: Панель «fuelClosedLoopInputIndicatorsPanelBank2» — нет определения в INI
         variant: hint
+        text: Панель «fuelClosedLoopInputIndicatorsPanelBank2» — нет определения в INI
   - type: section
     props:
       title: Output correction

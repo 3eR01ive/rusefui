@@ -22,12 +22,12 @@ children:
     - type: enum-field
       id: disableetbwhenenginestopped
       props:
-        label: Disable ETB if engine is stopped
         options:
         - value: 0
           label: 'false'
         - value: 1
           label: 'true'
+        label: Disable ETB if engine is stopped
       bind:
         source: config
         field: disableEtbWhenEngineStopped
@@ -90,8 +90,8 @@ children:
         field: Disables jam detection for testing until the next power cycle
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Temporarily disable jam detection (cmd_etb_disable_jam_detect)'
+        variant: hint
   - type: text
     props:
       text: Панель «etbIndicatorPanel» — нет определения в INI
@@ -207,8 +207,8 @@ children:
         variant: hint
     - type: text
       props:
-        variant: hint
         text: If order is reversed swap ETB+/ETB- wires
+        variant: hint
     - type: text
       props:
         variant: hint

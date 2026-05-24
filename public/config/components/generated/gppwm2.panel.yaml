@@ -440,7 +440,12 @@ children:
     bind:
       source: config
       field: gpPwmNote2
-- type: text
+- type: config-table
+  id: gppwm2tbl
   props:
-    text: Таблица/кривая «gppwm2Tbl» — редактор пока не реализован
-    variant: hint
+    xBins: gppwm2_rpmBins
+    zBins: gppwm2_table
+    yLabel: gppwm2_rpmAxis)}
+    variant: table
+    title: GP#2
+    yBins: gppwm2_loadBins

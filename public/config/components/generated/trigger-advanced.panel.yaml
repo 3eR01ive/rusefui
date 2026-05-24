@@ -52,12 +52,12 @@ children:
 - type: enum-field
   id: usenoiselesstriggerdecoder
   props:
+    label: Enable noise filtering
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: Enable noise filtering
   bind:
     source: config
     field: useNoiselessTriggerDecoder

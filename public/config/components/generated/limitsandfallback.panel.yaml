@@ -27,12 +27,12 @@ children:
     - type: enum-field
       id: cutsparkonhardlimit
       props:
+        label: Cut spark on RPM limit
         options:
         - value: 0
           label: no
         - value: 1
           label: yes
-        label: Cut spark on RPM limit
       bind:
         source: config
         field: cutSparkOnHardLimit
@@ -155,7 +155,12 @@ children:
   props:
     title: Engine Temperature RPM Limit
   children:
-  - type: text
+  - type: config-table
+    id: cltrevlimitcurve
     props:
-      variant: hint
-      text: Таблица/кривая «cltRevLimitCurve» — редактор пока не реализован
+      variant: curve
+      yBins: cltRevLimitRpm
+      title: cltRevLimitCurve
+      yLabel: RPM Limit
+      xBins: cltRevLimitRpmBins
+      xLabel: Coolant

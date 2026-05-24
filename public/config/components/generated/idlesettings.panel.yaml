@@ -7,12 +7,12 @@ children:
 - type: enum-field
   id: idlemode
   props:
+    label: Idle control mode
     options:
     - value: 0
       label: Open Loop + Closed Loop
     - value: 1
       label: Open Loop
-    label: Idle control mode
   bind:
     source: config
     field: idleMode
@@ -191,12 +191,12 @@ children:
   - type: enum-field
     id: useseparateveforidle
     props:
-      label: Use idle VE table
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Use idle VE table
     bind:
       source: config
       field: useSeparateVeForIdle
@@ -238,24 +238,24 @@ children:
   - type: enum-field
     id: useseparateidletablesforcrankingtaper
     props:
+      label: Use idle tables for cranking taper
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
-      label: Use idle tables for cranking taper
     bind:
       source: config
       field: useSeparateIdleTablesForCrankingTaper
   - type: enum-field
     id: useiactableforcoasting
     props:
-      label: Use coasting idle table
       options:
       - value: 0
         label: 'false'
       - value: 1
         label: 'true'
+      label: Use coasting idle table
     bind:
       source: config
       field: useIacTableForCoasting

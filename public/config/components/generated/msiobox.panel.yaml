@@ -27,6 +27,7 @@ children:
   - type: enum-field
     id: msiobox0-vss
     props:
+      label: VSS settings
       options:
       - value: 0
         label: Off
@@ -36,7 +37,6 @@ children:
         label: Hall speed in (3, 4)
       - value: 3
         label: All (1, 2, 3, 4)
-      label: VSS settings
     bind:
       source: config
       field: msIoBox0_vss

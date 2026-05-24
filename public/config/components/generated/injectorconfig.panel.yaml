@@ -55,6 +55,7 @@ children:
   - type: enum-field
     id: veoverridemode
     props:
+      label: Override VE table load axis
       options:
       - value: 0
         label: None
@@ -64,7 +65,6 @@ children:
         label: TPS
       - value: 3
         label: INVALID
-      label: Override VE table load axis
     bind:
       source: config
       field: veOverrideMode
@@ -95,6 +95,7 @@ children:
   - type: enum-field
     id: injectiontimingmode
     props:
+      label: Injection timing control mode
       options:
       - value: 0
         label: End of injection
@@ -104,7 +105,6 @@ children:
         label: Center of injection
       - value: 3
         label: INVALID
-      label: Injection timing control mode
     bind:
       source: config
       field: injectionTimingMode
@@ -122,12 +122,12 @@ children:
   - type: enum-field
     id: injectorflowasmassflow
     props:
-      label: Injector flow units
       options:
       - value: 0
         label: cc/min
       - value: 1
         label: grams per second
+      label: Injector flow units
     bind:
       source: config
       field: injectorFlowAsMassFlow
@@ -146,6 +146,7 @@ children:
   - type: enum-field
     id: injectorcompensationmode
     props:
+      label: Injector flow compensation mode
       options:
       - value: 0
         label: None
@@ -155,7 +156,6 @@ children:
         label: Sensed Rail Pressure
       - value: 3
         label: HPFP fuel mass compensation
-      label: Injector flow compensation mode
     bind:
       source: config
       field: injectorCompensationMode
@@ -184,7 +184,13 @@ children:
     bind:
       source: config
       field: stoichRatioSecondary
-- type: text
+- type: config-table
+  id: injectorsdeadtime
   props:
-    variant: hint
-    text: Панель «injectorsDeadTime» — нет определения в INI
+    variant: table
+    yLabel: Pressure
+    xBins: injector_battLagCorrBattBins
+    zBins: injector_battLagCorrTable
+    yBins: injector_battLagCorrPressBins
+    title: Injector dead time
+    xLabel: Battery

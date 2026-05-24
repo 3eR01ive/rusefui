@@ -747,12 +747,12 @@ children:
 - type: enum-field
   id: caninputbcm
   props:
-    label: Read RPM matching VSS profile
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: Read RPM matching VSS profile
   bind:
     source: config
     field: canInputBCM

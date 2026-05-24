@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
 use crate::defines::parse_ini_defines;
+use crate::tables::{parse_array_shape, parse_table_and_curve_editors};
 use crate::enum_options::parse_enum_options;
 use crate::error::IniError;
 use crate::model::{
-    BitsField, ConfigFieldKind, EnumField, FieldKind, IniFile, OutputChannelField, OutputChannels,
-    ScalarField, ScalarType,
+    ArrayField, BitsField, ConfigFieldKind, EnumField, FieldKind, IniFile, OutputChannelField,
+    OutputChannels, ScalarField, ScalarType,
 };
 
 #[derive(PartialEq, Eq)]
@@ -19,6 +20,7 @@ enum Section {
 
 pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
     let defines = parse_ini_defines(text);
+    let (tables, curves) = parse_table_and_curve_editors(text);
     let mut section = Section::None;
     let mut signature = None;
     let mut och_block_size = 2044u16;
@@ -92,14 +94,16 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
             }
         }
 
-        if line.contains('=') && (line.contains("scalar,") || line.contains("bits,")) {
+        if line.contains('=') && (line.contains("scalar,") || line.contains("bits,") || line.contains("array,")) {
             match parse_config_or_output_line(line, &defines) {
                 Ok(field) => {
                     if section == Section::OutputChannels {
-                        fields.push(OutputChannelField {
-                            name: field.name,
-                            kind: field.kind,
-                        });
+                        if !matches!(field.kind, FieldKind::Array(_)) {
+                            fields.push(OutputChannelField {
+                                name: field.name,
+                                kind: field.kind,
+                            });
+                        }
                     } else if section == Section::Constants {
                         if let Some((name, kind)) = field.into_config_kind() {
                             config_fields.insert(name, kind);
@@ -132,6 +136,8 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
         page_chunk_write_has_page_index,
         output_channels,
         config_fields,
+        tables,
+        curves,
     })
 }
 
@@ -158,6 +164,7 @@ impl ParsedIniField {
                     ))
                 }
             }
+            FieldKind::Array(array) => Some((self.name, ConfigFieldKind::Array(array))),
         }
     }
 }
@@ -241,6 +248,31 @@ fn parse_config_or_output_line(
                 offset,
                 bit_low: low,
                 bit_high: high,
+            })
+        }
+        "array" => {
+            if parts.len() < 4 {
+                return Err("array needs type, offset, shape".into());
+            }
+            let ty = ScalarType::parse(&parts[1]).ok_or("unknown array type")?;
+            let offset: u32 = parts[2].parse().map_err(|_| "bad offset")?;
+            let shape = parse_array_shape(&parts[3]).ok_or("bad array shape")?;
+            let units = parts.get(4).cloned().unwrap_or_default();
+            let scale: f64 = parts.get(5).and_then(|s| s.parse().ok()).unwrap_or(1.0);
+            let translate: f64 = parts.get(6).and_then(|s| s.parse().ok()).unwrap_or(0.0);
+            let lo: f64 = parts.get(7).and_then(|s| s.parse().ok()).unwrap_or(0.0);
+            let hi: f64 = parts.get(8).and_then(|s| s.parse().ok()).unwrap_or(0.0);
+            let digits: u8 = parts.get(9).and_then(|s| s.parse().ok()).unwrap_or(0);
+            FieldKind::Array(ArrayField {
+                ty,
+                offset,
+                shape,
+                units,
+                scale,
+                translate,
+                lo,
+                hi,
+                digits,
             })
         }
         other => return Err(format!("unknown field kind: {other}")),

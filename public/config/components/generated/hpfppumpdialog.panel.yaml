@@ -241,6 +241,7 @@ children:
 - type: enum-field
   id: hpfpvalvepinmode
   props:
+    label: Valve Pin Mode
     options:
     - value: 0
       label: default
@@ -250,7 +251,6 @@ children:
       label: open collector
     - value: 3
       label: open collector inverted
-    label: Valve Pin Mode
   bind:
     source: config
     field: hpfpValvePinMode
@@ -314,7 +314,12 @@ children:
   bind:
     source: config
     field: hpfpPid_iTermMax
-- type: text
+- type: config-table
+  id: hpfpdeadtimecurve
   props:
-    text: Таблица/кривая «hpfpDeadtimeCurve» — редактор пока не реализован
-    variant: hint
+    yLabel: ms
+    xBins: hpfpDeadtimeVoltsBins
+    yBins: hpfpDeadtimeMS
+    xLabel: volts
+    title: HPFP Valve Deadtime
+    variant: curve

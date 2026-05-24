@@ -6,13 +6,23 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: Set a base evaporation time based on coolant temperature, and a multiplier based on MAP.
-- type: text
-  props:
-    text: Таблица/кривая «wwTauCltCurve» — редактор пока не реализован
     variant: hint
-- type: text
+- type: config-table
+  id: wwtaucltcurve
   props:
-    text: Таблица/кривая «wwTauMapCurve» — редактор пока не реализован
-    variant: hint
+    variant: curve
+    xLabel: coolant
+    xBins: wwCltBins
+    yBins: wwTauCltValues
+    title: Evap time vs. CLT
+    yLabel: seconds
+- type: config-table
+  id: wwtaumapcurve
+  props:
+    yBins: wwTauMapValues
+    variant: curve
+    yLabel: mult
+    xBins: wwMapBins
+    xLabel: MAP
+    title: Evap time vs. MAP

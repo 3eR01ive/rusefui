@@ -4,7 +4,12 @@ source:
   ini_dialog: afterCrankingIACtaperDurationDialog
   menu_path: Idle › Idle Valve Crank-to-Run Taper
 children:
-- type: text
+- type: config-table
+  id: aftercrankingiactapercurve
   props:
-    variant: hint
-    text: Таблица/кривая «afterCrankingIACtaperCurve» — редактор пока не реализован
+    xLabel: Coolant
+    xBins: afterCrankingIACtaperDurationBins
+    yBins: afterCrankingIACtaperDuration
+    variant: curve
+    title: Idle valve Crank-to-Run Taper
+    yLabel: cyles

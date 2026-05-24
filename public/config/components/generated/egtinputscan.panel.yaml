@@ -14,12 +14,12 @@ children:
 - type: enum-field
   id: enableaemxseriesegt
   props:
+    label: CAN EGT (AEM X series of RusEFI)
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: CAN EGT (AEM X series of RusEFI)
   bind:
     source: config
     field: enableAemXSeriesEgt

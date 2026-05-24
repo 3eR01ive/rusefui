@@ -504,5 +504,5 @@ children:
     text: 'Кнопка: Test ACR #2 (cmd_test_acr2_valve)'
 - type: text
   props:
-    text: Панель «acrActiveDiagPanel» — нет определения в INI
     variant: hint
+    text: Панель «acrActiveDiagPanel» — нет определения в INI

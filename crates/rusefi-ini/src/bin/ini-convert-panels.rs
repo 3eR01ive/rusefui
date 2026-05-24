@@ -58,7 +58,13 @@ fn main() {
     });
 
     let ini_source = ini_path.display().to_string();
-    let result = convert_menu_panels(&menu, &ini.config_fields, &ini_source);
+    let result = convert_menu_panels(
+        &menu,
+        &ini.config_fields,
+        &ini.tables,
+        &ini.curves,
+        &ini_source,
+    );
 
     fs::create_dir_all(&out_dir).unwrap_or_else(|e| {
         eprintln!("Cannot create {}: {e}", out_dir.display());

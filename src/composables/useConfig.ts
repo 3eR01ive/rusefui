@@ -25,6 +25,9 @@ export interface ConfigFieldInfo {
   units?: string | null;
   ty: string;
   options?: ConfigEnumOption[] | null;
+  arrayCols?: number | null;
+  arrayRows?: number | null;
+  arrayLength?: number | null;
 }
 
 const snapshot = shallowRef<ConfigSnapshot>({
@@ -77,6 +80,20 @@ export async function setConfigScalar(
   });
 }
 
+export async function getConfigArray(field: string): Promise<number[]> {
+  return invoke<number[]>("config_get_array", { params: { field } });
+}
+
+export async function setConfigArrayValue(
+  field: string,
+  index: number,
+  value: number,
+): Promise<void> {
+  snapshot.value = await invoke<ConfigSnapshot>("config_set_array_value", {
+    params: { field, index, value },
+  });
+}
+
 export function useConfig() {
   return {
     snapshot: readonly(snapshot),
@@ -87,5 +104,7 @@ export function useConfig() {
     getFieldInfo: (name: string): ConfigFieldInfo | null =>
       fieldsByName.value.get(name) ?? null,
     setField: setConfigScalar,
+    getArray: getConfigArray,
+    setArrayValue: setConfigArrayValue,
   };
 }

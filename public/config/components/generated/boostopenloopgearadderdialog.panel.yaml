@@ -4,7 +4,12 @@ source:
   ini_dialog: boostOpenLoopGearAdderDialog
   menu_path: Advanced › Boost control open loop gear adder
 children:
-- type: text
+- type: config-table
+  id: boostopenloopgearaddercurve
   props:
-    text: Таблица/кривая «boostOpenLoopGearAdderCurve» — редактор пока не реализован
-    variant: hint
+    yBins: gearBasedOpenLoopBoostAdder
+    yLabel: duty cycle
+    variant: curve
+    xLabel: Gear
+    title: Boost Open Loop gear-based modifier
+    xBins: gearCountArray

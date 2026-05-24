@@ -27,6 +27,7 @@ children:
     - type: enum-field
       id: vvlrelaypin
       props:
+        label: VVL Relay
         options:
         - value: 0
           label: NONE
@@ -254,13 +255,13 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
-        label: VVL Relay
       bind:
         source: config
         field: vvlRelayPin
     - type: enum-field
       id: vvlrelaypinmode
       props:
+        label: VVL Relay Mode
         options:
         - value: 0
           label: default
@@ -270,7 +271,6 @@ children:
           label: open collector
         - value: 3
           label: open collector inverted
-        label: VVL Relay Mode
       bind:
         source: config
         field: vvlRelayPinMode

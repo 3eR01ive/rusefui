@@ -11,7 +11,11 @@ children:
   bind:
     source: config
     field: scriptTableName4
-- type: text
+- type: config-table
+  id: scripttable4tbl
   props:
-    variant: hint
-    text: Таблица/кривая «scriptTable4Tbl» — редактор пока не реализован
+    variant: table
+    title: 'Script Table #4'
+    yBins: scriptTable4LoadBins
+    zBins: scriptTable4
+    xBins: scriptTable4RpmBins
