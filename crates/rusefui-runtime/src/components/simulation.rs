@@ -1,5 +1,8 @@
 use std::sync::Arc;
 
+use rusefi_protocol::{
+    TS_SUBSYSTEM_X14, TS_X14_TRIGGER_STIMULATOR_DISABLE, TS_X14_TRIGGER_STIMULATOR_ENABLE,
+};
 use serde::Serialize;
 use serde_json::{json, Value};
 
@@ -72,19 +75,25 @@ impl SimulationLogic {
         }
     }
 
-    /// Как rusefi_console autotest: `rpm N` → `enable self_stimulation` (TS_EXECUTE).
+    /// INI `cmd_enable_self_stim`: запись triggerSimulatorRpm + `Z` subsystem X14.
     fn start(&mut self) -> Result<(), String> {
         self.require_connected()?;
+        self.session.output().stop();
         self.busy = true;
         self.message = None;
         self.message_is_error = false;
 
         let rpm = self.rpm;
-        let result = self.session.with_link(|link| {
-            link.execute_console_command(&format!("rpm {rpm}"))?;
-            link.execute_console_command("enable self_stimulation")?;
-            Ok::<(), rusefi_protocol::ProtocolError>(())
-        });
+        let result = (|| {
+            self.session.config().set_scalar(
+                &self.session,
+                "triggerSimulatorRpm",
+                f64::from(rpm),
+            )?;
+            self.session.with_link(|link| {
+                link.execute_ts_command(TS_SUBSYSTEM_X14, TS_X14_TRIGGER_STIMULATOR_ENABLE)
+            })
+        })();
 
         self.busy = false;
         match result {
@@ -105,13 +114,14 @@ impl SimulationLogic {
 
     fn stop(&mut self) -> Result<(), String> {
         self.require_connected()?;
+        self.session.output().stop();
         self.busy = true;
         self.message = None;
         self.message_is_error = false;
 
-        let result = self
-            .session
-            .with_link(|link| link.execute_console_command("disable self_stimulation"));
+        let result = self.session.with_link(|link| {
+            link.execute_ts_command(TS_SUBSYSTEM_X14, TS_X14_TRIGGER_STIMULATOR_DISABLE)
+        });
 
         self.busy = false;
         match result {

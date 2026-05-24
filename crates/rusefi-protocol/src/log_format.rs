@@ -31,6 +31,15 @@ pub fn describe_payload(payload: &[u8]) -> String {
             let count = u16::from_le_bytes([payload[5], payload[6]]);
             format!("write page={page} offset={offset} count={count}")
         }
+        b'C' if payload.len() >= 5 => {
+            let offset = u16::from_le_bytes([payload[1], payload[2]]);
+            let count = u16::from_le_bytes([payload[3], payload[4]]);
+            format!("write offset={offset} count={count}")
+        }
+        b'B' if payload.len() >= 3 => {
+            let page = u16::from_le_bytes([payload[1], payload[2]]);
+            format!("burn page={page}")
+        }
         b'Z' if payload.len() >= 5 => {
             let subsystem = u16::from_be_bytes([payload[1], payload[2]]);
             let index = u16::from_be_bytes([payload[3], payload[4]]);
@@ -45,6 +54,9 @@ pub fn describe_payload(payload: &[u8]) -> String {
 }
 
 pub fn describe_response(request_payload: &[u8], response: &crate::packet::CrcResponse) -> String {
+    if response.code == crate::commands::TS_RESPONSE_BURN_OK {
+        return "BURN OK".into();
+    }
     if response.code != crate::commands::TS_RESPONSE_OK {
         return format!("error code=0x{:02X}", response.code);
     }
@@ -60,7 +72,7 @@ pub fn describe_response(request_payload: &[u8], response: &crate::packet::CrcRe
             }
         }
         Some(b'O' | b'R') => format!("OK {} bytes", response.payload.len()),
-        Some(b'C' | b'Z' | b'E') => "OK".into(),
+        Some(b'C' | b'Z' | b'E' | b'B') => "OK".into(),
         _ => format!("OK payload={} bytes", response.payload.len()),
     }
 }

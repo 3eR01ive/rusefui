@@ -6,8 +6,9 @@ use std::time::{Duration, Instant};
 use serialport::{DataBits, FlowControl, Parity, StopBits};
 
 use crate::commands::{
-    TS_CHUNK_WRITE_COMMAND, TS_EXECUTE_COMMAND, TS_HELLO_COMMAND, TS_IO_TEST_COMMAND,
-    TS_OUTPUT_COMMAND, TS_READ_COMMAND, TS_RESPONSE_OK,
+    TS_BURN_COMMAND, TS_CHUNK_WRITE_COMMAND, TS_EXECUTE_COMMAND, TS_HELLO_COMMAND,
+    TS_IO_TEST_COMMAND, TS_OUTPUT_COMMAND, TS_READ_COMMAND, TS_RESPONSE_BURN_OK,
+    TS_RESPONSE_OK,
 };
 use crate::error::ProtocolError;
 use crate::packet::{make_crc_request, parse_crc_response, CrcResponse};
@@ -181,10 +182,13 @@ impl SerialLink {
         Ok(buf)
     }
 
-    /// `R` — чтение страницы конфигурации (offset/count — **LE**).
+    /// `R` — чтение страницы конфигурации (offset/count — **LE**, как Java `ByteRange` + `swap16`).
     ///
     /// Если `read_has_page_index` (INI `pageReadCommand` = `"R%2i%2o%2c"`), на проводе
-    /// page+offset+count. Старый `"R%2o%2c"` — только offset+count (Java `BinaryProtocol`).
+    /// page+offset+count. Старый `"R%2o%2c"` (7 символов) — только offset+count.
+    ///
+    /// На legacy ECU нельзя слать `00 00` перед offset: прошивка возьмёт `data16[1]` как count
+    /// (например offset=416 → прочитает 416 байт с offset 0).
     pub fn read_config_chunk(
         &mut self,
         page: u16,
@@ -290,24 +294,43 @@ impl SerialLink {
         Ok(buf)
     }
 
-    /// `C` — запись фрагмента страницы конфигурации (page, offset, count — LE на проводе).
+    /// `C` — запись фрагмента page 0. Legacy INI (`C%2o%2c%v`) — offset+count+data без page;
+    /// новый (`C%2i%2o%2c%v`) — page+offset+count+data (как Java `WriteCommand`).
     pub fn write_config_chunk(
         &mut self,
         page: u16,
         offset: u16,
         data: &[u8],
+        chunk_write_has_page_index: bool,
     ) -> Result<(), ProtocolError> {
         let count = u16::try_from(data.len())
             .map_err(|_| ProtocolError::InvalidPacket("chunk too large".into()))?;
-        let mut payload = Vec::with_capacity(7 + data.len());
+        let header_len = if chunk_write_has_page_index { 6 } else { 4 };
+        let mut payload = Vec::with_capacity(1 + header_len + data.len());
         payload.push(TS_CHUNK_WRITE_COMMAND);
-        payload.extend_from_slice(&page.to_le_bytes());
+        if chunk_write_has_page_index {
+            payload.extend_from_slice(&page.to_le_bytes());
+        }
         payload.extend_from_slice(&offset.to_le_bytes());
         payload.extend_from_slice(&count.to_le_bytes());
         payload.extend_from_slice(data);
 
         let response = self.send_request(&payload)?;
         if response.code != TS_RESPONSE_OK {
+            return Err(ProtocolError::ErrorResponse(response.code));
+        }
+        Ok(())
+    }
+
+    /// `B` + page (LE) — commit page 0 в flash (Java `BurnCommand`, INI `burnCommand = "B%2i"`).
+    pub fn burn_config_page(&mut self, page: u16) -> Result<(), ProtocolError> {
+        let payload = [
+            TS_BURN_COMMAND,
+            page.to_le_bytes()[0],
+            page.to_le_bytes()[1],
+        ];
+        let response = self.send_request(&payload)?;
+        if response.code != TS_RESPONSE_BURN_OK {
             return Err(ProtocolError::ErrorResponse(response.code));
         }
         Ok(())
@@ -486,6 +509,18 @@ mod tests {
             ]
         }
         assert_eq!(r_payload(0, 1024), [b'R', 0, 0, 0, 4]);
+    }
+
+    #[test]
+    fn burn_request_wire_format() {
+        fn b_payload(page: u16) -> [u8; 3] {
+            [
+                TS_BURN_COMMAND,
+                page.to_le_bytes()[0],
+                page.to_le_bytes()[1],
+            ]
+        }
+        assert_eq!(b_payload(0), [b'B', 0, 0]);
     }
 
     #[test]

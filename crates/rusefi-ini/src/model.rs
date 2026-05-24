@@ -10,6 +10,8 @@ pub struct IniFile {
     /// `pageReadCommand` для page 0 включает `%2i` (новый формат с номером страницы).
     /// Старый `"R%2o%2c"` (длина 7) — только offset+count, как в Java `BinaryProtocol`.
     pub page_read_has_page_index: bool,
+    /// `pageChunkWrite` содержит `%2i` (новый формат с page). Старый `"C%2o%2c%v"` — offset+count+data.
+    pub page_chunk_write_has_page_index: bool,
     pub output_channels: OutputChannels,
     pub config_scalars: HashMap<String, ScalarField>,
 }

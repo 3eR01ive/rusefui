@@ -54,6 +54,11 @@ fn decode_field(kind: &FieldKind, bytes: &[u8]) -> Option<f64> {
     }
 }
 
+/// Декодирует одно scalar-поле из сырого образа page 0.
+pub fn decode_scalar_at(field: &ScalarField, page: &[u8]) -> Option<f64> {
+    decode_scalar(field, page)
+}
+
 fn decode_scalar(field: &ScalarField, bytes: &[u8]) -> Option<f64> {
     let raw = read_raw(field.ty, field.offset, bytes)?;
     Some(raw * field.scale + field.translate)

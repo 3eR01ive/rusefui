@@ -234,10 +234,27 @@ pub fn config_set_scalar(
     state: State<RuntimeState>,
     app: AppHandle,
 ) -> Result<ConfigSnapshot, String> {
-    state
+    // Output poll (50 Hz) мешает burn/flash — как при полном чтении конфига.
+    state.session.output().stop();
+
+    let session = Arc::clone(&state.session);
+    let result = state
         .session
         .config()
-        .set_scalar(&state.session, &params.field, params.value)?;
+        .set_scalar(&state.session, &params.field, params.value);
+
+    if session.is_connected() {
+        let snap = session.config().snapshot();
+        if snap.loaded {
+            sync_output_poll_session(&session, &app);
+        } else {
+            emit_output(&app, &session.output().snapshot());
+        }
+    } else {
+        emit_output(&app, &session.output().snapshot());
+    }
+
+    result?;
     let snap = state.session.config().snapshot();
     emit_config(&app, &snap);
     Ok(snap)

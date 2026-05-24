@@ -1,14 +1,21 @@
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
-use std::thread::{self, JoinHandle};
+use std::thread::{self, sleep, JoinHandle};
+use std::time::Duration;
 
-use rusefi_ini::{decode_config_scalars, encode_scalar_value};
-use rusefi_protocol::TS_PAGE_SETTINGS;
+use rusefi_ini::{decode_config_scalars, decode_scalar_at, encode_scalar_value};
+use rusefi_protocol::{ProtocolError, TS_PAGE_SETTINGS};
 use serde::Serialize;
 
 use crate::session::EcuSession;
 use crate::sources::output_channels::IniContext;
+
+/// INI `pageActivationDelay` + время async-записи flash после burn.
+const BURN_SETTLE_MS: u64 = 1500;
+const BURN_RETRIES: usize = 3;
+/// INI `interWriteDelay`.
+const INTER_WRITE_DELAY_MS: u64 = 15;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -238,8 +245,72 @@ impl ConfigSource {
             return Err(format!("offset {name} exceeds protocol limit"));
         }
 
-        session.with_link(|link| {
-            link.write_config_chunk(TS_PAGE_SETTINGS, field.offset as u16, &encoded)
+        let chunk_count = u16::try_from(encoded.len())
+            .map_err(|_| format!("encoded value for {name} too large"))?;
+
+        // `R` и `C` — по INI (`pageReadCommand` / `pageChunkWrite`). Legacy без `%2i` — только offset+count.
+        let read_has_page_index = ini.page_read_has_page_index;
+        let write_has_page_index = ini.page_chunk_write_has_page_index;
+
+        let actual = session.with_link(|link| {
+            link.write_config_chunk(
+                TS_PAGE_SETTINGS,
+                field.offset as u16,
+                &encoded,
+                write_has_page_index,
+            )?;
+            sleep(Duration::from_millis(INTER_WRITE_DELAY_MS));
+
+            let read_back = link.read_config_chunk(
+                TS_PAGE_SETTINGS,
+                field.offset as u16,
+                chunk_count,
+                read_has_page_index,
+            )?;
+
+            let off = field.offset as usize;
+            let mut page = self.raw.lock().unwrap().clone();
+            if off + read_back.len() > page.len() {
+                page.resize(off + read_back.len(), 0);
+            }
+            page[off..off + read_back.len()].copy_from_slice(&read_back);
+
+            let actual = decode_scalar_at(&field, &page).ok_or_else(|| {
+                ProtocolError::InvalidPacket(format!(
+                    "config write verify decode failed at offset {} for {name}",
+                    field.offset
+                ))
+            })?;
+
+            if (actual - value).abs() > 1e-4 {
+                return Err(ProtocolError::InvalidPacket(format!(
+                    "config write verify failed for {name}: expected {value}, ECU has {actual} (offset {})",
+                    field.offset
+                )));
+            }
+
+            let mut last_err = None;
+            for attempt in 0..BURN_RETRIES {
+                match link.burn_config_page(TS_PAGE_SETTINGS) {
+                    Ok(()) => {
+                        last_err = None;
+                        break;
+                    }
+                    Err(e) => {
+                        last_err = Some(e);
+                        if attempt + 1 < BURN_RETRIES {
+                            sleep(Duration::from_millis(15));
+                        }
+                    }
+                }
+            }
+            if let Some(e) = last_err {
+                return Err(e);
+            }
+
+            sleep(Duration::from_millis(BURN_SETTLE_MS));
+
+            Ok(actual)
         })?;
 
         {
@@ -252,7 +323,7 @@ impl ConfigSource {
 
         {
             let mut snap = self.snapshot.write().unwrap();
-            snap.values.insert(name.to_string(), value);
+            snap.values.insert(name.to_string(), actual);
         }
 
         Ok(())

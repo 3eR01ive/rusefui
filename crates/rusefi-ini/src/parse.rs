@@ -21,6 +21,7 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
     let mut blocking_factor = 1024u16;
     let mut page_size = 64_000u32;
     let mut page_read_has_page_index = true;
+    let mut page_chunk_write_has_page_index = true;
     let mut fields = Vec::new();
     let mut config_scalars = HashMap::new();
 
@@ -68,6 +69,10 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
             if let Some(cmd) = parse_key_first_quoted(line, "pageReadCommand") {
                 // Как Java: pageReadCommand.length() == 7 → старый формат без page
                 page_read_has_page_index = cmd.len() != 7;
+                continue;
+            }
+            if let Some(cmd) = parse_key_first_quoted(line, "pageChunkWrite") {
+                page_chunk_write_has_page_index = cmd.contains("%2i");
                 continue;
             }
         }
@@ -130,6 +135,7 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
         blocking_factor,
         page_size,
         page_read_has_page_index,
+        page_chunk_write_has_page_index,
         output_channels,
         config_scalars,
     })
@@ -298,6 +304,28 @@ pageSize = 63900
 "#;
         let ini = parse_ini(text).unwrap();
         assert!(!ini.page_read_has_page_index);
+    }
+
+    #[test]
+    fn page_chunk_write_legacy_format() {
+        let text = r#"
+[Constants]
+pageChunkWrite = "C%2o%2c%v"
+pageSize = 63900
+"#;
+        let ini = parse_ini(text).unwrap();
+        assert!(!ini.page_chunk_write_has_page_index);
+    }
+
+    #[test]
+    fn page_chunk_write_with_page_index() {
+        let text = r#"
+[Constants]
+pageChunkWrite = "C%2i%2o%2c%v"
+pageSize = 63900
+"#;
+        let ini = parse_ini(text).unwrap();
+        assert!(ini.page_chunk_write_has_page_index);
     }
 
     #[test]
