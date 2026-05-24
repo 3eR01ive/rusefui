@@ -130,22 +130,9 @@ impl SerialLink {
         self.read_crc_frame_logged(payload, timeout_ms)
     }
 
-    /// Сброс «хвостов» в RX (аналог Java `IncomingDataBuffer.dropPending`).
+    /// Сброс «хвостов» в RX (аналог Java `IncomingDataBuffer.dropPending` — без ожидания).
     fn drop_pending_rx(&mut self) {
-        let mut scratch = [0u8; 256];
-        loop {
-            match self.port.read(&mut scratch) {
-                Ok(0) => break,
-                Ok(_) => continue,
-                Err(e)
-                    if e.kind() == std::io::ErrorKind::TimedOut
-                        || e.kind() == std::io::ErrorKind::WouldBlock =>
-                {
-                    break;
-                }
-                Err(_) => break,
-            }
-        }
+        let _ = self.port.clear(serialport::ClearBuffer::Input);
     }
 
     /// `ochGetCommand` — live output block (`O%2o%2c`).

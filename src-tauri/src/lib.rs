@@ -25,6 +25,7 @@ pub fn run() {
             runtime_cmds::config_set_scalar,
             runtime_cmds::ini_get_info,
             runtime_cmds::protocol_log_get,
+            runtime_cmds::protocol_log_set_filters,
             runtime_cmds::protocol_log_clear,
         ])
         .run(tauri::generate_context!())

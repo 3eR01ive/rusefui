@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from "vue";
-import { useProtocolLog } from "../composables/useProtocolLog";
+import {
+  useProtocolLog,
+  type ProtocolLogFilterSettings,
+} from "../composables/useProtocolLog";
 
-const { entries, logPath, open, clear, formatTime } = useProtocolLog();
+const { entries, logPath, filters, open, clear, formatTime, setFilters } =
+  useProtocolLog();
 const listEl = ref<HTMLElement | null>(null);
 
 watch(
@@ -32,6 +36,24 @@ function dirLabel(direction: string): string {
       return direction.toUpperCase();
   }
 }
+
+type FilterKey = keyof ProtocolLogFilterSettings;
+
+const filterOptions: {
+  key: FilterKey;
+  label: string;
+  hint?: string;
+}[] = [
+  { key: "error", label: "Error" },
+  { key: "warn", label: "Warn" },
+  { key: "info", label: "Info" },
+  { key: "debug", label: "Debug" },
+  { key: "trace", label: "Trace", hint: "только файл" },
+];
+
+function onFilterToggle(key: FilterKey, checked: boolean) {
+  void setFilters({ ...filters.value, [key]: checked });
+}
 </script>
 
 <template>
@@ -50,15 +72,40 @@ function dirLabel(direction: string): string {
             </div>
           </header>
 
+          <div class="sheet-filters" aria-label="Фильтры лога">
+            <label
+              v-for="opt in filterOptions"
+              :key="opt.key"
+              class="filter-chip"
+              :title="opt.hint"
+            >
+              <input
+                type="checkbox"
+                :checked="filters[opt.key]"
+                @change="
+                  onFilterToggle(
+                    opt.key,
+                    ($event.target as HTMLInputElement).checked,
+                  )
+                "
+              />
+              <span>{{ opt.label }}</span>
+              <span v-if="opt.hint" class="filter-hint">{{ opt.hint }}</span>
+            </label>
+          </div>
+
           <div ref="listEl" class="sheet-list">
-            <p v-if="!entries.length" class="empty">Пока нет записей. Подключите ECU и выполните команды.</p>
+            <p v-if="!entries.length" class="empty">
+              Пока нет записей. Подключите ECU и выполните команды.
+            </p>
             <article
               v-for="entry in entries"
               :key="entry.id"
               class="log-row"
-              :class="entry.direction"
+              :class="[entry.direction, entry.level]"
             >
               <div class="log-meta">
+                <span class="log-level">{{ entry.level }}</span>
                 <span class="log-dir">{{ dirLabel(entry.direction) }}</span>
                 <span class="log-time">{{ formatTime(entry.timestampMs) }}</span>
                 <span v-if="entry.command" class="log-cmd">{{ entry.command }}</span>
@@ -105,7 +152,7 @@ function dirLabel(direction: string): string {
   align-items: flex-start;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1rem 1.25rem;
+  padding: 1rem 1.25rem 0.65rem;
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
@@ -128,6 +175,34 @@ function dirLabel(direction: string): string {
   display: flex;
   gap: 0.5rem;
   flex-shrink: 0;
+}
+
+.sheet-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.75rem;
+  padding: 0.65rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.filter-chip input {
+  accent-color: var(--color-accent);
+}
+
+.filter-hint {
+  font-size: 0.68rem;
+  color: var(--color-text-subtle);
 }
 
 .btn.ghost {
@@ -168,7 +243,8 @@ function dirLabel(direction: string): string {
   border-left-color: #5a9a6e;
 }
 
-.log-row.err {
+.log-row.err,
+.log-row.error {
   border-left-color: var(--color-error);
   background: var(--color-error-bg);
 }
@@ -183,6 +259,14 @@ function dirLabel(direction: string): string {
   gap: 0.45rem 0.75rem;
   align-items: center;
   margin-bottom: 0.25rem;
+}
+
+.log-level {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-subtle);
 }
 
 .log-dir {

@@ -1,6 +1,7 @@
 use rusefui_runtime::{
     default_log_path, ComponentRuntime, ConfigFieldInfo, ConfigSnapshot, EcuSession,
-    OutputFieldInfo, OutputSnapshot, ProtocolLogEntry, ProtocolLogStore,
+    OutputFieldInfo, OutputSnapshot, ProtocolLogEntry, ProtocolLogFilterSettings,
+    ProtocolLogStore,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -276,6 +277,7 @@ pub fn ini_get_info(state: State<RuntimeState>) -> IniInfo {
 pub struct ProtocolLogInfo {
     pub path: String,
     pub entries: Vec<ProtocolLogEntry>,
+    pub filters: ProtocolLogFilterSettings,
 }
 
 #[tauri::command]
@@ -284,7 +286,16 @@ pub fn protocol_log_get(limit: Option<usize>, state: State<RuntimeState>) -> Pro
     ProtocolLogInfo {
         path: state.protocol_log.path().display().to_string(),
         entries: state.protocol_log.list(limit),
+        filters: state.protocol_log.filters(),
     }
+}
+
+#[tauri::command]
+pub fn protocol_log_set_filters(
+    filters: ProtocolLogFilterSettings,
+    state: State<RuntimeState>,
+) {
+    state.protocol_log.set_filters(filters);
 }
 
 #[tauri::command]

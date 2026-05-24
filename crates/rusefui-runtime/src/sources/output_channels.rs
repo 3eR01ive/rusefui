@@ -12,7 +12,8 @@ use crate::session::EcuSession;
 
 pub const DEFAULT_OUTPUT_BLOCK_SIZE: u16 = 2044;
 
-const POLL_INTERVAL: Duration = Duration::from_millis(100);
+const OUTPUT_POLL_HZ: f64 = 50.0;
+const POLL_INTERVAL: Duration = Duration::from_micros((1_000_000.0 / OUTPUT_POLL_HZ) as u64);
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -193,7 +194,7 @@ fn poll_loop(
     while running.load(Ordering::SeqCst) {
         let mut snap = OutputSnapshot {
             connected: session.is_connected(),
-            poll_hz: 1.0 / POLL_INTERVAL.as_secs_f64(),
+            poll_hz: OUTPUT_POLL_HZ,
             raw_len: 0,
             values: HashMap::new(),
             last_error: None,
