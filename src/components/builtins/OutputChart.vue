@@ -15,7 +15,21 @@ import {
   createTimeSeriesStore,
   type TimeSeries,
 } from "../../composables/useTimeSeriesBuffer";
-import { drawLogPanelsChart, type LogPanelSpec } from "../../composables/drawTimeSeriesChart";
+import { drawLogPanelsChart, type LogGraphPanelSpec, type LogTraceSpec } from "../../composables/drawTimeSeriesChart";
+
+interface LogGraphGroup {
+  id: string;
+  fieldNames: string[];
+}
+
+const MAX_CHANNELS = 12;
+const MAX_GRAPHS = 6;
+let graphIdSeq = 1;
+
+function nextGraphId(): string {
+  graphIdSeq += 1;
+  return `g${graphIdSeq}`;
+}
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -51,9 +65,44 @@ const canvasWidth = ref(640);
 const { snapshot } = useOutputChannels();
 const { fields: allFields, reload: reloadOutputFields } = useOutputFields();
 
-const selectedFields = ref<string[]>([...defaultFields.value]);
-/** min/max для шкалы Y; пустая строка = авто по данным окна. */
-const rangeInputs = ref<Record<string, { min: string; max: string }>>({});
+const graphGroups = ref<LogGraphGroup[]>([
+  { id: "g1", fieldNames: [...defaultFields.value] },
+]);
+const activeGraphId = ref("g1");
+
+function allSelectedFields(): string[] {
+  return graphGroups.value.flatMap((g) => g.fieldNames);
+}
+
+function findGraphWithField(name: string): LogGraphGroup | undefined {
+  return graphGroups.value.find((g) => g.fieldNames.includes(name));
+}
+
+function isFieldSelected(name: string): boolean {
+  return allSelectedFields().includes(name);
+}
+
+function syncGraphStore(): void {
+  syncRangeInputs();
+  store.value.setFields(allSelectedFields());
+}
+
+async function refreshFieldCatalog(): Promise<void> {
+  await reloadOutputFields();
+  const defaults = defaultFields.value.filter((f) =>
+    allFields.value.length === 0 ? true : allFields.value.some((x) => x.name === f),
+  );
+  const names =
+    defaults.length > 0
+      ? defaults
+      : allFields.value.length > 0
+        ? [allFields.value[0]!.name]
+        : [];
+  graphGroups.value = [{ id: "g1", fieldNames: names }];
+  activeGraphId.value = "g1";
+  graphIdSeq = 1;
+  syncGraphStore();
+}
 const fieldFilter = ref("");
 const showSuggest = ref(false);
 const suggestStyle = ref({ top: "0px", left: "0px", width: "0px" });
@@ -81,21 +130,12 @@ function closeSuggestSoon(): void {
   }, 160);
 }
 
-async function refreshFieldCatalog(): Promise<void> {
-  await reloadOutputFields();
-  selectedFields.value = defaultFields.value.filter((f) =>
-    allFields.value.length === 0 ? true : allFields.value.some((x) => x.name === f),
-  );
-  if (selectedFields.value.length === 0 && allFields.value.length > 0) {
-    selectedFields.value = [allFields.value[0]!.name];
-  }
-  syncRangeInputs();
-  store.value.setFields(selectedFields.value);
-}
+/** min/max для шкалы Y; пустая строка = авто по данным окна. */
+const rangeInputs = ref<Record<string, { min: string; max: string }>>({});
 
 function syncRangeInputs(): void {
   const next: Record<string, { min: string; max: string }> = {};
-  for (const name of selectedFields.value) {
+  for (const name of allSelectedFields()) {
     next[name] = rangeInputs.value[name] ?? { min: "", max: "" };
   }
   rangeInputs.value = next;
@@ -131,41 +171,53 @@ watch(
 
 watch(windowSeconds, (sec) => {
   store.value = createTimeSeriesStore(sec);
-  store.value.setFields(selectedFields.value);
+  store.value.setFields(allSelectedFields());
 });
 
-watch(
-  selectedFields,
-  (list) => {
-    syncRangeInputs();
-    store.value.setFields(list);
-  },
-  { deep: true },
-);
+watch(graphGroups, () => syncGraphStore(), { deep: true });
 
-const channelRows = computed(() =>
-  selectedFields.value.map((name) => {
-    const s = store.value.seriesMap.get(name);
-    const meta = allFields.value.find((f) => f.name === name);
-    const pts = s?.points;
-    const last = pts && pts.length > 0 ? pts[pts.length - 1]!.v : null;
-    const ranges = rangeInputs.value[name] ?? { min: "", max: "" };
-    return {
-      name,
-      color: s?.color ?? "#888",
-      units: meta?.units ?? "",
-      value: last,
-      min: ranges.min,
-      max: ranges.max,
-    };
-  }),
-);
+const channelRows = computed(() => {
+  const rows: {
+    name: string;
+    graphId: string;
+    graphLabel: string;
+    color: string;
+    units: string;
+    value: number | null;
+    min: string;
+    max: string;
+  }[] = [];
+  graphGroups.value.forEach((g, gi) => {
+    for (const name of g.fieldNames) {
+      const s = store.value.seriesMap.get(name);
+      const meta = allFields.value.find((f) => f.name === name);
+      const pts = s?.points;
+      const last = pts && pts.length > 0 ? pts[pts.length - 1]!.v : null;
+      const ranges = rangeInputs.value[name] ?? { min: "", max: "" };
+      rows.push({
+        name,
+        graphId: g.id,
+        graphLabel: `Граф ${gi + 1}`,
+        color: s?.color ?? "#888",
+        units: meta?.units ?? "",
+        value: last,
+        min: ranges.min,
+        max: ranges.max,
+      });
+    }
+  });
+  return rows;
+});
+
+const PANEL_GAP_UI = 6;
 
 const canvasHeight = computed(() => {
-  const n = Math.max(1, selectedFields.value.length);
-  const perPanel = Math.max(100, Math.floor(chartHeight.value / Math.min(n, 3)));
-  return perPanel * n + 28;
+  const n = Math.max(1, graphGroups.value.filter((g) => g.fieldNames.length > 0).length);
+  const perPanel = Math.max(140, chartHeight.value);
+  return perPanel * n + PANEL_GAP_UI * Math.max(0, n - 1) + 12;
 });
+
+const hasAnyChannel = computed(() => allSelectedFields().length > 0);
 
 const filteredFields = computed(() => {
   const q = fieldFilter.value.trim().toLowerCase();
@@ -189,7 +241,7 @@ const suggestEmptyHint = computed(() => {
 
 const activeSeries = computed((): TimeSeries[] => {
   const out: TimeSeries[] = [];
-  for (const f of selectedFields.value) {
+  for (const f of allSelectedFields()) {
     const s = store.value.seriesMap.get(f);
     if (s) out.push(s);
   }
@@ -199,26 +251,78 @@ const activeSeries = computed((): TimeSeries[] => {
 const legendItems = computed(() =>
   channelRows.value.map((row) => ({
     name: row.name,
+    graphLabel: row.graphLabel,
     color: row.color,
     units: row.units,
     value: row.value,
   })),
 );
 
-function toggleField(name: string): void {
-  const idx = selectedFields.value.indexOf(name);
-  if (idx >= 0) {
-    selectedFields.value = selectedFields.value.filter((f) => f !== name);
-  } else if (selectedFields.value.length < 8) {
-    selectedFields.value = [...selectedFields.value, name];
-    rangeInputs.value[name] = { min: "", max: "" };
+function addGraph(): void {
+  if (graphGroups.value.length >= MAX_GRAPHS) return;
+  const id = nextGraphId();
+  graphGroups.value = [...graphGroups.value, { id, fieldNames: [] }];
+  activeGraphId.value = id;
+}
+
+function removeGraph(id: string): void {
+  if (graphGroups.value.length <= 1) return;
+  const g = graphGroups.value.find((x) => x.id === id);
+  if (g) {
+    for (const name of g.fieldNames) {
+      const { [name]: _, ...rest } = rangeInputs.value;
+      rangeInputs.value = rest;
+    }
   }
+  graphGroups.value = graphGroups.value.filter((x) => x.id !== id);
+  if (activeGraphId.value === id) {
+    activeGraphId.value = graphGroups.value[0]!.id;
+  }
+  syncGraphStore();
+}
+
+function moveFieldToGraph(name: string, graphId: string): void {
+  for (const g of graphGroups.value) {
+    g.fieldNames = g.fieldNames.filter((f) => f !== name);
+  }
+  const target = graphGroups.value.find((g) => g.id === graphId);
+  if (target && !target.fieldNames.includes(name)) {
+    target.fieldNames = [...target.fieldNames, name];
+  }
+  graphGroups.value = [...graphGroups.value];
+  syncGraphStore();
+  redraw();
+}
+
+function toggleField(name: string): void {
+  const existing = findGraphWithField(name);
+  if (existing) {
+    existing.fieldNames = existing.fieldNames.filter((f) => f !== name);
+    const { [name]: _, ...rest } = rangeInputs.value;
+    rangeInputs.value = rest;
+    graphGroups.value = [...graphGroups.value];
+    syncGraphStore();
+    return;
+  }
+  if (allSelectedFields().length >= MAX_CHANNELS) return;
+  const g =
+    graphGroups.value.find((x) => x.id === activeGraphId.value) ?? graphGroups.value[0];
+  if (!g) return;
+  g.fieldNames = [...g.fieldNames, name];
+  rangeInputs.value[name] = { min: "", max: "" };
+  graphGroups.value = [...graphGroups.value];
+  syncGraphStore();
 }
 
 function removeField(name: string): void {
-  selectedFields.value = selectedFields.value.filter((f) => f !== name);
+  const g = findGraphWithField(name);
+  if (g) {
+    g.fieldNames = g.fieldNames.filter((f) => f !== name);
+    graphGroups.value = [...graphGroups.value];
+  }
   const { [name]: _, ...rest } = rangeInputs.value;
   rangeInputs.value = rest;
+  syncGraphStore();
 }
 
 function clearHistory(): void {
@@ -240,22 +344,34 @@ function redraw(): void {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   const { tMin, tMax } = store.value.visibleRange();
-  const panels: LogPanelSpec[] = [];
-  for (const name of selectedFields.value) {
-    const s = store.value.seriesMap.get(name);
-    if (!s) continue;
-    const inp = rangeInputs.value[name] ?? { min: "", max: "" };
-    const { vMin, vMax } = store.value.valueRangeForSeries(
-      s,
-      tMin,
-      tMax,
-      parseRangeInput(inp.min),
-      parseRangeInput(inp.max),
-    );
-    const meta = allFields.value.find((f) => f.name === name);
-    const units = meta?.units ? ` (${meta.units})` : "";
-    panels.push({ series: s, vMin, vMax, label: `${name}${units}` });
-  }
+  const panels: LogGraphPanelSpec[] = [];
+  graphGroups.value.forEach((group, gi) => {
+    const traces: LogTraceSpec[] = [];
+    for (const name of group.fieldNames) {
+      const s = store.value.seriesMap.get(name);
+      if (!s) continue;
+      const inp = rangeInputs.value[name] ?? { min: "", max: "" };
+      const { vMin, vMax } = store.value.valueRangeForSeries(
+        s,
+        tMin,
+        tMax,
+        parseRangeInput(inp.min),
+        parseRangeInput(inp.max),
+      );
+      const meta = allFields.value.find((f) => f.name === name);
+      traces.push({
+        series: s,
+        vMin,
+        vMax,
+        name,
+        units: meta?.units ?? "",
+        color: s.color,
+      });
+    }
+    if (traces.length > 0) {
+      panels.push({ traces, title: `Граф ${gi + 1}` });
+    }
+  });
   drawLogPanelsChart(ctx, w, h, panels, tMin, tMax);
 }
 
@@ -305,7 +421,7 @@ watch(
   () => snapshot.value.values,
   (values) => {
     if (!snapshot.value.connected) return;
-    for (const f of selectedFields.value) {
+    for (const f of allSelectedFields()) {
       const v = values[f];
       if (v !== undefined) store.value.addSample(f, v);
     }
@@ -315,10 +431,45 @@ watch(
 
 watch(activeSeries, () => redraw(), { deep: true });
 watch(canvasHeight, () => redraw());
+watch(rangeInputs, () => redraw(), { deep: true });
+watch(graphGroups, () => redraw(), { deep: true });
 </script>
 
 <template>
   <div class="output-chart log-chart" ref="containerRef">
+    <div class="graph-tabs">
+      <button
+        v-for="(g, i) in graphGroups"
+        :key="g.id"
+        type="button"
+        class="graph-tab"
+        :class="{ active: activeGraphId === g.id }"
+        @click="activeGraphId = g.id"
+      >
+        Граф {{ i + 1 }}
+        <span v-if="g.fieldNames.length" class="graph-tab-count">{{ g.fieldNames.length }}</span>
+      </button>
+      <button
+        type="button"
+        class="graph-tab graph-tab-add"
+        :disabled="graphGroups.length >= MAX_GRAPHS"
+        title="Добавить график"
+        @click="addGraph"
+      >
+        +
+      </button>
+      <button
+        v-if="graphGroups.length > 1"
+        type="button"
+        class="graph-tab graph-tab-remove"
+        title="Удалить активный график"
+        @click="removeGraph(activeGraphId)"
+      >
+        −
+      </button>
+      <span class="graph-tabs-hint">Новые каналы добавляются на активный граф</span>
+    </div>
+
     <div class="toolbar">
       <div class="field-picker">
         <label class="picker-label" for="chart-field-filter">Каналы log</label>
@@ -346,7 +497,7 @@ watch(canvasHeight, () => redraw());
             <li
               v-for="f in filteredFields"
               :key="f.name"
-              :class="{ active: selectedFields.includes(f.name) }"
+              :class="{ active: isFieldSelected(f.name) }"
             >
               <button type="button" @mousedown.prevent="toggleField(f.name)">
                 {{ f.name }}
@@ -365,6 +516,7 @@ watch(canvasHeight, () => redraw());
           :style="{ borderColor: item.color }"
         >
           <span class="chip-dot" :style="{ background: item.color }" />
+          <span class="chip-graph">{{ item.graphLabel }}</span>
           <span class="chip-name">{{ item.name }}</span>
           <span v-if="item.value !== null" class="chip-val">
             {{ Number.isInteger(item.value) ? item.value : item.value.toFixed(2) }}
@@ -388,6 +540,18 @@ watch(canvasHeight, () => redraw());
         <div v-for="row in channelRows" :key="row.name" class="range-row">
           <span class="range-dot" :style="{ background: row.color }" />
           <span class="range-name">{{ row.name }}</span>
+          <label class="range-graph">
+            <span>граф</span>
+            <select
+              class="range-select"
+              :value="row.graphId"
+              @change="moveFieldToGraph(row.name, ($event.target as HTMLSelectElement).value)"
+            >
+              <option v-for="(g, i) in graphGroups" :key="g.id" :value="g.id">
+                {{ i + 1 }}
+              </option>
+            </select>
+          </label>
           <label class="range-field">
             <span>min</span>
             <input
@@ -417,8 +581,8 @@ watch(canvasHeight, () => redraw());
     <div class="canvas-wrap">
       <canvas ref="canvasRef" class="chart-canvas" />
       <p v-if="!snapshot.connected" class="overlay-hint">Подключите ECU для записи log</p>
-      <p v-else-if="selectedFields.length === 0" class="overlay-hint">
-        Выберите параметры через поиск выше
+      <p v-else-if="!hasAnyChannel" class="overlay-hint">
+        Выберите параметры через поиск — они попадут на активный граф
       </p>
     </div>
 
@@ -432,6 +596,55 @@ watch(canvasHeight, () => redraw());
   flex-direction: column;
   gap: 0.65rem;
   width: 100%;
+}
+
+.graph-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.graph-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.28rem 0.55rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.graph-tab.active {
+  border-color: var(--color-accent);
+  color: var(--color-text);
+  background: var(--color-bg-accent-soft);
+}
+
+.graph-tab-count {
+  font-size: 0.68rem;
+  opacity: 0.75;
+}
+
+.graph-tab-add,
+.graph-tab-remove {
+  min-width: 1.75rem;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.graph-tab:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.graph-tabs-hint {
+  font-size: 0.72rem;
+  color: var(--color-text-subtle);
+  margin-left: 0.25rem;
 }
 
 .toolbar {
@@ -546,9 +759,34 @@ watch(canvasHeight, () => redraw());
 
 .range-row {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto 1fr auto auto auto auto;
   gap: 0.5rem 0.75rem;
   align-items: center;
+}
+
+.range-graph {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--color-text-subtle);
+}
+
+.range-select {
+  width: 3rem;
+  padding: 0.25rem 0.3rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-size: 0.82rem;
+}
+
+.chip-graph {
+  font-size: 0.68rem;
+  color: var(--color-text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 .range-dot {
