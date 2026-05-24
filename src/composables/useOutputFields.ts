@@ -10,7 +10,11 @@ export interface OutputFieldInfo {
 const fields = ref<OutputFieldInfo[]>([]);
 let loadPromise: Promise<void> | null = null;
 
-export async function loadOutputFields(): Promise<void> {
+/** Список полей `[OutputChannels]` из текущего INI (после подключения ECU). */
+export async function loadOutputFields(force = false): Promise<void> {
+  if (force) {
+    loadPromise = null;
+  }
   if (loadPromise) return loadPromise;
 
   loadPromise = (async () => {
@@ -27,6 +31,6 @@ export async function loadOutputFields(): Promise<void> {
 export function useOutputFields() {
   return {
     fields: readonly(fields),
-    reload: loadOutputFields,
+    reload: () => loadOutputFields(true),
   };
 }

@@ -7,9 +7,10 @@ import {
   shallowRef,
   watch,
 } from "vue";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { initOutputChannels, useOutputChannels } from "../../composables/useOutputChannels";
-import { loadOutputFields, useOutputFields } from "../../composables/useOutputFields";
+import { useOutputFields } from "../../composables/useOutputFields";
 import {
   createTimeSeriesStore,
   type TimeSeries,
@@ -44,14 +45,59 @@ const defaultFields = computed(() => {
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const containerRef = ref<HTMLDivElement | null>(null);
+const searchInputRef = ref<HTMLInputElement | null>(null);
 const canvasWidth = ref(640);
 
 const { snapshot } = useOutputChannels();
-const { fields: allFields } = useOutputFields();
+const { fields: allFields, reload: reloadOutputFields } = useOutputFields();
 
 const selectedFields = ref<string[]>([...defaultFields.value]);
 const fieldFilter = ref("");
+const showSuggest = ref(false);
+const suggestStyle = ref({ top: "0px", left: "0px", width: "0px" });
 const store = shallowRef(createTimeSeriesStore(windowSeconds.value));
+
+function updateSuggestPosition(): void {
+  const el = searchInputRef.value;
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  suggestStyle.value = {
+    top: `${r.bottom + 2}px`,
+    left: `${r.left}px`,
+    width: `${r.width}px`,
+  };
+}
+
+function openSuggest(): void {
+  showSuggest.value = true;
+  updateSuggestPosition();
+}
+
+function closeSuggestSoon(): void {
+  window.setTimeout(() => {
+    showSuggest.value = false;
+  }, 160);
+}
+
+async function refreshFieldCatalog(): Promise<void> {
+  await reloadOutputFields();
+  selectedFields.value = defaultFields.value.filter((f) =>
+    allFields.value.length === 0 ? true : allFields.value.some((x) => x.name === f),
+  );
+  if (selectedFields.value.length === 0 && allFields.value.length > 0) {
+    selectedFields.value = [allFields.value[0]!.name];
+  }
+  store.value.setFields(selectedFields.value);
+}
+
+watch(
+  () => snapshot.value.iniFieldCount,
+  (count, prev) => {
+    if (count > 0 && count !== prev) {
+      void refreshFieldCatalog();
+    }
+  },
+);
 
 watch(windowSeconds, (sec) => {
   store.value = createTimeSeriesStore(sec);
@@ -69,8 +115,21 @@ watch(
 const filteredFields = computed(() => {
   const q = fieldFilter.value.trim().toLowerCase();
   const list = allFields.value;
+  if (!list.length) return [];
   if (!q) return list.slice(0, 80);
   return list.filter((f) => f.name.toLowerCase().includes(q)).slice(0, 80);
+});
+
+const suggestEmptyHint = computed(() => {
+  if (allFields.value.length === 0) {
+    return snapshot.value.connected
+      ? "INI без output channels — переподключите ECU"
+      : "Подключите ECU — список полей из signature INI";
+  }
+  if (fieldFilter.value.trim() && filteredFields.value.length === 0) {
+    return "Нет совпадений";
+  }
+  return null;
 });
 
 const activeSeries = computed((): TimeSeries[] => {
@@ -134,17 +193,15 @@ function redraw(): void {
 }
 
 let resizeObserver: ResizeObserver | null = null;
+let unlistenEcu: UnlistenFn | null = null;
 
 onMounted(async () => {
   await initOutputChannels();
-  await loadOutputFields();
-  selectedFields.value = defaultFields.value.filter((f) =>
-    allFields.value.length === 0 ? true : allFields.value.some((x) => x.name === f),
-  );
-  if (selectedFields.value.length === 0 && allFields.value.length > 0) {
-    selectedFields.value = [allFields.value[0]!.name];
-  }
-  store.value.setFields(selectedFields.value);
+  await refreshFieldCatalog();
+
+  unlistenEcu = await listen("ecu-connection", () => {
+    void refreshFieldCatalog();
+  });
 
   if (containerRef.value) {
     resizeObserver = new ResizeObserver((entries) => {
@@ -161,6 +218,20 @@ onMounted(async () => {
 
 onUnmounted(() => {
   resizeObserver?.disconnect();
+  unlistenEcu?.();
+  window.removeEventListener("scroll", updateSuggestPosition, true);
+  window.removeEventListener("resize", updateSuggestPosition);
+});
+
+watch(showSuggest, (open) => {
+  if (open) {
+    updateSuggestPosition();
+    window.addEventListener("scroll", updateSuggestPosition, true);
+    window.addEventListener("resize", updateSuggestPosition);
+  } else {
+    window.removeEventListener("scroll", updateSuggestPosition, true);
+    window.removeEventListener("resize", updateSuggestPosition);
+  }
 });
 
 watch(
@@ -186,24 +257,37 @@ watch(chartHeight, () => redraw());
         <label class="picker-label" for="chart-field-filter">Параметры Output</label>
         <input
           id="chart-field-filter"
+          ref="searchInputRef"
           v-model="fieldFilter"
           type="search"
           class="field-search"
           placeholder="Поиск по имени…"
           autocomplete="off"
+          @focus="openSuggest"
+          @blur="closeSuggestSoon"
+          @input="updateSuggestPosition"
         />
-        <ul v-if="fieldFilter.trim()" class="field-suggest">
-          <li
-            v-for="f in filteredFields"
-            :key="f.name"
-            :class="{ active: selectedFields.includes(f.name) }"
+        <Teleport to="body">
+          <ul
+            v-if="showSuggest"
+            class="field-suggest field-suggest-portal"
+            :style="suggestStyle"
           >
-            <button type="button" @click="toggleField(f.name)">
-              {{ f.name }}
-              <span v-if="f.units" class="units">{{ f.units }}</span>
-            </button>
-          </li>
-        </ul>
+            <li v-if="suggestEmptyHint" class="field-suggest-empty">
+              {{ suggestEmptyHint }}
+            </li>
+            <li
+              v-for="f in filteredFields"
+              :key="f.name"
+              :class="{ active: selectedFields.includes(f.name) }"
+            >
+              <button type="button" @mousedown.prevent="toggleField(f.name)">
+                {{ f.name }}
+                <span v-if="f.units" class="units">{{ f.units }}</span>
+              </button>
+            </li>
+          </ul>
+        </Teleport>
       </div>
 
       <div class="selected-fields">
@@ -283,13 +367,10 @@ watch(chartHeight, () => redraw());
   color: var(--color-text);
 }
 
-.field-suggest {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 2px);
-  left: 0;
-  right: 0;
-  max-height: 220px;
+.field-suggest-portal {
+  position: fixed;
+  z-index: 10050;
+  max-height: min(280px, 40vh);
   overflow: auto;
   margin: 0;
   padding: 0.25rem 0;
@@ -300,11 +381,17 @@ watch(chartHeight, () => redraw());
   box-shadow: var(--shadow-card);
 }
 
-.field-suggest li.active button {
+.field-suggest-empty {
+  padding: 0.5rem 0.65rem;
+  font-size: 0.82rem;
+  color: var(--color-text-subtle);
+}
+
+.field-suggest-portal li.active button {
   background: var(--color-bg-accent-soft);
 }
 
-.field-suggest button {
+.field-suggest-portal button {
   display: flex;
   width: 100%;
   gap: 0.5rem;
@@ -318,11 +405,11 @@ watch(chartHeight, () => redraw());
   cursor: pointer;
 }
 
-.field-suggest button:hover {
+.field-suggest-portal button:hover {
   background: var(--color-bg-muted);
 }
 
-.field-suggest .units {
+.field-suggest-portal .units {
   color: var(--color-text-subtle);
   font-size: 0.78rem;
 }
