@@ -2,8 +2,10 @@
 import { onMounted, ref } from "vue";
 import TabWorkspace from "./TabWorkspace.vue";
 import ProtocolLogSheet from "./ProtocolLogSheet.vue";
+import ConfigLoadOverlay from "./ConfigLoadOverlay.vue";
 import { createDataContext, provideDataContext } from "../core/data-context";
 import { initOutputChannels } from "../composables/useOutputChannels";
+import { initConfig } from "../composables/useConfig";
 import { useProtocolLog, useProtocolLogLifecycle } from "../composables/useProtocolLog";
 
 const dataCtx = createDataContext();
@@ -16,6 +18,7 @@ useProtocolLogLifecycle();
 
 onMounted(() => {
   void initOutputChannels();
+  void initConfig();
 });
 </script>
 
@@ -39,6 +42,7 @@ onMounted(() => {
     </header>
     <TabWorkspace />
     <ProtocolLogSheet />
+    <ConfigLoadOverlay />
   </div>
 </template>
 

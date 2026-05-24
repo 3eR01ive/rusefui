@@ -13,6 +13,18 @@ pub fn describe_payload(payload: &[u8]) -> String {
             let count = u16::from_le_bytes([payload[3], payload[4]]);
             format!("output offset={offset} count={count}")
         }
+        b'R' if payload.len() >= 5 => {
+            if payload.len() >= 7 {
+                let page = u16::from_le_bytes([payload[1], payload[2]]);
+                let offset = u16::from_le_bytes([payload[3], payload[4]]);
+                let count = u16::from_le_bytes([payload[5], payload[6]]);
+                format!("read page={page} offset={offset} count={count}")
+            } else {
+                let offset = u16::from_le_bytes([payload[1], payload[2]]);
+                let count = u16::from_le_bytes([payload[3], payload[4]]);
+                format!("read offset={offset} count={count}")
+            }
+        }
         b'C' if payload.len() >= 7 => {
             let page = u16::from_le_bytes([payload[1], payload[2]]);
             let offset = u16::from_le_bytes([payload[3], payload[4]]);
@@ -27,12 +39,6 @@ pub fn describe_payload(payload: &[u8]) -> String {
         b'E' if payload.len() > 1 => {
             let text = String::from_utf8_lossy(&payload[1..]);
             format!("execute \"{text}\"")
-        }
-        b'R' if payload.len() >= 7 => {
-            let page = u16::from_be_bytes([payload[1], payload[2]]);
-            let offset = u16::from_be_bytes([payload[3], payload[4]]);
-            let count = u16::from_be_bytes([payload[5], payload[6]]);
-            format!("read page={page} offset={offset} count={count}")
         }
         other => format!("cmd 0x{other:02X} len={}", payload.len()),
     }
@@ -53,7 +59,7 @@ pub fn describe_response(request_payload: &[u8], response: &crate::packet::CrcRe
                 format!("OK signature={sig}")
             }
         }
-        Some(b'O') => format!("OK {} bytes", response.payload.len()),
+        Some(b'O' | b'R') => format!("OK {} bytes", response.payload.len()),
         Some(b'C' | b'Z' | b'E') => "OK".into(),
         _ => format!("OK payload={} bytes", response.payload.len()),
     }

@@ -1,16 +1,23 @@
 use std::io::{Read, Write};
 use std::sync::Arc;
-use std::time::Duration;
+use std::thread;
+use std::time::{Duration, Instant};
 
 use serialport::{DataBits, FlowControl, Parity, StopBits};
 
 use crate::commands::{
     TS_CHUNK_WRITE_COMMAND, TS_EXECUTE_COMMAND, TS_HELLO_COMMAND, TS_IO_TEST_COMMAND,
-    TS_OUTPUT_COMMAND, TS_RESPONSE_OK,
+    TS_OUTPUT_COMMAND, TS_READ_COMMAND, TS_RESPONSE_OK,
 };
 use crate::error::ProtocolError;
 use crate::packet::{make_crc_request, parse_crc_response, CrcResponse};
 use crate::tracer::ProtocolTracer;
+
+/// Таймаут чтения страницы конфигурации (INI `blockReadTimeout` ≈ 3000 ms).
+const CONFIG_IO_TIMEOUT_MS: u64 = 3000;
+
+/// Макс. размер тела CRC-ответа (код + data), как в Java `IncomingDataBuffer`.
+const MAX_CRC_BODY_LEN: usize = 65535;
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ConnectionInfo {
@@ -85,7 +92,7 @@ impl SerialLink {
         self.port.write_all(&request)?;
         self.port.flush()?;
 
-        match self.read_crc_frame_logged(&payload) {
+        match self.read_crc_frame_logged(&payload, self.timeout_ms) {
             Ok(response) => {
                 self.info.handshake_command = 'S';
                 response.into_string_payload()
@@ -104,7 +111,15 @@ impl SerialLink {
     }
 
     pub fn send_request(&mut self, payload: &[u8]) -> Result<CrcResponse, ProtocolError> {
-        self.port.clear(serialport::ClearBuffer::All)?;
+        self.send_request_with_timeout(payload, self.timeout_ms)
+    }
+
+    fn send_request_with_timeout(
+        &mut self,
+        payload: &[u8],
+        timeout_ms: u64,
+    ) -> Result<CrcResponse, ProtocolError> {
+        self.drop_pending_rx();
         self.last_request_payload = payload.to_vec();
         let request = make_crc_request(payload);
         if let Some(tracer) = &self.tracer {
@@ -112,7 +127,25 @@ impl SerialLink {
         }
         self.port.write_all(&request)?;
         self.port.flush()?;
-        self.read_crc_frame_logged(payload)
+        self.read_crc_frame_logged(payload, timeout_ms)
+    }
+
+    /// Сброс «хвостов» в RX (аналог Java `IncomingDataBuffer.dropPending`).
+    fn drop_pending_rx(&mut self) {
+        let mut scratch = [0u8; 256];
+        loop {
+            match self.port.read(&mut scratch) {
+                Ok(0) => break,
+                Ok(_) => continue,
+                Err(e)
+                    if e.kind() == std::io::ErrorKind::TimedOut
+                        || e.kind() == std::io::ErrorKind::WouldBlock =>
+                {
+                    break;
+                }
+                Err(_) => break,
+            }
+        }
     }
 
     /// `ochGetCommand` — live output block (`O%2o%2c`).
@@ -145,7 +178,7 @@ impl SerialLink {
         chunk_size: u16,
     ) -> Result<Vec<u8>, ProtocolError> {
         if chunk_size == 0 {
-            return Err(ProtocolError::InvalidPacket("chunk_size is zero"));
+            return Err(ProtocolError::InvalidPacket("chunk_size is zero".into()));
         }
         let mut buf = vec![0u8; total_size as usize];
         let mut offset = 0u16;
@@ -153,10 +186,119 @@ impl SerialLink {
             let count = (total_size - offset).min(chunk_size);
             let part = self.read_output_channels(offset, count)?;
             if part.len() != count as usize {
-                return Err(ProtocolError::InvalidPacket("short output chunk"));
+                return Err(ProtocolError::InvalidPacket("short output chunk".into()));
             }
             buf[offset as usize..offset as usize + part.len()].copy_from_slice(&part);
             offset += count;
+        }
+        Ok(buf)
+    }
+
+    /// `R` — чтение страницы конфигурации (offset/count — **LE**).
+    ///
+    /// Если `read_has_page_index` (INI `pageReadCommand` = `"R%2i%2o%2c"`), на проводе
+    /// page+offset+count. Старый `"R%2o%2c"` — только offset+count (Java `BinaryProtocol`).
+    pub fn read_config_chunk(
+        &mut self,
+        page: u16,
+        offset: u16,
+        count: u16,
+        read_has_page_index: bool,
+    ) -> Result<Vec<u8>, ProtocolError> {
+        if count == 0 {
+            return Err(ProtocolError::InvalidPacket("config read count is zero".into()));
+        }
+
+        let mut payload = Vec::with_capacity(if read_has_page_index { 7 } else { 5 });
+        payload.push(TS_READ_COMMAND);
+        if read_has_page_index {
+            payload.extend_from_slice(&page.to_le_bytes());
+        }
+        payload.extend_from_slice(&offset.to_le_bytes());
+        payload.extend_from_slice(&count.to_le_bytes());
+
+        const MAX_ATTEMPTS: usize = 3;
+        let expected_packet_len = count as usize + 1;
+        let mut last_err: Option<ProtocolError> = None;
+
+        for attempt in 0..MAX_ATTEMPTS {
+            if attempt > 0 {
+                thread::sleep(Duration::from_millis(15));
+            }
+
+            match self.send_request_with_timeout(&payload, CONFIG_IO_TIMEOUT_MS) {
+                Ok(response) => {
+                    if response.code != TS_RESPONSE_OK {
+                        return Err(ProtocolError::ErrorResponse(response.code));
+                    }
+                    let actual_len = response.payload.len() + 1;
+                    if actual_len == expected_packet_len {
+                        return Ok(response.payload);
+                    }
+                    last_err = Some(ProtocolError::InvalidPacket(format!(
+                        "config read size mismatch: got {} data bytes, expected {count} (page={page} offset={offset}, packet_len={actual_len})",
+                        response.payload.len()
+                    )));
+                }
+                Err(e) => last_err = Some(e),
+            }
+            self.drop_pending_rx();
+        }
+
+        Err(last_err.unwrap_or_else(|| {
+            ProtocolError::InvalidPacket("config read failed after retries".into())
+        }))
+    }
+
+    /// Сборка полной страницы конфигурации чанками (как Java `readFullImageFromController`).
+    pub fn read_config_page_full(
+        &mut self,
+        page: u16,
+        total_size: u32,
+        chunk_size: u16,
+        read_has_page_index: bool,
+    ) -> Result<Vec<u8>, ProtocolError> {
+        self.read_config_page_full_with_progress(
+            page,
+            total_size,
+            chunk_size,
+            read_has_page_index,
+            |_, _| {},
+        )
+    }
+
+    /// То же, с колбэком `(bytes_loaded, bytes_total)` после каждого чанка.
+    pub fn read_config_page_full_with_progress<F>(
+        &mut self,
+        page: u16,
+        total_size: u32,
+        chunk_size: u16,
+        read_has_page_index: bool,
+        mut on_progress: F,
+    ) -> Result<Vec<u8>, ProtocolError>
+    where
+        F: FnMut(u32, u32),
+    {
+        if chunk_size == 0 {
+            return Err(ProtocolError::InvalidPacket("chunk_size is zero".into()));
+        }
+        let total = total_size as usize;
+        let mut buf = vec![0u8; total];
+        let mut offset = 0u32;
+        while offset < total_size {
+            let remaining = total_size - offset;
+            let count = remaining.min(chunk_size as u32) as u16;
+            let part = self.read_config_chunk(page, offset as u16, count, read_has_page_index)?;
+            if part.len() != count as usize {
+                return Err(ProtocolError::InvalidPacket(format!(
+                    "short config chunk: got {} bytes, expected {count} (page={page} offset={offset})",
+                    part.len()
+                )));
+            }
+            let off = offset as usize;
+            buf[off..off + part.len()].copy_from_slice(&part);
+            offset += count as u32;
+            on_progress(offset.min(total_size), total_size);
         }
         Ok(buf)
     }
@@ -169,7 +311,7 @@ impl SerialLink {
         data: &[u8],
     ) -> Result<(), ProtocolError> {
         let count = u16::try_from(data.len())
-            .map_err(|_| ProtocolError::InvalidPacket("chunk too large"))?;
+            .map_err(|_| ProtocolError::InvalidPacket("chunk too large".into()))?;
         let mut payload = Vec::with_capacity(7 + data.len());
         payload.push(TS_CHUNK_WRITE_COMMAND);
         payload.extend_from_slice(&page.to_le_bytes());
@@ -216,8 +358,12 @@ impl SerialLink {
         Ok(())
     }
 
-    fn read_crc_frame_logged(&mut self, request_payload: &[u8]) -> Result<CrcResponse, ProtocolError> {
-        match self.read_crc_frame() {
+    fn read_crc_frame_logged(
+        &mut self,
+        request_payload: &[u8],
+        timeout_ms: u64,
+    ) -> Result<CrcResponse, ProtocolError> {
+        match self.read_crc_frame(timeout_ms) {
             Ok(response) => {
                 if let Some(tracer) = &self.tracer {
                     let frame = build_response_frame(&response);
@@ -234,15 +380,18 @@ impl SerialLink {
         }
     }
 
-    fn read_crc_frame(&mut self) -> Result<CrcResponse, ProtocolError> {
-        let deadline = std::time::Instant::now() + Duration::from_millis(self.timeout_ms);
+    fn read_crc_frame(&mut self, timeout_ms: u64) -> Result<CrcResponse, ProtocolError> {
+        let deadline = Instant::now() + Duration::from_millis(timeout_ms);
 
         let mut header = [0u8; 2];
         self.read_exact_deadline(&mut header, deadline)?;
 
+        // Как Java `swap16(getShort())` — BE длина тела на проводе.
         let body_len = u16::from_be_bytes(header) as usize;
-        if body_len == 0 || body_len > 16 * 1024 {
-            return Err(ProtocolError::InvalidPacket("bad body length"));
+        if body_len == 0 || body_len > MAX_CRC_BODY_LEN {
+            return Err(ProtocolError::InvalidPacket(format!(
+                "bad body length: {body_len}"
+            )));
         }
 
         let mut rest = vec![0u8; body_len + 4];
@@ -258,11 +407,11 @@ impl SerialLink {
     fn read_exact_deadline(
         &mut self,
         buf: &mut [u8],
-        deadline: std::time::Instant,
+        deadline: Instant,
     ) -> Result<(), ProtocolError> {
         let mut offset = 0;
         while offset < buf.len() {
-            if std::time::Instant::now() >= deadline {
+            if Instant::now() >= deadline {
                 return Err(ProtocolError::Timeout(self.timeout_ms));
             }
             match self.port.read(&mut buf[offset..]) {
@@ -317,6 +466,39 @@ mod tests {
         }
         assert_eq!(o_payload(400, 300), [b'O', 0x90, 0x01, 0x2c, 0x01]);
         assert_eq!(o_payload(0, 2044), [b'O', 0x00, 0x00, 0xfc, 0x07]);
+    }
+
+    /// С page (`R%2i%2o%2c`).
+    #[test]
+    fn read_config_request_wire_format_with_page() {
+        fn r_payload(page: u16, offset: u16, count: u16) -> [u8; 7] {
+            [
+                TS_READ_COMMAND,
+                page.to_le_bytes()[0],
+                page.to_le_bytes()[1],
+                offset.to_le_bytes()[0],
+                offset.to_le_bytes()[1],
+                count.to_le_bytes()[0],
+                count.to_le_bytes()[1],
+            ]
+        }
+        assert_eq!(r_payload(0, 0, 1024), [b'R', 0, 0, 0, 0, 0, 4]);
+        assert_eq!(r_payload(0, 1024, 1024), [b'R', 0, 0, 0, 4, 0, 4]);
+    }
+
+    /// Без page (`R%2o%2c`) — как INI `560262154.ini` и Java `ByteRange.packOffsetAndSize`.
+    #[test]
+    fn read_config_request_wire_format_legacy_no_page() {
+        fn r_payload(offset: u16, count: u16) -> [u8; 5] {
+            [
+                TS_READ_COMMAND,
+                offset.to_le_bytes()[0],
+                offset.to_le_bytes()[1],
+                count.to_le_bytes()[0],
+                count.to_le_bytes()[1],
+            ]
+        }
+        assert_eq!(r_payload(0, 1024), [b'R', 0, 0, 0, 4]);
     }
 
     #[test]

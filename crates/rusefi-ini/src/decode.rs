@@ -2,6 +2,37 @@ use std::collections::HashMap;
 
 use crate::model::{BitsField, FieldKind, OutputChannels, ScalarField, ScalarType};
 
+/// Декодирует scalar-поля конфигурации (секция `[Constants]`).
+pub fn decode_config_scalars(
+    scalars: &HashMap<String, ScalarField>,
+    bytes: &[u8],
+) -> HashMap<String, f64> {
+    let mut out = HashMap::new();
+    for (name, field) in scalars {
+        if let Some(v) = decode_scalar(field, bytes) {
+            out.insert(name.clone(), v);
+        }
+    }
+    out
+}
+
+/// Кодирует пользовательское значение в raw bytes для записи через `C`.
+pub fn encode_scalar_value(field: &ScalarField, value: f64) -> Option<Vec<u8>> {
+    let raw = (value - field.translate) / field.scale;
+    match field.ty {
+        ScalarType::F32 => {
+            let v = raw as f32;
+            Some(v.to_le_bytes().to_vec())
+        }
+        ScalarType::U08 => Some([raw.round().clamp(0.0, 255.0) as u8].to_vec()),
+        ScalarType::S08 => Some([(raw.round().clamp(-128.0, 127.0) as i8) as u8].to_vec()),
+        ScalarType::U16 => Some((raw.round().clamp(0.0, 65535.0) as u16).to_le_bytes().to_vec()),
+        ScalarType::S16 => Some((raw.round().clamp(-32768.0, 32767.0) as i16).to_le_bytes().to_vec()),
+        ScalarType::U32 => Some((raw.round().clamp(0.0, u32::MAX as f64) as u32).to_le_bytes().to_vec()),
+        ScalarType::S32 => Some((raw.round().clamp(i32::MIN as f64, i32::MAX as f64) as i32).to_le_bytes().to_vec()),
+    }
+}
+
 /// Декодирует все scalar/bits поля из блока outputChannels.
 pub fn decode_output_channels(
     channels: &OutputChannels,
@@ -84,5 +115,18 @@ mod tests {
         bytes[5] = 0x1F;
         let map = decode_output_channels(&ini.output_channels, &bytes);
         assert_eq!(map.get("RPMValue"), Some(&(8000.0 * scale)));
+    }
+
+    #[test]
+    fn decode_trigger_simulator_rpm_from_constants() {
+        let ini = IniFile::load_test_proteus().unwrap();
+        let field = ini.config_scalars.get("triggerSimulatorRpm").unwrap();
+        assert_eq!(field.offset, 436);
+
+        let mut bytes = vec![0u8; 512];
+        bytes[436] = 0x20;
+        bytes[437] = 0x03;
+        let map = decode_config_scalars(&ini.config_scalars, &bytes);
+        assert_eq!(map.get("triggerSimulatorRpm"), Some(&800.0));
     }
 }

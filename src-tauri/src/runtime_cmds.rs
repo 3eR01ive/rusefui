@@ -1,6 +1,6 @@
 use rusefui_runtime::{
-    default_log_path, ComponentRuntime, EcuSession, OutputFieldInfo, OutputSnapshot,
-    ProtocolLogEntry, ProtocolLogStore,
+    default_log_path, ComponentRuntime, ConfigFieldInfo, ConfigSnapshot, EcuSession,
+    OutputFieldInfo, OutputSnapshot, ProtocolLogEntry, ProtocolLogStore,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -64,20 +64,66 @@ fn emit_output(app: &AppHandle, snapshot: &OutputSnapshot) {
     let _ = app.emit("output-channels", snapshot);
 }
 
+fn emit_config(app: &AppHandle, snapshot: &ConfigSnapshot) {
+    let _ = app.emit("config-snapshot", snapshot);
+}
+
 fn emit_protocol_log(app: &AppHandle, entry: &ProtocolLogEntry) {
     let _ = app.emit("protocol-log", entry);
 }
 
-fn sync_output_poll(state: &RuntimeState, app: &AppHandle) {
-    if state.session.is_connected() {
+fn sync_output_poll_session(session: &Arc<EcuSession>, app: &AppHandle) {
+    if session.is_connected() {
         let app = app.clone();
-        let session = Arc::clone(&state.session);
-        state.session.output().start(session, move |snap| {
+        let poll_session = Arc::clone(session);
+        session.output().start(poll_session, move |snap| {
             emit_output(&app, &snap);
         });
     } else {
+        session.output().stop();
+        emit_output(app, &session.output().snapshot());
+    }
+}
+
+fn sync_config_load(state: &RuntimeState, app: &AppHandle) {
+    if !state.session.is_connected() {
+        state.session.config().stop();
+        emit_config(app, &state.session.config().snapshot());
+        return;
+    }
+
+    let snap = state.session.config().snapshot();
+    if snap.loaded || snap.loading {
+        return;
+    }
+
+    // Конфиг читается эксклюзивно — output poll мешает (см. Java `BinaryProtocol.readFullImageFromController`).
+    state.session.output().stop();
+
+    let app = app.clone();
+    let session = Arc::clone(&state.session);
+    state.session.config().start_load(session.clone(), move |snap| {
+        emit_config(&app, &snap);
+        if !snap.loading {
+            sync_output_poll_session(&session, &app);
+        }
+    });
+}
+
+fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
+    if !state.session.is_connected() {
+        state.session.config().stop();
         state.session.output().stop();
+        emit_config(app, &state.session.config().snapshot());
         emit_output(app, &state.session.output().snapshot());
+        return;
+    }
+
+    let config_snap = state.session.config().snapshot();
+    if config_snap.loaded {
+        sync_output_poll_session(&state.session, app);
+    } else if !config_snap.loading {
+        sync_config_load(state, app);
     }
 }
 
@@ -107,7 +153,7 @@ pub fn component_mount(
     let mut rt = state.runtime.lock().map_err(|e| e.to_string())?;
     let snapshot = rt.mount(&params.instance_id, &params.component_type)?;
     emit_state(&app, &params.instance_id, &snapshot);
-    sync_output_poll(&state, &app);
+    sync_ecu_data(&state, &app);
     Ok(snapshot)
 }
 
@@ -132,7 +178,7 @@ pub fn component_dispatch(
     let mut rt = state.runtime.lock().map_err(|e| e.to_string())?;
     let snapshot = rt.dispatch(&params.instance_id, &params.action, params.payload)?;
     emit_state(&app, &params.instance_id, &snapshot);
-    sync_output_poll(&state, &app);
+    sync_ecu_data(&state, &app);
     Ok(snapshot)
 }
 
@@ -156,7 +202,44 @@ pub fn output_list_fields(state: State<RuntimeState>) -> Vec<OutputFieldInfo> {
 #[tauri::command]
 pub fn output_start_listener(state: State<RuntimeState>, app: AppHandle) {
     emit_output(&app, &state.session.output().snapshot());
-    sync_output_poll(&state, &app);
+    sync_ecu_data(&state, &app);
+}
+
+#[tauri::command]
+pub fn config_get_snapshot(state: State<RuntimeState>) -> ConfigSnapshot {
+    state.session.config().snapshot()
+}
+
+#[tauri::command]
+pub fn config_list_fields(state: State<RuntimeState>) -> Vec<ConfigFieldInfo> {
+    state.session.config().list_fields()
+}
+
+#[tauri::command]
+pub fn config_start_listener(state: State<RuntimeState>, app: AppHandle) {
+    emit_config(&app, &state.session.config().snapshot());
+    sync_ecu_data(&state, &app);
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ConfigSetScalarParams {
+    pub field: String,
+    pub value: f64,
+}
+
+#[tauri::command]
+pub fn config_set_scalar(
+    params: ConfigSetScalarParams,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<ConfigSnapshot, String> {
+    state
+        .session
+        .config()
+        .set_scalar(&state.session, &params.field, params.value)?;
+    let snap = state.session.config().snapshot();
+    emit_config(&app, &snap);
+    Ok(snap)
 }
 
 #[derive(Serialize)]

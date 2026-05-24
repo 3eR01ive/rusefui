@@ -8,7 +8,7 @@ mod model;
 mod parse;
 
 pub use convert_panel::{convert_menu_panels, ConvertResult, PanelManifest, PanelManifestEntry};
-pub use decode::decode_output_channels;
+pub use decode::{decode_config_scalars, decode_output_channels, encode_scalar_value};
 pub use error::IniError;
 pub use menu::{parse_menu_section, IniMenu};
 pub use model::{FieldKind, IniFile, OutputChannelField, OutputChannels, ScalarField, ScalarType};

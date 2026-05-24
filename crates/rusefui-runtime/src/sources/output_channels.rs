@@ -46,6 +46,8 @@ pub struct IniContext {
     pub channels: Arc<OutputChannels>,
     pub block_size: u16,
     pub blocking_factor: u16,
+    pub page_size: u32,
+    pub page_read_has_page_index: bool,
     pub config_scalars: HashMap<String, ScalarField>,
 }
 
@@ -93,6 +95,8 @@ impl IniContext {
             }),
             block_size: DEFAULT_OUTPUT_BLOCK_SIZE,
             blocking_factor: 1024,
+            page_size: 64_000,
+            page_read_has_page_index: true,
             config_scalars: HashMap::new(),
         }
     }
@@ -103,6 +107,8 @@ impl IniContext {
             channels: Arc::new(ini.output_channels.clone()),
             block_size: ini.output_channels.och_block_size,
             blocking_factor: ini.blocking_factor,
+            page_size: ini.page_size,
+            page_read_has_page_index: ini.page_read_has_page_index,
             config_scalars: ini.config_scalars.clone(),
         }
     }

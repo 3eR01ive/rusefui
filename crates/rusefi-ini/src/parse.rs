@@ -19,6 +19,8 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
     let mut signature = None;
     let mut och_block_size = 2044u16;
     let mut blocking_factor = 1024u16;
+    let mut page_size = 64_000u32;
+    let mut page_read_has_page_index = true;
     let mut fields = Vec::new();
     let mut config_scalars = HashMap::new();
 
@@ -47,8 +49,27 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
                 if let Some(factor) = parse_key_u16(line, "blockingFactor") {
                     blocking_factor = factor;
                 }
+                if let Some(size) = parse_key_first_u32(line, "pageSize") {
+                    page_size = size;
+                }
             }
             continue;
+        }
+
+        if section == Section::Constants {
+            if let Some(factor) = parse_key_u16(line, "blockingFactor") {
+                blocking_factor = factor;
+                continue;
+            }
+            if let Some(size) = parse_key_first_u32(line, "pageSize") {
+                page_size = size;
+                continue;
+            }
+            if let Some(cmd) = parse_key_first_quoted(line, "pageReadCommand") {
+                // Как Java: pageReadCommand.length() == 7 → старый формат без page
+                page_read_has_page_index = cmd.len() != 7;
+                continue;
+            }
         }
 
         if section != Section::OutputChannels && section != Section::Constants {
@@ -107,6 +128,8 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
     Ok(IniFile {
         signature,
         blocking_factor,
+        page_size,
+        page_read_has_page_index,
         output_channels,
         config_scalars,
     })
@@ -127,7 +150,18 @@ fn parse_key_value(line: &str, key: &str) -> Option<String> {
 
 fn parse_key_u16(line: &str, key: &str) -> Option<u16> {
     let v = parse_key_value(line, key)?;
-    v.parse().ok()
+    v.split(',').next()?.trim().parse().ok()
+}
+
+fn parse_key_first_u32(line: &str, key: &str) -> Option<u32> {
+    let v = parse_key_value(line, key)?;
+    v.split(',').next()?.trim().parse().ok()
+}
+
+fn parse_key_first_quoted(line: &str, key: &str) -> Option<String> {
+    let v = parse_key_value(line, key)?;
+    let first = v.split(',').next()?.trim();
+    Some(first.trim_matches('"').to_string())
 }
 
 fn parse_output_line(line: &str) -> Result<OutputChannelField, String> {
@@ -249,6 +283,31 @@ mod tests {
         assert!(ini.output_channels.fields.len() > 100);
         assert!(ini.output_channels.field("RPMValue").is_some());
         assert!(ini.output_channels.field("coolant").is_some());
+        assert_eq!(ini.page_size, 63900);
+        assert!(ini.page_read_has_page_index);
+        assert!(ini.config_scalars.len() > 50);
         assert!(ini.config_scalars.get("triggerSimulatorRpm").is_some());
+    }
+
+    #[test]
+    fn page_read_command_legacy_format() {
+        let text = r#"
+[Constants]
+pageReadCommand = "R%2o%2c"
+pageSize = 63900
+"#;
+        let ini = parse_ini(text).unwrap();
+        assert!(!ini.page_read_has_page_index);
+    }
+
+    #[test]
+    fn page_read_command_with_page_index() {
+        let text = r#"
+[Constants]
+pageReadCommand = "R%2i%2o%2c", "R%2i%2o%2c"
+pageSize = 63900
+"#;
+        let ini = parse_ini(text).unwrap();
+        assert!(ini.page_read_has_page_index);
     }
 }

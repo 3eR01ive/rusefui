@@ -5,6 +5,11 @@ use std::collections::HashMap;
 pub struct IniFile {
     pub signature: Option<String>,
     pub blocking_factor: u16,
+    /// Размер страницы 0 (основная калибровка), первое значение `pageSize` в INI.
+    pub page_size: u32,
+    /// `pageReadCommand` для page 0 включает `%2i` (новый формат с номером страницы).
+    /// Старый `"R%2o%2c"` (длина 7) — только offset+count, как в Java `BinaryProtocol`.
+    pub page_read_has_page_index: bool,
     pub output_channels: OutputChannels,
     pub config_scalars: HashMap<String, ScalarField>,
 }

@@ -12,7 +12,7 @@ pub enum ProtocolError {
     Timeout(u64),
 
     #[error("invalid packet: {0}")]
-    InvalidPacket(&'static str),
+    InvalidPacket(String),
 
     #[error("CRC mismatch: expected 0x{expected:08X}, got 0x{actual:08X}")]
     CrcMismatch { expected: u32, actual: u32 },
