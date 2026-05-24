@@ -100,3 +100,8 @@ pub fn hex_preview(data: &[u8], max_bytes: usize) -> String {
 pub fn is_output_poll(payload: &[u8]) -> bool {
     payload.first() == Some(&b'O')
 }
+
+/// Чтение page 0 (`R`) — сотни чанков при загрузке; в UI не показываем.
+pub fn is_config_page_read(payload: &[u8]) -> bool {
+    payload.first() == Some(&b'R')
+}

@@ -7,8 +7,8 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusefi_protocol::{
-    command_char, describe_payload, describe_response, hex_preview, is_output_poll, CrcResponse,
-    ProtocolError, ProtocolTracer,
+    command_char, describe_payload, describe_response, hex_preview, is_config_page_read,
+    is_output_poll, CrcResponse, ProtocolError, ProtocolTracer,
 };
 use serde::{Deserialize, Serialize};
 
@@ -217,7 +217,7 @@ impl ProtocolLogStore {
         match direction {
             "err" => LogLevel::Error,
             "info" => LogLevel::Info,
-            _ if is_output_poll(payload) => LogLevel::Trace,
+            _ if is_output_poll(payload) || is_config_page_read(payload) => LogLevel::Trace,
             _ => LogLevel::Info,
         }
     }
@@ -253,6 +253,48 @@ impl ProtocolLogStore {
 
     pub fn log_info(&self, message: &str) {
         ProtocolTracer::on_info(self, message);
+    }
+
+    /// События USB / подключения / отключения (UI + `protocol.log`).
+    pub fn log_link(&self, summary: impl Into<String>) {
+        let entry = self.make_entry(
+            "link",
+            None,
+            summary.into(),
+            &[],
+            &[],
+            None,
+            Some(LogLevel::Info),
+        );
+        self.push(entry);
+    }
+
+    pub fn log_usb_detected(&self, entry: &rusefi_protocol::SerialPortEntry) {
+        self.log_link(format!(
+            "USB rusEFI: {} ({})",
+            entry.port_name,
+            rusefi_protocol::describe_serial_port(entry)
+        ));
+    }
+
+    pub fn log_ecu_connected(&self, automatic: bool, port: &str, baud_rate: u32, signature: &str) {
+        let source = if automatic { "авто" } else { "вручную" };
+        self.log_link(format!(
+            "Подключено ({source}): {port} @ {baud_rate} baud, signature={signature}"
+        ));
+    }
+
+    pub fn log_ecu_disconnected(&self, automatic: bool, port: &str, reason: &str) {
+        let source = if automatic { "авто" } else { "вручную" };
+        self.log_link(format!(
+            "Отключено ({source}): {port} — {reason}"
+        ));
+    }
+
+    pub fn log_port_busy(&self, port: &str, detail: &str) {
+        self.log_link(format!(
+            "Порт {port} занят ({detail}) — вероятно TunerStudio или другое приложение"
+        ));
     }
 }
 

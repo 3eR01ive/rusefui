@@ -1,26 +1,37 @@
 use rusefui_runtime::{
-    default_log_path, ComponentRuntime, ConfigFieldInfo, ConfigSnapshot, EcuSession,
-    EcuSyncOnMount, OutputFieldInfo, OutputSnapshot, ProtocolLogEntry, ProtocolLogFilterSettings,
-    ProtocolLogStore,
+    default_log_path, AutoConnectManager, AutoConnectSnapshot, ComponentRuntime, ConfigFieldInfo,
+    ConfigSnapshot, EcuSession, EcuSyncOnMount, OutputFieldInfo, OutputSnapshot, ProtocolLogEntry,
+    ProtocolLogFilterSettings, ProtocolLogStore,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager, State};
+
+static LAST_PROTOCOL_LOG_UI_EMIT_MS: AtomicU64 = AtomicU64::new(0);
+const PROTOCOL_LOG_UI_THROTTLE_MS: u64 = 150;
 
 pub struct RuntimeState {
     pub session: Arc<EcuSession>,
     pub runtime: Mutex<ComponentRuntime>,
     pub protocol_log: Arc<ProtocolLogStore>,
+    pub autoconnect: Arc<AutoConnectManager>,
+    /// Последнее отправленное в UI `ecu-connection` (без дублей на каждый dispatch).
+    last_ecu_connection_emit: Mutex<Option<EcuConnectionEvent>>,
 }
 
 impl RuntimeState {
     pub fn new(protocol_log: Arc<ProtocolLogStore>) -> Self {
         let session = EcuSession::new_arc(Arc::clone(&protocol_log));
+        let autoconnect = AutoConnectManager::new(Arc::clone(&session));
         Self {
             session: Arc::clone(&session),
             runtime: Mutex::new(ComponentRuntime::new(session)),
             protocol_log,
+            autoconnect,
+            last_ecu_connection_emit: Mutex::new(None),
         }
     }
 }
@@ -62,19 +73,175 @@ fn emit_state(app: &AppHandle, instance_id: &str, state: &Value) {
 }
 
 fn emit_output(app: &AppHandle, snapshot: &OutputSnapshot) {
-    let _ = app.emit("output-channels", snapshot);
+    let app = app.clone();
+    let snapshot = snapshot.clone();
+    tauri::async_runtime::spawn(async move {
+        let _ = app.emit("output-channels", snapshot);
+    });
 }
 
 fn emit_config(app: &AppHandle, snapshot: &ConfigSnapshot) {
-    let _ = app.emit("config-snapshot", snapshot);
+    let app = app.clone();
+    let snapshot = snapshot.clone();
+    tauri::async_runtime::spawn(async move {
+        let _ = app.emit("config-snapshot", snapshot);
+    });
 }
 
 fn emit_protocol_log(app: &AppHandle, entry: &ProtocolLogEntry) {
     let _ = app.emit("protocol-log", entry);
 }
 
+#[derive(Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+struct EcuConnectionEvent {
+    connected: bool,
+    offline_mode: bool,
+    port_name: Option<String>,
+    baud_rate: Option<u32>,
+    signature: Option<String>,
+    handshake_command: Option<char>,
+    last_error: Option<String>,
+}
+
+fn build_ecu_connection_event(state: &RuntimeState) -> EcuConnectionEvent {
+    let offline_mode = state.autoconnect.is_offline_mode();
+    if offline_mode {
+        return EcuConnectionEvent {
+            connected: false,
+            offline_mode: true,
+            port_name: None,
+            baud_rate: None,
+            signature: None,
+            handshake_command: None,
+            last_error: state.autoconnect.snapshot().last_error,
+        };
+    }
+
+    if state.session.is_connected() {
+        if let Some(info) = state.session.connection_info_if_available() {
+            return EcuConnectionEvent {
+                connected: true,
+                offline_mode: false,
+                port_name: Some(info.port_name),
+                baud_rate: Some(info.baud_rate),
+                signature: Some(info.signature),
+                handshake_command: Some(info.handshake_command),
+                last_error: None,
+            };
+        }
+        return EcuConnectionEvent {
+            connected: true,
+            offline_mode: false,
+            port_name: None,
+            baud_rate: None,
+            signature: None,
+            handshake_command: None,
+            last_error: None,
+        };
+    }
+
+    EcuConnectionEvent {
+        connected: false,
+        offline_mode: false,
+        port_name: None,
+        baud_rate: None,
+        signature: None,
+        handshake_command: None,
+        last_error: state.autoconnect.snapshot().last_error,
+    }
+}
+
+/// Подключение ECU изменилось — `ecu-connection` только при смене + опционально sync.
+pub fn schedule_ecu_notify(app: &AppHandle, sync_ecu: bool) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let state = app.state::<RuntimeState>();
+        emit_ecu_connection_if_changed(&app, &state);
+        if sync_ecu && state.session.is_connected() && !state.session.is_ecu_busy() {
+            sync_ecu_data(&state, &app);
+        }
+    });
+}
+
+/// Только scanning / busy_ports — без `ecu-connection` и без invoke в ConnectionPanel.
+pub fn schedule_autoconnect_ui(app: &AppHandle) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        emit_autoconnect_state(&app);
+    });
+}
+
+pub fn emit_ecu_connection_if_changed(app: &AppHandle, state: &RuntimeState) {
+    let event = build_ecu_connection_event(state);
+    let mut last = state.last_ecu_connection_emit.lock().unwrap();
+    if last.as_ref() == Some(&event) {
+        return;
+    }
+    *last = Some(event.clone());
+    let _ = app.emit("ecu-connection", event);
+}
+
+pub fn emit_autoconnect_state(app: &AppHandle) {
+    let state = app.state::<RuntimeState>();
+    let _ = app.emit("autoconnect-state", state.autoconnect.snapshot());
+}
+
+pub fn start_autoconnect(app: AppHandle) {
+    let state = app.state::<RuntimeState>();
+    let autoconnect = Arc::clone(&state.autoconnect);
+    let app_ecu = app.clone();
+    let app_scan = app.clone();
+    autoconnect.start(
+        move |sync_ecu| {
+            schedule_ecu_notify(&app_ecu, sync_ecu);
+        },
+        move || {
+            schedule_autoconnect_ui(&app_scan);
+        },
+    );
+    state
+        .session
+        .protocol_log()
+        .log_link(format!(
+            "Лог протокола: {}",
+            state.protocol_log.path().display()
+        ));
+    schedule_ecu_notify(&app, false);
+    schedule_autoconnect_ui(&app);
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ConfigProgressEvent {
+    loading: bool,
+    progress: f64,
+    bytes_loaded: u32,
+    bytes_total: u32,
+}
+
+fn emit_config_update(app: &AppHandle, snap: &ConfigSnapshot) {
+    if snap.loading && !snap.loaded {
+        let app = app.clone();
+        let event = ConfigProgressEvent {
+            loading: snap.loading,
+            progress: snap.progress,
+            bytes_loaded: snap.bytes_loaded,
+            bytes_total: snap.bytes_total,
+        };
+        tauri::async_runtime::spawn(async move {
+            let _ = app.emit("config-progress", event);
+        });
+    } else {
+        emit_config(app, snap);
+    }
+}
+
 fn sync_output_poll_session(session: &Arc<EcuSession>, app: &AppHandle) {
-    if session.is_connected() {
+    if session.should_poll_output_channels() {
+        if session.output().is_polling() {
+            return;
+        }
         let app = app.clone();
         let poll_session = Arc::clone(session);
         session.output().start(poll_session, move |snap| {
@@ -89,7 +256,7 @@ fn sync_output_poll_session(session: &Arc<EcuSession>, app: &AppHandle) {
 fn sync_config_load(state: &RuntimeState, app: &AppHandle) {
     if !state.session.is_connected() {
         state.session.config().stop();
-        emit_config(app, &state.session.config().snapshot());
+        emit_config_update(app, &state.session.config().snapshot());
         return;
     }
 
@@ -104,7 +271,7 @@ fn sync_config_load(state: &RuntimeState, app: &AppHandle) {
     let app = app.clone();
     let session = Arc::clone(&state.session);
     state.session.config().start_load(session.clone(), move |snap| {
-        emit_config(&app, &snap);
+        emit_config_update(&app, &snap);
         if !snap.loading {
             sync_output_poll_session(&session, &app);
         }
@@ -115,7 +282,7 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
     if !state.session.is_connected() {
         state.session.config().stop();
         state.session.output().stop();
-        emit_config(app, &state.session.config().snapshot());
+        emit_config_update(app, &state.session.config().snapshot());
         emit_output(app, &state.session.output().snapshot());
         return;
     }
@@ -128,11 +295,31 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
     }
 }
 
+fn protocol_log_emit_now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
 pub fn register_protocol_log_emitter(app: &AppHandle) {
     let handle = app.clone();
     let state = app.state::<RuntimeState>();
     state.protocol_log.add_listener(Arc::new(move |entry| {
-        emit_protocol_log(&handle, entry);
+        let immediate = entry.direction == "link" || entry.direction == "err";
+        if !immediate {
+            let now = protocol_log_emit_now_ms();
+            let prev = LAST_PROTOCOL_LOG_UI_EMIT_MS.load(Ordering::Relaxed);
+            if now.saturating_sub(prev) < PROTOCOL_LOG_UI_THROTTLE_MS {
+                return;
+            }
+            LAST_PROTOCOL_LOG_UI_EMIT_MS.store(now, Ordering::Relaxed);
+        }
+        let app = handle.clone();
+        let entry = entry.clone();
+        tauri::async_runtime::spawn(async move {
+            emit_protocol_log(&app, &entry);
+        });
     }));
 }
 
@@ -163,7 +350,7 @@ fn apply_ecu_sync_on_mount(policy: EcuSyncOnMount, state: &RuntimeState, app: &A
     match policy {
         EcuSyncOnMount::Full => sync_ecu_data(state, app),
         EcuSyncOnMount::OutputPollIfConfigLoaded => {
-            if state.session.is_connected() && state.session.config().snapshot().loaded {
+            if state.session.config().snapshot().loaded {
                 sync_output_poll_session(&state.session, app);
             }
         }
@@ -189,22 +376,124 @@ pub fn component_dispatch(
     state: State<RuntimeState>,
     app: AppHandle,
 ) -> Result<Value, String> {
-    if state.session.is_connected() {
+    let action = params.action.as_str();
+    if matches!(action, "start" | "stop") {
+        return component_dispatch_simulation(params, state, app);
+    }
+
+    component_dispatch_inner(params, state, app)
+}
+
+fn component_dispatch_simulation(
+    params: DispatchParams,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<Value, String> {
+    let action = params.action;
+    let instance_id = params.instance_id;
+
+    let rpm = if action == "start" {
+        let rt = state.runtime.lock().map_err(|e| e.to_string())?;
+        let s = rt.state(&instance_id)?;
+        s.get("rpm")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(1500) as u16
+    } else {
+        0
+    };
+
+    let snapshot = {
+        let mut rt = state.runtime.lock().map_err(|e| e.to_string())?;
+        rt.dispatch(&instance_id, &format!("begin_{action}"), Value::Null)?
+    };
+    emit_state(&app, &instance_id, &snapshot);
+
+    let session = Arc::clone(&state.session);
+    let app = app.clone();
+    let action_owned = action.clone();
+    let instance_id_bg = instance_id.clone();
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let ecu_result = match action_owned.as_str() {
+            "start" => session.run_stimulator_start(rpm),
+            "stop" => session.run_stimulator_stop(),
+            _ => unreachable!(),
+        };
+
+        let ok = ecu_result.is_ok();
+        let finish_payload = serde_json::json!({
+            "ok": ok,
+            "error": ecu_result.err(),
+        });
+
+        let state = app.state::<RuntimeState>();
+        let finish_action = format!("finish_{action_owned}");
+        let dispatch_result = (|| -> Result<(), String> {
+            let mut rt = state.runtime.lock().map_err(|e| e.to_string())?;
+            let snap = rt.dispatch(&instance_id_bg, &finish_action, finish_payload)?;
+            emit_state(&app, &instance_id_bg, &snap);
+            if ok {
+                sync_output_poll_session(&state.session, &app);
+            }
+            Ok(())
+        })();
+
+        if dispatch_result.is_err() {
+            session.set_stimulation_active(false);
+        }
+    });
+
+    Ok(snapshot)
+}
+
+fn component_dispatch_inner(
+    params: DispatchParams,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<Value, String> {
+    let action = params.action.as_str();
+    let stops_output_poll = matches!(action, "connect" | "disconnect") && state.session.is_connected();
+
+    if stops_output_poll {
         state.session.output().stop();
     }
 
-    let mut rt = state.runtime.lock().map_err(|e| e.to_string())?;
-    let snapshot = rt.dispatch(&params.instance_id, &params.action, params.payload)?;
-    emit_state(&app, &params.instance_id, &snapshot);
-    sync_ecu_data(&state, &app);
+    let manual_disconnect_port = if action == "disconnect" {
+        state
+            .session
+            .connection_info_if_available()
+            .map(|info| info.port_name)
+    } else {
+        None
+    };
 
-    // `run_without_output_poll` (стимуляция, config IO) не возобновляет poll `O`.
-    let config_snap = state.session.config().snapshot();
-    if state.session.is_connected() && !config_snap.loading {
-        sync_output_poll_session(&state.session, &app);
+    let snapshot = {
+        let mut rt = state.runtime.lock().map_err(|e| e.to_string())?;
+        let snapshot = rt.dispatch(&params.instance_id, action, params.payload)?;
+
+        if action == "connect" {
+            state.autoconnect.clear_manual_disconnect();
+        } else if action == "disconnect" {
+            if let Some(port) = manual_disconnect_port {
+                state.autoconnect.note_manual_disconnect(Some(&port));
+            }
+        }
+
+        snapshot
+    };
+
+    emit_state(&app, &params.instance_id, &snapshot);
+
+    if matches!(action, "connect" | "disconnect") {
+        schedule_ecu_notify(&app, action == "connect");
     }
 
     Ok(snapshot)
+}
+
+#[tauri::command]
+pub fn ecu_resync(_state: State<RuntimeState>, app: AppHandle) {
+    schedule_ecu_notify(&app, true);
 }
 
 #[tauri::command]
@@ -266,9 +555,9 @@ pub fn config_set_scalar(
         .write_scalar(&session, &params.field, params.value)?;
 
     let snap = session.config().snapshot();
-    emit_config(&app, &snap);
+    emit_config_update(&app, &snap);
 
-    if session.is_connected() && snap.loaded {
+    if session.should_poll_output_channels() {
         sync_output_poll_session(&session, &app);
     }
 
@@ -287,9 +576,9 @@ pub fn config_burn(state: State<RuntimeState>, app: AppHandle) -> Result<(), Str
     session.config().burn_to_flash(&session)?;
 
     let snap = session.config().snapshot();
-    emit_config(&app, &snap);
+    emit_config_update(&app, &snap);
 
-    if snap.loaded {
+    if session.should_poll_output_channels() {
         sync_output_poll_session(&session, &app);
     } else {
         emit_output(&app, &session.output().snapshot());
@@ -389,6 +678,22 @@ pub fn protocol_log_set_filters(
     state: State<RuntimeState>,
 ) {
     state.protocol_log.set_filters(filters);
+}
+
+#[tauri::command]
+pub fn autoconnect_get_state(state: State<RuntimeState>) -> AutoConnectSnapshot {
+    state.autoconnect.snapshot()
+}
+
+#[tauri::command]
+pub fn autoconnect_set_offline_mode(
+    offline: bool,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) {
+    state.autoconnect.set_offline_mode(offline);
+    schedule_ecu_notify(&app, false);
+    schedule_autoconnect_ui(&app);
 }
 
 #[tauri::command]

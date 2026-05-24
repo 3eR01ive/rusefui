@@ -2,6 +2,7 @@
 //!
 //! Vue отвечает только за отрисовку `state` и отправку `dispatch(action)`.
 
+mod autoconnect;
 mod component;
 mod ini;
 mod protocol_log;
@@ -10,6 +11,7 @@ pub mod components;
 pub mod session;
 pub mod sources;
 
+pub use autoconnect::{AutoConnectManager, AutoConnectSnapshot, AutoConnectTick};
 pub use component::{
     ComponentAction, ComponentLogic, ComponentMeta, EcuSyncOnMount, LogicComponentType,
 };

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
@@ -14,8 +14,12 @@ use crate::session::EcuSession;
 
 pub const DEFAULT_OUTPUT_BLOCK_SIZE: u16 = 2044;
 
-const OUTPUT_POLL_HZ: f64 = 50.0;
-const POLL_INTERVAL: Duration = Duration::from_micros((1_000_000.0 / OUTPUT_POLL_HZ) as u64);
+const OUTPUT_POLL_HZ: f64 = 10.0;
+const POLL_INTERVAL: Duration = Duration::from_millis((1000.0 / OUTPUT_POLL_HZ) as u64);
+/// Реже во время стимуляции — меньше конкуренции за `inner` с редкими `E`.
+const STIM_OUTPUT_POLL_HZ: f64 = 5.0;
+const STIM_POLL_INTERVAL: Duration = Duration::from_millis((1000.0 / STIM_OUTPUT_POLL_HZ) as u64);
+const MIN_EMIT_INTERVAL: Duration = Duration::from_millis(100);
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -160,6 +164,10 @@ impl OutputChannelsSource {
         serde_json::to_value(self.snapshot()).unwrap_or(json!({}))
     }
 
+    pub fn is_polling(&self) -> bool {
+        self.running.load(Ordering::SeqCst) && self.thread.lock().unwrap().is_some()
+    }
+
     pub fn stop(&self) {
         self.running.store(false, Ordering::SeqCst);
         if let Some(handle) = self.thread.lock().unwrap().take() {
@@ -179,6 +187,9 @@ impl OutputChannelsSource {
     where
         F: Fn(OutputSnapshot) + Send + Sync + 'static,
     {
+        if self.is_polling() {
+            return;
+        }
         self.stop();
         self.running.store(true, Ordering::SeqCst);
 
@@ -191,7 +202,17 @@ impl OutputChannelsSource {
 
         let handle = thread::Builder::new()
             .name("rusefui-output-poll".into())
-            .spawn(move || poll_loop(session, running, snapshot, ini, block_size, chunk_size, on_tick))
+            .spawn(move || {
+                poll_loop(
+                    session,
+                    running,
+                    snapshot,
+                    ini,
+                    block_size,
+                    chunk_size,
+                    on_tick,
+                )
+            })
             .expect("spawn output poll thread");
 
         *self.thread.lock().unwrap() = Some(handle);
@@ -207,10 +228,15 @@ fn poll_loop(
     chunk_size: u16,
     on_tick: Arc<dyn Fn(OutputSnapshot) + Send + Sync>,
 ) {
+    let last_emit_ms = AtomicU64::new(0);
+
     while running.load(Ordering::SeqCst) {
+        let stim = session.is_stimulation_active();
+        let poll_hz = if stim { STIM_OUTPUT_POLL_HZ } else { OUTPUT_POLL_HZ };
+
         let mut snap = OutputSnapshot {
             connected: session.is_connected(),
-            poll_hz: OUTPUT_POLL_HZ,
+            poll_hz,
             raw_len: 0,
             values: HashMap::new(),
             last_error: None,
@@ -219,17 +245,35 @@ fn poll_loop(
         };
 
         if snap.connected {
-            match session.with_link(|link| link.read_output_channels_full(block_size, chunk_size)) {
-                Ok(bytes) => {
-                    snap.raw_len = bytes.len();
-                    snap.values = decode_output_channels(&ini.channels, &bytes);
+            if let Some(result) = session.try_with_link(|link| {
+                link.read_output_channels_full(block_size, chunk_size)
+            }) {
+                match result {
+                    Ok(bytes) => {
+                        snap.raw_len = bytes.len();
+                        snap.values = decode_output_channels(&ini.channels, &bytes);
+                    }
+                    Err(e) => snap.last_error = Some(e),
                 }
-                Err(e) => snap.last_error = Some(e),
             }
         }
 
         *snapshot.write().unwrap() = snap.clone();
-        on_tick(snap);
-        thread::sleep(POLL_INTERVAL);
+
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        let prev = last_emit_ms.load(Ordering::Relaxed);
+        if now.saturating_sub(prev) >= MIN_EMIT_INTERVAL.as_millis() as u64 {
+            last_emit_ms.store(now, Ordering::Relaxed);
+            on_tick(snap);
+        }
+
+        thread::sleep(if stim {
+            STIM_POLL_INTERVAL
+        } else {
+            POLL_INTERVAL
+        });
     }
 }

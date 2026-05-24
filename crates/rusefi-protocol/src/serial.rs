@@ -97,7 +97,8 @@ impl SerialLink {
             .parity(Parity::None)
             .stop_bits(StopBits::One)
             .flow_control(FlowControl::None)
-            .open()?;
+            .open()
+            .map_err(|e| crate::port_discovery::map_serial_open_error(port_name, e))?;
 
         let mut link = Self {
             port,

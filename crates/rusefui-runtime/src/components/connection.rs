@@ -3,7 +3,7 @@ use std::sync::Arc;
 use serde::Serialize;
 use serde_json::{json, Value};
 
-use crate::component::{ComponentLogic, ComponentMeta, LogicComponentType};
+use crate::component::{ComponentLogic, ComponentMeta, EcuSyncOnMount, LogicComponentType};
 use crate::session::EcuSession;
 
 const BAUD_RATES: &[u32] = &[115_200, 230_400, 460_800, 921_600];
@@ -56,7 +56,7 @@ impl ConnectionLogic {
     fn view_state(&self) -> ConnectionViewState {
         let connected = self.session.is_connected();
         if connected {
-            if let Ok(info) = self.session.with_link(|link| Ok(link.info().clone())) {
+            if let Some(info) = self.session.connection_info_if_available() {
                 return ConnectionViewState {
                     ports: self.ports.clone(),
                     selected_port: self.selected_port.clone(),
@@ -169,6 +169,11 @@ impl ComponentLogic for ConnectionLogic {
         }
     }
 
+    fn ecu_sync_on_mount(&self) -> EcuSyncOnMount {
+        // AppShell: initConfig/initOutput; автоподключение: schedule_ecu_notify.
+        EcuSyncOnMount::None
+    }
+
     fn state(&self) -> Value {
         self.to_json()
     }
@@ -197,6 +202,21 @@ impl ComponentLogic for ConnectionLogic {
             }
             "disconnect" => {
                 self.disconnect();
+                Ok(self.to_json())
+            }
+            "sync_from_session" => {
+                if self.session.is_connected() {
+                    if let Some(info) = self.session.connection_info_if_available() {
+                        self.selected_port = info.port_name.clone();
+                        self.baud_rate = info.baud_rate;
+                        self.last_error = None;
+                        self.message = Some("Подключено.".into());
+                        self.message_is_error = false;
+                    }
+                } else {
+                    self.message = None;
+                    self.message_is_error = false;
+                }
                 Ok(self.to_json())
             }
             other => Err(format!("unknown action: {other}")),

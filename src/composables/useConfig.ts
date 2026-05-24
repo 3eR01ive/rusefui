@@ -65,6 +65,21 @@ export async function initConfig(): Promise<void> {
       unlisten = await listen<ConfigSnapshot>("config-snapshot", (event) => {
         snapshot.value = event.payload;
       });
+      await listen<{
+        loading: boolean;
+        progress: number;
+        bytesLoaded: number;
+        bytesTotal: number;
+      }>("config-progress", (event) => {
+        const p = event.payload;
+        snapshot.value = {
+          ...snapshot.value,
+          loading: p.loading,
+          progress: p.progress,
+          bytesLoaded: p.bytesLoaded,
+          bytesTotal: p.bytesTotal,
+        };
+      });
     }
   })();
 

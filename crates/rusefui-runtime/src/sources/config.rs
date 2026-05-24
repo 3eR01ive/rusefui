@@ -1,8 +1,9 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread::{self, sleep, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use rusefi_ini::{
     decode_array, decode_config_fields, encode_array_element,
@@ -230,9 +231,7 @@ impl ConfigSource {
 
     pub fn stop(&self) {
         self.loading.store(false, Ordering::SeqCst);
-        if let Some(handle) = self.thread.lock().unwrap().take() {
-            let _ = handle.join();
-        }
+        let _ = self.thread.lock().unwrap().take();
         let ini = self.ini.lock().unwrap().clone();
         *self.raw.lock().unwrap() = Vec::new();
         *self.snapshot.write().unwrap() = ConfigSnapshot::disconnected(&ini);
@@ -260,9 +259,7 @@ impl ConfigSource {
             return;
         }
 
-        if let Some(handle) = self.thread.lock().unwrap().take() {
-            let _ = handle.join();
-        }
+        let _ = self.thread.lock().unwrap().take();
 
         let ini = self.ini.lock().unwrap().clone();
         let field_count = ini.config_fields.len();
@@ -299,7 +296,17 @@ impl ConfigSource {
                     snap.progress = 0.0;
                     snap.last_error = Some("ECU не подключена".into());
                 } else {
+                    let last_progress_emit = RefCell::new(Instant::now());
                     let emit_progress = |loaded: u32, total: u32| {
+                        let now = Instant::now();
+                        if loaded < total
+                            && now
+                                .duration_since(*last_progress_emit.borrow())
+                                < Duration::from_millis(250)
+                        {
+                            return;
+                        }
+                        *last_progress_emit.borrow_mut() = now;
                         let progress = if total == 0 {
                             0.0
                         } else {
@@ -313,16 +320,36 @@ impl ConfigSource {
                         on_update(snap.clone());
                     };
 
-                    match session.with_link(|link| {
-                        link.read_config_page_full_with_progress(
-                            TS_PAGE_SETTINGS,
-                            page_size,
-                            chunk_size,
-                            read_has_page_index,
-                            emit_progress,
-                        )
-                    }) {
-                        Ok(bytes) => {
+                    const LOAD_RETRY_MS: u64 = 100;
+                    const LOAD_RETRY_MAX: u32 = 120;
+                    let mut load_result: Option<Result<Vec<u8>, String>> = None;
+                    for _ in 0..LOAD_RETRY_MAX {
+                        if !session.is_connected() {
+                            break;
+                        }
+                        match session.try_with_link(|link| {
+                            link.read_config_page_full_with_progress(
+                                TS_PAGE_SETTINGS,
+                                page_size,
+                                chunk_size,
+                                read_has_page_index,
+                                emit_progress,
+                            )
+                        }) {
+                            Some(Ok(bytes)) => {
+                                load_result = Some(Ok(bytes));
+                                break;
+                            }
+                            Some(Err(e)) => {
+                                load_result = Some(Err(e));
+                                break;
+                            }
+                            None => thread::sleep(Duration::from_millis(LOAD_RETRY_MS)),
+                        }
+                    }
+
+                    match load_result {
+                        Some(Ok(bytes)) => {
                             let values = decode_config_fields(&config_fields, &bytes);
                             *raw_store.lock().unwrap() = bytes.clone();
                             snap = ConfigSnapshot {
@@ -338,11 +365,20 @@ impl ConfigSource {
                                 last_error: None,
                             };
                         }
-                        Err(e) => {
+                        Some(Err(e)) => {
                             snap.loaded = false;
                             snap.loading = false;
                             snap.progress = 0.0;
                             snap.last_error = Some(e);
+                        }
+                        None => {
+                            snap.loaded = false;
+                            snap.loading = false;
+                            snap.progress = 0.0;
+                            snap.last_error = Some(
+                                "ECU занята слишком долго — загрузка конфигурации отменена"
+                                    .into(),
+                            );
                         }
                     }
                 }

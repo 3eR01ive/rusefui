@@ -16,7 +16,7 @@ export interface ProtocolLogEntry {
   id: number;
   timestampMs: number;
   level: LogLevel;
-  direction: "tx" | "rx" | "err" | "info";
+  direction: "tx" | "rx" | "err" | "info" | "link";
   command: string | null;
   summary: string;
   payloadHex: string;
@@ -107,7 +107,12 @@ export async function initProtocolLogListener(): Promise<void> {
   unlisten = await listen<ProtocolLogEntry>("protocol-log", (event) => {
     const entry = event.payload;
     if (!allowsUi(entry, filters.value)) return;
-    entries.value = [...entries.value, entry].slice(-500);
+    const next = entries.value;
+    if (next.length >= 500) {
+      entries.value = [...next.slice(-499), entry];
+    } else {
+      entries.value = [...next, entry];
+    }
   });
 }
 

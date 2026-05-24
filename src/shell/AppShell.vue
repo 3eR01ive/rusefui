@@ -7,11 +7,13 @@ import { createDataContext, provideDataContext } from "../core/data-context";
 import { initOutputChannels } from "../composables/useOutputChannels";
 import { initConfig, useConfig } from "../composables/useConfig";
 import { useProtocolLog, useProtocolLogLifecycle } from "../composables/useProtocolLog";
+import { useEcuConnection } from "../composables/useEcuConnection";
 
 const dataCtx = createDataContext();
 provideDataContext(dataCtx);
 
 const appTitle = ref("rusefui");
+const { offlineMode, scanning, busyPorts, setOfflineMode } = useEcuConnection(dataCtx);
 const { togglePanel } = useProtocolLog();
 const { snapshot: configSnap, burn: burnConfig } = useConfig();
 
@@ -55,27 +57,51 @@ async function onBurn() {
         <h1 class="app-title">{{ appTitle }}</h1>
         <span class="app-subtitle">rusEFI · декларативный UI</span>
       </div>
-      <div v-if="dataCtx.connection.value.connected" class="header-actions">
+      <div class="header-actions">
+        <label class="offline-toggle" title="Не подключаться к ECU автоматически">
+          <input
+            type="checkbox"
+            :checked="offlineMode"
+            @change="setOfflineMode(($event.target as HTMLInputElement).checked)"
+          />
+          <span>Offline mode</span>
+        </label>
+        <span v-if="scanning && !offlineMode" class="scan-hint" aria-live="polite">
+          Поиск ECU…
+        </span>
+        <span v-else-if="busyPorts.length && !offlineMode" class="scan-hint busy" aria-live="polite">
+          Порт занят ({{ busyPorts.join(", ") }}) — отключите TunerStudio
+        </span>
         <button
           type="button"
-          class="burn-btn"
-          :disabled="!canBurn"
-          :title="
-            burnError ??
-            'Записать конфигурацию во flash (команда B, как Burn в TunerStudio)'
-          "
-          @click="onBurn"
-        >
-          {{ burning ? "Burn…" : "Burn" }}
-        </button>
-        <button
-          type="button"
-          class="conn-badge"
-          title="Протокол ECU — команды и ответы"
+          class="log-btn"
+          title="Лог USB, подключения и протокола ECU"
           @click="togglePanel"
         >
-          ECU
+          Лог
         </button>
+        <template v-if="dataCtx.connection.value.connected">
+          <button
+            type="button"
+            class="burn-btn"
+            :disabled="!canBurn"
+            :title="
+              burnError ??
+              'Записать конфигурацию во flash (команда B, как Burn в TunerStudio)'
+            "
+            @click="onBurn"
+          >
+            {{ burning ? "Burn…" : "Burn" }}
+          </button>
+          <button
+            type="button"
+            class="conn-badge"
+            title="Протокол ECU — команды и ответы"
+            @click="togglePanel"
+          >
+            ECU
+          </button>
+        </template>
       </div>
       <p v-if="burnError" class="burn-error" role="alert">{{ burnError }}</p>
     </header>
@@ -140,6 +166,49 @@ async function onBurn() {
   align-items: center;
   gap: 0.5rem;
   margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.offline-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.offline-toggle input {
+  accent-color: var(--color-accent);
+}
+
+.scan-hint {
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.scan-hint.busy {
+  color: var(--color-error);
+  font-style: normal;
+}
+
+.log-btn {
+  padding: 0.25rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  background: var(--color-bg-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.log-btn:hover {
+  color: var(--color-text);
+  border-color: var(--color-border-strong);
 }
 
 .burn-btn {

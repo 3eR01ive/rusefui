@@ -1,6 +1,6 @@
 mod runtime_cmds;
 
-use runtime_cmds::{register_protocol_log_emitter, RuntimeState};
+use runtime_cmds::{register_protocol_log_emitter, start_autoconnect, RuntimeState};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -8,6 +8,7 @@ pub fn run() {
         .manage(RuntimeState::default())
         .setup(|app| {
             register_protocol_log_emitter(app.handle());
+            start_autoconnect(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -27,6 +28,9 @@ pub fn run() {
             runtime_cmds::config_get_array,
             runtime_cmds::config_set_array_value,
             runtime_cmds::ini_get_info,
+            runtime_cmds::autoconnect_get_state,
+            runtime_cmds::autoconnect_set_offline_mode,
+            runtime_cmds::ecu_resync,
             runtime_cmds::protocol_log_get,
             runtime_cmds::protocol_log_set_filters,
             runtime_cmds::protocol_log_clear,

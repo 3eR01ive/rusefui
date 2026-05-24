@@ -22,4 +22,14 @@ pub enum ProtocolError {
 
     #[error("empty signature")]
     EmptySignature,
+
+    /// Порт уже открыт другим процессом (TunerStudio и т.п.).
+    #[error("порт {port_name} занят: {detail}")]
+    PortBusy { port_name: String, detail: String },
+}
+
+impl ProtocolError {
+    pub fn is_port_busy(&self) -> bool {
+        matches!(self, Self::PortBusy { .. })
+    }
 }

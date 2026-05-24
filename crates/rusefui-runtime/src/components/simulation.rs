@@ -1,20 +1,14 @@
 use std::sync::Arc;
-use std::thread::sleep;
-use std::time::Duration;
 
-use rusefi_ini::{encode_config_value, ConfigFieldKind};
 use serde::Serialize;
 use serde_json::{json, Value};
 
 use crate::component::{ComponentLogic, ComponentMeta, EcuSyncOnMount, LogicComponentType};
 use crate::session::EcuSession;
 
-const TRIGGER_RPM_FIELD: &str = "triggerSimulatorRpm";
-const CMD_SELF_STIMULATION: &str = "self_stimulation";
 const DEFAULT_RPM: u16 = 1500;
 
-/// Как Java console (`RpmCommand`, `IoUtil.getEnableCommand` / `getDisableCommand`):
-/// `E` + `rpm N`, `E` + `enable self_stimulation` — без `C` в конфиг (см. `settings.cpp` / `trigger_emulator_algo.cpp`).
+/// Как Java console (`RpmCommand`, `IoUtil`): `E` + disable/rpm/enable — без `C` в конфиг.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct SimulatorViewState {
@@ -42,12 +36,13 @@ pub struct SimulationLogic {
 impl SimulationLogic {
     pub fn new(session: Arc<EcuSession>) -> Self {
         let (rpm_min, rpm_max) = (0u16, 30_000u16);
+        let active = session.is_stimulation_active();
         Self {
             session,
             rpm: DEFAULT_RPM,
             rpm_min,
             rpm_max,
-            active: false,
+            active,
             busy: false,
             message: None,
             message_is_error: false,
@@ -60,7 +55,7 @@ impl SimulationLogic {
             rpm_min: self.rpm_min,
             rpm_max: self.rpm_max,
             connected: self.session.is_connected(),
-            active: self.active,
+            active: self.active || self.session.is_stimulation_active(),
             busy: self.busy,
             message: self.message.clone(),
             message_is_error: self.message_is_error,
@@ -79,92 +74,56 @@ impl SimulationLogic {
         }
     }
 
-    /// Локальный кэш `triggerSimulatorRpm` после успешной консольной `rpm`.
-    fn patch_local_trigger_rpm(&self) -> Result<(), String> {
-        let ini = self.session.ini_context();
-        let field = ini
-            .config_fields
-            .get(TRIGGER_RPM_FIELD)
-            .ok_or_else(|| format!("поле {TRIGGER_RPM_FIELD} не найдено в INI"))?;
-        let offset = match field {
-            ConfigFieldKind::Scalar(s) => s.offset,
-            _ => return Err(format!("{TRIGGER_RPM_FIELD}: ожидался scalar")),
-        };
-        let raw = self.session.config().page_raw();
-        let encoded = encode_config_value(field, f64::from(self.rpm), &raw)
-            .ok_or_else(|| format!("не удалось закодировать {TRIGGER_RPM_FIELD}"))?;
-        self.session
-            .config()
-            .patch_page_raw(offset as usize, &encoded);
+    fn begin_start(&mut self) -> Result<(), String> {
+        self.require_connected()?;
+        if self.busy {
+            return Err("Операция уже выполняется".into());
+        }
+        self.busy = true;
+        self.message = None;
+        self.message_is_error = false;
         Ok(())
     }
 
-    fn start(&mut self) -> Result<(), String> {
-        self.require_connected()?;
-        self.busy = true;
-        self.message = None;
-        self.message_is_error = false;
-
-        let inter_write_delay =
-            Duration::from_millis(u64::from(self.session.ini_context().inter_write_delay_ms));
-        let rpm = self.rpm;
-        let session = Arc::clone(&self.session);
-
-        // disable → rpm → enable: сброс hasInitTriggerEmulator и новый RPM до enable.
-        let result = session.run_without_output_poll(|session| {
-            session.with_link(|link| {
-                link.execute_console_command(&format!("disable {CMD_SELF_STIMULATION}"))?;
-                sleep(inter_write_delay);
-                link.execute_console_command(&format!("rpm {rpm}"))?;
-                sleep(inter_write_delay);
-                link.execute_console_command(&format!("enable {CMD_SELF_STIMULATION}"))
-            })
-        });
-
+    fn finish_start(&mut self, ok: bool, error: Option<&str>) -> Result<Value, String> {
         self.busy = false;
-        match result {
-            Ok(()) => {
-                let _ = self.patch_local_trigger_rpm();
-                self.active = true;
-                self.message = Some(format!("Стимуляция включена на {} RPM.", self.rpm));
-                self.message_is_error = false;
-                Ok(())
-            }
-            Err(e) => {
-                self.active = false;
-                self.message = Some(e.clone());
-                self.message_is_error = true;
-                Err(e)
-            }
+        if ok {
+            self.active = true;
+            self.message = Some(format!("Стимуляция включена на {} RPM.", self.rpm));
+            self.message_is_error = false;
+            Ok(self.to_json())
+        } else {
+            self.active = false;
+            let msg = error.unwrap_or("не удалось включить стимуляцию");
+            self.message = Some(msg.to_string());
+            self.message_is_error = true;
+            Err(msg.to_string())
         }
     }
 
-    fn stop(&mut self) -> Result<(), String> {
+    fn begin_stop(&mut self) -> Result<(), String> {
         self.require_connected()?;
+        if self.busy {
+            return Err("Операция уже выполняется".into());
+        }
         self.busy = true;
         self.message = None;
         self.message_is_error = false;
+        Ok(())
+    }
 
-        let session = Arc::clone(&self.session);
-        let result = session.run_without_output_poll(|session| {
-            session.with_link(|link| {
-                link.execute_console_command(&format!("disable {CMD_SELF_STIMULATION}"))
-            })
-        });
-
+    fn finish_stop(&mut self, ok: bool, error: Option<&str>) -> Result<Value, String> {
         self.busy = false;
-        match result {
-            Ok(()) => {
-                self.active = false;
-                self.message = Some("Стимуляция выключена.".into());
-                self.message_is_error = false;
-                Ok(())
-            }
-            Err(e) => {
-                self.message = Some(e.clone());
-                self.message_is_error = true;
-                Err(e)
-            }
+        if ok {
+            self.active = false;
+            self.message = Some("Стимуляция выключена.".into());
+            self.message_is_error = false;
+            Ok(self.to_json())
+        } else {
+            let msg = error.unwrap_or("не удалось выключить стимуляцию");
+            self.message = Some(msg.to_string());
+            self.message_is_error = true;
+            Err(msg.to_string())
         }
     }
 }
@@ -194,13 +153,29 @@ impl ComponentLogic for SimulationLogic {
                 }
                 Ok(self.to_json())
             }
-            "start" => {
-                self.start()?;
+            "begin_start" => {
+                self.begin_start()?;
                 Ok(self.to_json())
             }
-            "stop" => {
-                self.stop()?;
+            "finish_start" => {
+                let ok = payload
+                    .get("ok")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                let error = payload.get("error").and_then(|v| v.as_str());
+                self.finish_start(ok, error)
+            }
+            "begin_stop" => {
+                self.begin_stop()?;
                 Ok(self.to_json())
+            }
+            "finish_stop" => {
+                let ok = payload
+                    .get("ok")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                let error = payload.get("error").and_then(|v| v.as_str());
+                self.finish_stop(ok, error)
             }
             other => Err(format!("unknown action: {other}")),
         }

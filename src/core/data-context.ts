@@ -4,6 +4,7 @@ import type { ConnectionStatus } from "../types/connection";
 
 export interface DataContextState {
   connection: Ref<ConnectionStatus>;
+  offlineMode: Ref<boolean>;
 }
 
 const DataContextKey: InjectionKey<DataContextState> = Symbol("rusefui-data");
@@ -23,6 +24,7 @@ export function useDataContext(): DataContextState {
 export function createDataContext(): DataContextState {
   return {
     connection: ref<ConnectionStatus>({ connected: false }),
+    offlineMode: ref(false),
   };
 }
 

@@ -32,6 +32,8 @@ function dirLabel(direction: string): string {
       return "RX";
     case "err":
       return "ERR";
+    case "link":
+      return "LINK";
     default:
       return direction.toUpperCase();
   }
@@ -249,8 +251,13 @@ function onFilterToggle(key: FilterKey, checked: boolean) {
   background: var(--color-error-bg);
 }
 
-.log-row.info {
-  border-left-color: var(--color-gray);
+.log-row.info,
+.log-row.link {
+  border-left-color: #6b8cae;
+}
+
+.log-row.link {
+  background: var(--color-bg-accent-soft);
 }
 
 .log-meta {
