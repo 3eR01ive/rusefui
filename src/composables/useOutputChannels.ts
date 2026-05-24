@@ -9,6 +9,8 @@ export interface OutputSnapshot {
   values: Record<string, number>;
   iniFieldCount?: number;
   lastError?: string | null;
+  /** CSV-лог output channels для текущей сессии ECU. */
+  sessionLogPath?: string | null;
 }
 
 const snapshot = shallowRef<OutputSnapshot>({

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -11,6 +12,7 @@ use crate::ini::resolve_ini_for_signature;
 use crate::protocol_log::ProtocolLogStore;
 use crate::sources::config::ConfigSource;
 use crate::sources::output_channels::{IniContext, OutputChannelsSource};
+use crate::sources::output_data_log::OutputDataLogWriter;
 
 const STIMULATOR_CMD: &str = "self_stimulation";
 const TRIGGER_RPM_FIELD: &str = "triggerSimulatorRpm";
@@ -29,6 +31,7 @@ pub struct EcuSession {
     protocol_log: Arc<ProtocolLogStore>,
     /// Пока true — не запускать poll `O` (конфликт с консольными `E` на том же порту).
     stimulation_active: AtomicBool,
+    output_data_log: Mutex<Option<OutputDataLogWriter>>,
 }
 
 impl EcuSession {
@@ -42,7 +45,65 @@ impl EcuSession {
             config: ConfigSource::new(ini_ctx),
             protocol_log,
             stimulation_active: AtomicBool::new(false),
+            output_data_log: Mutex::new(None),
         })
+    }
+
+    pub fn output_session_log_path(&self) -> Option<String> {
+        self.output_data_log
+            .lock()
+            .ok()
+            .and_then(|g| g.as_ref().map(|w| w.path().display().to_string()))
+    }
+
+    pub fn record_output_sample(&self, timestamp_ms: u64, values: &HashMap<String, f64>) {
+        let Ok(mut guard) = self.output_data_log.try_lock() else {
+            return;
+        };
+        if let Some(log) = guard.as_mut() {
+            log.write_sample(timestamp_ms, values);
+        }
+    }
+
+    fn start_output_data_log(
+        &self,
+        info: &ConnectionInfo,
+        ini: &IniContext,
+        ini_path: &PathBuf,
+    ) {
+        match OutputDataLogWriter::open(info, ini, Some(ini_path)) {
+            Ok(writer) => {
+                let path = writer.path().display().to_string();
+                self.protocol_log
+                    .log_info(&format!("Output log (сессия): {path}"));
+                *self.output_data_log.lock().unwrap() = Some(writer);
+            }
+            Err(e) => {
+                self.protocol_log
+                    .log_info(&format!("Output log не создан: {e}"));
+            }
+        }
+    }
+
+    fn stop_output_data_log(&self) {
+        let mut guard = match self.output_data_log.lock() {
+            Ok(g) => g,
+            Err(_) => return,
+        };
+        if let Some(writer) = guard.take() {
+            match writer.close() {
+                Ok((path, rows)) => {
+                    self.protocol_log.log_info(&format!(
+                        "Output log закрыт: {} ({rows} строк)",
+                        path.display()
+                    ));
+                }
+                Err(e) => {
+                    self.protocol_log
+                        .log_info(&format!("Output log: ошибка закрытия: {e}"));
+                }
+            }
+        }
     }
 
     pub fn is_stimulation_active(&self) -> bool {
@@ -153,7 +214,7 @@ impl EcuSession {
         *self.ini.lock().unwrap() = ini_ctx.clone();
         *self.loaded_ini_path.lock().unwrap() = Some(resolved.path.clone());
         self.output.replace_ini(ini_ctx.clone());
-        self.config.replace_ini(ini_ctx);
+        self.config.replace_ini(ini_ctx.clone());
 
         let mut guard = self
             .inner
@@ -174,6 +235,7 @@ impl EcuSession {
             resolved.path.display()
         ));
         guard.link = Some(link);
+        self.start_output_data_log(&info, &ini_ctx, &resolved.path);
         Ok(info)
     }
 
@@ -185,6 +247,7 @@ impl EcuSession {
         self.set_stimulation_active(false);
         self.output().stop();
         self.config().stop();
+        self.stop_output_data_log();
         let Ok(mut guard) = self.inner.try_lock() else {
             return;
         };

@@ -44,5 +44,5 @@ children:
 
       - type: text
         props:
-          text: "Опрос outputChannels (команда O) в Rust ~200 Hz. INI подбирается по signature ECU."
+          text: "Опрос outputChannels ~200 Hz. Все параметры пишутся в CSV на сессию (см. sessionLogPath / protocol.log при подключении)."
           variant: hint

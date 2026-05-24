@@ -32,6 +32,8 @@ pub struct OutputSnapshot {
     pub last_error: Option<String>,
     pub ini_signature: Option<String>,
     pub ini_field_count: usize,
+    /// Путь CSV-лога output channels для текущей сессии ECU.
+    pub session_log_path: Option<String>,
 }
 
 impl OutputSnapshot {
@@ -44,6 +46,7 @@ impl OutputSnapshot {
             last_error: None,
             ini_signature: ini.signature.clone(),
             ini_field_count: ini.channels.fields.len(),
+            session_log_path: None,
         }
     }
 }
@@ -243,6 +246,7 @@ fn poll_loop(
             last_error: None,
             ini_signature: ini.signature.clone(),
             ini_field_count: ini.channels.fields.len(),
+            session_log_path: session.output_session_log_path(),
         };
 
         if snap.connected {
@@ -253,6 +257,11 @@ fn poll_loop(
                     Ok(bytes) => {
                         snap.raw_len = bytes.len();
                         snap.values = decode_output_channels(&ini.channels, &bytes);
+                        let ts = std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map(|d| d.as_millis() as u64)
+                            .unwrap_or(0);
+                        session.record_output_sample(ts, &snap.values);
                     }
                     Err(e) => snap.last_error = Some(e),
                 }

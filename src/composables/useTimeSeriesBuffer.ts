@@ -76,7 +76,8 @@ export function createTimeSeriesStore(windowSeconds: number) {
     while (s.points.length > 0 && s.points[0]!.t < minT) {
       s.points.shift();
     }
-    const maxPoints = Math.ceil(windowSeconds * 15);
+    // Запас под ~200 Hz опроса O; старый лимит 15 Hz оставлял ~2 с данных в окне 30 с.
+    const maxPoints = Math.ceil(windowSeconds * 250);
     while (s.points.length > maxPoints) {
       s.points.shift();
     }

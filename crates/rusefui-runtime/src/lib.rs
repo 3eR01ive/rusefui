@@ -28,3 +28,4 @@ pub use sources::config::{ConfigFieldInfo, ConfigSnapshot};
 pub use sources::output_channels::{
     IniContext, OutputFieldInfo, OutputSnapshot, DEFAULT_OUTPUT_BLOCK_SIZE,
 };
+pub use sources::output_data_log::output_logs_dir;
