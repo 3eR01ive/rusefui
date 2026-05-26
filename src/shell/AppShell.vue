@@ -21,6 +21,7 @@ import {
 } from "../composables/useWorkspaceState";
 import ProjectGate from "./ProjectGate.vue";
 import EcuConnectionModal from "./EcuConnectionModal.vue";
+import ProjectMenu from "./ProjectMenu.vue";
 import { useAppFooter, setFooterLed, footerToggleProtocol } from "../composables/useAppFooter";
 
 const dataCtx = createDataContext();
@@ -206,65 +207,24 @@ async function onBurn() {
 
   <div v-if="showMainUi" class="app-shell">
     <header class="app-header">
+      <ProjectMenu
+        :project-name="projectInfo.name"
+        :project-path="projectInfo.path"
+        :project-dirty="projectInfo.dirty"
+        :project-busy="projectBusy"
+        :can-capture-config="dataCtx.connection.value.connected"
+        @new-project="onNewProject"
+        @open-project="onOpenProject"
+        @save-project="onSaveProject"
+        @save-project-as="onSaveProjectAs"
+        @capture-config="onCaptureConfigToProject"
+      />
       <div class="brand-mark" aria-hidden="true" />
       <div>
         <h1 class="app-title">{{ appTitle }}</h1>
         <span class="app-subtitle">rusEFI · декларативный UI</span>
       </div>
       <div class="header-actions">
-        <div class="project-bar" :title="projectInfo.path ?? 'Файл не сохранён'">
-          <span class="project-name">
-            {{ projectInfo.name }}
-            <span v-if="projectInfo.dirty" class="project-dirty">●</span>
-          </span>
-          <div class="project-btns">
-            <button
-              type="button"
-              class="log-btn"
-              :disabled="projectBusy"
-              title="Новый проект"
-              @click="onNewProject"
-            >
-              Новый
-            </button>
-            <button
-              type="button"
-              class="log-btn"
-              :disabled="projectBusy"
-              title="Открыть проект (.json)"
-              @click="onOpenProject"
-            >
-              Открыть
-            </button>
-            <button
-              type="button"
-              class="log-btn"
-              :disabled="projectBusy"
-              title="Сохранить проект"
-              @click="onSaveProject"
-            >
-              Сохранить
-            </button>
-            <button
-              type="button"
-              class="log-btn"
-              :disabled="projectBusy"
-              title="Сохранить проект как…"
-              @click="onSaveProjectAs"
-            >
-              Сохр. как
-            </button>
-            <button
-              type="button"
-              class="log-btn"
-              :disabled="projectBusy || !dataCtx.connection.value.connected"
-              title="Скопировать текущий config page 0 с ECU в проект"
-              @click="onCaptureConfigToProject"
-            >
-              Config→проект
-            </button>
-          </div>
-        </div>
         <button
           type="button"
           class="log-btn"
@@ -350,48 +310,6 @@ async function onBurn() {
   gap: 0.5rem;
   margin-left: auto;
   flex-wrap: wrap;
-}
-
-.project-bar {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.2rem;
-  max-width: min(100%, 28rem);
-}
-
-.project-name {
-  font-size: 0.78rem;
-  color: var(--color-text-subtle);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-.project-dirty {
-  color: var(--color-accent);
-}
-
-.project-btns {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  justify-content: flex-end;
-}
-
-.offline-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.78rem;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  user-select: none;
-}
-
-.offline-toggle input {
-  accent-color: var(--color-accent);
 }
 
 .log-btn {
