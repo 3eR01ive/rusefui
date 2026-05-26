@@ -54,6 +54,9 @@ const SERIES_COLORS = [
   "#8b5a2b",
 ];
 
+/** Увеличивается после load_file — Log сбрасывает кэш отрисовки. */
+export const timelineLoadEpoch = ref(0);
+
 const status = shallowRef<OutputTimelineStatus>({
   mode: "empty",
   connected: false,
@@ -134,7 +137,14 @@ export async function controlTimelineView(
 
 export async function loadTimelineFile(path: string): Promise<OutputTimelineStatus> {
   status.value = await invoke<OutputTimelineStatus>("output_timeline_load_file", { path });
+  timelineLoadEpoch.value += 1;
   return status.value;
+}
+
+export async function pickAndLoadTimelineFile(): Promise<OutputTimelineStatus | null> {
+  const path = await invoke<string | null>("pick_output_log_path");
+  if (!path) return null;
+  return loadTimelineFile(path);
 }
 
 export function timelineFieldColor(field: string): string {
@@ -187,6 +197,8 @@ export function useOutputTimeline() {
     queryView: queryTimelineView,
     controlView: controlTimelineView,
     loadFile: loadTimelineFile,
+    pickAndLoadFile: pickAndLoadTimelineFile,
+    loadEpoch: timelineLoadEpoch,
     refreshStatus: refreshTimelineStatus,
     valueRangeForPoints,
   };

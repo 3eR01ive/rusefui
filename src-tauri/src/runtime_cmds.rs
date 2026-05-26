@@ -567,6 +567,17 @@ pub fn output_timeline_load_file(
         .output_timeline_load_file(std::path::PathBuf::from(path)))
 }
 
+/// Нативный диалог выбора CSV-лога output channels.
+#[tauri::command]
+pub async fn pick_output_log_path() -> Option<String> {
+    let handle = rfd::AsyncFileDialog::new()
+        .set_title("Открыть log output channels")
+        .add_filter("CSV log", &["csv"])
+        .pick_file()
+        .await?;
+    Some(handle.path().display().to_string())
+}
+
 #[tauri::command]
 pub fn config_get_snapshot(state: State<RuntimeState>) -> ConfigSnapshot {
     state.session.config().snapshot()

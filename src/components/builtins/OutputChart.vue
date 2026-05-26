@@ -107,6 +107,7 @@ const {
   queryView,
   controlView,
   refreshStatus: refreshTimelineStatus,
+  loadEpoch,
   valueRangeForPoints,
 } = useOutputTimeline();
 
@@ -369,7 +370,8 @@ function buildPanels(
   return panels;
 }
 
-function spreadPointsForDraw(
+/** Кривая до краёв области графика (удержание крайних значений), ось = [tMin, tMax]. */
+function padSeriesToAxisEdges(
   points: { t: number; v: number }[],
   tMin: number,
   tMax: number,
@@ -379,16 +381,17 @@ function spreadPointsForDraw(
     .filter((p) => Number.isFinite(p.t) && Number.isFinite(p.v))
     .sort((a, b) => a.t - b.t);
   if (pts.length === 0) return pts;
-  const span = Math.max(tMax - tMin, 0.001);
-  const hasSpan =
-    pts.length >= 2 &&
-    Math.abs(pts[pts.length - 1]!.t - pts[0]!.t) > span * 1e-6;
-  if (hasSpan) return pts;
-  const v = pts[pts.length - 1]!.v;
-  return [
-    { t: Math.max(tMin, tMax - span * 0.02), v },
-    { t: tMax, v },
-  ];
+  const out: { t: number; v: number }[] = [];
+  const first = pts[0]!;
+  const last = pts[pts.length - 1]!;
+  if (first.t > tMin + 1e-9) {
+    out.push({ t: tMin, v: first.v });
+  }
+  out.push(...pts);
+  if (last.t < tMax - 1e-9) {
+    out.push({ t: tMax, v: last.v });
+  }
+  return out;
 }
 
 function seriesForField(name: string, view: OutputTimelineView): TimeSeries | null {
@@ -404,11 +407,10 @@ function seriesForField(name: string, view: OutputTimelineView): TimeSeries | nu
     base = fallbackSeries(name, view.tMin, view.tMax);
   }
   if (!base) return null;
-  const tMax = Math.max(view.tMax, timelineLiveSec());
   const withTail = withLiveTail(base, view);
   return {
     ...withTail,
-    points: spreadPointsForDraw(withTail.points, view.tMin, tMax),
+    points: padSeriesToAxisEdges(withTail.points, view.tMin, view.tMax),
   };
 }
 
@@ -532,6 +534,143 @@ function clearHistory(): void {
   void followLive();
 }
 
+const chartHover = ref(false);
+const chartDragging = ref(false);
+let dragStartX = 0;
+let dragStartViewEnd = 0;
+let panRaf = 0;
+let pendingViewEnd: number | null = null;
+let wheelRaf = 0;
+let pendingWheelFactor: number | null = null;
+let pendingWheelX = 0;
+
+async function toggleFollowLive(): Promise<void> {
+  cachedView = null;
+  if (timelineStatus.value.followLive) {
+    await controlView({ followLive: false, viewEndSec: timelineLiveSec() });
+  } else {
+    await controlView({ followLive: true, spanSec: windowSeconds.value });
+  }
+  await refreshTimelineStatus();
+  await redrawNow();
+}
+
+async function zoomAtPointer(clientX: number, zoomFactor: number): Promise<void> {
+  const wrap = canvasWrapRef.value;
+  if (!wrap || !canPlotTimeline()) return;
+
+  const rect = wrap.getBoundingClientRect();
+  const frac =
+    rect.width > 0
+      ? Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
+      : 1;
+
+  let viewEnd = timelineStatus.value.viewEndSec;
+  if (timelineStatus.value.followLive) {
+    viewEnd = timelineLiveSec();
+  }
+  const span = timelineStatus.value.spanSec;
+  const tAnchor = viewEnd - span + frac * span;
+  const newSpan = span / zoomFactor;
+
+  cachedView = null;
+  await controlView({
+    followLive: false,
+    spanSec: newSpan,
+    viewEndSec: tAnchor + frac * newSpan,
+  });
+  await refreshTimelineStatus();
+  scheduleRedraw();
+}
+
+function scheduleWheelZoom(clientX: number, factor: number): void {
+  pendingWheelX = clientX;
+  pendingWheelFactor = (pendingWheelFactor ?? 1) * factor;
+  if (wheelRaf !== 0) return;
+  wheelRaf = requestAnimationFrame(() => {
+    wheelRaf = 0;
+    const f = pendingWheelFactor ?? 1;
+    const x = pendingWheelX;
+    pendingWheelFactor = null;
+    if (Math.abs(f - 1) > 1e-6) {
+      void zoomAtPointer(x, f);
+    }
+  });
+}
+
+function onCanvasWheel(e: WheelEvent): void {
+  if (!canPlotTimeline()) return;
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+  scheduleWheelZoom(e.clientX, factor);
+}
+
+async function applyPendingPan(): Promise<void> {
+  if (pendingViewEnd === null) return;
+  const end = pendingViewEnd;
+  pendingViewEnd = null;
+  cachedView = null;
+  await controlView({ viewEndSec: end, followLive: false });
+  scheduleRedraw();
+}
+
+function schedulePanApply(): void {
+  if (panRaf !== 0) return;
+  panRaf = requestAnimationFrame(() => {
+    panRaf = 0;
+    void applyPendingPan();
+  });
+}
+
+async function onChartPointerDown(e: PointerEvent): Promise<void> {
+  if (!canPlotTimeline() || e.button !== 0) return;
+  const wrap = canvasWrapRef.value;
+  if (!wrap) return;
+  wrap.setPointerCapture(e.pointerId);
+
+  if (timelineStatus.value.followLive) {
+    await controlView({ followLive: false, viewEndSec: timelineLiveSec() });
+    await refreshTimelineStatus();
+  }
+
+  dragStartX = e.clientX;
+  dragStartViewEnd = timelineStatus.value.viewEndSec;
+  chartDragging.value = true;
+  e.preventDefault();
+}
+
+function onChartPointerMove(e: PointerEvent): void {
+  if (!chartDragging.value) return;
+  const w = measureCanvasWidth();
+  const span = timelineStatus.value.spanSec;
+  const dx = e.clientX - dragStartX;
+  pendingViewEnd = dragStartViewEnd - (dx / Math.max(w, 1)) * span;
+  schedulePanApply();
+}
+
+async function endChartDrag(e: PointerEvent): Promise<void> {
+  if (!chartDragging.value) return;
+  chartDragging.value = false;
+  canvasWrapRef.value?.releasePointerCapture(e.pointerId);
+  if (pendingViewEnd !== null) {
+    await applyPendingPan();
+  }
+  await refreshTimelineStatus();
+  await redrawNow();
+}
+
+function onChartKeyDown(e: KeyboardEvent): void {
+  if (e.code !== "Space" && e.key !== " ") return;
+  const wrap = canvasWrapRef.value;
+  if (!wrap) return;
+  if (!chartHover.value && document.activeElement !== wrap) return;
+  const tag = (e.target as HTMLElement | null)?.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+  e.preventDefault();
+  if (e.repeat) return;
+  void toggleFollowLive();
+}
+
 let resizeObserver: ResizeObserver | null = null;
 let unlistenEcu: UnlistenFn | null = null;
 let redrawGeneration = 0;
@@ -559,20 +698,17 @@ function paintFromView(
   view: OutputTimelineView,
 ): void {
   const { tMin, tMax } = view;
-  const drawTMax = Math.max(tMax, timelineLiveSec());
   const fields = uniquePollFields();
-  let panels = buildPanels(tMin, drawTMax, (name) => seriesForField(name, view));
+  let panels = buildPanels(tMin, tMax, (name) => seriesForField(name, view));
   if (panels.length === 0 && fields.length > 0) {
-    const tMaxF = Math.max(tMax, windowSeconds.value);
-    const tMinF = Math.max(0, tMaxF - windowSeconds.value);
-    panels = buildPanels(tMinF, tMaxF, (name) => fallbackSeries(name, tMinF, tMaxF));
+    panels = buildPanels(tMin, tMax, (name) => fallbackSeries(name, tMin, tMax));
     if (panels.length > 0) {
-      drawLogPanelsChart(ctx, w, h, panels, tMinF, tMaxF);
+      drawLogPanelsChart(ctx, w, h, panels, tMin, tMax);
       return;
     }
   }
   if (panels.length > 0) {
-    drawLogPanelsChart(ctx, w, h, panels, tMin, drawTMax);
+    drawLogPanelsChart(ctx, w, h, panels, tMin, tMax);
   } else {
     ctx.clearRect(0, 0, w, h);
   }
@@ -710,11 +846,13 @@ onMounted(async () => {
     canvasWidth.value = measureCanvasWidth();
   }
   scheduleRedraw();
+  window.addEventListener("keydown", onChartKeyDown);
 });
 
 onUnmounted(() => {
   resizeObserver?.disconnect();
   unlistenEcu?.();
+  window.removeEventListener("keydown", onChartKeyDown);
   window.removeEventListener("scroll", updateSuggestPosition, true);
   window.removeEventListener("resize", updateSuggestPosition);
 });
@@ -747,6 +885,12 @@ watch(
   },
 );
 
+watch(loadEpoch, () => {
+  cachedView = null;
+  lastView.value = null;
+  void refreshTimelineStatus().then(() => scheduleRedraw());
+});
+
 watch(canvasHeight, () => scheduleRedraw());
 watch(rangeInputs, () => scheduleRedraw(), { deep: true });
 watch(graphGroups, () => scheduleRedraw(), { deep: true });
@@ -774,6 +918,7 @@ watch(chartHeight, () => scheduleRedraw());
 
       <div v-if="!settingsExpanded" class="log-compact-meta">
         <span class="log-compact-summary">{{ setupSummary }}</span>
+        <span class="log-interact-hint">колёсико · drag · пробел</span>
         <div class="graph-tabs graph-tabs--inline" role="tablist">
           <button
             v-for="(g, i) in graphGroups"
@@ -795,8 +940,8 @@ watch(chartHeight, () => scheduleRedraw());
             type="button"
             class="btn-clear btn-clear--mini"
             :class="{ active: timelineStatus.followLive }"
-            title="Следовать за live"
-            @click="followLive"
+            title="Live вкл/выкл (пробел)"
+            @click="toggleFollowLive"
           >
             ●
           </button>
@@ -804,7 +949,7 @@ watch(chartHeight, () => scheduleRedraw());
           <button type="button" class="btn-clear btn-clear--mini" title="Уменьшить окно" @click="zoomTimeline(1.25)">−</button>
           <button type="button" class="btn-clear btn-clear--mini" title="Увеличить окно" @click="zoomTimeline(0.8)">+</button>
         </div>
-        <button type="button" class="btn-clear btn-clear--mini" title="К live" @click="followLive">
+        <button type="button" class="btn-clear btn-clear--mini" title="Live вкл/выкл (пробел)" @click="toggleFollowLive">
           ↻
         </button>
       </div>
@@ -967,7 +1112,20 @@ watch(chartHeight, () => scheduleRedraw());
     </div>
     </div>
 
-    <div class="canvas-wrap" ref="canvasWrapRef">
+    <div
+      class="canvas-wrap"
+      ref="canvasWrapRef"
+      tabindex="0"
+      :class="{ 'canvas-wrap--dragging': chartDragging, 'canvas-wrap--live': timelineStatus.followLive }"
+      title="Колёсико — масштаб, перетаскивание — время, пробел — live"
+      @pointerenter="chartHover = true"
+      @pointerleave="chartHover = false"
+      @pointerdown="onChartPointerDown"
+      @pointermove="onChartPointerMove"
+      @pointerup="endChartDrag"
+      @pointercancel="endChartDrag"
+      @wheel.prevent="onCanvasWheel"
+    >
       <canvas ref="canvasRef" class="chart-canvas" />
       <p v-if="!hasAnyChannel" class="overlay-hint">
         Выберите параметры через поиск — они попадут на активный граф
@@ -1055,6 +1213,13 @@ watch(chartHeight, () => scheduleRedraw());
   font-size: 0.72rem;
   color: var(--color-text-subtle);
   white-space: nowrap;
+}
+
+.log-interact-hint {
+  font-size: 0.68rem;
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+  opacity: 0.85;
 }
 
 .graph-tabs--inline {
@@ -1414,11 +1579,27 @@ watch(chartHeight, () => scheduleRedraw());
   border: 1px solid var(--color-border);
   background: var(--color-bg-elevated);
   overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+  outline: none;
+}
+
+.canvas-wrap:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+.canvas-wrap--dragging {
+  cursor: grabbing;
+}
+
+.canvas-wrap--live {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
 }
 
 .chart-canvas {
   display: block;
   width: 100%;
+  pointer-events: none;
 }
 
 .overlay-hint {

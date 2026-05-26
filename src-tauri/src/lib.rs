@@ -24,6 +24,7 @@ pub fn run() {
             runtime_cmds::output_timeline_query_view,
             runtime_cmds::output_timeline_set_view,
             runtime_cmds::output_timeline_load_file,
+            runtime_cmds::pick_output_log_path,
             runtime_cmds::config_get_snapshot,
             runtime_cmds::config_list_fields,
             runtime_cmds::config_start_listener,

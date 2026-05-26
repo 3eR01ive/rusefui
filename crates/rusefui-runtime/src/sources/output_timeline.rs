@@ -216,6 +216,7 @@ impl OutputTimeline {
         }
         if let Some(span) = ctrl.span_sec {
             self.span_sec = span.clamp(0.5, 3600.0);
+            self.clamp_span_to_data();
         }
         if let Some(end) = ctrl.view_end_sec {
             self.follow_live = false;
@@ -223,14 +224,13 @@ impl OutputTimeline {
         }
         if let Some(pan) = ctrl.pan_sec {
             self.follow_live = false;
-            self.view_end_sec = (self.view_end_sec + pan).clamp(
-                self.data_min_sec + self.span_sec,
-                self.data_max_sec.max(self.live_sec),
-            );
+            let (lo, hi) = self.view_end_range();
+            self.view_end_sec = clamp_f64(self.view_end_sec + pan, lo, hi);
         }
         if let Some(zoom) = ctrl.zoom_factor {
             if zoom.is_finite() && zoom > 0.0 {
                 self.span_sec = (self.span_sec / zoom).clamp(0.5, 3600.0);
+                self.clamp_span_to_data();
                 if self.follow_live {
                     self.view_end_sec = self.effective_live_sec();
                 }
@@ -322,19 +322,31 @@ impl OutputTimeline {
         self.live_sec.max(self.data_max_sec)
     }
 
+    /// Длительность доступных данных (сек).
+    fn data_duration_sec(&self) -> f64 {
+        let hi = self.data_max_sec.max(self.live_sec);
+        (hi - self.data_min_sec).max(0.001)
+    }
+
+    /// Окно не шире записанной истории — иначе min_end > max_end и panic в clamp.
+    fn clamp_span_to_data(&mut self) {
+        let max_span = self.data_duration_sec();
+        if self.span_sec > max_span {
+            self.span_sec = max_span.max(0.5);
+        }
+    }
+
+    /// Допустимый правый край окна: lo <= hi всегда.
+    fn view_end_range(&self) -> (f64, f64) {
+        let hi = self.data_max_sec.max(self.live_sec);
+        let lo = (self.data_min_sec + self.span_sec).min(hi);
+        (lo, hi)
+    }
+
     fn clamp_view_end(&mut self) {
-        let max_end = self.data_max_sec.max(self.live_sec);
-        let min_end = self.data_min_sec + self.span_sec;
-        if max_end <= min_end {
-            self.view_end_sec = max_end;
-            return;
-        }
-        if self.view_end_sec < min_end {
-            self.view_end_sec = min_end;
-        }
-        if self.view_end_sec > max_end {
-            self.view_end_sec = max_end;
-        }
+        self.clamp_span_to_data();
+        let (lo, hi) = self.view_end_range();
+        self.view_end_sec = clamp_f64(self.view_end_sec, lo, hi);
     }
 
     fn collect_field_points(&self, field: &str, t_min: f64, t_max: f64) -> Vec<(f64, f64)> {
@@ -439,6 +451,20 @@ impl OutputTimeline {
         }
         self.clamp_view_end();
     }
+}
+
+/// `f64::clamp` паникует, если `lo > hi` (например span шире, чем длина лога).
+fn clamp_f64(v: f64, lo: f64, hi: f64) -> f64 {
+    if !v.is_finite() {
+        return if hi.is_finite() { hi } else { lo };
+    }
+    if !lo.is_finite() || !hi.is_finite() {
+        return v;
+    }
+    if lo > hi {
+        return hi;
+    }
+    v.clamp(lo, hi)
 }
 
 fn push_point(series: &mut FieldSeries, t: f64, v: f64) {
@@ -623,5 +649,49 @@ mod tests {
 
         std::env::remove_var("RUSEFUI_OUTPUT_LOG_DIR");
         let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn zoom_out_and_pan_never_panics_when_span_exceeds_data() {
+        let mut tl = OutputTimeline::default();
+        tl.reset_session(&["RPMValue".into()], 30.0);
+        for i in 0..100 {
+            let mut v = HashMap::new();
+            v.insert("RPMValue".into(), 1000.0 + i as f64);
+            tl.ingest(i as f64 * 3.0, &v);
+        }
+        tl.apply_view_control(OutputTimelineViewControl {
+            follow_live: Some(false),
+            view_end_sec: Some(tl.live_sec),
+            span_sec: None,
+            pan_sec: None,
+            zoom_factor: None,
+        });
+        for _ in 0..20 {
+            tl.apply_view_control(OutputTimelineViewControl {
+                follow_live: None,
+                view_end_sec: None,
+                span_sec: None,
+                pan_sec: None,
+                zoom_factor: Some(0.8),
+            });
+        }
+        assert!(tl.span_sec <= tl.data_duration_sec() + 1e-6);
+        for _ in 0..50 {
+            let _ = tl.apply_view_control(OutputTimelineViewControl {
+                follow_live: None,
+                view_end_sec: None,
+                span_sec: None,
+                pan_sec: Some(100.0),
+                zoom_factor: None,
+            });
+            let _ = tl.apply_view_control(OutputTimelineViewControl {
+                follow_live: None,
+                view_end_sec: None,
+                span_sec: None,
+                pan_sec: Some(-100.0),
+                zoom_factor: None,
+            });
+        }
     }
 }

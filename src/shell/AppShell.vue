@@ -5,7 +5,10 @@ import ProtocolLogSheet from "./ProtocolLogSheet.vue";
 import ConfigLoadOverlay from "./ConfigLoadOverlay.vue";
 import { createDataContext, provideDataContext } from "../core/data-context";
 import { initOutputChannels } from "../composables/useOutputChannels";
-import { initOutputTimeline } from "../composables/useOutputTimeline";
+import {
+  initOutputTimeline,
+  pickAndLoadTimelineFile,
+} from "../composables/useOutputTimeline";
 import { initConfig, useConfig } from "../composables/useConfig";
 import { useProtocolLog, useProtocolLogLifecycle } from "../composables/useProtocolLog";
 import { useEcuConnection } from "../composables/useEcuConnection";
@@ -20,6 +23,21 @@ const { snapshot: configSnap, burn: burnConfig } = useConfig();
 
 const burning = ref(false);
 const burnError = ref<string | null>(null);
+const loadingLog = ref(false);
+const logLoadError = ref<string | null>(null);
+
+async function onOpenOutputLog(): Promise<void> {
+  logLoadError.value = null;
+  loadingLog.value = true;
+  try {
+    const st = await pickAndLoadTimelineFile();
+    if (!st) return;
+  } catch (e) {
+    logLoadError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    loadingLog.value = false;
+  }
+}
 
 const canBurn = computed(
   () =>
@@ -77,10 +95,19 @@ async function onBurn() {
         <button
           type="button"
           class="log-btn"
+          :disabled="loadingLog"
+          title="Открыть CSV-лог output channels (офлайн просмотр)"
+          @click="onOpenOutputLog"
+        >
+          {{ loadingLog ? "Лог…" : "Открыть лог" }}
+        </button>
+        <button
+          type="button"
+          class="log-btn"
           title="Лог USB, подключения и протокола ECU"
           @click="togglePanel"
         >
-          Лог
+          Протокол
         </button>
         <template v-if="dataCtx.connection.value.connected">
           <button
@@ -106,6 +133,7 @@ async function onBurn() {
         </template>
       </div>
       <p v-if="burnError" class="burn-error" role="alert">{{ burnError }}</p>
+      <p v-if="logLoadError" class="burn-error" role="alert">{{ logLoadError }}</p>
     </header>
     <TabWorkspace />
     <ProtocolLogSheet />
