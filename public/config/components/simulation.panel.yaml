@@ -9,7 +9,7 @@ children:
     children:
       - type: text
         props:
-          text: "Записывает triggerSimulatorRpm в конфиг и отправляет команду Z (enable/disable self stim)."
+          text: "Старт/стоп: E + disable/enable self_stimulation. Смена RPM при работе и «Разгон» — только E + rpm N."
           variant: hint
 
       - type: simulation

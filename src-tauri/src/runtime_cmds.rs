@@ -693,6 +693,11 @@ fn component_dispatch_inner(
 }
 
 #[tauri::command]
+pub fn stimulator_set_rpm(rpm: u16, state: State<RuntimeState>) -> Result<(), String> {
+    state.session.run_stimulator_set_rpm(rpm)
+}
+
+#[tauri::command]
 pub fn ecu_resync(_state: State<RuntimeState>, app: AppHandle) {
     schedule_ecu_notify(&app, true);
 }

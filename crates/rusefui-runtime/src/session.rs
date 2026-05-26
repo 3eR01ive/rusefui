@@ -590,6 +590,23 @@ impl EcuSession {
         result
     }
 
+    /// Смена RPM при уже включённой стимуляции: только `E` + `rpm N` (без disable/enable).
+    /// `setTriggerEmulatorRPM` в прошивке; enable снова не нужен.
+    pub fn run_stimulator_set_rpm(&self, rpm: u16) -> Result<(), String> {
+        if !self.is_connected() {
+            return Err("ECU не подключена".into());
+        }
+        if !self.is_stimulation_active() {
+            return Err("Стимуляция не включена".into());
+        }
+
+        let result = self.with_link(|link| link.execute_console_command(&format!("rpm {rpm}")));
+        if result.is_ok() {
+            let _ = self.patch_trigger_rpm_cache(rpm);
+        }
+        result
+    }
+
     fn patch_trigger_rpm_cache(&self, rpm: u16) -> Result<(), String> {
         let ini = self.ini_context();
         let field = ini
