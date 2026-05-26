@@ -4,21 +4,14 @@ import {
   onMounted,
   onUnmounted,
   ref,
-  shallowRef,
   watch,
 } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useDataContext } from "../../core/data-context";
 import { initOutputChannels, useOutputChannels } from "../../composables/useOutputChannels";
 import { initConfig, useConfig } from "../../composables/useConfig";
-import { drawDynoChart } from "../../composables/drawDynoChart";
-import {
-  DynoView,
-  dynoConfigFromValues,
-  DEFAULT_DYNO_RUN_OPTIONS,
-  type DynoRunOptions,
-  type DynoRunPoint,
-} from "../../lib/dynoView";
+import { drawDynoChart, type DynoRunPoint } from "../../composables/drawDynoChart";
+import { useRustComponent } from "../../composables/useRustComponent";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -33,127 +26,72 @@ const chartHeight = computed(() => {
   return h >= 180 ? h : 320;
 });
 
+const { state, dispatch, error, hasLogic, ready } = useRustComponent(
+  props.instance,
+  props.path,
+);
 const dataCtx = useDataContext();
 const { snapshot } = useOutputChannels();
-const { snapshot: configSnapshot, getField: getConfigField } = useConfig();
+const { snapshot: configSnapshot } = useConfig();
 
-const connected = computed(() => dataCtx.connection.value.connected);
-const rpmField = computed(() => String(props.props.rpmField ?? "RPMValue"));
-const tpsField = computed(() => String(props.props.tpsField ?? "TPSValue"));
+const rpmField = computed(() => String(state.value.rpmField ?? props.props.rpmField ?? "RPMValue"));
+const tpsField = computed(() => String(state.value.tpsField ?? props.props.tpsField ?? "TPSValue"));
 
 const liveRpm = computed(() => snapshot.value.values[rpmField.value] ?? null);
 const liveTps = computed(() => snapshot.value.values[tpsField.value] ?? null);
 
-const recording = ref(false);
-const runPoints = shallowRef<DynoRunPoint[]>([]);
-const statusMessage = ref<string | null>(null);
+const recording = computed(() => Boolean(state.value.recording));
+const runPoints = computed(
+  () => (state.value.runPoints as DynoRunPoint[] | undefined) ?? [],
+);
+const currentTorque = computed(() => Number(state.value.currentTorque ?? 0));
+const currentHp = computed(() => Number(state.value.currentHp ?? 0));
+const message = computed(() => (state.value.message as string) ?? null);
 
-const ignoreTpsMin = ref(DEFAULT_DYNO_RUN_OPTIONS.ignoreTpsMin);
-const minRpm = ref(DEFAULT_DYNO_RUN_OPTIONS.minRpm);
+const ignoreTpsMin = computed({
+  get: () => Boolean(state.value.ignoreTpsMin),
+  set: (v: boolean) => void dispatch("set_options", { ignoreTpsMin: v, minRpm: minRpm.value }),
+});
 
-function runOptions(): DynoRunOptions {
-  const min = Math.max(0, Math.round(minRpm.value));
-  return {
-    ignoreTpsMin: ignoreTpsMin.value,
-    minRpm: min,
-  };
-}
+const minRpm = computed({
+  get: () => Number(state.value.minRpm ?? 0),
+  set: (v: number) =>
+    void dispatch("set_options", { ignoreTpsMin: ignoreTpsMin.value, minRpm: v }),
+});
 
-function applyRunOptions(): void {
-  dyno?.setRunOptions(runOptions());
-}
+const connected = computed(
+  () => Boolean(state.value.connected ?? dataCtx.connection.value.connected),
+);
+const configLoaded = computed(
+  () => Boolean(state.value.configLoaded ?? configSnapshot.value.loaded),
+);
 
-let dyno: DynoView | null = null;
-let timeOffsetSec = 0;
-let lastSampleSec = -1;
-
-const currentTorque = computed(() => dyno?.currentTorque ?? 0);
-const currentHp = computed(() => dyno?.currentHP ?? 0);
 const peakTorque = computed(() =>
   runPoints.value.reduce((m, p) => Math.max(m, p.torqueNm), 0),
 );
 const peakHp = computed(() => runPoints.value.reduce((m, p) => Math.max(m, p.hp), 0));
 
 const canStart = computed(
-  () => connected.value && !recording.value && configSnapshot.value.loaded,
+  () =>
+    ready.value &&
+    connected.value &&
+    !recording.value &&
+    configLoaded.value &&
+    hasLogic.value,
 );
 const canStop = computed(() => recording.value);
 const canClear = computed(() => runPoints.value.length > 0 && !recording.value);
 
-function timelineLiveSec(): number {
-  const t = snapshot.value.timelineLiveSec;
-  return t !== undefined && Number.isFinite(t) ? t : 0;
+function startRun() {
+  return dispatch("start_run");
 }
 
-function rebuildDyno(): void {
-  const cfg = dynoConfigFromValues(getConfigField);
-  if (dyno) {
-    dyno.updateConfig(cfg);
-  } else {
-    dyno = new DynoView(cfg);
-  }
-  applyRunOptions();
+function stopRun() {
+  return dispatch("stop_run");
 }
 
-function recordingHint(): string {
-  const parts: string[] = [];
-  if (!ignoreTpsMin.value) {
-    parts.push("TPS ≥ 30%");
-  }
-  if (minRpm.value > 0) {
-    parts.push(`RPM ≥ ${Math.round(minRpm.value)}`);
-  }
-  if (parts.length === 0) {
-    return "Запись: разгон по RPM (ограничения TPS/RPM сняты).";
-  }
-  return `Запись: ${parts.join(", ")}, без резкого сброса газа.`;
-}
-
-function processSample(): void {
-  if (!recording.value || !dyno) return;
-
-  const rpm = liveRpm.value;
-  const tps = liveTps.value;
-  if (rpm === null || tps === null) return;
-
-  const timeSec = timelineLiveSec() - timeOffsetSec;
-  if (timeSec <= lastSampleSec) return;
-  lastSampleSec = timeSec;
-
-  const point = dyno.onRpm(Math.round(rpm), timeSec, tps);
-  if (point) {
-    runPoints.value = [...runPoints.value, point];
-    scheduleRedraw();
-  }
-}
-
-function startRun(): void {
-  if (!canStart.value) return;
-  rebuildDyno();
-  dyno?.reset();
-  runPoints.value = [];
-  timeOffsetSec = timelineLiveSec();
-  lastSampleSec = -1;
-  recording.value = true;
-  statusMessage.value = recordingHint();
-  scheduleRedraw();
-}
-
-function stopRun(): void {
-  if (!recording.value) return;
-  recording.value = false;
-  statusMessage.value =
-    runPoints.value.length > 0
-      ? `Готово: ${runPoints.value.length} точек.`
-      : `Запись остановлена без точек (${recordingHint().replace(/^Запись: /, "")}).`;
-}
-
-function clearRun(): void {
-  dyno?.reset();
-  runPoints.value = [];
-  lastSampleSec = -1;
-  statusMessage.value = null;
-  scheduleRedraw();
+function clearRun() {
+  return dispatch("clear");
 }
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -184,28 +122,19 @@ function scheduleRedraw(): void {
 
 let resizeObserver: ResizeObserver | undefined;
 
-watch(snapshot, () => processSample(), { flush: "post" });
-
 watch(
   () => configSnapshot.value.values,
   () => {
-    if (!recording.value) rebuildDyno();
+    if (!ready.value || recording.value) return;
+    void dispatch("reload_config");
   },
   { deep: true },
 );
-
-watch([ignoreTpsMin, minRpm], () => {
-  applyRunOptions();
-  if (recording.value) {
-    statusMessage.value = recordingHint();
-  }
-});
 
 watch([runPoints, chartHeight, canvasWidth], () => scheduleRedraw(), { deep: true });
 
 onMounted(async () => {
   await Promise.all([initOutputChannels(), initConfig()]);
-  rebuildDyno();
   scheduleRedraw();
 
   const el = containerRef.value;
@@ -266,20 +195,22 @@ onUnmounted(() => {
         />
       </label>
       <p class="hint options-hint">
-        Мин. RPM: ждём разгона до порога; при падении ниже — сброс заезда. Без TPS — для стимулятора.
+        Расчёт HP/Nm в Rust (в потоке output poll). Мин. RPM: ждём разгона; при падении ниже — сброс.
       </p>
     </div>
 
+    <p v-if="hasLogic && !ready && !error" class="message muted">Подключение к runtime…</p>
+
     <p v-if="!connected" class="message warn">Подключите ECU для live output.</p>
-    <p v-else-if="!configSnapshot.loaded" class="message warn">
+    <p v-else-if="!configLoaded" class="message warn">
       Загрузите config (проект или ECU) — параметры dyno из dynoChars.
     </p>
     <p
-      v-if="statusMessage"
+      v-if="message || error"
       class="message"
-      :class="{ active: recording, muted: !recording }"
+      :class="{ active: recording, muted: !recording, error: !!error }"
     >
-      {{ statusMessage }}
+      {{ error ?? message }}
     </p>
 
     <div ref="containerRef" class="dyno-chart-wrap">
@@ -391,6 +322,8 @@ onUnmounted(() => {
 .options-hint {
   flex: 1 1 100%;
   margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-subtle);
 }
 
 .message {
@@ -408,6 +341,14 @@ onUnmounted(() => {
 
 .message.muted {
   color: var(--color-text-muted);
+}
+
+.message.error {
+  color: var(--color-error);
+  background: var(--color-error-bg);
+  padding: 0.5rem 0.65rem;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--color-accent);
 }
 
 .dyno-chart-wrap {

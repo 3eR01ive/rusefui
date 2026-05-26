@@ -1,4 +1,8 @@
-import type { DynoRunPoint } from "../lib/dynoView";
+export interface DynoRunPoint {
+  rpm: number;
+  torqueNm: number;
+  hp: number;
+}
 
 export interface ChartMargins {
   top: number;

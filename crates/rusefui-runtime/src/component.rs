@@ -6,6 +6,7 @@ use serde_json::Value;
 pub enum LogicComponentType {
     Connection,
     Simulation,
+    Dyno,
 }
 
 impl LogicComponentType {
@@ -13,6 +14,7 @@ impl LogicComponentType {
         match s {
             "connection" => Some(Self::Connection),
             "simulation" => Some(Self::Simulation),
+            "dyno" => Some(Self::Dyno),
             _ => None,
         }
     }
@@ -21,6 +23,7 @@ impl LogicComponentType {
         match self {
             Self::Connection => "connection",
             Self::Simulation => "simulation",
+            Self::Dyno => "dyno",
         }
     }
 }
@@ -62,6 +65,11 @@ pub trait ComponentLogic: Send {
     /// Политика синхронизации ECU после mount (см. `component_mount` в shell).
     fn ecu_sync_on_mount(&self) -> EcuSyncOnMount {
         EcuSyncOnMount::Full
+    }
+
+    /// Обработка live output (Virtual Dyno и др.). `None` — состояние не менялось.
+    fn feed_output(&mut self, _snap: &crate::sources::output_channels::OutputSnapshot) -> Option<Value> {
+        None
     }
 }
 

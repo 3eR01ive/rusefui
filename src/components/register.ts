@@ -196,7 +196,7 @@ export function registerBuiltinComponents(): void {
       label: "Virtual Dyno",
       mode: "display",
       isContainer: false,
-      description: "Virtual dyno: HP/Torque vs RPM из output (RPMValue, TPSValue)",
+      description: "Virtual dyno: HP/Torque vs RPM (расчёт в Rust, отрисовка canvas)",
     },
     Dyno,
   );

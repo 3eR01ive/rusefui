@@ -5,6 +5,7 @@
 mod autoconnect;
 mod component;
 mod config_diff;
+mod dyno;
 mod ini;
 mod project;
 mod ui_persist;

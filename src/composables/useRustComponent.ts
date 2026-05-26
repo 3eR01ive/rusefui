@@ -24,7 +24,7 @@ export function useRustComponent(instance: ComponentInstance, path: string) {
   const hasLogic = computed(() => requiresRustLogic(instance.type));
 
   async function dispatch(action: string, payload: Record<string, unknown> = {}) {
-    if (!hasLogic.value) return;
+    if (!hasLogic.value || !ready.value) return;
     try {
       const next = await invoke<ComponentViewState>("component_dispatch", {
         params: {
@@ -70,7 +70,7 @@ export function useRustComponent(instance: ComponentInstance, path: string) {
   onUnmounted(() => {
     unlisten?.();
     if (hasLogic.value) {
-      invoke("component_unmount", { instanceId }).catch(() => {});
+      invoke("component_unmount", { instance_id: instanceId }).catch(() => {});
     }
   });
 

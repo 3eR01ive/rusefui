@@ -401,6 +401,12 @@ fn sync_output_poll_session(session: &Arc<EcuSession>, app: &AppHandle) {
         let app = app.clone();
         let poll_session = Arc::clone(session);
         session.output().start(poll_session, move |snap| {
+            let state = app.state::<RuntimeState>();
+            if let Ok(mut rt) = state.runtime.lock() {
+                for (instance_id, st) in rt.feed_output(&snap) {
+                    emit_state(&app, &instance_id, &st);
+                }
+            }
             emit_output(&app, &snap);
         });
     } else {
