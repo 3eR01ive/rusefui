@@ -53,6 +53,16 @@ export function useEcuConnection(dataCtx: DataContextState) {
   }
 
   onMounted(async () => {
+    // Подписываемся на события до запроса состояния — чтобы не пропустить событие между вызовами.
+    unlisten = await listen<EcuConnectionEvent>("ecu-connection", (event) => {
+      applyEvent(event.payload);
+    });
+
+    await listen<{ scanning: boolean; busyPorts: string[] }>("autoconnect-state", (event) => {
+      scanning.value = event.payload.scanning;
+      busyPorts.value = event.payload.busyPorts ?? [];
+    });
+
     try {
       const snap = await invoke<{
         offlineMode: boolean;
@@ -63,18 +73,13 @@ export function useEcuConnection(dataCtx: DataContextState) {
       dataCtx.offlineMode.value = snap.offlineMode;
       scanning.value = snap.scanning;
       busyPorts.value = snap.busyPorts ?? [];
+
+      // Получаем текущий статус подключения (Rust не эмитит повторно если не было изменений).
+      const conn = await invoke<EcuConnectionEvent>("autoconnect_get_connection");
+      applyEvent(conn);
     } catch {
       // не Tauri (dev в браузере)
     }
-
-    unlisten = await listen<EcuConnectionEvent>("ecu-connection", (event) => {
-      applyEvent(event.payload);
-    });
-
-    await listen<{ scanning: boolean; busyPorts: string[] }>("autoconnect-state", (event) => {
-      scanning.value = event.payload.scanning;
-      busyPorts.value = event.payload.busyPorts ?? [];
-    });
   });
 
   onUnmounted(() => {

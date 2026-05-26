@@ -1233,6 +1233,13 @@ pub fn autoconnect_get_state(state: State<RuntimeState>) -> AutoConnectSnapshot 
     state.autoconnect.snapshot()
 }
 
+/// Возвращает текущий статус подключения ECU без побочных эффектов.
+/// Используется при монтировании frontend для синхронизации начального состояния.
+#[tauri::command]
+pub fn autoconnect_get_connection(state: State<RuntimeState>) -> impl serde::Serialize {
+    build_ecu_connection_event(&state)
+}
+
 #[tauri::command]
 pub fn autoconnect_set_offline_mode(
     offline: bool,

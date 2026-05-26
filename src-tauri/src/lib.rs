@@ -50,6 +50,7 @@ pub fn run() {
             runtime_cmds::config_set_array_value,
             runtime_cmds::ini_get_info,
             runtime_cmds::autoconnect_get_state,
+            runtime_cmds::autoconnect_get_connection,
             runtime_cmds::autoconnect_set_offline_mode,
             runtime_cmds::ecu_resync,
             runtime_cmds::protocol_log_get,
