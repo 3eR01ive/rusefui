@@ -27,7 +27,6 @@ import {
   type OutputTimelineView,
 } from "../../composables/useOutputTimeline";
 import { useLogViewportLink } from "../../composables/useLogViewportLink";
-import { useCompositeTimeline } from "../../composables/useCompositeTimeline";
 import {
   drawLogPanelsChart,
   logPanelMargins,
@@ -152,35 +151,28 @@ const {
   refreshStatus: refreshTimelineStatus,
   loadEpoch,
   valueRangeForPoints,
+  pickAndLoadFile,
 } = useOutputTimeline();
 const { linked: viewportLinked, setLinked: setViewportLinked } = useLogViewportLink();
-const {
-  pickAndLoadFile: pickTriggerLog,
-  controlView: controlTriggerView,
-} = useCompositeTimeline();
+const openingOutputLog = ref(false);
+const openOutputLogError = ref<string | null>(null);
 
-const openingTriggerLog = ref(false);
-const openTriggerLogError = ref<string | null>(null);
-
-async function onOpenTriggerLog() {
-  openingTriggerLog.value = true;
-  openTriggerLogError.value = null;
+async function onOpenOutputLog() {
+  openingOutputLog.value = true;
+  openOutputLogError.value = null;
   try {
-    const st = await pickTriggerLog();
+    const st = await pickAndLoadFile();
     if (!st) return;
-    await controlTriggerView({
+    await controlView({
       followLive: false,
       viewEndSec: st.dataMaxSec,
-      spanSec: Math.max(10 / 1000, st.dataMaxSec - st.dataMinSec),
+      spanSec: Math.max(1, st.dataMaxSec - st.dataMinSec),
     });
-    if (st.eventCount < 5) {
-      openTriggerLogError.value =
-        "Файл загружен, но мало точек. Нужен trigger_*.csv из composite_logs, не output_*.csv.";
-    }
+    scheduleRedraw();
   } catch (e) {
-    openTriggerLogError.value = e instanceof Error ? e.message : String(e);
+    openOutputLogError.value = e instanceof Error ? e.message : String(e);
   } finally {
-    openingTriggerLog.value = false;
+    openingOutputLog.value = false;
   }
 }
 
@@ -1197,6 +1189,14 @@ watch(chartHeight, () => scheduleRedraw());
           {{ settingsExpanded ? "Свернуть" : "Настройки log" }}
         </span>
       </button>
+      <button
+        type="button"
+        class="btn-load-log"
+        :disabled="openingOutputLog"
+        title="Открыть CSV-лог (output_*.csv)"
+        @click="onOpenOutputLog"
+      >{{ openingOutputLog ? '…' : 'Лог…' }}</button>
+      <p v-if="openOutputLogError" class="load-log-error">{{ openOutputLogError }}</p>
 
       <div v-if="!settingsExpanded" class="log-compact-meta">
         <span class="log-compact-summary">{{ setupSummary }}</span>
@@ -1399,15 +1399,8 @@ watch(chartHeight, () => scheduleRedraw());
           <span class="zoom-step-suffix">%</span>
         </label>
         <button type="button" class="btn-clear" @click="clearHistory">Сброс</button>
-        <button
-          type="button"
-          class="btn-trigger-log"
-          :disabled="openingTriggerLog"
-          @click="onOpenTriggerLog"
-        >{{ openingTriggerLog ? '…' : 'Лог триггера…' }}</button>
       </div>
     </div>
-    <p v-if="openTriggerLogError" class="trigger-log-error">{{ openTriggerLogError }}</p>
 
     <div v-if="channelRows.length" class="channel-ranges">
       <p class="ranges-title">Диапазон Y · min / max (пусто = авто по окну)</p>
@@ -1974,31 +1967,33 @@ watch(chartHeight, () => scheduleRedraw());
   background: var(--color-bg-muted);
 }
 
-.btn-trigger-log {
-  padding: 0.3rem 0.65rem;
+.btn-load-log {
+  padding: 0.2rem 0.6rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border-strong);
   background: var(--color-bg-elevated);
   color: var(--color-gray);
   font-size: 0.78rem;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.btn-trigger-log:hover:not(:disabled) {
+.btn-load-log:hover:not(:disabled) {
   background: var(--color-bg-muted);
   color: var(--color-fg);
 }
 
-.btn-trigger-log:disabled {
+.btn-load-log:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.trigger-log-error {
+.load-log-error {
   font-size: 0.75rem;
   color: var(--color-warning, #d97706);
-  padding: 0.25rem 0.5rem;
   margin: 0;
+  align-self: center;
 }
 
 .canvas-wrap:not(.canvas-wrap--dragging) {

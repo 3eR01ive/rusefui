@@ -6,10 +6,7 @@ import ConfigLoadOverlay from "./ConfigLoadOverlay.vue";
 import ConfigDiffModal from "./ConfigDiffModal.vue";
 import { createDataContext, provideDataContext } from "../core/data-context";
 import { initOutputChannels } from "../composables/useOutputChannels";
-import {
-  initOutputTimeline,
-  pickAndLoadTimelineFile,
-} from "../composables/useOutputTimeline";
+import { initOutputTimeline } from "../composables/useOutputTimeline";
 import { initConfig, useConfig } from "../composables/useConfig";
 import { useProtocolLog, useProtocolLogLifecycle } from "../composables/useProtocolLog";
 import { useEcuConnection } from "../composables/useEcuConnection";
@@ -53,8 +50,6 @@ openProjectCallback.value = () => onOpenProject();
 
 const burning = ref(false);
 const burnError = ref<string | null>(null);
-const loadingLog = ref(false);
-const logLoadError = ref<string | null>(null);
 const projectError = ref<string | null>(null);
 const projectBusy = ref(false);
 
@@ -100,26 +95,10 @@ watchEffect(() => {
   }
 
   setFooterStatus("app:burn", burnError.value, { error: true, priority: 100 });
-  setFooterStatus("app:log", logLoadError.value, { error: true, priority: 100 });
   setFooterStatus("app:project-error", projectError.value, { error: true, priority: 100 });
   setFooterStatus("app:burning", burning.value ? "Burn…" : null, { priority: 15 });
-  setFooterStatus("app:loading-log", loadingLog.value ? "Загрузка лога…" : null, {
-    priority: 15,
-  });
 });
 
-async function onOpenOutputLog(): Promise<void> {
-  logLoadError.value = null;
-  loadingLog.value = true;
-  try {
-    const st = await pickAndLoadTimelineFile();
-    if (!st) return;
-  } catch (e) {
-    logLoadError.value = e instanceof Error ? e.message : String(e);
-  } finally {
-    loadingLog.value = false;
-  }
-}
 
 const canBurn = computed(
   () => workspaceCanBurn.value && !burning.value,
@@ -278,15 +257,6 @@ async function onBurn() {
       </nav>
 
       <div class="header-actions">
-        <button
-          type="button"
-          class="log-btn"
-          :disabled="loadingLog"
-          title="CSV output channels (RPM, CLT…) — график Log сверху, не trigger"
-          @click="onOpenOutputLog"
-        >
-          {{ loadingLog ? "Лог…" : "Лог output" }}
-        </button>
         <button
           v-if="dataCtx.connection.value.connected"
           type="button"

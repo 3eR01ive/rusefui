@@ -66,6 +66,7 @@ const {
   hasFile: timelineHasFile,
   queryView: queryTimelineView,
   controlView: controlTimelineView,
+  pickAndLoadFile,
   refreshStatus: refreshTimelineStatus,
 } = useCompositeTimeline();
 const { linked: viewportLinked, setLinked: setViewportLinked } = useLogViewportLink();
@@ -87,6 +88,8 @@ const crankEdgeMode = ref<CrankEdgeMode>("both");
 const autoStopRemainingSec = ref<number | null>(null);
 const loggerBusy = ref(false);
 const loggerError = ref<string | null>(null);
+const openingLog = ref(false);
+const openLogError = ref<string | null>(null);
 
 let autoStopTimer: ReturnType<typeof setInterval> | null = null;
 let autoStopDeadlineMs = 0;
@@ -761,6 +764,29 @@ function onPlotDblClick() {
 }
 
 
+async function onOpenCompositeLog() {
+  openingLog.value = true;
+  openLogError.value = null;
+  try {
+    const st = await pickAndLoadFile();
+    if (!st) return;
+    await controlTimelineView({
+      followLive: false,
+      viewEndSec: st.dataMaxSec,
+      spanSec: Math.max(MIN_VIEW_MS / 1000, st.dataMaxSec - st.dataMinSec),
+    });
+    await refreshReviewEvents();
+    if (reviewEvents.value.length < 2) {
+      openLogError.value =
+        "Файл загружен, но мало точек. Нужен trigger_*.csv из composite_logs, не output_*.csv.";
+    }
+  } catch (e) {
+    openLogError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    openingLog.value = false;
+  }
+}
+
 function clearAutoStopTimer() {
   if (autoStopTimer != null) {
     clearInterval(autoStopTimer);
@@ -1076,6 +1102,14 @@ const statusLine = computed(() => {
         />
         Одна шкала с Log
       </label>
+      <button
+        type="button"
+        class="btn secondary"
+        :disabled="openingLog || loggerBusy"
+        @click="onOpenCompositeLog"
+      >
+        Лог триггера…
+      </button>
       <div class="cc-edge-seg" title="Crank: режим отображения фронтов">
         <button
           v-for="m in (['both', 'rise', 'fall'] as CrankEdgeMode[])"
@@ -1088,6 +1122,7 @@ const statusLine = computed(() => {
       </div>
     </div>
     <p v-if="loggerError" class="cc-error">{{ loggerError }}</p>
+    <p v-if="openLogError" class="cc-error">{{ openLogError }}</p>
     <div
       ref="plotWrapRef"
       class="cc-plot-wrap"
