@@ -20,6 +20,7 @@ import {
   PERSIST_KEY_COMPOSITE_CHART,
   useProject,
   type CompositeChartUiSettings,
+  type CrankEdgeMode,
 } from "../../composables/useProject";
 import {
   bufferSpanMs,
@@ -85,6 +86,7 @@ const alignTdc = ref(false);
 const CAPTURE_DURATIONS_MS = [500, 1000, 3000] as const;
 const captureDurationMs = ref(1000);
 const durationDropdownOpen = ref(false);
+const crankEdgeMode = ref<CrankEdgeMode>("both");
 const autoStopRemainingSec = ref<number | null>(null);
 const loggerBusy = ref(false);
 const loggerError = ref<string | null>(null);
@@ -109,7 +111,12 @@ const hoverInside = ref(false);
 let ro: ResizeObserver | null = null;
 let panPointerId: number | null = null;
 let panStartClientX = 0;
+let panPrevClientX = 0;
 let panStartT0Us = 0;
+
+let pendingWheelFactor = 1;
+let pendingWheelX = 0;
+let wheelRafId = 0;
 
 const CHANNELS: { key: ChannelKey; label: string; color: string }[] = [
   { key: "pri", label: "Pri", color: "#3b82f6" },
@@ -297,6 +304,7 @@ function drawWaveforms(
   ctx: CanvasRenderingContext2D,
   view: ChartView,
   canvas: HTMLCanvasElement,
+  edgeMode: CrankEdgeMode,
 ) {
   CHANNELS.forEach((ch, idx) => {
     const { yHigh, yLow } = laneY(idx, view, true);
@@ -306,6 +314,33 @@ function drawWaveforms(
     ctx.font = "11px system-ui, sans-serif";
     ctx.textAlign = "right";
     ctx.fillText(ch.label, LABEL_W - 6, yMid + 4);
+
+    const isCrank = ch.key === "pri";
+    // Для crank в режиме rise/fall — рисуем только метки фронтов
+    if (isCrank && edgeMode !== "both") {
+      const toX = (tUs: number) => xAtTime(tUs, view);
+      const tickH = (yLow - yHigh) * 0.65;
+      const baseline = edgeMode === "rise" ? yLow : yHigh;
+      ctx.strokeStyle = ch.color;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([]);
+      let prevVal = valueAtTime(view.t0, view.visible, ch.key);
+      for (const ev of view.visible) {
+        const val = channelValue(ev, ch.key);
+        if (val !== prevVal) {
+          const isRise = val && !prevVal;
+          if ((edgeMode === "rise" && isRise) || (edgeMode === "fall" && !isRise)) {
+            const x = toX(ev.tUs);
+            ctx.beginPath();
+            ctx.moveTo(x, baseline);
+            ctx.lineTo(x, baseline + (edgeMode === "rise" ? -tickH : tickH));
+            ctx.stroke();
+          }
+        }
+        prevVal = val;
+      }
+      return;
+    }
 
     const toX = (tUs: number) => xAtTime(tUs, view);
     const visible = view.visible;
@@ -524,7 +559,7 @@ function draw() {
     ctx.stroke();
   }
 
-  drawWaveforms(ctx, view, canvas);
+  drawWaveforms(ctx, view, canvas, crankEdgeMode.value);
   drawCycleMarkers(ctx, view, canvas);
 
   if (hoverInside.value && hoverX.value != null) {
@@ -547,14 +582,18 @@ function plotWidthPx(): number {
   return Math.max(1, wrap.getBoundingClientRect().width - LABEL_W - 8);
 }
 
-async function panByClientDelta(deltaX: number) {
+async function panByClientDelta(currentClientX: number) {
   const events = chartEvents();
   const range = currentTimeRange(events);
   if (!range) return;
   if (!viewportLinked.value && events.length < 2) return;
 
   if (reviewMode.value) {
-    const panSec = (-deltaX / plotWidthPx()) * (range.spanUs / 1_000_000);
+    // Используем инкрементальный шаг (от предыдущей позиции), а не от старта —
+    // иначе panSec накапливается и получается ускорение.
+    const stepX = currentClientX - panPrevClientX;
+    panPrevClientX = currentClientX;
+    const panSec = (-stepX / plotWidthPx()) * (range.spanUs / 1_000_000);
     if (viewportLinked.value) {
       await controlOutputView({ panSec });
     } else {
@@ -564,6 +603,8 @@ async function panByClientDelta(deltaX: number) {
     return;
   }
 
+  // В live-режиме: абсолютная позиция от начала перетаскивания — линейно.
+  const deltaX = currentClientX - panStartClientX;
   const dtUs = (-deltaX / plotWidthPx()) * range.spanUs;
   const dataStart = dataT0(events);
   const dataEnd = events[events.length - 1]!.tUs;
@@ -591,6 +632,7 @@ function onPointerDown(e: PointerEvent) {
 
   panPointerId = e.pointerId;
   panStartClientX = e.clientX;
+  panPrevClientX = e.clientX;
   panStartT0Us = range.t0;
   viewAnchorT0Us.value = range.t0;
   userAdjustedView.value = true;
@@ -602,7 +644,7 @@ function onPointerMove(e: PointerEvent) {
   if (!canvas) return;
 
   if (panPointerId === e.pointerId) {
-    panByClientDelta(e.clientX - panStartClientX);
+    void panByClientDelta(e.clientX);
     return;
   }
 
@@ -643,42 +685,49 @@ function plotFracFromClientX(clientX: number): number {
 }
 
 /** Колёсико вверх (deltaY < 0) — уже окно. */
-async function zoomAtPointer(clientX: number, zoomIn: boolean) {
+async function zoomAtPointerFactor(clientX: number, factor: number) {
   const events = chartEvents();
   const range = currentTimeRange(events);
   if (!range) return;
   if (!viewportLinked.value && events.length < 2) return;
 
+  const frac = plotFracFromClientX(clientX);
+  const spanUs = range.spanUs;
+  const minSpanUs = Math.round(MIN_VIEW_MS * 1000);
+
   if (reviewMode.value) {
-    const factor = zoomIn ? ZOOM_STEP : 1 / ZOOM_STEP;
+    const maxSpanSec = 3600;
+    const minSpanSec = MIN_VIEW_MS / 1000;
+    const oldSpanSec = spanUs / 1_000_000;
+    const newSpanSec = Math.min(maxSpanSec, Math.max(minSpanSec, oldSpanSec / factor));
+    // Якорная точка (под курсором) не должна двигаться
+    const tAnchorSec = range.t0 / 1_000_000 + frac * oldSpanSec;
+    const newViewEndSec = tAnchorSec + (1 - frac) * newSpanSec;
     if (viewportLinked.value) {
-      await controlOutputView({ zoomFactor: factor });
+      await controlOutputView({ viewEndSec: newViewEndSec, spanSec: newSpanSec, followLive: false });
     } else {
-      await controlTimelineView({ zoomFactor: factor });
+      await controlTimelineView({ viewEndSec: newViewEndSec, spanSec: newSpanSec, followLive: false });
     }
     await refreshReviewEvents();
     return;
   }
 
-  const spanUs = range.spanUs;
-  const minSpanUs = Math.round(MIN_VIEW_MS * 1000);
   const maxSpanUs = Math.round(maxSpanMsFor(events) * 1000);
-  const frac = plotFracFromClientX(clientX);
   const tAnchor = range.t0 + frac * spanUs;
 
   userAdjustedView.value = true;
 
-  if (zoomIn) {
+  if (factor > 1) {
     if (spanUs <= minSpanUs) return;
-    const newSpanUs = Math.max(minSpanUs, Math.round(spanUs / ZOOM_STEP));
+    const newSpanUs = Math.max(minSpanUs, Math.round(spanUs / factor));
     viewSpanMs.value = newSpanUs / 1000;
     viewAnchorT0Us.value = tAnchor - frac * newSpanUs;
   } else {
     if (spanUs >= maxSpanUs - 1) {
-      fitFullCapture(events);
+      void fitFullCapture(events);
       return;
     }
-    const newSpanUs = Math.min(maxSpanUs, Math.round(spanUs * ZOOM_STEP));
+    const newSpanUs = Math.min(maxSpanUs, Math.round(spanUs * factor));
     viewSpanMs.value = newSpanUs / 1000;
     viewAnchorT0Us.value = tAnchor - frac * newSpanUs;
   }
@@ -686,12 +735,27 @@ async function zoomAtPointer(clientX: number, zoomIn: boolean) {
   scheduleDraw();
 }
 
+function scheduleWheelZoom(clientX: number, factor: number): void {
+  pendingWheelX = clientX;
+  pendingWheelFactor *= factor;
+  if (wheelRafId !== 0) return;
+  wheelRafId = requestAnimationFrame(() => {
+    wheelRafId = 0;
+    const f = pendingWheelFactor;
+    const x = pendingWheelX;
+    pendingWheelFactor = 1;
+    if (Math.abs(f - 1) > 1e-6) {
+      void zoomAtPointerFactor(x, f);
+    }
+  });
+}
+
 function onCanvasWheel(e: WheelEvent) {
   const events = chartEvents();
   if (!viewportLinked.value && events.length < 2) return;
   if (e.deltaY === 0) return;
   e.preventDefault();
-  zoomAtPointer(e.clientX, e.deltaY < 0);
+  scheduleWheelZoom(e.clientX, e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP);
 }
 
 function onPlotDblClick() {
@@ -803,8 +867,14 @@ async function loadUiFromProject() {
     if (ui.captureDurationMs != null && CAPTURE_DURATIONS_MS.includes(ui.captureDurationMs as (typeof CAPTURE_DURATIONS_MS)[number])) {
       captureDurationMs.value = ui.captureDurationMs;
     }
+    if (ui.crankEdgeMode === "rise" || ui.crankEdgeMode === "fall") {
+      crankEdgeMode.value = ui.crankEdgeMode;
+    } else {
+      crankEdgeMode.value = "both";
+    }
   } catch {
     alignTdc.value = false;
+    crankEdgeMode.value = "both";
   }
 }
 
@@ -812,10 +882,16 @@ function persistUiSettings() {
   void setProjectUi(PERSIST_KEY_COMPOSITE_CHART, {
     alignTdc: alignTdc.value,
     captureDurationMs: captureDurationMs.value,
+    crankEdgeMode: crankEdgeMode.value,
   });
 }
 
 watch(alignTdc, () => {
+  persistUiSettings();
+  scheduleDraw();
+});
+
+watch(crankEdgeMode, () => {
   persistUiSettings();
   scheduleDraw();
 });
@@ -1025,6 +1101,16 @@ const statusLine = computed(() => {
         />
         Одна шкала с Log
       </label>
+      <div class="cc-edge-seg" title="Crank: режим отображения фронтов">
+        <button
+          v-for="m in (['both', 'rise', 'fall'] as CrankEdgeMode[])"
+          :key="m"
+          type="button"
+          class="cc-edge-btn"
+          :class="{ active: crankEdgeMode === m }"
+          @click="crankEdgeMode = m"
+        >{{ m === 'both' ? '↕' : m === 'rise' ? '↑' : '↓' }}</button>
+      </div>
       <button
         type="button"
         class="btn secondary"
@@ -1217,6 +1303,38 @@ const statusLine = computed(() => {
 .split-opt.active {
   color: var(--color-accent, #3b82f6);
   font-weight: 600;
+}
+
+.cc-edge-seg {
+  display: flex;
+  border: 1px solid var(--color-border, #374151);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.cc-edge-btn {
+  padding: 2px 8px;
+  font-size: 0.85rem;
+  background: none;
+  border: none;
+  color: var(--color-fg-muted, #9ca3af);
+  cursor: pointer;
+  line-height: 1;
+  transition: background 0.12s, color 0.12s;
+}
+
+.cc-edge-btn:not(:last-child) {
+  border-right: 1px solid var(--color-border, #374151);
+}
+
+.cc-edge-btn:hover {
+  background: var(--color-bg-muted, #2a2a3e);
+  color: var(--color-fg);
+}
+
+.cc-edge-btn.active {
+  background: var(--color-accent, #3b82f6);
+  color: #fff;
 }
 
 .cc-title {

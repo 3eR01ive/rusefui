@@ -6,9 +6,12 @@ import { computed, readonly, ref, shallowRef } from "vue";
 export const PERSIST_KEY_OUTPUT_CHART = "output-chart";
 export const PERSIST_KEY_COMPOSITE_CHART = "composite-chart";
 
+export type CrankEdgeMode = "both" | "rise" | "fall";
+
 export interface CompositeChartUiSettings {
   alignTdc?: boolean;
   captureDurationMs?: number;
+  crankEdgeMode?: CrankEdgeMode;
   /** @deprecated — kept for reading old project files */
   autostart?: boolean;
   /** @deprecated — kept for reading old project files */
