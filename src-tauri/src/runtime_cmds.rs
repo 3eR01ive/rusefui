@@ -511,11 +511,13 @@ pub fn output_get_snapshot(state: State<RuntimeState>) -> OutputSnapshot {
 
 #[tauri::command]
 pub fn output_list_fields(state: State<RuntimeState>) -> Vec<OutputFieldInfo> {
+    state.session.bootstrap_offline_ini_if_needed();
     state.session.ini_context().list_output_fields()
 }
 
 #[tauri::command]
 pub fn output_start_listener(state: State<RuntimeState>, app: AppHandle) {
+    state.session.bootstrap_offline_ini_if_needed();
     emit_output(&app, &state.session.output().snapshot());
     sync_ecu_data(&state, &app);
 }
@@ -751,6 +753,10 @@ pub fn autoconnect_set_offline_mode(
     app: AppHandle,
 ) {
     state.autoconnect.set_offline_mode(offline);
+    if offline {
+        state.session.bootstrap_offline_ini_if_needed();
+        emit_output(&app, &state.session.output().snapshot());
+    }
     schedule_ecu_notify(&app, false);
     schedule_autoconnect_ui(&app);
 }

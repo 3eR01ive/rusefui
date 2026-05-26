@@ -71,16 +71,63 @@ pub fn resolve_ini_for_signature(ecu_signature: &str) -> Result<ResolvedIni, Ini
     Err(IniResolveError::NotFound(ecu_signature.to_string()))
 }
 
-fn load_and_verify(path: &Path, ecu_signature: &str) -> Result<ResolvedIni, IniResolveError> {
+/// Загрузить INI с диска без проверки signature ECU (offline / настройка UI).
+pub fn load_ini_path(path: &Path) -> Result<ResolvedIni, IniResolveError> {
     let file = IniFile::load_file(path).map_err(|e| IniResolveError::LoadFailed {
         path: path.to_path_buf(),
         message: e.to_string(),
     })?;
+    Ok(ResolvedIni {
+        path: path.to_path_buf(),
+        file,
+    })
+}
+
+/// Локальный INI для offline: `RUSEFI_INI_PATH`, кэш, `test_data`, generated.
+pub fn find_any_local_ini() -> Option<ResolvedIni> {
+    if let Some(path) = super::explicit_ini_path() {
+        if let Ok(resolved) = load_ini_path(&path) {
+            if !resolved.file.output_channels.fields.is_empty() {
+                return Some(resolved);
+            }
+        }
+    }
+
+    let mut best: Option<(usize, ResolvedIni)> = None;
+    for dir in search_directories() {
+        let entries = std::fs::read_dir(&dir).ok()?;
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+            let name = path.file_name()?.to_str()?;
+            if !name.starts_with("rusefi_") || !name.ends_with(".ini") {
+                continue;
+            }
+            if path.metadata().ok().map(|m| m.len()).unwrap_or(0) < MIN_INI_BYTES {
+                continue;
+            }
+            let Ok(resolved) = load_ini_path(&path) else {
+                continue;
+            };
+            let n = resolved.file.output_channels.fields.len();
+            if n == 0 {
+                continue;
+            }
+            if best.as_ref().is_none_or(|(best_n, _)| n > *best_n) {
+                best = Some((n, resolved));
+            }
+        }
+    }
+    best.map(|(_, r)| r)
+}
+
+fn load_and_verify(path: &Path, ecu_signature: &str) -> Result<ResolvedIni, IniResolveError> {
+    let resolved = load_ini_path(path)?;
+    let file = &resolved.file;
     match file.signature.as_deref() {
-        Some(ini_sig) if ini_sig == ecu_signature => Ok(ResolvedIni {
-            path: path.to_path_buf(),
-            file,
-        }),
+        Some(ini_sig) if ini_sig == ecu_signature => Ok(resolved),
         Some(ini_sig) => Err(IniResolveError::SignatureMismatch {
             ecu: ecu_signature.to_string(),
             ini: ini_sig.to_string(),

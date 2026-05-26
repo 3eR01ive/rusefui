@@ -2,8 +2,8 @@ mod resolve;
 mod signature;
 
 pub use resolve::{
-    ini_cache_dir, resolve_ini_for_signature, search_directories, signatures_match, IniResolveError,
-    ResolvedIni,
+    find_any_local_ini, ini_cache_dir, load_ini_path, resolve_ini_for_signature, search_directories,
+    signatures_match, IniResolveError, ResolvedIni,
 };
 
 /// Явный путь к INI (только если задан `RUSEFI_INI_PATH`).

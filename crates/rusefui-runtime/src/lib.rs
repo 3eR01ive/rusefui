@@ -18,8 +18,8 @@ pub use component::{
 pub use runtime::ComponentRuntime;
 pub use session::EcuSession;
 pub use ini::{
-    explicit_ini_path, ini_cache_dir, resolve_ini_for_signature, search_directories,
-    signatures_match, IniResolveError, ResolvedIni,
+    explicit_ini_path, find_any_local_ini, ini_cache_dir, load_ini_path,
+    resolve_ini_for_signature, search_directories, signatures_match, IniResolveError, ResolvedIni,
 };
 pub use protocol_log::{
     default_log_path, LogLevel, ProtocolLogEntry, ProtocolLogFilterSettings, ProtocolLogStore,

@@ -8,7 +8,7 @@ use std::time::Duration;
 use rusefi_ini::{encode_config_value, ConfigFieldKind};
 use rusefi_protocol::{ConnectionInfo, ProtocolError, SerialLink, DEFAULT_IO_TIMEOUT_MS};
 
-use crate::ini::resolve_ini_for_signature;
+use crate::ini::{find_any_local_ini, load_ini_path, resolve_ini_for_signature, ResolvedIni};
 use crate::protocol_log::ProtocolLogStore;
 use crate::sources::config::ConfigSource;
 use crate::sources::output_channels::{IniContext, OutputChannelsSource};
@@ -192,6 +192,41 @@ impl EcuSession {
         self.ini.lock().unwrap().clone()
     }
 
+    /// Применить INI без подключения к ECU (offline, настройка графиков).
+    pub fn apply_ini(&self, resolved: ResolvedIni) {
+        let ini_ctx = IniContext::from_ini(&resolved.file);
+        *self.ini.lock().unwrap() = ini_ctx.clone();
+        *self.loaded_ini_path.lock().unwrap() = Some(resolved.path.clone());
+        self.output.replace_ini(ini_ctx.clone());
+        self.config.replace_ini(ini_ctx);
+        self.protocol_log.log_info(&format!(
+            "INI загружен (offline): {}",
+            resolved.path.display()
+        ));
+    }
+
+    /// Если output channels ещё пусты — взять локальный INI (`RUSEFI_INI_PATH`, test_data, …).
+    pub fn bootstrap_offline_ini_if_needed(&self) {
+        if !self.ini_context().channels.fields.is_empty() {
+            return;
+        }
+        if let Some(resolved) = find_any_local_ini() {
+            self.apply_ini(resolved);
+        }
+    }
+
+    pub fn load_ini_from_path(&self, path: &std::path::Path) -> Result<(), String> {
+        let resolved = load_ini_path(path).map_err(|e| e.to_string())?;
+        if resolved.file.output_channels.fields.is_empty() {
+            return Err(format!(
+                "В INI нет [OutputChannels]: {}",
+                path.display()
+            ));
+        }
+        self.apply_ini(resolved);
+        Ok(())
+    }
+
     pub fn loaded_ini_path(&self) -> Option<PathBuf> {
         self.loaded_ini_path.lock().unwrap().clone()
     }
@@ -275,11 +310,9 @@ impl EcuSession {
             }
         };
 
-        let ini_ctx = IniContext::from_ini(&resolved.file);
-        *self.ini.lock().unwrap() = ini_ctx.clone();
-        *self.loaded_ini_path.lock().unwrap() = Some(resolved.path.clone());
-        self.output.replace_ini(ini_ctx.clone());
-        self.config.replace_ini(ini_ctx.clone());
+        let ini_path = resolved.path.clone();
+        self.apply_ini(resolved);
+        let ini_ctx = self.ini_context();
 
         let mut guard = self
             .inner
@@ -295,12 +328,9 @@ impl EcuSession {
             info.baud_rate,
             &info.signature,
         );
-        self.protocol_log.log_info(&format!(
-            "INI загружен: {}",
-            resolved.path.display()
-        ));
+        self.protocol_log.log_info(&format!("INI загружен: {}", ini_path.display()));
         guard.link = Some(link);
-        self.start_output_data_log(&info, &ini_ctx, &resolved.path);
+        self.start_output_data_log(&info, &ini_ctx, &ini_path);
         Ok(info)
     }
 

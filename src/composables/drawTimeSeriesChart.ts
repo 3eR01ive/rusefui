@@ -30,12 +30,103 @@ export interface LogGraphPanelSpec {
 
 const PANEL_GAP = 2;
 const CORNER_LINE_H = 10;
+const OUTER_TOP = 1;
+const OUTER_BOTTOM = 2;
+
+export interface LogCrosshairSpec {
+  /** X в координатах canvas (CSS px, как `width` графика). */
+  x: number;
+}
+
+export function logPanelMargins(traceCount: number): ChartMargins {
+  const topPad = Math.max(12, 4 + traceCount * CORNER_LINE_H);
+  const bottomPad = Math.max(12, 4 + traceCount * CORNER_LINE_H);
+  return { top: topPad, right: 12, bottom: bottomPad, left: 8 };
+}
+
+/** Значение кривой в момент t (линейная интерполяция между точками). */
+export function interpolateSeriesAtTime(
+  points: { t: number; v: number }[],
+  t: number,
+): number | null {
+  const pts = points
+    .filter((p) => Number.isFinite(p.t) && Number.isFinite(p.v))
+    .sort((a, b) => a.t - b.t);
+  if (pts.length === 0) return null;
+  if (t <= pts[0]!.t) return pts[0]!.v;
+  const last = pts[pts.length - 1]!;
+  if (t >= last.t) return last.v;
+  for (let i = 1; i < pts.length; i++) {
+    const p1 = pts[i]!;
+    if (p1.t >= t) {
+      const p0 = pts[i - 1]!;
+      const dt = p1.t - p0.t;
+      if (dt < 1e-12) return p1.v;
+      const f = (t - p0.t) / dt;
+      return p0.v + (p1.v - p0.v) * f;
+    }
+  }
+  return last.v;
+}
+
+export function plotXToTime(
+  x: number,
+  width: number,
+  margins: ChartMargins,
+  tMin: number,
+  tMax: number,
+): number | null {
+  const plotW = width - margins.left - margins.right;
+  if (plotW <= 0) return null;
+  if (x < margins.left || x > margins.left + plotW) return null;
+  const tSpan = Math.max(tMax - tMin, 0.001);
+  return tMin + ((x - margins.left) / plotW) * tSpan;
+}
+
+function drawCrosshairMarker(
+  ctx: CanvasRenderingContext2D,
+  plotRight: number,
+  x: number,
+  y: number,
+  color: string,
+  label: string,
+): void {
+  ctx.save();
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.arc(x, y, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = cssVar("--color-bg-elevated", "#fff");
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.font = "600 10px Segoe UI, system-ui, sans-serif";
+  const tw = ctx.measureText(label).width;
+  let lx = x + 8;
+  if (lx + tw > plotRight - 4) lx = x - 8 - tw;
+  const ly = y;
+  const padX = 4;
+  const padY = 2;
+  const boxH = 14;
+  ctx.fillStyle = cssVar("--color-bg-elevated", "#fff");
+  ctx.globalAlpha = 0.92;
+  ctx.fillRect(lx - padX, ly - boxH / 2 - padY, tw + padX * 2, boxH + padY * 2);
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(lx - padX, ly - boxH / 2 - padY, tw + padX * 2, boxH + padY * 2);
+  ctx.fillStyle = color;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(label, lx, ly);
+  ctx.restore();
+}
 
 function cssVar(name: string, fallback: string): string {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 }
 
-function formatTick(v: number): string {
+export function formatTick(v: number): string {
   const abs = Math.abs(v);
   if (abs >= 10000) return v.toFixed(0);
   if (abs >= 100) return v.toFixed(0);
@@ -52,15 +143,9 @@ export function drawLogGraphPanel(
   traces: LogTraceSpec[],
   tMin: number,
   tMax: number,
+  crosshairT: number | null = null,
 ): void {
-  const topPad = Math.max(12, 4 + traces.length * CORNER_LINE_H);
-  const bottomPad = Math.max(12, 4 + traces.length * CORNER_LINE_H);
-  const margins: ChartMargins = {
-    top: topPad,
-    right: 12,
-    bottom: bottomPad,
-    left: 8,
-  };
+  const margins = logPanelMargins(traces.length);
 
   const plotW = width - margins.left - margins.right;
   const plotH = height - margins.top - margins.bottom;
@@ -131,6 +216,29 @@ export function drawLogGraphPanel(
     if (started) ctx.stroke();
   }
 
+  if (crosshairT !== null && Number.isFinite(crosshairT)) {
+    const cx = toX(crosshairT);
+    if (cx >= margins.left && cx <= margins.left + plotW) {
+      const plotRight = margins.left + plotW;
+      for (const tr of traces) {
+        const v = interpolateSeriesAtTime(tr.series.points, crosshairT);
+        if (v === null) continue;
+        const vSpan = Math.max(tr.vMax - tr.vMin, 1e-9);
+        const cy = margins.top + plotH - ((v - tr.vMin) / vSpan) * plotH;
+        if (!Number.isFinite(cy)) continue;
+        const unit = tr.units ? ` ${tr.units}` : "";
+        drawCrosshairMarker(
+          ctx,
+          plotRight,
+          cx,
+          cy,
+          tr.color,
+          `${tr.name} ${formatTick(v)}${unit}`,
+        );
+      }
+    }
+  }
+
   ctx.restore();
 
   ctx.font = FONT_CORNER;
@@ -188,22 +296,48 @@ export function drawLogPanelsChart(
   panels: LogGraphPanelSpec[],
   tMin: number,
   tMax: number,
+  crosshair: LogCrosshairSpec | null = null,
 ): void {
   ctx.clearRect(0, 0, width, height);
   if (panels.length === 0) return;
 
-  const outerTop = 1;
-  const outerBottom = 2;
-  const usable = height - outerTop - outerBottom;
+  const maxTraces = panels.reduce((m, p) => Math.max(m, p.traces.length), 0);
+  const sharedMargins = logPanelMargins(maxTraces);
+  const crosshairT =
+    crosshair !== null
+      ? plotXToTime(crosshair.x, width, sharedMargins, tMin, tMax)
+      : null;
+
+  const usable = height - OUTER_TOP - OUTER_BOTTOM;
   const panelH =
     (usable - PANEL_GAP * Math.max(0, panels.length - 1)) / panels.length;
 
+  if (crosshairT !== null) {
+    const cx = crosshair.x;
+    const plotLeft = sharedMargins.left;
+    const plotRight = width - sharedMargins.right;
+    if (cx >= plotLeft && cx <= plotRight) {
+      ctx.save();
+      ctx.strokeStyle = cssVar("--color-accent", "#b45309");
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 3]);
+      ctx.globalAlpha = 0.45;
+      ctx.beginPath();
+      ctx.moveTo(cx, OUTER_TOP);
+      ctx.lineTo(cx, height - OUTER_BOTTOM);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+  }
+
   panels.forEach((panel, i) => {
-    const y0 = outerTop + i * (panelH + PANEL_GAP);
+    const y0 = OUTER_TOP + i * (panelH + PANEL_GAP);
     ctx.save();
     ctx.translate(0, y0);
 
-    drawLogGraphPanel(ctx, width, panelH, panel.traces, tMin, tMax);
+    drawLogGraphPanel(ctx, width, panelH, panel.traces, tMin, tMax, crosshairT);
 
     ctx.font = "600 9px Segoe UI, system-ui, sans-serif";
     ctx.fillStyle = cssVar("--color-text-subtle", "#9c948a");

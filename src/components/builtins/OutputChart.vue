@@ -10,6 +10,8 @@ import {
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { initOutputChannels, useOutputChannels } from "../../composables/useOutputChannels";
+import { useEcuConnection } from "../../composables/useEcuConnection";
+import { useDataContext } from "../../core/data-context";
 import { useOutputFields } from "../../composables/useOutputFields";
 import {
   initOutputTimeline,
@@ -132,6 +134,7 @@ function measureCanvasWidth(): number {
 
 const { snapshot } = useOutputChannels();
 const { fields: allFields, reload: reloadOutputFields } = useOutputFields();
+const { offlineMode } = useEcuConnection(useDataContext());
 const {
   status: timelineStatus,
   hasHistory: timelineHasHistory,
@@ -254,10 +257,14 @@ watch(
   () => snapshot.value.iniFieldCount ?? 0,
   (count, prev) => {
     if (count > 0 && count !== prev) {
-      void refreshFieldCatalog();
+      void reloadOutputFields();
     }
   },
 );
+
+watch(offlineMode, () => {
+  void reloadOutputFields();
+});
 
 watch(windowSeconds, (sec) => {
   void controlView({ spanSec: sec, followLive: timelineStatus.value.followLive });
@@ -338,9 +345,13 @@ const filteredFields = computed(() => {
 
 const suggestEmptyHint = computed(() => {
   if (allFields.value.length === 0) {
-    return snapshot.value.connected
-      ? "INI без output channels — переподключите ECU"
-      : "Подключите ECU — список полей из signature INI";
+    if (snapshot.value.connected) {
+      return "INI без output channels — переподключите ECU";
+    }
+    if (offlineMode.value) {
+      return "Нет INI offline — задайте RUSEFI_INI_PATH или положите rusefi_*.ini в test_data / generated";
+    }
+    return "Подключите ECU или включите Offline — список из INI";
   }
   if (fieldFilter.value.trim() && filteredFields.value.length === 0) {
     return "Нет совпадений";
@@ -568,6 +579,8 @@ function clearHistory(): void {
 
 const chartHover = ref(false);
 const chartDragging = ref(false);
+/** X курсора в координатах canvas (CSS px) для кроссхайра. */
+const crosshairX = ref<number | null>(null);
 let dragStartX = 0;
 let dragStartViewEnd = 0;
 let panRaf = 0;
@@ -669,16 +682,30 @@ async function onChartPointerDown(e: PointerEvent): Promise<void> {
   dragStartX = e.clientX;
   dragStartViewEnd = timelineStatus.value.viewEndSec;
   chartDragging.value = true;
+  crosshairX.value = null;
   e.preventDefault();
 }
 
 function onChartPointerMove(e: PointerEvent): void {
-  if (!chartDragging.value) return;
-  const w = measureCanvasWidth();
-  const span = timelineStatus.value.spanSec;
-  const dx = e.clientX - dragStartX;
-  pendingViewEnd = dragStartViewEnd - (dx / Math.max(w, 1)) * span;
-  schedulePanApply();
+  if (chartDragging.value) {
+    const w = measureCanvasWidth();
+    const span = timelineStatus.value.spanSec;
+    const dx = e.clientX - dragStartX;
+    pendingViewEnd = dragStartViewEnd - (dx / Math.max(w, 1)) * span;
+    schedulePanApply();
+    return;
+  }
+  if (!chartHover.value || !canPlotTimeline()) return;
+  updateCrosshairFromEvent(e);
+  scheduleRedraw(true);
+}
+
+function onChartPointerLeave(_e: PointerEvent): void {
+  chartHover.value = false;
+  if (!chartDragging.value) {
+    crosshairX.value = null;
+    scheduleRedraw(true);
+  }
 }
 
 async function endChartDrag(e: PointerEvent): Promise<void> {
@@ -724,6 +751,13 @@ function canPlotTimeline(): boolean {
   );
 }
 
+function crosshairSpec(): { x: number } | null {
+  if (!chartHover.value || chartDragging.value || crosshairX.value === null) {
+    return null;
+  }
+  return { x: crosshairX.value };
+}
+
 function paintFromView(
   ctx: CanvasRenderingContext2D,
   w: number,
@@ -731,30 +765,43 @@ function paintFromView(
   view: OutputTimelineView,
 ): void {
   const { tMin, tMax } = view;
+  const crosshair = crosshairSpec();
   const fields = uniquePollFields();
   let panels = buildPanels(tMin, tMax, (name) => seriesForField(name, view));
   if (panels.length === 0 && fields.length > 0) {
     panels = buildPanels(tMin, tMax, (name) => fallbackSeries(name, tMin, tMax));
     if (panels.length > 0) {
-      drawLogPanelsChart(ctx, w, h, panels, tMin, tMax);
+      drawLogPanelsChart(ctx, w, h, panels, tMin, tMax, crosshair);
       return;
     }
   }
   if (panels.length > 0) {
-    drawLogPanelsChart(ctx, w, h, panels, tMin, tMax);
+    drawLogPanelsChart(ctx, w, h, panels, tMin, tMax, crosshair);
   } else {
     ctx.clearRect(0, 0, w, h);
   }
 }
 
-function scheduleRedraw(): void {
+let redrawSkipFetch = false;
+
+function scheduleRedraw(skipFetch = false): void {
+  if (skipFetch) redrawSkipFetch = true;
   if (redrawRaf !== 0) return;
   redrawRaf = requestAnimationFrame(() => {
     redrawRaf = 0;
-    redrawInflight = redraw().finally(() => {
+    const skip = redrawSkipFetch;
+    redrawSkipFetch = false;
+    redrawInflight = redraw(skip).finally(() => {
       redrawInflight = null;
     });
   });
+}
+
+function updateCrosshairFromEvent(e: PointerEvent): void {
+  const wrap = canvasWrapRef.value;
+  if (!wrap) return;
+  const rect = wrap.getBoundingClientRect();
+  crosshairX.value = e.clientX - rect.left;
 }
 
 async function fetchTimelineView(
@@ -779,7 +826,7 @@ async function fetchTimelineView(
   return view;
 }
 
-async function redraw(): Promise<void> {
+async function redraw(skipFetch = false): Promise<void> {
   const canvas = canvasRef.value;
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
@@ -811,28 +858,31 @@ async function redraw(): Promise<void> {
     return;
   }
 
-  // Быстрый кадр: прошлый query_view + свежий хвост из snapshot (без IPC).
-  if (lastView.value && timelineStatus.value.followLive) {
-    paintFromView(ctx, w, h, lastView.value);
+  const gen = ++redrawGeneration;
+  let view: OutputTimelineView | null =
+    skipFetch && lastView.value ? lastView.value : null;
+
+  if (!view) {
+    try {
+      view = await fetchTimelineView(fields, w);
+    } catch (err) {
+      console.warn("[Log] timeline query failed:", err);
+      const span = timelineStatus.value.spanSec || windowSeconds.value;
+      const live = timelineLiveSec();
+      const end = timelineStatus.value.followLive
+        ? live
+        : timelineStatus.value.viewEndSec;
+      view = {
+        tMin: end - span,
+        tMax: end,
+        liveSec: live,
+        followLive: timelineStatus.value.followLive,
+        series: [],
+      };
+    }
   }
 
-  const gen = ++redrawGeneration;
-  let view: OutputTimelineView;
-  try {
-    view = await fetchTimelineView(fields, w);
-  } catch (err) {
-    console.warn("[Log] timeline query failed:", err);
-    const span = timelineStatus.value.spanSec || windowSeconds.value;
-    const live = timelineLiveSec();
-    view = {
-      tMin: Math.max(0, live - span),
-      tMax: Math.max(span, live),
-      liveSec: live,
-      followLive: timelineStatus.value.followLive,
-      series: [],
-    };
-  }
-  if (gen !== redrawGeneration) return;
+  if (!view || gen !== redrawGeneration) return;
 
   lastView.value = view;
   paintFromView(ctx, w, h, view);
@@ -1200,7 +1250,7 @@ watch(chartHeight, () => scheduleRedraw());
       :class="{ 'canvas-wrap--dragging': chartDragging, 'canvas-wrap--live': timelineStatus.followLive }"
       title="Колёсико — масштаб, перетаскивание — время, пробел — live"
       @pointerenter="chartHover = true"
-      @pointerleave="chartHover = false"
+      @pointerleave="onChartPointerLeave"
       @pointerdown="onChartPointerDown"
       @pointermove="onChartPointerMove"
       @pointerup="endChartDrag"
@@ -1694,6 +1744,10 @@ watch(chartHeight, () => scheduleRedraw());
 
 .btn-clear:hover {
   background: var(--color-bg-muted);
+}
+
+.canvas-wrap:not(.canvas-wrap--dragging) {
+  cursor: crosshair;
 }
 
 .canvas-wrap {
