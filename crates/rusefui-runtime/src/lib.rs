@@ -37,6 +37,9 @@ pub use ui_persist::{ComponentUiPersist, persist_keys as ui_persist_keys};
 pub use protocol_log::{
     default_log_path, LogLevel, ProtocolLogEntry, ProtocolLogFilterSettings, ProtocolLogStore,
 };
+pub use sources::composite_logger::{
+    CompositeEventJson, CompositeLoggerSource, CompositeSnapshot,
+};
 pub use sources::config::{ConfigFieldInfo, ConfigSnapshot};
 pub use sources::output_channels::{
     IniContext, OutputFieldInfo, OutputSnapshot, DEFAULT_OUTPUT_BLOCK_SIZE,

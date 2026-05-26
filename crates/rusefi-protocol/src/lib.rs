@@ -4,6 +4,7 @@
 //! `rusefi/java_console/io/.../IoHelper.java`.
 
 mod commands;
+mod composite;
 mod crc;
 mod error;
 mod log_format;
@@ -13,6 +14,7 @@ mod serial;
 mod tracer;
 
 pub use commands::{DEFAULT_IO_TIMEOUT_MS, *};
+pub use composite::{parse_composite_records, CompositeParseState, CompositeRecord};
 pub use error::ProtocolError;
 pub use packet::{make_crc_request, parse_crc_response, CrcResponse};
 pub use port_discovery::{

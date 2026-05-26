@@ -10,6 +10,7 @@ use rusefi_protocol::{ConnectionInfo, ProtocolError, SerialLink, DEFAULT_IO_TIME
 
 use crate::ini::{find_any_local_ini, load_ini_path, resolve_ini_for_signature, ResolvedIni};
 use crate::protocol_log::ProtocolLogStore;
+use crate::sources::composite_logger::CompositeLoggerSource;
 use crate::sources::config::ConfigSource;
 use crate::sources::output_channels::{IniContext, OutputChannelsSource};
 use crate::sources::output_data_log::OutputDataLogWriter;
@@ -31,6 +32,7 @@ pub struct EcuSession {
     ini: Mutex<IniContext>,
     loaded_ini_path: Mutex<Option<PathBuf>>,
     output: OutputChannelsSource,
+    composite: CompositeLoggerSource,
     config: ConfigSource,
     protocol_log: Arc<ProtocolLogStore>,
     /// Пока true — не запускать poll `O` (конфликт с консольными `E` на том же порту).
@@ -47,6 +49,7 @@ impl EcuSession {
             ini: Mutex::new(ini_ctx.clone()),
             loaded_ini_path: Mutex::new(None),
             output: OutputChannelsSource::new(ini_ctx.clone()),
+            composite: CompositeLoggerSource::new(),
             config: ConfigSource::new(ini_ctx),
             protocol_log,
             stimulation_active: AtomicBool::new(false),
@@ -83,6 +86,7 @@ impl EcuSession {
     /// Пустой рабочий стол: config, timeline, лог сессии (без отключения ECU).
     pub fn reset_workspace_for_new_project(&self) {
         self.config().stop();
+        self.composite().stop();
         let _ = self.stop_output_data_log();
         *self.output_timeline.lock().unwrap() = OutputTimeline::default();
 
@@ -263,8 +267,16 @@ impl EcuSession {
         &self.output
     }
 
+    pub fn composite(&self) -> &CompositeLoggerSource {
+        &self.composite
+    }
+
     pub fn config(&self) -> &ConfigSource {
         &self.config
+    }
+
+    pub fn should_poll_composite_logger(&self) -> bool {
+        self.is_connected() && !self.config().snapshot().loading
     }
 
     pub fn is_connected(&self) -> bool {
@@ -309,6 +321,7 @@ impl EcuSession {
         automatic: bool,
     ) -> Result<ConnectionInfo, String> {
         self.output.stop();
+        self.composite.stop();
         self.config.stop();
 
         {
@@ -368,7 +381,9 @@ impl EcuSession {
 
     pub fn disconnect_reason(&self, reason: &str, automatic: bool) {
         self.set_stimulation_active(false);
+        self.composite().disable_on_ecu(self);
         self.output().stop();
+        self.composite().stop();
         self.config().stop();
         self.stop_output_data_log();
         let Ok(mut guard) = self.inner.try_lock() else {
@@ -409,6 +424,7 @@ impl EcuSession {
         F: FnOnce(&Self) -> Result<R, String>,
     {
         self.output().stop();
+        self.composite().stop();
         f(self)
     }
 

@@ -6,8 +6,9 @@ use std::time::{Duration, Instant};
 use serialport::{DataBits, FlowControl, Parity, StopBits};
 
 use crate::commands::{
-    TS_BURN_COMMAND, TS_CHUNK_WRITE_COMMAND, TS_EXECUTE_COMMAND, TS_HELLO_COMMAND,
-    TS_IO_TEST_COMMAND, TS_OUTPUT_COMMAND, TS_READ_COMMAND, TS_RESPONSE_BURN_OK, TS_RESPONSE_OK,
+    TS_BURN_COMMAND, TS_CHUNK_WRITE_COMMAND, TS_COMPOSITE_DISABLE, TS_EXECUTE_COMMAND,
+    TS_GET_COMPOSITE_BUFFER, TS_HELLO_COMMAND, TS_IO_TEST_COMMAND, TS_OUTPUT_COMMAND,
+    TS_READ_COMMAND, TS_RESPONSE_BURN_OK, TS_RESPONSE_OK, TS_SET_LOGGER_SWITCH,
 };
 use crate::error::ProtocolError;
 use crate::packet::{make_crc_request, parse_crc_response, CrcResponse};
@@ -354,6 +355,34 @@ impl SerialLink {
         ];
         let response = self.send_request(&payload)?;
         if response.code != TS_RESPONSE_BURN_OK {
+            return Err(ProtocolError::ErrorResponse(response.code));
+        }
+        Ok(())
+    }
+
+    /// `8` — прочитать буфер composite/tooth logger (как Java `BinaryProtocolLogger.getComposite`).
+    ///
+    /// Прошивка при необходимости включает логгер (`EnableToothLoggerIfNotEnabled`).
+    /// Пустой payload при `OUT_OF_RANGE` — буфер ещё не готов.
+    pub fn read_composite_buffer(&mut self) -> Result<Vec<u8>, ProtocolError> {
+        let payload = [TS_GET_COMPOSITE_BUFFER];
+        let response = self.send_request(&payload)?;
+        if response.code != TS_RESPONSE_OK {
+            return Err(ProtocolError::ErrorResponse(response.code));
+        }
+        Ok(response.payload)
+    }
+
+    /// `l` + subcommand — вкл/выкл tooth logger (TunerStudio `startCommand` / `stopCommand`).
+    pub fn set_composite_logger_enabled(&mut self, enabled: bool) -> Result<(), ProtocolError> {
+        let sub = if enabled {
+            crate::commands::TS_COMPOSITE_ENABLE
+        } else {
+            TS_COMPOSITE_DISABLE
+        };
+        let payload = [TS_SET_LOGGER_SWITCH, sub];
+        let response = self.send_request(&payload)?;
+        if response.code != TS_RESPONSE_OK {
             return Err(ProtocolError::ErrorResponse(response.code));
         }
         Ok(())

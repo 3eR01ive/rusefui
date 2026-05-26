@@ -20,6 +20,8 @@ pub fn run() {
             runtime_cmds::output_get_snapshot,
             runtime_cmds::output_list_fields,
             runtime_cmds::output_start_listener,
+            runtime_cmds::composite_get_snapshot,
+            runtime_cmds::composite_start_listener,
             runtime_cmds::output_timeline_status,
             runtime_cmds::output_timeline_query_view,
             runtime_cmds::output_timeline_set_view,

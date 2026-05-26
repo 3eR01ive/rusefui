@@ -1,7 +1,7 @@
 use rusefui_runtime::{
     compute_config_diff, default_log_path, AutoConnectManager, AutoConnectSnapshot,
-    ComponentRuntime, ConfigDiffSnapshot, ConfigDiffStore, ConfigFieldInfo, ConfigSnapshot,
-    DiffSide, EcuSession, EcuSyncOnMount, OutputFieldInfo, OutputSnapshot,
+    ComponentRuntime, CompositeSnapshot, ConfigDiffSnapshot, ConfigDiffStore, ConfigFieldInfo,
+    ConfigSnapshot, DiffSide, EcuSession, EcuSyncOnMount, OutputFieldInfo, OutputSnapshot,
     OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl, ProjectInfo,
     ProjectLogRef, ProjectStore, ProtocolLogEntry, ProtocolLogFilterSettings, ProtocolLogStore,
     RusefuiProject,
@@ -99,6 +99,7 @@ fn emit_project(app: &AppHandle, state: &RuntimeState) {
 fn emit_workspace_reset(app: &AppHandle, state: &RuntimeState) {
     emit_config(app, &state.session.config().snapshot());
     emit_output(app, &state.session.output().snapshot());
+    emit_composite(app, &state.session.composite().snapshot());
     let timeline = state.session.output_timeline_status();
     let _ = app.emit("output-timeline-status", timeline);
     let _ = app.emit("workspace-reset", ());
@@ -145,6 +146,14 @@ fn emit_output(app: &AppHandle, snapshot: &OutputSnapshot) {
     let snapshot = snapshot.clone();
     tauri::async_runtime::spawn(async move {
         let _ = app.emit("output-channels", snapshot);
+    });
+}
+
+fn emit_composite(app: &AppHandle, snapshot: &CompositeSnapshot) {
+    let app = app.clone();
+    let snapshot = snapshot.clone();
+    tauri::async_runtime::spawn(async move {
+        let _ = app.emit("composite-logger", snapshot);
     });
 }
 
@@ -321,6 +330,23 @@ fn sync_output_poll_session(session: &Arc<EcuSession>, app: &AppHandle) {
     }
 }
 
+fn sync_composite_poll_session(session: &Arc<EcuSession>, app: &AppHandle) {
+    if session.should_poll_composite_logger() {
+        if session.composite().is_polling() {
+            return;
+        }
+        let app = app.clone();
+        let poll_session = Arc::clone(session);
+        session.composite().start(poll_session, move |snap| {
+            emit_composite(&app, &snap);
+        });
+    } else {
+        session.composite().disable_on_ecu(session);
+        session.composite().stop();
+        emit_composite(app, &session.composite().snapshot());
+    }
+}
+
 fn sync_config_load(state: &RuntimeState, app: &AppHandle) {
     if !state.session.is_connected() {
         state.session.config().stop();
@@ -333,8 +359,9 @@ fn sync_config_load(state: &RuntimeState, app: &AppHandle) {
         return;
     }
 
-    // Конфиг читается эксклюзивно — output poll мешает (см. Java `BinaryProtocol.readFullImageFromController`).
+    // Конфиг читается эксклюзивно — output/composite poll мешают (см. Java `readFullImageFromController`).
     state.session.output().stop();
+    state.session.composite().stop();
 
     let app = app.clone();
     let session = Arc::clone(&state.session);
@@ -346,6 +373,7 @@ fn sync_config_load(state: &RuntimeState, app: &AppHandle) {
                 try_start_config_diff(&st, &app);
             }
             sync_output_poll_session(&session, &app);
+            sync_composite_poll_session(&session, &app);
         }
     });
 }
@@ -354,15 +382,18 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
     if !state.session.is_connected() {
         state.session.config().stop();
         state.session.output().stop();
+        state.session.composite().stop();
         clear_config_diff(state, app);
         emit_config_update(app, &state.session.config().snapshot());
         emit_output(app, &state.session.output().snapshot());
+        emit_composite(app, &state.session.composite().snapshot());
         return;
     }
 
     let config_snap = state.session.config().snapshot();
     if config_snap.loaded {
         sync_output_poll_session(&state.session, app);
+        sync_composite_poll_session(&state.session, app);
     } else if !config_snap.loading {
         sync_config_load(state, app);
     }
@@ -425,6 +456,7 @@ fn apply_ecu_sync_on_mount(policy: EcuSyncOnMount, state: &RuntimeState, app: &A
         EcuSyncOnMount::OutputPollIfConfigLoaded => {
             if state.session.config().snapshot().loaded {
                 sync_output_poll_session(&state.session, app);
+                sync_composite_poll_session(&state.session, app);
             }
         }
         EcuSyncOnMount::None => {}
@@ -507,6 +539,7 @@ fn component_dispatch_simulation(
             emit_state(&app, &instance_id_bg, &snap);
             if ok {
                 sync_output_poll_session(&state.session, &app);
+                sync_composite_poll_session(&state.session, &app);
             }
             Ok(())
         })();
@@ -592,6 +625,17 @@ pub fn output_start_listener(state: State<RuntimeState>, app: AppHandle) {
     state.session.bootstrap_offline_ini_if_needed();
     emit_output(&app, &state.session.output().snapshot());
     sync_ecu_data(&state, &app);
+}
+
+#[tauri::command]
+pub fn composite_get_snapshot(state: State<RuntimeState>) -> CompositeSnapshot {
+    state.session.composite().snapshot()
+}
+
+#[tauri::command]
+pub fn composite_start_listener(state: State<RuntimeState>, app: AppHandle) {
+    emit_composite(&app, &state.session.composite().snapshot());
+    sync_composite_poll_session(&state.session, &app);
 }
 
 #[derive(Debug, Deserialize)]
@@ -761,6 +805,7 @@ pub fn config_diff_apply(state: State<RuntimeState>, app: AppHandle) -> Result<(
     emit_project(&app, &state);
     if state.session.should_poll_output_channels() {
         sync_output_poll_session(&state.session, &app);
+        sync_composite_poll_session(&state.session, &app);
     }
     Ok(())
 }
@@ -818,6 +863,7 @@ pub fn config_set_scalar(
     }
     if state.session.should_poll_output_channels() {
         sync_output_poll_session(&state.session, &app);
+        sync_composite_poll_session(&state.session, &app);
     }
     Ok(snap)
 }
@@ -829,6 +875,7 @@ pub fn config_burn(state: State<RuntimeState>, app: AppHandle) -> Result<(), Str
     }
 
     state.session.output().stop();
+    state.session.composite().stop();
 
     let session = Arc::clone(&state.session);
     session.config().burn_to_flash(&session)?;
@@ -838,8 +885,10 @@ pub fn config_burn(state: State<RuntimeState>, app: AppHandle) -> Result<(), Str
 
     if session.should_poll_output_channels() {
         sync_output_poll_session(&session, &app);
+        sync_composite_poll_session(&session, &app);
     } else {
         emit_output(&app, &session.output().snapshot());
+        emit_composite(&app, &session.composite().snapshot());
     }
 
     Ok(())

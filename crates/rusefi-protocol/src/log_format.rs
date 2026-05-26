@@ -53,6 +53,20 @@ pub fn describe_payload(payload: &[u8]) -> String {
             let text = String::from_utf8_lossy(&payload[1..]);
             format!("execute \"{text}\"")
         }
+        b'l' if payload.len() >= 2 => {
+            let sub = payload[1];
+            let name = match sub {
+                1 => "composite enable",
+                2 => "composite disable",
+                3 => "composite read",
+                4 => "trigger scope enable",
+                5 => "trigger scope disable",
+                6 => "trigger scope read",
+                _ => "logger sub",
+            };
+            format!("logger {name}")
+        }
+        b'8' => "composite buffer".into(),
         other => format!("cmd 0x{other:02X} len={}", payload.len()),
     }
 }
@@ -76,7 +90,8 @@ pub fn describe_response(request_payload: &[u8], response: &crate::packet::CrcRe
             }
         }
         Some(b'O' | b'R') => format!("OK {} bytes", response.payload.len()),
-        Some(b'C' | b'Z' | b'E' | b'B') => "OK".into(),
+        Some(b'C' | b'Z' | b'E' | b'B' | b'l') => "OK".into(),
+        Some(b'8') => format!("OK composite {} bytes", response.payload.len()),
         _ => format!("OK payload={} bytes", response.payload.len()),
     }
 }

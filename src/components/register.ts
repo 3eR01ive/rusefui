@@ -12,6 +12,7 @@ import ConfigTable from "./builtins/ConfigTable.vue";
 import ConfigCurve from "./builtins/ConfigCurve.vue";
 import IniPanelsBrowser from "./builtins/IniPanelsBrowser.vue";
 import OutputChart from "./builtins/OutputChart.vue";
+import CompositeChart from "./builtins/CompositeChart.vue";
 import OutputValue from "./builtins/OutputValue.vue";
 
 let registered = false;
@@ -164,6 +165,17 @@ export function registerBuiltinComponents(): void {
       description: "Кривые output channels с автопромоткой",
     },
     OutputChart,
+  );
+
+  registerComponent(
+    {
+      type: "composite-chart",
+      label: "Trigger logger",
+      mode: "display",
+      isContainer: false,
+      description: "High-speed composite logger (триггер, sync, coil, inj)",
+    },
+    CompositeChart,
   );
 
   registerComponent(

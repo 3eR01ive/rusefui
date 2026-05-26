@@ -10,6 +10,18 @@ pub const TS_IO_TEST_COMMAND: u8 = b'Z';
 /// Консольная команда (`TS_EXECUTE`), как Java `BinaryProtocol.sendTextCommand`.
 pub const TS_EXECUTE_COMMAND: u8 = b'E';
 
+/// High-speed trigger logger (`TS_SET_LOGGER_SWITCH` в `ts_protocol.txt`).
+pub const TS_SET_LOGGER_SWITCH: u8 = b'l';
+/// rusEFI console: read composite buffer + auto-enable (`tunerstudio.cpp`).
+pub const TS_GET_COMPOSITE_BUFFER: u8 = b'8';
+
+pub const TS_COMPOSITE_ENABLE: u8 = 1;
+pub const TS_COMPOSITE_DISABLE: u8 = 2;
+pub const TS_COMPOSITE_READ: u8 = 3;
+
+/// Размер одной записи tooth/composite logger (firmware `composite_logger_s`).
+pub const COMPOSITE_PACKET_SIZE: usize = 5;
+
 /// Страница настроек (`TS_PAGE_SETTINGS`).
 pub const TS_PAGE_SETTINGS: u16 = 0;
 

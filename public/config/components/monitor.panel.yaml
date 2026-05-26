@@ -18,6 +18,16 @@ children:
 
   - type: section
     props:
+      title: Trigger logger
+    children:
+      - type: composite-chart
+        id: trigger-logger
+        props:
+          height: 220
+          windowMs: 500
+
+  - type: section
+    props:
       title: Live values
     children:
       - type: row
