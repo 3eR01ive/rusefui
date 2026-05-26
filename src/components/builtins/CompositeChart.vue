@@ -14,6 +14,7 @@ import {
 } from "../../composables/useCompositeTimeline";
 import { useLogViewportLink } from "../../composables/useLogViewportLink";
 import { initOutputTimeline, useOutputTimeline } from "../../composables/useOutputTimeline";
+import { useOutputChannels } from "../../composables/useOutputChannels";
 import { listen } from "@tauri-apps/api/event";
 import {
   PERSIST_KEY_COMPOSITE_CHART,
@@ -70,6 +71,7 @@ const {
 const { linked: viewportLinked, setLinked: setViewportLinked } = useLogViewportLink();
 const { status: outputTimelineStatus, controlView: controlOutputView } =
   useOutputTimeline();
+const { snapshot: outputChannelsSnapshot } = useOutputChannels();
 const { getProjectUi, setProjectUi } = useProject();
 
 const reviewEvents = ref<CompositeEvent[]>([]);
@@ -160,7 +162,14 @@ async function refreshReviewEvents(): Promise<void> {
 function currentTimeRangeFromOutput(): ChartTimeRange {
   const st = outputTimelineStatus.value;
   const spanUs = Math.max(1, Math.round(st.spanSec * 1_000_000));
-  const tEnd = Math.round(st.viewEndSec * 1_000_000);
+  // В live-режиме viewEndSec устаревший (output-timeline-status не шлётся на каждый poll).
+  // timelineLiveSec из output-channels обновляется с каждым ECU-поллом — берём его.
+  const liveSec =
+    outputChannelsSnapshot.value.timelineLiveSec ??
+    st.liveSec ??
+    st.viewEndSec;
+  const viewEndSec = st.followLive ? liveSec : st.viewEndSec;
+  const tEnd = Math.round(viewEndSec * 1_000_000);
   const t0 = tEnd - spanUs;
   return { t0, tEnd: t0 + spanUs, spanUs };
 }
@@ -204,12 +213,14 @@ async function fitFullCapture(events: readonly CompositeEvent[]) {
 
 /** Во время записи — показывать всё накопленное с начала сессии. */
 function fitGrowingCapture(events: readonly CompositeEvent[]) {
-  if (userAdjustedView.value || events.length < 2) return;
+  // Если привязаны к output логу — не трогаем вьюпорт, он управляется снаружи
+  if (userAdjustedView.value || viewportLinked.value || events.length < 2) return;
   fitFullCapture(events);
 }
 
 function currentTimeRange(events: readonly CompositeEvent[]): ChartTimeRange | null {
-  if (reviewMode.value && viewportLinked.value) {
+  // Привязка к output-логу работает и в live-режиме, и в review
+  if (viewportLinked.value && (reviewMode.value || loggingEnabled.value)) {
     return currentTimeRangeFromOutput();
   }
   if (reviewMode.value) {
@@ -753,6 +764,10 @@ async function applyLoggingEnabled(on: boolean) {
       startAutoStopTimer();
     } else {
       clearAutoStopTimer();
+      // Запоминаем состояние output лога ДО вызова controlTimelineView:
+      // composite_timeline_control в Rust при log_viewport_linked применяет тот же ctrl
+      // и к output timeline, что сбивает его followLive.
+      const outputWasLive = outputTimelineStatus.value.followLive;
       await refreshTimelineStatus();
       if (reviewMode.value) {
         const st = timelineStatus.value;
@@ -761,6 +776,10 @@ async function applyLoggingEnabled(on: boolean) {
           viewEndSec: st.dataMaxSec,
           spanSec: Math.max(MIN_VIEW_MS / 1000, st.dataMaxSec - st.dataMinSec),
         });
+        // Восстанавливаем output live-режим если он был активен
+        if (viewportLinked.value && outputWasLive) {
+          await controlOutputView({ followLive: true });
+        }
         await refreshReviewEvents();
       } else {
         const events = snapshot.value.events as CompositeEvent[];
@@ -822,12 +841,27 @@ async function onViewportLinkChange(checked: boolean) {
 watch(
   () =>
     viewportLinked.value
-      ? `${outputTimelineStatus.value.viewEndSec}:${outputTimelineStatus.value.spanSec}:${outputTimelineStatus.value.followLive}:${outputTimelineStatus.value.liveSec}`
+      ? `${outputTimelineStatus.value.viewEndSec}:${outputTimelineStatus.value.spanSec}:${outputTimelineStatus.value.followLive}`
       : "",
   () => {
-    if (viewportLinked.value && reviewMode.value) {
+    if (!viewportLinked.value) return;
+    if (reviewMode.value) {
       void refreshReviewEvents();
+    } else if (loggingEnabled.value) {
+      scheduleDraw();
     }
+  },
+);
+
+// В live-режиме timelineLiveSec обновляется с каждым ECU-поллом — используем его
+// для постоянной перерисовки триггер-графика вслед за output логом.
+watch(
+  () =>
+    viewportLinked.value && outputTimelineStatus.value.followLive
+      ? outputChannelsSnapshot.value.timelineLiveSec
+      : null,
+  (liveSec) => {
+    if (liveSec != null) scheduleDraw();
   },
 );
 
