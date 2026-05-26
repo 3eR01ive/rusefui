@@ -26,6 +26,9 @@
   ],
   "ui": {
     "sections": {
+      "composite-chart": {
+        "autostart": false
+      },
       "output-chart": {
         "windowSeconds": 30,
         "chartHeight": 220,

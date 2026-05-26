@@ -116,6 +116,15 @@ pub fn is_output_poll(payload: &[u8]) -> bool {
     payload.first() == Some(&b'O')
 }
 
+/// Опрос tooth/composite logger (`8`, `l`+read/enable/disable) — в UI как trace.
+pub fn is_composite_logger_io(payload: &[u8]) -> bool {
+    match payload.first() {
+        Some(b'8') => true,
+        Some(b'l') => true,
+        _ => false,
+    }
+}
+
 /// Чтение page 0 (`R`) — сотни чанков при загрузке; в UI не показываем.
 pub fn is_config_page_read(payload: &[u8]) -> bool {
     payload.first() == Some(&b'R')

@@ -275,10 +275,6 @@ impl EcuSession {
         &self.config
     }
 
-    pub fn should_poll_composite_logger(&self) -> bool {
-        self.is_connected() && !self.config().snapshot().loading
-    }
-
     pub fn is_connected(&self) -> bool {
         self.inner.lock().unwrap().link.is_some()
     }
@@ -321,7 +317,8 @@ impl EcuSession {
         automatic: bool,
     ) -> Result<ConnectionInfo, String> {
         self.output.stop();
-        self.composite.stop();
+        self.composite().disable_on_ecu(self);
+        self.composite().stop();
         self.config.stop();
 
         {
@@ -424,6 +421,7 @@ impl EcuSession {
         F: FnOnce(&Self) -> Result<R, String>,
     {
         self.output().stop();
+        self.composite().disable_on_ecu(self);
         self.composite().stop();
         f(self)
     }

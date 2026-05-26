@@ -31,7 +31,8 @@ pub use project::{
     ProjectEcuConfig, ProjectInfo, ProjectLogRef, ProjectStore, RusefuiProject, FORMAT_VERSION,
 };
 pub use ui_persist::{
-    LogGraphGroupJson, LogRangeInputJson, LogUiSettings, ProjectUi, PERSIST_KEY_OUTPUT_CHART,
+    CompositeChartUiSettings, LogGraphGroupJson, LogRangeInputJson, LogUiSettings, ProjectUi,
+    PERSIST_KEY_COMPOSITE_CHART, PERSIST_KEY_OUTPUT_CHART,
 };
 pub use ui_persist::{ComponentUiPersist, persist_keys as ui_persist_keys};
 pub use protocol_log::{

@@ -27,6 +27,6 @@ pub use port_discovery::{
 pub use serial::{pack_config_read_request, pack_config_write_request, ConnectionInfo, SerialLink};
 pub use tracer::ProtocolTracer;
 pub use log_format::{
-    command_char, describe_payload, describe_response, hex_preview, is_config_page_read,
-    is_output_poll,
+    command_char, describe_payload, describe_response, hex_preview, is_composite_logger_io,
+    is_config_page_read, is_output_poll,
 };

@@ -7,8 +7,8 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusefi_protocol::{
-    command_char, describe_payload, describe_response, hex_preview, is_config_page_read,
-    is_output_poll, CrcResponse, ProtocolError, ProtocolTracer,
+    command_char, describe_payload, describe_response, hex_preview, is_composite_logger_io,
+    is_config_page_read, is_output_poll, CrcResponse, ProtocolError, ProtocolTracer,
 };
 use serde::{Deserialize, Serialize};
 
@@ -217,7 +217,9 @@ impl ProtocolLogStore {
         match direction {
             "err" => LogLevel::Error,
             "info" => LogLevel::Info,
-            _ if is_output_poll(payload) || is_config_page_read(payload) => LogLevel::Trace,
+            _ if is_output_poll(payload) || is_config_page_read(payload) || is_composite_logger_io(payload) => {
+                LogLevel::Trace
+            }
             _ => LogLevel::Info,
         }
     }
@@ -232,7 +234,8 @@ impl ProtocolLogStore {
         response_code: Option<u8>,
         level: Option<LogLevel>,
     ) -> ProtocolLogEntry {
-        let compact = payload.first() == Some(&b'O') || is_output_poll(payload);
+        let compact =
+            is_output_poll(payload) || is_composite_logger_io(payload);
         let payload_max = if compact {
             OUTPUT_POLL_PAYLOAD_HEX_MAX
         } else {

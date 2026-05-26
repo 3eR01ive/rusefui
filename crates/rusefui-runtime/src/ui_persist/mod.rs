@@ -1,5 +1,6 @@
 //! Реестр персистентных настроек UI компонентов в файле проекта.
 
+mod composite_chart;
 mod output_chart;
 
 use std::collections::HashMap;
@@ -7,6 +8,9 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+pub use composite_chart::{
+    CompositeChartUiSettings, PERSIST_KEY_COMPOSITE_CHART,
+};
 pub use output_chart::{
     LogGraphGroupJson, LogRangeInputJson, LogUiSettings, PERSIST_KEY_OUTPUT_CHART,
 };
@@ -26,7 +30,10 @@ pub trait ComponentUiPersist: Send + Sync {
 }
 
 fn registry() -> &'static [&'static dyn ComponentUiPersist] {
-    static ENTRIES: &[&dyn ComponentUiPersist] = &[&output_chart::OutputChartUiPersist];
+    static ENTRIES: &[&dyn ComponentUiPersist] = &[
+        &output_chart::OutputChartUiPersist,
+        &composite_chart::CompositeChartUiPersist,
+    ];
     ENTRIES
 }
 

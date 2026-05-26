@@ -14,6 +14,7 @@ export interface CompositeEvent {
 
 export interface CompositeSnapshot {
   connected: boolean;
+  loggingEnabled: boolean;
   polling: boolean;
   events: CompositeEvent[];
   totalEvents: number;
@@ -24,6 +25,7 @@ export interface CompositeSnapshot {
 
 const snapshot = shallowRef<CompositeSnapshot>({
   connected: false,
+  loggingEnabled: false,
   polling: false,
   events: [],
   totalEvents: 0,
@@ -33,54 +35,20 @@ const snapshot = shallowRef<CompositeSnapshot>({
 let unlisten: UnlistenFn | null = null;
 let initPromise: Promise<void> | null = null;
 
-function mapEvent(raw: {
-  tUs: number;
-  pri: boolean;
-  sec: boolean;
-  trg: boolean;
-  sync: boolean;
-  coil: boolean;
-  inj: boolean;
-}): CompositeEvent {
-  return {
-    tUs: raw.tUs,
-    pri: raw.pri,
-    sec: raw.sec,
-    trg: raw.trg,
-    sync: raw.sync,
-    coil: raw.coil,
-    inj: raw.inj,
-  };
-}
-
-function mapSnapshot(raw: CompositeSnapshot): CompositeSnapshot {
-  return {
-    connected: raw.connected,
-    polling: raw.polling,
-    events: (raw.events ?? []).map(mapEvent),
-    totalEvents: raw.totalEvents ?? 0,
-    lastBatch: raw.lastBatch ?? 0,
-    lastError: raw.lastError ?? null,
-    rpm: raw.rpm ?? null,
-  };
-}
-
+/** Подписка на события; опрос ECU не стартует — только `composite_set_enabled`. */
 export async function initCompositeLogger(): Promise<void> {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
     try {
-      const snap = await invoke<CompositeSnapshot>("composite_get_snapshot");
-      snapshot.value = mapSnapshot(snap);
+      snapshot.value = await invoke<CompositeSnapshot>("composite_get_snapshot");
     } catch {
       /* not in tauri */
     }
 
-    await invoke("composite_start_listener").catch(() => {});
-
     if (!unlisten) {
       unlisten = await listen<CompositeSnapshot>("composite-logger", (event) => {
-        snapshot.value = mapSnapshot(event.payload);
+        snapshot.value = event.payload;
       });
     }
   })();
@@ -88,8 +56,17 @@ export async function initCompositeLogger(): Promise<void> {
   return initPromise;
 }
 
+export async function setCompositeLoggingEnabled(
+  enabled: boolean,
+): Promise<CompositeSnapshot> {
+  const snap = await invoke<CompositeSnapshot>("composite_set_enabled", { enabled });
+  snapshot.value = snap;
+  return snap;
+}
+
 export function useCompositeLogger() {
   return {
     snapshot: readonly(snapshot),
+    setLoggingEnabled: setCompositeLoggingEnabled,
   };
 }

@@ -6,9 +6,9 @@ use std::time::{Duration, Instant};
 use serialport::{DataBits, FlowControl, Parity, StopBits};
 
 use crate::commands::{
-    TS_BURN_COMMAND, TS_CHUNK_WRITE_COMMAND, TS_COMPOSITE_DISABLE, TS_EXECUTE_COMMAND,
-    TS_GET_COMPOSITE_BUFFER, TS_HELLO_COMMAND, TS_IO_TEST_COMMAND, TS_OUTPUT_COMMAND,
-    TS_READ_COMMAND, TS_RESPONSE_BURN_OK, TS_RESPONSE_OK, TS_SET_LOGGER_SWITCH,
+    TS_BURN_COMMAND, TS_CHUNK_WRITE_COMMAND, TS_COMPOSITE_DISABLE, TS_COMPOSITE_READ,
+    TS_EXECUTE_COMMAND, TS_HELLO_COMMAND, TS_IO_TEST_COMMAND, TS_OUTPUT_COMMAND, TS_READ_COMMAND,
+    TS_RESPONSE_BURN_OK, TS_RESPONSE_OK, TS_SET_LOGGER_SWITCH,
 };
 use crate::error::ProtocolError;
 use crate::packet::{make_crc_request, parse_crc_response, CrcResponse};
@@ -360,12 +360,12 @@ impl SerialLink {
         Ok(())
     }
 
-    /// `8` — прочитать буфер composite/tooth logger (как Java `BinaryProtocolLogger.getComposite`).
+    /// `l` + `TS_COMPOSITE_READ` — чтение буфера (TunerStudio `dataReadCommand`).
     ///
-    /// Прошивка при необходимости включает логгер (`EnableToothLoggerIfNotEnabled`).
-    /// Пустой payload при `OUT_OF_RANGE` — буфер ещё не готов.
+    /// Логгер должен быть включён заранее (`set_composite_logger_enabled(true)`).
+    /// `0x84` — буфер ещё не готов. Команда `8` не используется: она сама включает логгер.
     pub fn read_composite_buffer(&mut self) -> Result<Vec<u8>, ProtocolError> {
-        let payload = [TS_GET_COMPOSITE_BUFFER];
+        let payload = [TS_SET_LOGGER_SWITCH, TS_COMPOSITE_READ];
         let response = self.send_request(&payload)?;
         if response.code != TS_RESPONSE_OK {
             return Err(ProtocolError::ErrorResponse(response.code));
@@ -524,6 +524,8 @@ mod tests {
     #[test]
     fn output_poll_detection() {
         assert!(crate::is_output_poll(&[b'O', 0, 0, 0, 0]));
+        assert!(crate::is_composite_logger_io(&[b'8']));
+        assert!(crate::is_composite_logger_io(&[b'l', 3]));
     }
 
     /// Совпадает с `OchGetCommandTest` в rusEFI Java console.

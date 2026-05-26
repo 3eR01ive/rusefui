@@ -19,6 +19,11 @@ export interface ChartView {
   tdcTimes: number[];
 }
 
+export interface ChartTimeRange {
+  t0: number;
+  tEnd: number;
+}
+
 export function channelValue(ev: CompositeEvent, key: ChannelKey): boolean {
   return ev[key];
 }
@@ -41,27 +46,64 @@ export function findTdcTimes(events: readonly CompositeEvent[]): number[] {
   return out;
 }
 
+/** Длительность данных в текущем буфере (мс). */
+export function bufferSpanMs(events: readonly CompositeEvent[]): number {
+  if (events.length < 2) return 0;
+  return (events[events.length - 1]!.tUs - events[0]!.tUs) / 1000;
+}
+
+/** Макс. окно: не шире props и не шире буфера логгера. */
+export function maxViewSpanMs(
+  events: readonly CompositeEvent[],
+  configMaxMs: number,
+  minMs: number,
+): number {
+  const bufMs = bufferSpanMs(events);
+  const cap = bufMs > 0 ? Math.min(configMaxMs, bufMs) : configMaxMs;
+  return Math.max(minMs, cap);
+}
+
+/** Срез для ступенчатого графика: точка до t0 + все в [t0, tEnd]. */
+export function sliceEventsForRange(
+  events: readonly CompositeEvent[],
+  t0: number,
+  tEnd: number,
+): CompositeEvent[] {
+  if (events.length === 0) return [];
+
+  let hi = 0;
+  while (hi < events.length && events[hi]!.tUs < t0) hi++;
+  const start = hi > 0 ? hi - 1 : hi;
+
+  const out: CompositeEvent[] = [];
+  for (let i = start; i < events.length && events[i]!.tUs <= tEnd; i++) {
+    out.push(events[i]!);
+  }
+  if (out.length === 0) {
+    out.push(events[events.length - 1]!);
+  }
+  return out;
+}
+
 export function buildChartView(
   events: readonly CompositeEvent[],
-  windowMs: number,
+  _windowMs: number,
   cssW: number,
   cssH: number,
   labelW: number,
   channelCount: number,
+  timeRange: ChartTimeRange | null,
 ): ChartView | null {
-  if (events.length < 2 || cssW <= 0 || cssH <= 0) return null;
+  if (events.length < 2 || cssW <= 0 || cssH <= 0 || !timeRange) return null;
 
-  const tEnd = events[events.length - 1]!.tUs;
-  const windowUs = Math.round(windowMs * 1000);
-  const tStart = Math.max(0, tEnd - windowUs);
-  const t0 = Math.max(0, tStart);
+  const { t0, tEnd } = timeRange;
   const span = Math.max(1, tEnd - t0);
   const plotLeft = labelW;
   const plotW = cssW - labelW - 8;
-  const visible = events.filter((e) => e.tUs >= t0 && e.tUs <= tEnd);
-  if (visible.length < 2) return null;
+  const visible = sliceEventsForRange(events, t0, tEnd);
+  if (visible.length < 1) return null;
 
-  const tdcTimes = findTdcTimes(events).filter((t) => t >= t0 && t <= tEnd);
+  const tdcTimes = findTdcTimes(visible);
 
   return {
     t0,
@@ -155,7 +197,6 @@ export function crankAngleDeg(
 
 function estimatePeriodFromRpm(rpm: number | null | undefined): number {
   if (rpm == null || rpm <= 0) return 100_000;
-  // один оборот коленвала = 360°; цикл 720° = 2 оборота
   return Math.round((2 * 60 * 1_000_000) / rpm);
 }
 

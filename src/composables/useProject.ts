@@ -4,6 +4,11 @@ import { computed, readonly, ref, shallowRef } from "vue";
 
 /** Ключ в реестре `ui_persist` (Rust). */
 export const PERSIST_KEY_OUTPUT_CHART = "output-chart";
+export const PERSIST_KEY_COMPOSITE_CHART = "composite-chart";
+
+export interface CompositeChartUiSettings {
+  autostart: boolean;
+}
 
 export interface ProjectInfo {
   path: string | null;
