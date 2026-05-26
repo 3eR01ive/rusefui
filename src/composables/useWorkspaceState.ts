@@ -35,6 +35,8 @@ export interface WorkspaceSnapshot {
   configSource: ConfigSource;
   configLoaded: boolean;
   configLoading: boolean;
+  /** RAM ECU изменена, нужна запись во flash (B). */
+  burnPending: boolean;
   capabilities: WorkspaceCapabilities;
 }
 
@@ -59,6 +61,7 @@ const snapshot = shallowRef<WorkspaceSnapshot>({
   configSource: "none",
   configLoaded: false,
   configLoading: false,
+  burnPending: false,
   capabilities: defaultCapabilities,
 });
 

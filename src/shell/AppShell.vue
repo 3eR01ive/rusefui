@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watchEffect, useTemplateRef } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watchEffect, useTemplateRef } from "vue";
 import TabWorkspace from "./TabWorkspace.vue";
 import ProtocolLogSheet from "./ProtocolLogSheet.vue";
 import ConfigLoadOverlay from "./ConfigLoadOverlay.vue";
@@ -7,6 +7,8 @@ import ConfigDiffModal from "./ConfigDiffModal.vue";
 import { createDataContext, provideDataContext } from "../core/data-context";
 import { initOutputChannels } from "../composables/useOutputChannels";
 import { initOutputTimeline } from "../composables/useOutputTimeline";
+import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 import { initConfig, useConfig } from "../composables/useConfig";
 import { useProtocolLog, useProtocolLogLifecycle } from "../composables/useProtocolLog";
 import { useEcuConnection } from "../composables/useEcuConnection";
@@ -21,7 +23,7 @@ import EcuConnectionModal from "./EcuConnectionModal.vue";
 import ProjectMenu from "./ProjectMenu.vue";
 import { useAppFooter, setFooterLed, footerToggleProtocol } from "../composables/useAppFooter";
 import { useTabState } from "../composables/useTabState";
-import { useGlobalHotkeys, saveProjectCallback, openProjectCallback } from "../composables/useHotkeys";
+import { useGlobalHotkeys, saveProjectCallback, openProjectCallback, burnCallback } from "../composables/useHotkeys";
 
 const dataCtx = createDataContext();
 provideDataContext(dataCtx);
@@ -47,11 +49,14 @@ const tabWorkspaceRef = useTemplateRef<{ tabs: { id: string; title: string }[] }
 useGlobalHotkeys();
 saveProjectCallback.value = () => onSaveProject();
 openProjectCallback.value = () => onOpenProject();
+burnCallback.value = () => { if (canBurn.value) void onBurn(); };
 
 const burning = ref(false);
 const burnError = ref<string | null>(null);
 const projectError = ref<string | null>(null);
 const projectBusy = ref(false);
+const showCloseDialog = ref(false);
+const ramDirty = computed(() => workspaceSnap.value.burnPending);
 
 const { setFooterStatus } = useAppFooter();
 
@@ -106,13 +111,42 @@ const canBurn = computed(
 
 useProtocolLogLifecycle();
 
+let unlistenCloseReq: (() => void) | null = null;
+
 onMounted(async () => {
   await initProject();
   await initWorkspaceState();
   await initConfig();
   void initOutputChannels();
   void initOutputTimeline();
+
+  unlistenCloseReq = await listen("app-close-requested", () => {
+    if (ramDirty.value && dataCtx.connection.value.connected) {
+      showCloseDialog.value = true;
+    } else {
+      void invoke("app_force_quit");
+    }
+  });
 });
+
+onUnmounted(() => {
+  unlistenCloseReq?.();
+});
+
+async function onCloseDialogBurn() {
+  showCloseDialog.value = false;
+  await onBurn();
+  void invoke("app_force_quit");
+}
+
+function onCloseDialogSkip() {
+  showCloseDialog.value = false;
+  void invoke("app_force_quit");
+}
+
+function onCloseDialogCancel() {
+  showCloseDialog.value = false;
+}
 
 async function runProjectAction(fn: () => Promise<void>): Promise<void> {
   projectError.value = null;
@@ -175,15 +209,23 @@ function workspacePhaseLabel(phase: WorkspacePhase): string {
   }
 }
 
+function afterPaint(): Promise<void> {
+  return new Promise((resolve) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+  );
+}
+
 async function onBurn() {
   if (!canBurn.value) return;
   burning.value = true;
   burnError.value = null;
+  await nextTick();
+  await afterPaint();
   try {
     await burnConfig();
+    burning.value = false;
   } catch (e) {
     burnError.value = e instanceof Error ? e.message : String(e);
-  } finally {
     burning.value = false;
   }
 }
@@ -257,18 +299,110 @@ async function onBurn() {
       </nav>
 
       <div class="header-actions">
-        <button
+        <div
           v-if="dataCtx.connection.value.connected"
-          type="button"
-          class="burn-btn"
-          :disabled="!canBurn"
-          :title="burnError ?? 'Записать конфигурацию во flash (команда B, как Burn в TunerStudio)'"
-          @click="onBurn"
+          class="burn-wrap"
+          :class="{ 'burn-wrap--dirty': ramDirty && canBurn }"
         >
-          {{ burning ? "Burn…" : "Burn" }}
-        </button>
+          <button
+            type="button"
+            class="burn-btn"
+            :class="{ 'burn-btn--dirty': ramDirty && canBurn, 'burn-btn--burning': burning }"
+            :disabled="!canBurn"
+            :title="burnError ?? 'Записать конфигурацию во flash (Ctrl+Enter, команда B)'"
+            @click="onBurn"
+          >
+            <!-- Flame icon — classic emoji-style with fill-rule evenodd cutout -->
+            <svg class="burn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <defs>
+                <linearGradient id="fg" x1="12" y1="3" x2="12" y2="21" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%"   stop-color="#fef08a"/>
+                  <stop offset="40%"  stop-color="#fb923c"/>
+                  <stop offset="100%" stop-color="#dc2626"/>
+                </linearGradient>
+              </defs>
+              <path fill-rule="evenodd" clip-rule="evenodd"
+                d="M12 3
+                   C11 5.5 9 8 8.5 10.5
+                   C8.2 9.8 8 9 8 8
+                   C6.5 9.5 6 11.5 6 13.5
+                   C6 17.09 8.69 20 12 20
+                   C15.31 20 18 17.09 18 13.5
+                   C18 11 16.5 8.5 15 7
+                   C15.1 8.2 14.7 9.3 14 10
+                   C13.9 7.5 13 5 12 3Z
+                   M12 12
+                   C11.3 12.8 11 13.8 11.2 14.8
+                   C11.5 14.3 12 13.9 12.5 13.7
+                   C12.6 14.2 12.6 14.7 12.3 15.2
+                   C13.1 14.7 13.5 13.7 13.3 12.7
+                   C13.1 12.2 12.6 11.8 12 12Z"
+                fill="url(#fg)"/>
+            </svg>
+            <span class="burn-label">{{ burning ? "Burn…" : "Burn" }}</span>
+          </button>
+        </div>
       </div>
     </header>
+
+    <!-- Блюр + спиннер во время записи во flash -->
+    <div v-if="burning" class="burn-overlay" aria-live="assertive" aria-label="Запись во flash">
+      <div class="burn-overlay-card">
+        <div class="burn-spinner-wrap" aria-hidden="true">
+          <svg class="burn-spinner-ring" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="spin-grad" x1="0" y1="50" x2="100" y2="50" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#fbbf24" stop-opacity="0"/>
+                <stop offset="55%" stop-color="#fb923c"/>
+                <stop offset="100%" stop-color="#ef4444"/>
+              </linearGradient>
+            </defs>
+            <circle cx="50" cy="50" r="42" stroke="rgba(255,255,255,0.12)" stroke-width="7" fill="none"/>
+            <circle cx="50" cy="50" r="42"
+              stroke="url(#spin-grad)" stroke-width="7" fill="none"
+              stroke-dasharray="180 84" stroke-linecap="round"/>
+          </svg>
+          <div class="burn-flame-pulse">
+            <svg class="burn-flame-center" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="fc" x1="12" y1="3" x2="12" y2="21" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#fef08a"/>
+                  <stop offset="40%" stop-color="#fb923c"/>
+                  <stop offset="100%" stop-color="#dc2626"/>
+                </linearGradient>
+              </defs>
+              <path fill-rule="evenodd" clip-rule="evenodd"
+                d="M12 3C11 5.5 9 8 8.5 10.5C8.2 9.8 8 9 8 8C6.5 9.5 6 11.5 6 13.5C6 17.09 8.69 20 12 20C15.31 20 18 17.09 18 13.5C18 11 16.5 8.5 15 7C15.1 8.2 14.7 9.3 14 10C13.9 7.5 13 5 12 3ZM12 12C11.3 12.8 11 13.8 11.2 14.8C11.5 14.3 12 13.9 12.5 13.7C12.6 14.2 12.6 14.7 12.3 15.2C13.1 14.7 13.5 13.7 13.3 12.7C13.1 12.2 12.6 11.8 12 12Z"
+                fill="url(#fc)"/>
+            </svg>
+          </div>
+        </div>
+        <p class="burn-overlay-label">Запись во flash…</p>
+      </div>
+    </div>
+
+    <!-- Диалог: несохранённые изменения при закрытии -->
+    <div v-if="showCloseDialog" class="close-dialog-overlay" @click.self="onCloseDialogCancel">
+      <div class="close-dialog" role="alertdialog" aria-modal="true">
+        <h3 class="close-dialog-title">Несохранённые изменения</h3>
+        <p class="close-dialog-body">
+          Конфигурация изменена, но не записана во flash ECU.<br>
+          Записать перед выходом?
+        </p>
+        <div class="close-dialog-actions">
+          <button type="button" class="close-dialog-btn burn" @click="onCloseDialogBurn">
+            Burn и выйти
+          </button>
+          <button type="button" class="close-dialog-btn skip" @click="onCloseDialogSkip">
+            Выйти без Burn
+          </button>
+          <button type="button" class="close-dialog-btn cancel" @click="onCloseDialogCancel">
+            Отмена
+          </button>
+        </div>
+      </div>
+    </div>
+
     <TabWorkspace ref="tabWorkspace" />
     <ProtocolLogSheet />
     <ConfigLoadOverlay />
@@ -424,26 +558,249 @@ async function onBurn() {
   border-color: var(--color-border-strong);
 }
 
-.burn-btn {
-  padding: 0.35rem 0.75rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-on-accent);
-  background: var(--color-accent);
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
+/* CSS custom property для анимации вращения границы */
+@property --burn-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
 }
 
-.burn-btn:hover:not(:disabled) {
-  filter: brightness(1.05);
+/* Обёртка — создаёт вращающийся conic-gradient бордер */
+.burn-wrap {
+  position: relative;
+  border-radius: calc(var(--radius-sm) + 3px);
+  padding: 2px; /* толщина «бордера» */
+  background: transparent;
+  display: inline-flex;
+}
+
+/* Вращающийся бордер — виден при ховере или при dirty */
+.burn-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--burn-angle),
+    transparent 0deg,
+    #fbbf24 40deg,
+    #f97316 90deg,
+    #ea580c 120deg,
+    transparent 160deg
+  );
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.burn-wrap:hover::before {
+  opacity: 1;
+  animation: burn-spin 1.5s linear infinite;
+}
+
+.burn-wrap--dirty::before {
+  opacity: 1;
+  animation: burn-spin 1.2s linear infinite;
+}
+
+@keyframes burn-spin {
+  to { --burn-angle: 360deg; }
+}
+
+/* Сама кнопка — по умолчанию только оранжевая обводка, без заливки */
+.burn-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #fb923c;
+  background: transparent;
+  border: 2px solid #ea580c;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+  z-index: 0;
+  white-space: nowrap;
+}
+
+/* Есть несохранённое в RAM — чуть заметнее, но без сплошной заливки */
+.burn-btn--dirty {
+  background: rgba(249, 115, 22, 0.1);
+  border-color: #f97316;
+  color: #fdba74;
+}
+
+.burn-btn--burning {
+  background: transparent;
+  border-color: #f97316;
+  color: #fb923c;
+  opacity: 0.65;
+  cursor: wait;
 }
 
 .burn-btn:disabled {
-  opacity: 0.45;
+  opacity: 0.35;
+  border-color: var(--color-border-strong);
+  color: var(--color-gray);
   cursor: not-allowed;
+}
+
+.burn-icon {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  display: block;
+}
+
+.burn-label {
+  line-height: 1;
+}
+
+/* Блюр поверх интерфейса во время Burn */
+.burn-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.burn-overlay-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+/* Спиннер: кольцо + иконка строго по центру */
+.burn-spinner-wrap {
+  --burn-spinner-size: 140px;
+  position: relative;
+  width: var(--burn-spinner-size);
+  height: var(--burn-spinner-size);
+  display: grid;
+  place-items: center;
+}
+
+.burn-spinner-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  animation: burn-ring-spin 1s linear infinite;
+}
+
+@keyframes burn-ring-spin {
+  to { transform: rotate(360deg); }
+}
+
+.burn-flame-pulse {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: flame-flicker 0.85s ease-in-out infinite alternate;
+}
+
+.burn-flame-center {
+  width: 56px;
+  height: 56px;
+  display: block;
+}
+
+@keyframes flame-flicker {
+  from { transform: scale(1); }
+  to { transform: scale(1.08); }
+}
+
+.burn-overlay-label {
+  color: #fff;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin: 0;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Диалог закрытия */
+.close-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9100;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-dialog {
+  background: var(--color-bg-elevated, #1e1e2e);
+  border: 1px solid var(--color-border-strong, #4b5563);
+  border-radius: 10px;
+  padding: 1.75rem 2rem;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.close-dialog-title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--color-fg);
+}
+
+.close-dialog-body {
+  margin: 0 0 1.5rem;
+  font-size: 0.875rem;
+  color: var(--color-fg-muted, #9ca3af);
+  line-height: 1.5;
+}
+
+.close-dialog-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.close-dialog-btn {
+  padding: 0.45rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: filter 0.15s;
+}
+
+.close-dialog-btn:hover {
+  filter: brightness(1.1);
+}
+
+.close-dialog-btn.burn {
+  background: #ea580c;
+  color: #fff;
+  border-color: #ea580c;
+}
+
+.close-dialog-btn.skip {
+  background: var(--color-bg-muted, #374151);
+  color: var(--color-fg);
+  border-color: var(--color-border-strong);
+}
+
+.close-dialog-btn.cancel {
+  background: transparent;
+  color: var(--color-fg-muted);
+  border-color: var(--color-border);
 }
 
 

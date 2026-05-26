@@ -10,7 +10,7 @@ use rusefui_runtime::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -28,6 +28,8 @@ pub struct RuntimeState {
     pub workspace_fsm: Mutex<WorkspaceFsm>,
     /// Последнее отправленное в UI `ecu-connection` (без дублей на каждый dispatch).
     last_ecu_connection_emit: Mutex<Option<EcuConnectionEvent>>,
+    /// RAM ECU изменена, но ещё не записана во flash (B-команда).
+    pub ram_dirty: Arc<AtomicBool>,
 }
 
 impl RuntimeState {
@@ -43,6 +45,7 @@ impl RuntimeState {
             config_diff: Mutex::new(ConfigDiffStore::default()),
             workspace_fsm: Mutex::new(WorkspaceFsm::new()),
             last_ecu_connection_emit: Mutex::new(None),
+            ram_dirty: Arc::new(AtomicBool::new(false)),
         }
     }
 }
@@ -56,19 +59,55 @@ fn workspace_inputs(state: &RuntimeState) -> WorkspaceInputs {
     }
 }
 
-fn emit_workspace_state(app: &AppHandle, _state: &RuntimeState, snap: &WorkspaceSnapshot) {
+fn workspace_snapshot_for_ui(state: &RuntimeState, mut snap: WorkspaceSnapshot) -> WorkspaceSnapshot {
+    snap.burn_pending = state.ram_dirty.load(Ordering::Relaxed);
+    snap
+}
+
+fn emit_workspace_state(app: &AppHandle, state: &RuntimeState, snap: &WorkspaceSnapshot) {
+    let snap = workspace_snapshot_for_ui(state, snap.clone());
     let _ = app.emit("workspace-state", snap);
+}
+
+fn emit_burn_pending(app: &AppHandle, pending: bool) {
+    let _ = app.emit("burn-pending", pending);
+}
+
+/// Синхронизирует ram_dirty, событие burn-pending и поле burnPending в workspace-state.
+fn set_burn_pending(state: &RuntimeState, app: &AppHandle, pending: bool) {
+    let prev = state.ram_dirty.swap(pending, Ordering::Relaxed);
+    if prev == pending {
+        return;
+    }
+    emit_burn_pending(app, pending);
+    let snap = state
+        .workspace_fsm
+        .lock()
+        .unwrap()
+        .snapshot()
+        .cloned()
+        .unwrap_or_else(|| workspace_inputs(state).derive());
+    emit_workspace_state(app, state, &snap);
 }
 
 fn reconcile_workspace(state: &RuntimeState, app: &AppHandle) -> WorkspaceSnapshot {
     let mut fsm = state.workspace_fsm.lock().unwrap();
+    let prev_phase = fsm.snapshot().map(|s| s.phase);
     let inputs = workspace_inputs(state);
     let (snap, _plan, changed) = fsm.reconcile(&inputs);
     drop(fsm);
     if changed {
+        // Новый live-baseline с ECU или уход из live-редактирования — flash считаем актуальным.
+        if snap.phase == WorkspacePhase::ConfigFromEcu {
+            if prev_phase != Some(WorkspacePhase::ConfigFromEcu) {
+                set_burn_pending(state, app, false);
+            }
+        } else {
+            set_burn_pending(state, app, false);
+        }
         emit_workspace_state(app, state, &snap);
     }
-    snap
+    workspace_snapshot_for_ui(state, snap)
 }
 
 fn emit_config_diff(app: &AppHandle, snap: &ConfigDiffSnapshot) {
@@ -394,6 +433,8 @@ fn sync_config_load(state: &RuntimeState, app: &AppHandle) {
             if snap.loaded {
                 let st = app.state::<RuntimeState>();
                 try_start_config_diff(&st, &app);
+                // Свежий снимок с ECU — RAM совпадает с тем, что только что прочитали.
+                set_burn_pending(&st, &app, false);
                 let _ = reconcile_workspace(&st, &app);
             }
             sync_output_poll_session(&session, &app);
@@ -971,10 +1012,12 @@ pub fn config_diff_apply(state: State<RuntimeState>, app: AppHandle) -> Result<(
 
     state.session.output().stop();
     let session = Arc::clone(&state.session);
+    let mut wrote_to_ecu_ram = false;
     for (field, side, value) in plan {
         match side {
             DiffSide::Project => {
                 session.config().write_scalar(&session, &field, value)?;
+                wrote_to_ecu_ram = true;
             }
             DiffSide::Ecu => {
                 state
@@ -984,6 +1027,10 @@ pub fn config_diff_apply(state: State<RuntimeState>, app: AppHandle) -> Result<(
                     .patch_ecu_config_field(&session, &field, value)?;
             }
         }
+    }
+
+    if wrote_to_ecu_ram {
+        set_burn_pending(&state, &app, true);
     }
 
     clear_config_diff(&state, &app);
@@ -1026,9 +1073,10 @@ fn write_config_scalar(
     state: &RuntimeState,
     field: &str,
     value: f64,
-) -> Result<ConfigSnapshot, String> {
+) -> Result<(ConfigSnapshot, bool), String> {
     let snap = state.session.config().snapshot();
-    if state.session.is_connected() && snap.loaded && !snap.read_only {
+    let wrote_live = state.session.is_connected() && snap.loaded && !snap.read_only;
+    if wrote_live {
         state.session.output().stop();
         let session = Arc::clone(&state.session);
         session.config().write_scalar(&session, field, value)?;
@@ -1058,7 +1106,7 @@ fn write_config_scalar(
                 .into(),
         );
     }
-    Ok(state.session.config().snapshot())
+    Ok((state.session.config().snapshot(), wrote_live))
 }
 
 #[tauri::command]
@@ -1067,7 +1115,7 @@ pub fn config_set_scalar(
     state: State<RuntimeState>,
     app: AppHandle,
 ) -> Result<ConfigSnapshot, String> {
-    let snap = write_config_scalar(&state, &params.field, params.value)?;
+    let (snap, wrote_live) = write_config_scalar(&state, &params.field, params.value)?;
     emit_config_update(&app, &snap);
     if state.project.lock().unwrap().info().dirty {
         emit_project(&app, &state);
@@ -1075,11 +1123,14 @@ pub fn config_set_scalar(
     if state.session.should_poll_output_channels() {
         sync_output_poll_session(&state.session, &app);
     }
+    if wrote_live {
+        set_burn_pending(&state, &app, true);
+    }
     Ok(snap)
 }
 
 #[tauri::command]
-pub fn config_burn(state: State<RuntimeState>, app: AppHandle) -> Result<(), String> {
+pub async fn config_burn(state: State<'_, RuntimeState>, app: AppHandle) -> Result<(), String> {
     if !state.session.is_connected() {
         return Err("ECU не подключена".into());
     }
@@ -1089,18 +1140,34 @@ pub fn config_burn(state: State<RuntimeState>, app: AppHandle) -> Result<(), Str
     state.session.composite().stop();
 
     let session = Arc::clone(&state.session);
-    session.config().burn_to_flash(&session)?;
 
-    let snap = session.config().snapshot();
-    emit_config_update(&app, &snap);
+    // Блокирующий serial I/O переносим в пул потоков — IPC-поток Tauri
+    // остаётся свободным, WebView продолжает рендериться.
+    tokio::task::spawn_blocking(move || session.config().burn_to_flash(&session))
+        .await
+        .map_err(|e| e.to_string())??;
 
-    if session.should_poll_output_channels() {
-        sync_output_poll_session(&session, &app);
-    } else {
-        emit_output(&app, &session.output().snapshot());
-    }
+    set_burn_pending(&state, &app, false);
+
+    // Обновление снимков config/output — в фоне, не задерживаем ответ фронту.
+    let session = Arc::clone(&state.session);
+    let app_bg = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let snap = session.config().snapshot();
+        emit_config_update(&app_bg, &snap);
+        if session.should_poll_output_channels() {
+            sync_output_poll_session(&session, &app_bg);
+        } else {
+            emit_output(&app_bg, &session.output().snapshot());
+        }
+    });
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn app_force_quit(app: AppHandle) {
+    app.exit(0);
 }
 
 #[derive(Debug, Deserialize)]
@@ -1130,7 +1197,8 @@ pub fn config_set_array_value(
     app: AppHandle,
 ) -> Result<ConfigSnapshot, String> {
     let snap = state.session.config().snapshot();
-    if state.session.is_connected() && snap.loaded && !snap.read_only {
+    let wrote_live = state.session.is_connected() && snap.loaded && !snap.read_only;
+    if wrote_live {
         state.session.config().write_array_value(
             &state.session,
             &params.field,
@@ -1169,6 +1237,9 @@ pub fn config_set_array_value(
     emit_config_update(&app, &snap);
     if state.project.lock().unwrap().info().dirty {
         emit_project(&app, &state);
+    }
+    if wrote_live {
+        set_burn_pending(&state, &app, true);
     }
     Ok(snap)
 }
@@ -1264,13 +1335,14 @@ pub fn protocol_log_clear(state: State<RuntimeState>) {
 
 #[tauri::command]
 pub fn workspace_get_state(state: State<RuntimeState>) -> WorkspaceSnapshot {
-    state
+    let snap = state
         .workspace_fsm
         .lock()
         .unwrap()
         .snapshot()
         .cloned()
-        .unwrap_or_else(|| workspace_inputs(&state).derive())
+        .unwrap_or_else(|| workspace_inputs(&state).derive());
+    workspace_snapshot_for_ui(&state, snap)
 }
 
 // --- Проект (JSON) ---

@@ -1,6 +1,7 @@
 mod runtime_cmds;
 
 use runtime_cmds::{register_protocol_log_emitter, start_autoconnect, RuntimeState};
+use tauri::Emitter;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -71,7 +72,14 @@ pub fn run() {
             runtime_cmds::project_list_logs,
             runtime_cmds::pick_project_open_path,
             runtime_cmds::pick_project_save_path,
+            runtime_cmds::app_force_quit,
         ])
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.emit("app-close-requested", ());
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running rusefui");
 }

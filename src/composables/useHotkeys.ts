@@ -7,6 +7,7 @@ export const tabOrder = { value: [] as string[] };
 /** Коллбэк сохранения проекта — регистрируется из AppShell. */
 export const saveProjectCallback = { value: null as (() => void) | null };
 export const openProjectCallback = { value: null as (() => void) | null };
+export const burnCallback = { value: null as (() => void) | null };
 
 export function useGlobalHotkeys() {
   function onKeydown(e: KeyboardEvent) {
@@ -20,6 +21,11 @@ export function useGlobalHotkeys() {
       if (e.code === "KeyO") {
         e.preventDefault();
         openProjectCallback.value?.();
+        return;
+      }
+      if (e.code === "Enter") {
+        e.preventDefault();
+        burnCallback.value?.();
         return;
       }
     }

@@ -77,6 +77,8 @@ pub struct WorkspaceSnapshot {
     pub config_source: ConfigSource,
     pub config_loaded: bool,
     pub config_loading: bool,
+    /// RAM ECU изменена, flash ещё не записан (команда B).
+    pub burn_pending: bool,
     pub capabilities: WorkspaceCapabilities,
 }
 
@@ -156,6 +158,7 @@ pub fn derive_workspace(inputs: &WorkspaceInputs) -> WorkspaceSnapshot {
             config_source: ConfigSource::None,
             config_loaded: false,
             config_loading: false,
+            burn_pending: false,
             capabilities: WorkspaceCapabilities::gate(),
         };
     }
@@ -176,6 +179,7 @@ pub fn derive_workspace(inputs: &WorkspaceInputs) -> WorkspaceSnapshot {
         config_source,
         config_loaded: inputs.config.loaded,
         config_loading: inputs.config.loading,
+        burn_pending: false,
         capabilities,
     }
 }
