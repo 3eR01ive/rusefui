@@ -11,6 +11,7 @@ import { useDataContext } from "../../core/data-context";
 import { initOutputChannels, useOutputChannels } from "../../composables/useOutputChannels";
 import { initConfig, useConfig } from "../../composables/useConfig";
 import { drawDynoChart, type DynoRunPoint } from "../../composables/drawDynoChart";
+import { clampSmoothStrength, smoothDynoPoints } from "../../composables/smoothDynoCurve";
 import { useRustComponent } from "../../composables/useRustComponent";
 
 const props = defineProps<{
@@ -59,6 +60,18 @@ const minRpm = computed({
     void dispatch("set_options", { ignoreTpsMin: ignoreTpsMin.value, minRpm: v }),
 });
 
+/** Сила сглаживания отображения (0 = выкл, только Vue/canvas). */
+const smoothStrength = ref(0);
+
+watch(smoothStrength, (v) => {
+  const c = clampSmoothStrength(v);
+  if (c !== v) smoothStrength.value = c;
+});
+
+const chartPoints = computed(() =>
+  smoothDynoPoints(runPoints.value, smoothStrength.value),
+);
+
 const connected = computed(
   () => Boolean(state.value.connected ?? dataCtx.connection.value.connected),
 );
@@ -67,9 +80,9 @@ const configLoaded = computed(
 );
 
 const peakTorque = computed(() =>
-  runPoints.value.reduce((m, p) => Math.max(m, p.torqueNm), 0),
+  chartPoints.value.reduce((m, p) => Math.max(m, p.torqueNm), 0),
 );
-const peakHp = computed(() => runPoints.value.reduce((m, p) => Math.max(m, p.hp), 0));
+const peakHp = computed(() => chartPoints.value.reduce((m, p) => Math.max(m, p.hp), 0));
 
 const canStart = computed(
   () =>
@@ -111,7 +124,7 @@ function redraw(): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  drawDynoChart(ctx, w, h, runPoints.value);
+  drawDynoChart(ctx, w, h, chartPoints.value);
 }
 
 let redrawRaf = 0;
@@ -131,7 +144,9 @@ watch(
   { deep: true },
 );
 
-watch([runPoints, chartHeight, canvasWidth], () => scheduleRedraw(), { deep: true });
+watch([runPoints, chartPoints, chartHeight, canvasWidth, smoothStrength], () => scheduleRedraw(), {
+  deep: true,
+});
 
 onMounted(async () => {
   await Promise.all([initOutputChannels(), initConfig()]);
@@ -194,8 +209,20 @@ onUnmounted(() => {
           title="0 — не использовать; точки ниже порога не пишутся"
         />
       </label>
+      <label class="option-smooth">
+        <span>Сглаживание</span>
+        <input
+          v-model.number="smoothStrength"
+          type="range"
+          min="0"
+          max="20"
+          step="1"
+          :disabled="runPoints.length < 3"
+        />
+        <span class="smooth-value">{{ clampSmoothStrength(smoothStrength) }}</span>
+      </label>
       <p class="hint options-hint">
-        Расчёт HP/Nm в Rust (в потоке output poll). Мин. RPM: ждём разгона; при падении ниже — сброс.
+        Сглаживание только для графика (Vue): крайние точки фиксированы. 0 = сырая кривая.
       </p>
     </div>
 
@@ -221,6 +248,7 @@ onUnmounted(() => {
       <span>Пик Nm: <strong>{{ peakTorque.toFixed(1) }}</strong></span>
       <span>Пик HP: <strong>{{ peakHp.toFixed(1) }}</strong></span>
       <span>Точек: {{ runPoints.length }}</span>
+      <span v-if="smoothStrength > 0" class="peaks-smooth-hint">(пики по сглаженной кривой)</span>
     </div>
   </div>
 </template>
@@ -317,6 +345,33 @@ onUnmounted(() => {
   border: 1px solid var(--color-border-strong);
   background: var(--color-bg);
   color: var(--color-text);
+}
+
+.option-smooth {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+  flex: 1 1 12rem;
+  min-width: 10rem;
+}
+
+.option-smooth input[type="range"] {
+  flex: 1;
+  min-width: 5rem;
+}
+
+.smooth-value {
+  width: 1.5rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.peaks-smooth-hint {
+  font-size: 0.82rem;
+  color: var(--color-text-subtle);
 }
 
 .options-hint {
