@@ -38,6 +38,7 @@ pub fn run() {
             runtime_cmds::config_get_snapshot,
             runtime_cmds::config_list_fields,
             runtime_cmds::config_start_listener,
+            runtime_cmds::workspace_get_state,
             runtime_cmds::config_diff_get,
             runtime_cmds::config_diff_set_choice,
             runtime_cmds::config_diff_set_all,

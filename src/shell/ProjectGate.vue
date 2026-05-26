@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useProject } from "../composables/useProject";
+import { useFooterSlot } from "../composables/useAppFooter";
 
 const { createNewProject, openProject } = useProject();
 
@@ -27,6 +28,16 @@ function onCreate(): void {
 function onOpen(): void {
   void run(openProject);
 }
+
+const gateFooter = computed(() => {
+  if (error.value) return error.value;
+  if (busy.value) return "Ожидание диалога файла…";
+  return "Создайте или откройте проект";
+});
+useFooterSlot("gate:main", gateFooter, computed(() => ({
+  error: !!error.value,
+  priority: 40,
+})));
 </script>
 
 <template>
@@ -51,8 +62,6 @@ function onOpen(): void {
             Открыть проект…
           </button>
         </div>
-        <p v-if="busy" class="project-gate-hint">Ожидание диалога файла…</p>
-        <p v-if="error" class="project-gate-error" role="alert">{{ error }}</p>
       </div>
     </div>
   </Teleport>
@@ -140,21 +149,5 @@ function onOpen(): void {
 
 .btn.secondary:hover:not(:disabled) {
   border-color: var(--color-border-strong);
-}
-
-.project-gate-hint {
-  margin: 1rem 0 0;
-  font-size: 0.82rem;
-  color: var(--color-text-subtle);
-  font-style: italic;
-}
-
-.project-gate-error {
-  margin: 1rem 0 0;
-  padding: 0.5rem 0.65rem;
-  font-size: 0.85rem;
-  color: var(--color-error);
-  background: color-mix(in srgb, var(--color-error) 12%, transparent);
-  border-radius: var(--radius-sm);
 }
 </style>

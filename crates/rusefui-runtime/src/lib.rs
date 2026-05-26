@@ -10,6 +10,7 @@ mod project;
 mod ui_persist;
 mod protocol_log;
 mod runtime;
+mod workspace;
 pub mod components;
 pub mod session;
 pub mod sources;
@@ -54,4 +55,8 @@ pub use sources::output_data_log::output_logs_dir;
 pub use sources::output_timeline::{
     OutputTimeline, OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl,
     OutputTimelineViewQuery, TimelineFieldView, TimelineMode, TimelinePoint,
+};
+pub use workspace::{
+    ConfigSource, WorkspaceCapabilities, WorkspaceFsm, WorkspaceInputs, WorkspacePhase,
+    WorkspaceSnapshot, WorkspaceSyncPlan, derive_workspace,
 };

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { toRef } from "vue";
+import { computed } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useConfigGrid } from "../../composables/useConfigGrid";
 
@@ -11,7 +11,7 @@ const props = defineProps<{
   meta: ComponentMeta;
 }>();
 
-const propsRef = toRef(props, "props");
+const propsRef = computed(() => props.props);
 
 const {
   title,

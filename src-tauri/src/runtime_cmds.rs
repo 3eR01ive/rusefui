@@ -2,10 +2,11 @@ use rusefui_runtime::{
     compute_config_diff, default_log_path, AutoConnectManager, AutoConnectSnapshot,
     ComponentRuntime, CompositeSnapshot, CompositeTimelineStatus, CompositeTimelineView,
     CompositeTimelineViewQuery, ConfigDiffSnapshot, ConfigDiffStore, ConfigFieldInfo,
-    ConfigSnapshot, DiffSide, EcuSession, EcuSyncOnMount, OutputFieldInfo, OutputSnapshot,
-    OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl, ProjectInfo,
-    ProjectLogRef, ProjectStore, ProtocolLogEntry, ProtocolLogFilterSettings, ProtocolLogStore,
-    RusefuiProject,
+    ConfigSnapshot, ConfigSource, DiffSide, EcuSession, EcuSyncOnMount, OutputFieldInfo,
+    OutputSnapshot, OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl,
+    ProjectInfo, ProjectLogRef, ProjectStore, ProtocolLogEntry, ProtocolLogFilterSettings,
+    ProtocolLogStore, RusefuiProject, WorkspaceFsm, WorkspaceInputs, WorkspacePhase,
+    WorkspaceSnapshot,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -24,6 +25,7 @@ pub struct RuntimeState {
     pub autoconnect: Arc<AutoConnectManager>,
     pub project: Mutex<ProjectStore>,
     pub config_diff: Mutex<ConfigDiffStore>,
+    pub workspace_fsm: Mutex<WorkspaceFsm>,
     /// Последнее отправленное в UI `ecu-connection` (без дублей на каждый dispatch).
     last_ecu_connection_emit: Mutex<Option<EcuConnectionEvent>>,
 }
@@ -39,9 +41,34 @@ impl RuntimeState {
             autoconnect,
             project: Mutex::new(ProjectStore::new()),
             config_diff: Mutex::new(ConfigDiffStore::default()),
+            workspace_fsm: Mutex::new(WorkspaceFsm::new()),
             last_ecu_connection_emit: Mutex::new(None),
         }
     }
+}
+
+fn workspace_inputs(state: &RuntimeState) -> WorkspaceInputs {
+    WorkspaceInputs {
+        project: state.project.lock().unwrap().info(),
+        autoconnect: state.autoconnect.snapshot(),
+        ecu_connected: state.session.is_connected(),
+        config: state.session.config().snapshot(),
+    }
+}
+
+fn emit_workspace_state(app: &AppHandle, _state: &RuntimeState, snap: &WorkspaceSnapshot) {
+    let _ = app.emit("workspace-state", snap);
+}
+
+fn reconcile_workspace(state: &RuntimeState, app: &AppHandle) -> WorkspaceSnapshot {
+    let mut fsm = state.workspace_fsm.lock().unwrap();
+    let inputs = workspace_inputs(state);
+    let (snap, _plan, changed) = fsm.reconcile(&inputs);
+    drop(fsm);
+    if changed {
+        emit_workspace_state(app, state, &snap);
+    }
+    snap
 }
 
 fn emit_config_diff(app: &AppHandle, snap: &ConfigDiffSnapshot) {
@@ -98,6 +125,8 @@ fn emit_project(app: &AppHandle, state: &RuntimeState) {
 
 /// Сброс config/timeline в UI после смены проекта.
 fn emit_workspace_reset(app: &AppHandle, state: &RuntimeState) {
+    state.workspace_fsm.lock().unwrap().reset();
+    let _ = reconcile_workspace(state, app);
     emit_config(app, &state.session.config().snapshot());
     emit_output(app, &state.session.output().snapshot());
     emit_composite(app, &state.session.composite().snapshot());
@@ -238,14 +267,17 @@ fn build_ecu_connection_event(state: &RuntimeState) -> EcuConnectionEvent {
     }
 }
 
-/// Подключение ECU изменилось — `ecu-connection` только при смене + опционально sync.
+/// Подключение ECU изменилось — `ecu-connection` только при смене + пересчёт FSM + опциональный sync.
 pub fn schedule_ecu_notify(app: &AppHandle, sync_ecu: bool) {
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         let state = app.state::<RuntimeState>();
         emit_ecu_connection_if_changed(&app, &state);
-        if sync_ecu && state.session.is_connected() && !state.session.is_ecu_busy() {
+        let should_sync = sync_ecu && state.session.is_connected() && !state.session.is_ecu_busy();
+        if should_sync {
             sync_ecu_data(&state, &app);
+        } else {
+            let _ = reconcile_workspace(&state, &app);
         }
     });
 }
@@ -295,6 +327,7 @@ pub fn start_autoconnect(app: AppHandle) {
         ));
     schedule_ecu_notify(&app, false);
     schedule_autoconnect_ui(&app);
+    let _ = reconcile_workspace(&state, &app);
 }
 
 #[derive(Clone, Serialize)]
@@ -339,31 +372,17 @@ fn sync_output_poll_session(session: &Arc<EcuSession>, app: &AppHandle) {
     }
 }
 
-/// Снимок config из файла проекта (offline), не сбрасывать при отключённой ECU.
-fn snapshot_is_project_preview(snap: &ConfigSnapshot) -> bool {
-    snap.loaded && snap.read_only
-}
-
-fn stop_config_unless_project_preview(session: &EcuSession) {
-    let snap = session.config().snapshot();
-    if !snapshot_is_project_preview(&snap) {
-        session.config().stop();
-    }
-}
-
 fn sync_config_load(state: &RuntimeState, app: &AppHandle) {
-    if !state.session.is_connected() {
-        stop_config_unless_project_preview(&state.session);
-        emit_config_update(app, &state.session.config().snapshot());
+    let ws = reconcile_workspace(state, app);
+    if ws.phase != WorkspacePhase::EcuConnectedIdle {
         return;
     }
 
-    let snap = state.session.config().snapshot();
-    if snap.loaded || snap.loading {
+    let cfg = state.session.config().snapshot();
+    if cfg.loaded || cfg.loading {
         return;
     }
 
-    // Конфиг читается эксклюзивно — output/composite poll мешают (см. Java `readFullImageFromController`).
     state.session.output().stop();
     state.session.composite().stop();
 
@@ -375,31 +394,59 @@ fn sync_config_load(state: &RuntimeState, app: &AppHandle) {
             if snap.loaded {
                 let st = app.state::<RuntimeState>();
                 try_start_config_diff(&st, &app);
+                let _ = reconcile_workspace(&st, &app);
             }
             sync_output_poll_session(&session, &app);
         }
     });
 }
 
+/// Синхронизация подсистем по фазе workspace (стейт-машина).
 fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
-    if !state.session.is_connected() {
-        stop_config_unless_project_preview(&state.session);
-        state.session.output().stop();
-        state.session.composite().disable_on_ecu(&state.session);
-        state.session.composite().stop();
-        clear_config_diff(state, app);
-        emit_config_update(app, &state.session.config().snapshot());
-        emit_output(app, &state.session.output().snapshot());
-        emit_composite(app, &state.session.composite().snapshot());
-        return;
+    let ws = reconcile_workspace(state, app);
+
+    match ws.phase {
+        WorkspacePhase::Gate => {
+            state.session.config().stop();
+            state.session.output().stop();
+            state.session.composite().disable_on_ecu(&state.session);
+            state.session.composite().stop();
+            clear_config_diff(state, app);
+        }
+        WorkspacePhase::ProjectOnly | WorkspacePhase::EcuScanning => {
+            if ws.config_source == ConfigSource::EcuLive {
+                state.session.config().stop();
+                clear_config_diff(state, app);
+            }
+            state.session.output().stop();
+            state.session.composite().disable_on_ecu(&state.session);
+            state.session.composite().stop();
+        }
+        WorkspacePhase::EcuConnectedIdle => {
+            state.session.output().stop();
+            state.session.composite().stop();
+            sync_config_load(state, app);
+        }
+        WorkspacePhase::ConfigFromProject => {
+            if ws.capabilities.poll_output_channels {
+                sync_output_poll_session(&state.session, app);
+            } else {
+                state.session.output().stop();
+                emit_output(app, &state.session.output().snapshot());
+            }
+        }
+        WorkspacePhase::ConfigLoadingFromEcu => {
+            state.session.output().stop();
+            state.session.composite().stop();
+        }
+        WorkspacePhase::ConfigFromEcu => {
+            sync_output_poll_session(&state.session, app);
+        }
     }
 
-    let config_snap = state.session.config().snapshot();
-    if config_snap.loaded {
-        sync_output_poll_session(&state.session, app);
-    } else if !config_snap.loading {
-        sync_config_load(state, app);
-    }
+    emit_config_update(app, &state.session.config().snapshot());
+    emit_output(app, &state.session.output().snapshot());
+    emit_composite(app, &state.session.composite().snapshot());
 }
 
 fn protocol_log_emit_now_ms() -> u64 {
@@ -961,9 +1008,12 @@ pub struct ConfigSetScalarParams {
 
 /// Сессия потеряла project-preview (например, после гонки с загрузкой ECU) — восстановить из файла.
 fn try_apply_project_config_for_edit(state: &RuntimeState) -> Result<bool, String> {
+    let ws = workspace_inputs(state).derive();
+    if !ws.capabilities.edit_project_config {
+        return Ok(false);
+    }
     let store = state.project.lock().unwrap();
-    let info = store.info();
-    if info.path.is_none() || !info.has_ecu_config {
+    if store.info().path.is_none() {
         return Ok(false);
     }
     drop(store);
@@ -1201,6 +1251,19 @@ pub fn autoconnect_set_offline_mode(
 #[tauri::command]
 pub fn protocol_log_clear(state: State<RuntimeState>) {
     state.protocol_log.clear();
+}
+
+// --- Workspace (стейт-машина) ---
+
+#[tauri::command]
+pub fn workspace_get_state(state: State<RuntimeState>) -> WorkspaceSnapshot {
+    state
+        .workspace_fsm
+        .lock()
+        .unwrap()
+        .snapshot()
+        .cloned()
+        .unwrap_or_else(|| workspace_inputs(&state).derive())
 }
 
 // --- Проект (JSON) ---

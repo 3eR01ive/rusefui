@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watchEffect } from "vue";
 import TabWorkspace from "./TabWorkspace.vue";
 import ProtocolLogSheet from "./ProtocolLogSheet.vue";
 import ConfigLoadOverlay from "./ConfigLoadOverlay.vue";
@@ -13,12 +13,14 @@ import {
 import { initConfig, useConfig } from "../composables/useConfig";
 import { useProtocolLog, useProtocolLogLifecycle } from "../composables/useProtocolLog";
 import { useEcuConnection } from "../composables/useEcuConnection";
+import { initProject, useProject } from "../composables/useProject";
 import {
-  initProject,
-  projectInitialized,
-  useProject,
-} from "../composables/useProject";
+  initWorkspaceState,
+  useWorkspaceState,
+  type WorkspacePhase,
+} from "../composables/useWorkspaceState";
 import ProjectGate from "./ProjectGate.vue";
+import { useAppFooter, setFooterLed } from "../composables/useAppFooter";
 
 const dataCtx = createDataContext();
 provideDataContext(dataCtx);
@@ -26,16 +28,17 @@ provideDataContext(dataCtx);
 const appTitle = ref("rusefui");
 const { offlineMode, scanning, busyPorts, setOfflineMode } = useEcuConnection(dataCtx);
 const { togglePanel } = useProtocolLog();
-const { snapshot: configSnap, burn: burnConfig } = useConfig();
+const { burn: burnConfig } = useConfig();
 const {
   info: projectInfo,
-  hasOpenProject,
   createNewProject,
   openProject,
   saveProject,
   saveProjectAs,
   captureEcuConfig,
 } = useProject();
+const { showMainUi, canBurn: workspaceCanBurn, snapshot: workspaceSnap } =
+  useWorkspaceState();
 
 const burning = ref(false);
 const burnError = ref<string | null>(null);
@@ -43,6 +46,56 @@ const loadingLog = ref(false);
 const logLoadError = ref<string | null>(null);
 const projectError = ref<string | null>(null);
 const projectBusy = ref(false);
+
+const { setFooterStatus } = useAppFooter();
+
+watchEffect(() => {
+  if (!showMainUi.value) {
+    setFooterStatus("app:project", null);
+    setFooterStatus("app:ecu", null);
+    setFooterStatus("app:burn", null);
+    setFooterStatus("app:log", null);
+    setFooterStatus("app:project-error", null);
+    setFooterStatus("app:burning", null);
+    setFooterStatus("app:loading-log", null);
+    setFooterLed("off");
+    return;
+  }
+
+  const projectParts: string[] = [projectInfo.value.name];
+  if (projectInfo.value.dirty && projectInfo.value.path) projectParts.push("несохранён");
+  const phase = workspacePhaseLabel(workspaceSnap.value.phase);
+  if (phase) projectParts.push(phase);
+  setFooterStatus("app:project", projectParts.join(" · "), { priority: 10 });
+
+  if (scanning.value && !offlineMode.value) {
+    setFooterLed("scanning", "Поиск ECU…");
+    setFooterStatus("app:ecu", null);
+  } else if (busyPorts.value.length && !offlineMode.value) {
+    setFooterLed("error", `Порт занят: ${busyPorts.value.join(", ")}`);
+    setFooterStatus("app:ecu", `Порт занят (${busyPorts.value.join(", ")}) — отключите TunerStudio`, {
+      error: true,
+      priority: 30,
+    });
+  } else if (dataCtx.connection.value.connected) {
+    setFooterLed("connected", "ECU подключена");
+    setFooterStatus("app:ecu", null);
+  } else if (offlineMode.value) {
+    setFooterLed("off", "Offline");
+    setFooterStatus("app:ecu", null);
+  } else {
+    setFooterLed("off", "нет ECU");
+    setFooterStatus("app:ecu", null);
+  }
+
+  setFooterStatus("app:burn", burnError.value, { error: true, priority: 100 });
+  setFooterStatus("app:log", logLoadError.value, { error: true, priority: 100 });
+  setFooterStatus("app:project-error", projectError.value, { error: true, priority: 100 });
+  setFooterStatus("app:burning", burning.value ? "Burn…" : null, { priority: 15 });
+  setFooterStatus("app:loading-log", loadingLog.value ? "Загрузка лога…" : null, {
+    priority: 15,
+  });
+});
 
 async function onOpenOutputLog(): Promise<void> {
   logLoadError.value = null;
@@ -58,18 +111,14 @@ async function onOpenOutputLog(): Promise<void> {
 }
 
 const canBurn = computed(
-  () =>
-    dataCtx.connection.value.connected &&
-    configSnap.value.loaded &&
-    !configSnap.value.loading &&
-    !configSnap.value.readOnly &&
-    !burning.value,
+  () => workspaceCanBurn.value && !burning.value,
 );
 
 useProtocolLogLifecycle();
 
 onMounted(async () => {
   await initProject();
+  await initWorkspaceState();
   await initConfig();
   void initOutputChannels();
   void initOutputTimeline();
@@ -115,6 +164,27 @@ function onCaptureConfigToProject(): void {
   void runProjectAction(() => captureEcuConfig());
 }
 
+function workspacePhaseLabel(phase: WorkspacePhase): string {
+  switch (phase) {
+    case "gate":
+      return "";
+    case "projectOnly":
+      return "проект";
+    case "ecuScanning":
+      return "поиск ECU";
+    case "ecuConnectedIdle":
+      return "ECU";
+    case "configFromProject":
+      return "config⊂проект";
+    case "configLoadingFromEcu":
+      return "загрузка…";
+    case "configFromEcu":
+      return "config⊂ECU";
+    default:
+      return "";
+  }
+}
+
 async function onBurn() {
   if (!canBurn.value) return;
   burning.value = true;
@@ -130,9 +200,9 @@ async function onBurn() {
 </script>
 
 <template>
-  <ProjectGate v-if="projectInitialized && !hasOpenProject" />
+  <ProjectGate v-if="!showMainUi" />
 
-  <div v-if="projectInitialized && hasOpenProject" class="app-shell">
+  <div v-if="showMainUi" class="app-shell">
     <header class="app-header">
       <div class="brand-mark" aria-hidden="true" />
       <div>
@@ -201,12 +271,6 @@ async function onBurn() {
           />
           <span>Offline mode</span>
         </label>
-        <span v-if="scanning && !offlineMode" class="scan-hint" aria-live="polite">
-          Поиск ECU…
-        </span>
-        <span v-else-if="busyPorts.length && !offlineMode" class="scan-hint busy" aria-live="polite">
-          Порт занят ({{ busyPorts.join(", ") }}) — отключите TunerStudio
-        </span>
         <button
           type="button"
           class="log-btn"
@@ -247,11 +311,8 @@ async function onBurn() {
           </button>
         </template>
       </div>
-      <p v-if="burnError" class="burn-error" role="alert">{{ burnError }}</p>
-      <p v-if="logLoadError" class="burn-error" role="alert">{{ logLoadError }}</p>
     </header>
     <TabWorkspace />
-    <p v-if="projectError" class="project-error">{{ projectError }}</p>
     <ProtocolLogSheet />
     <ConfigLoadOverlay />
     <ConfigDiffModal />
@@ -263,7 +324,7 @@ async function onBurn() {
   width: 100%;
   max-width: var(--content-max);
   margin: 0;
-  padding: var(--app-padding-y) var(--app-padding-x) calc(var(--app-padding-y) + 0.5rem);
+  padding: var(--app-padding-y) var(--app-padding-x) 0.5rem;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -344,15 +405,6 @@ async function onBurn() {
   justify-content: flex-end;
 }
 
-.project-error {
-  margin: 0 0.5rem;
-  padding: 0.35rem 0.6rem;
-  font-size: 0.82rem;
-  color: var(--color-error);
-  background: color-mix(in srgb, var(--color-error) 12%, transparent);
-  border-radius: var(--radius-sm);
-}
-
 .offline-toggle {
   display: inline-flex;
   align-items: center;
@@ -365,17 +417,6 @@ async function onBurn() {
 
 .offline-toggle input {
   accent-color: var(--color-accent);
-}
-
-.scan-hint {
-  font-size: 0.72rem;
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
-.scan-hint.busy {
-  color: var(--color-error);
-  font-style: normal;
 }
 
 .log-btn {
@@ -415,13 +456,6 @@ async function onBurn() {
 .burn-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-}
-
-.burn-error {
-  flex: 1 1 100%;
-  margin: 0.35rem 0 0;
-  font-size: 0.82rem;
-  color: var(--color-error);
 }
 
 .conn-badge {

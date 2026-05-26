@@ -2,6 +2,7 @@ import { shallowRef, readonly } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { isConfigMergeBlocking } from "./useConfigDiff";
+import { workspaceSnapshot } from "./useWorkspaceState";
 
 export interface ConfigSnapshot {
   connected: boolean;
@@ -148,15 +149,13 @@ export function configCanView(s: ConfigSnapshot): boolean {
   return s.loaded && !s.loading;
 }
 
-export function configCanEdit(
-  s: ConfigSnapshot,
-  project?: { path: string | null; hasEcuConfig: boolean },
-): boolean {
+export function configCanEdit(s: ConfigSnapshot): boolean {
   if (isConfigMergeBlocking()) return false;
   if (!s.loaded || s.loading) return false;
-  if (s.connected && !s.readOnly) return true;
-  if (s.readOnly) return true;
-  return Boolean(project?.path && project.hasEcuConfig);
+  const caps = workspaceSnapshot.value.capabilities;
+  if (caps.editProjectConfig) return true;
+  if (caps.writeConfigToEcu) return true;
+  return false;
 }
 
 export function configIsProjectMode(s: ConfigSnapshot): boolean {

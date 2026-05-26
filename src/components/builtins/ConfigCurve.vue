@@ -4,7 +4,6 @@ import {
   onMounted,
   onUnmounted,
   ref,
-  toRef,
   watch,
 } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
@@ -22,7 +21,7 @@ const props = defineProps<{
   meta: ComponentMeta;
 }>();
 
-const propsRef = toRef(props, "props");
+const propsRef = computed(() => props.props);
 
 const {
   title,

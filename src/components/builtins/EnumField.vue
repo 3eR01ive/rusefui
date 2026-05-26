@@ -3,7 +3,6 @@ import { computed, ref, watch } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import type { DataBinding } from "../../core/types";
 import { configCanEdit, configCanView, initConfig, useConfig } from "../../composables/useConfig";
-import { useProject } from "../../composables/useProject";
 
 interface EnumOptionProp {
   value: number;
@@ -21,7 +20,6 @@ const props = defineProps<{
 void initConfig();
 
 const { snapshot, getField, getFieldInfo, setField } = useConfig();
-const { info: projectInfo } = useProject();
 
 const bind = computed(() => props.instance.bind as DataBinding | undefined);
 const fieldName = computed(() => bind.value?.field ?? "");
@@ -82,7 +80,7 @@ const disabled = computed(
   () =>
     !fieldName.value ||
     options.value.length === 0 ||
-    !configCanEdit(snapshot.value, projectInfo.value) ||
+    !configCanEdit(snapshot.value) ||
     saving.value,
 );
 
