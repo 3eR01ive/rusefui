@@ -66,7 +66,6 @@ const {
   hasFile: timelineHasFile,
   queryView: queryTimelineView,
   controlView: controlTimelineView,
-  pickAndLoadFile,
   refreshStatus: refreshTimelineStatus,
 } = useCompositeTimeline();
 const { linked: viewportLinked, setLinked: setViewportLinked } = useLogViewportLink();
@@ -76,8 +75,6 @@ const { snapshot: outputChannelsSnapshot } = useOutputChannels();
 const { getProjectUi, setProjectUi } = useProject();
 
 const reviewEvents = ref<CompositeEvent[]>([]);
-const openingLog = ref(false);
-const openLogError = ref<string | null>(null);
 const dataCtx = useDataContext();
 const connected = computed(() => dataCtx.connection.value.connected);
 const loggingEnabled = computed(() => snapshot.value.loggingEnabled);
@@ -540,7 +537,7 @@ function draw() {
           ? "Не удалось прочитать trigger CSV (нужен trigger_*.csv)"
           : events.length < 2
             ? connected.value
-              ? "Старт — запись; Стоп — просмотр. Или «Лог триггера…»"
+              ? "Старт — запись; Стоп — просмотр"
               : "Подключите ECU"
             : "Мало точек в окне — двойной щелчок";
     ctx.fillText(msg, LABEL_W + 8, cssH / 2);
@@ -763,28 +760,6 @@ function onPlotDblClick() {
   resetViewWindow();
 }
 
-async function onOpenCompositeLog() {
-  openingLog.value = true;
-  openLogError.value = null;
-  try {
-    const st = await pickAndLoadFile();
-    if (!st) return;
-    await controlTimelineView({
-      followLive: false,
-      viewEndSec: st.dataMaxSec,
-      spanSec: Math.max(MIN_VIEW_MS / 1000, st.dataMaxSec - st.dataMinSec),
-    });
-    await refreshReviewEvents();
-    if (reviewEvents.value.length < 2) {
-      openLogError.value =
-        "Файл загружен, но в окне просмотра мало точек. Двойной щелчок по графику — показать весь файл. Нужен trigger_*.csv из composite_logs, не output_*.csv.";
-    }
-  } catch (e) {
-    openLogError.value = e instanceof Error ? e.message : String(e);
-  } finally {
-    openingLog.value = false;
-  }
-}
 
 function clearAutoStopTimer() {
   if (autoStopTimer != null) {
@@ -1111,17 +1086,8 @@ const statusLine = computed(() => {
           @click="crankEdgeMode = m"
         >{{ m === 'both' ? '↕' : m === 'rise' ? '↑' : '↓' }}</button>
       </div>
-      <button
-        type="button"
-        class="btn secondary"
-        :disabled="openingLog || loggerBusy"
-        @click="onOpenCompositeLog"
-      >
-        Лог триггера…
-      </button>
     </div>
     <p v-if="loggerError" class="cc-error">{{ loggerError }}</p>
-    <p v-if="openLogError" class="cc-error">{{ openLogError }}</p>
     <div
       ref="plotWrapRef"
       class="cc-plot-wrap"
@@ -1129,7 +1095,7 @@ const statusLine = computed(() => {
       :title="
         viewportLinked && reviewMode
           ? 'Связано с Log: ◀▶, колёсико и перетаскивание на графике Log'
-          : 'Запись → стоп → весь захват. Колёсико — масштаб, перетаскивание — перемотка, двойной щелчок — весь захват'
+          : 'Колёсико — масштаб, перетаскивание — перемотка, двойной щелчок — весь захват'
       "
       @wheel.prevent="onCanvasWheel"
       @dblclick="onPlotDblClick"
