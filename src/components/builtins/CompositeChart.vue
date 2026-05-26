@@ -47,9 +47,6 @@ const props = defineProps<{
 
 const maxWindowMs = computed(() => Math.max(5, Number(props.props.windowMs ?? 300)));
 const chartHeight = computed(() => Math.max(120, Number(props.props.height ?? 220)));
-const defaultAutoStopSec = computed(() =>
-  Math.max(0, Math.round(Number(props.props.autoStopSec ?? 0))),
-);
 
 const MIN_VIEW_MS = 5;
 const ZOOM_STEP = 1.12;
@@ -82,15 +79,26 @@ const dataCtx = useDataContext();
 const connected = computed(() => dataCtx.connection.value.connected);
 const loggingEnabled = computed(() => snapshot.value.loggingEnabled);
 const reviewMode = computed(() => timelineHasFile.value && !loggingEnabled.value);
-const autostart = ref(false);
 const alignTdc = ref(false);
-const autoStopSec = ref(0);
+const CAPTURE_DURATIONS_MS = [500, 1000, 3000] as const;
+const captureDurationMs = ref(1000);
+const durationDropdownOpen = ref(false);
 const autoStopRemainingSec = ref<number | null>(null);
 const loggerBusy = ref(false);
 const loggerError = ref<string | null>(null);
 
 let autoStopTimer: ReturnType<typeof setInterval> | null = null;
 let autoStopDeadlineMs = 0;
+
+function formatDuration(ms: number): string {
+  return ms < 1000 ? `${ms} мс` : `${ms / 1000} сек`;
+}
+
+function selectDuration(ms: number) {
+  captureDurationMs.value = ms;
+  durationDropdownOpen.value = false;
+  void persistUiSettings();
+}
 
 const plotWrapRef = ref<HTMLDivElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -714,14 +722,14 @@ function clearAutoStopTimer() {
 
 function startAutoStopTimer() {
   clearAutoStopTimer();
-  const sec = Math.round(autoStopSec.value);
-  if (sec <= 0) return;
+  const ms = captureDurationMs.value;
+  if (ms <= 0) return;
 
-  autoStopDeadlineMs = Date.now() + sec * 1000;
-  autoStopRemainingSec.value = sec;
+  autoStopDeadlineMs = Date.now() + ms;
+  autoStopRemainingSec.value = Math.ceil(ms / 1000);
 
   autoStopTimer = setInterval(() => {
-    const left = Math.ceil((autoStopDeadlineMs - Date.now()) / 1000);
+    const left = autoStopDeadlineMs - Date.now();
     if (left <= 0) {
       clearAutoStopTimer();
       if (loggingEnabled.value && !loggerBusy.value) {
@@ -729,8 +737,8 @@ function startAutoStopTimer() {
       }
       return;
     }
-    autoStopRemainingSec.value = left;
-  }, 250);
+    autoStopRemainingSec.value = Math.ceil(left / 1000);
+  }, 100);
 }
 
 async function applyLoggingEnabled(on: boolean) {
@@ -772,46 +780,26 @@ async function applyLoggingEnabled(on: boolean) {
 async function loadUiFromProject() {
   try {
     const ui = await getProjectUi<CompositeChartUiSettings>(PERSIST_KEY_COMPOSITE_CHART);
-    autostart.value = Boolean(ui.autostart);
     alignTdc.value = Boolean(ui.alignTdc);
-    if (ui.autoStopSec != null && ui.autoStopSec >= 0) {
-      autoStopSec.value = Math.round(ui.autoStopSec);
-    } else {
-      autoStopSec.value = defaultAutoStopSec.value;
+    if (ui.captureDurationMs != null && CAPTURE_DURATIONS_MS.includes(ui.captureDurationMs as (typeof CAPTURE_DURATIONS_MS)[number])) {
+      captureDurationMs.value = ui.captureDurationMs;
     }
   } catch {
-    autostart.value = false;
     alignTdc.value = false;
-    autoStopSec.value = defaultAutoStopSec.value;
   }
 }
 
 function persistUiSettings() {
   void setProjectUi(PERSIST_KEY_COMPOSITE_CHART, {
-    autostart: autostart.value,
     alignTdc: alignTdc.value,
-    autoStopSec: Math.max(0, Math.round(autoStopSec.value)),
+    captureDurationMs: captureDurationMs.value,
   });
 }
 
-watch(autostart, persistUiSettings);
 watch(alignTdc, () => {
   persistUiSettings();
   scheduleDraw();
 });
-watch(autoStopSec, () => {
-  persistUiSettings();
-  if (loggingEnabled.value) startAutoStopTimer();
-});
-
-watch(
-  [connected, autostart],
-  ([conn, auto]) => {
-    if (conn && auto && !loggingEnabled.value && !loggerBusy.value) {
-      void applyLoggingEnabled(true);
-    }
-  },
-);
 
 watch(
   [reviewMode, () => timelineStatus.value.viewEndSec, () => timelineStatus.value.spanSec],
@@ -861,9 +849,6 @@ onMounted(async () => {
   await listen("output-timeline-status", refreshIfLinked);
   await listen("composite-timeline-status", refreshIfLinked);
   await loadUiFromProject();
-  if (connected.value && autostart.value && !loggingEnabled.value) {
-    await applyLoggingEnabled(true);
-  }
   const canvas = canvasRef.value;
   if (canvas) {
     ro = new ResizeObserver(scheduleDraw);
@@ -876,10 +861,16 @@ onMounted(async () => {
   }
   resetViewWindow();
   scheduleDraw();
+  document.addEventListener("click", onDocClick);
 });
+
+function onDocClick() {
+  durationDropdownOpen.value = false;
+}
 
 onUnmounted(() => {
   clearAutoStopTimer();
+  document.removeEventListener("click", onDocClick);
   if (loggingEnabled.value) {
     void setLoggingEnabled(false);
   }
@@ -952,30 +943,46 @@ const statusLine = computed(() => {
       <span class="cc-status" :class="{ warn: !connected }">{{ statusLine }}</span>
     </header>
     <div class="cc-toolbar">
-      <button
-        type="button"
-        class="btn primary"
-        :disabled="!connected || loggerBusy || loggingEnabled"
-        @click="applyLoggingEnabled(true)"
-      >
-        Старт
-      </button>
-      <button
-        type="button"
-        class="btn secondary"
-        :disabled="!connected || loggerBusy || !loggingEnabled"
-        @click="applyLoggingEnabled(false)"
-      >
-        Стоп
-      </button>
-      <label class="cc-autostart">
-        <input v-model="autostart" type="checkbox" :disabled="loggerBusy" />
-        Автозапуск при подключении
-      </label>
-      <label class="cc-autostart">
-        <input v-model="alignTdc" type="checkbox" :disabled="loggerBusy" />
-        Выравнивать по TDC
-      </label>
+      <!-- Старт / Стоп split-кнопка -->
+      <div class="btn-split">
+        <button
+          type="button"
+          class="btn split-main"
+          :class="loggingEnabled ? 'stop' : 'primary'"
+          :disabled="!connected || loggerBusy"
+          @click="applyLoggingEnabled(!loggingEnabled)"
+        >
+          <template v-if="loggingEnabled">
+            Стоп
+            <span v-if="autoStopRemainingSec != null" class="split-remain">{{ autoStopRemainingSec }}с</span>
+          </template>
+          <template v-else>
+            Старт · {{ formatDuration(captureDurationMs) }}
+          </template>
+        </button>
+        <button
+          v-if="!loggingEnabled"
+          type="button"
+          class="btn primary split-arrow"
+          :disabled="!connected || loggerBusy"
+          aria-label="Выбрать длительность записи"
+          @click.stop="durationDropdownOpen = !durationDropdownOpen"
+        >
+          ▾
+        </button>
+        <div v-if="durationDropdownOpen" class="split-dropdown" @click.stop>
+          <button
+            v-for="d in CAPTURE_DURATIONS_MS"
+            :key="d"
+            type="button"
+            class="split-opt"
+            :class="{ active: d === captureDurationMs }"
+            @click="selectDuration(d)"
+          >
+            {{ formatDuration(d) }}
+          </button>
+        </div>
+      </div>
       <label class="cc-autostart">
         <input
           type="checkbox"
@@ -983,7 +990,7 @@ const statusLine = computed(() => {
           :disabled="loggerBusy"
           @change="onViewportLinkChange(($event.target as HTMLInputElement).checked)"
         />
-        Одна шкала с Log (elapsed_sec)
+        Одна шкала с Log
       </label>
       <button
         type="button"
@@ -993,19 +1000,6 @@ const statusLine = computed(() => {
       >
         Лог триггера…
       </button>
-      <label class="cc-timer">
-        <span>Стоп через</span>
-        <input
-          v-model.number="autoStopSec"
-          type="number"
-          min="0"
-          max="86400"
-          step="1"
-          :disabled="loggerBusy"
-          title="0 — без автоматического стопа"
-        />
-        <span>с</span>
-      </label>
     </div>
     <p v-if="loggerError" class="cc-error">{{ loggerError }}</p>
     <p v-if="openLogError" class="cc-error">{{ openLogError }}</p>
@@ -1120,23 +1114,76 @@ const statusLine = computed(() => {
   margin: 0;
 }
 
-.cc-timer {
+/* ---- split-кнопка Старт ---- */
+.btn-split {
+  position: relative;
   display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.75rem;
-  color: var(--color-fg-muted);
-  cursor: default;
 }
 
-.cc-timer input {
-  width: 4.25rem;
-  padding: 0.2rem 0.35rem;
-  font-size: 0.75rem;
+.btn-split .split-main {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  border-right: 1px solid rgba(255 255 255 / 0.25) !important;
+}
+
+/* когда стрелка скрыта (в режиме Стоп) — правый радиус возвращаем */
+.btn-split .split-main:last-child {
+  border-radius: var(--radius-sm);
+  border-right: none !important;
+}
+
+.cc-toolbar .btn.stop {
+  background: var(--color-error, #ef4444);
+  color: #fff;
+  border-color: transparent;
+}
+
+.split-remain {
+  margin-left: 0.35rem;
+  opacity: 0.75;
+  font-size: 0.7em;
+  font-variant-numeric: tabular-nums;
+}
+
+.btn-split .split-arrow {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.65rem;
+  line-height: 1;
+}
+
+.split-dropdown {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  z-index: 200;
+  background: var(--color-bg-elevated, #1e1e2e);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  background: var(--color-bg);
-  color: var(--color-fg);
+  box-shadow: 0 4px 12px rgba(0 0 0 / 0.35);
+  min-width: 7rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.split-opt {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.75rem;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--color-fg, #e2e8f0);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.split-opt:hover {
+  background: var(--color-bg-muted, #2a2a3e);
+}
+
+.split-opt.active {
+  color: var(--color-accent, #3b82f6);
+  font-weight: 600;
 }
 
 .cc-title {

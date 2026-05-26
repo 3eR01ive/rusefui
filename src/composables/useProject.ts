@@ -7,8 +7,11 @@ export const PERSIST_KEY_OUTPUT_CHART = "output-chart";
 export const PERSIST_KEY_COMPOSITE_CHART = "composite-chart";
 
 export interface CompositeChartUiSettings {
-  autostart: boolean;
   alignTdc?: boolean;
+  captureDurationMs?: number;
+  /** @deprecated — kept for reading old project files */
+  autostart?: boolean;
+  /** @deprecated — kept for reading old project files */
   autoStopSec?: number;
 }
 
