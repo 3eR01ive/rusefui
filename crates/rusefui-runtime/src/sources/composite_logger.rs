@@ -9,6 +9,7 @@ use std::time::Duration;
 use rusefi_protocol::{parse_composite_records, CompositeParseState, CompositeRecord};
 use serde::Serialize;
 
+use super::composite_data_log::CompositeDataLogWriter;
 use crate::session::EcuSession;
 
 /// Пока буфер на ECU не готов — короткая пауза и снова read.
@@ -248,7 +249,12 @@ impl CompositeLoggerSource {
         self.logger_enabled_on_ecu.store(false, Ordering::SeqCst);
     }
 
-    pub fn start<F>(&self, session: Arc<EcuSession>, on_tick: F) -> Result<(), String>
+    pub fn start<F>(
+        &self,
+        session: Arc<EcuSession>,
+        log_writer: Option<Arc<Mutex<CompositeDataLogWriter>>>,
+        on_tick: F,
+    ) -> Result<(), String>
     where
         F: Fn(CompositeSnapshot) + Send + Sync + 'static,
     {
@@ -296,6 +302,7 @@ impl CompositeLoggerSource {
                     snapshot,
                     ring,
                     parse_state,
+                    log_writer,
                     next_tdc_cycle,
                     on_tick,
                 );
@@ -313,6 +320,7 @@ fn poll_loop(
     snapshot: Arc<RwLock<CompositeSnapshot>>,
     ring: Arc<Mutex<VecDeque<CompositeEventJson>>>,
     parse_state: Arc<Mutex<CompositeParseState>>,
+    log_writer: Option<Arc<Mutex<CompositeDataLogWriter>>>,
     next_tdc_cycle: Arc<AtomicU64>,
     on_tick: Arc<dyn Fn(CompositeSnapshot) + Send + Sync>,
 ) {
@@ -382,6 +390,12 @@ fn poll_loop(
                         let gap_ms = append_chunk(&mut r, &batch, &next_tdc_cycle);
                         trim_ring_cap(&mut r);
                         drop(r);
+
+                        if let Some(log) = &log_writer {
+                            if let Ok(mut w) = log.lock() {
+                                w.write_events(&batch);
+                            }
+                        }
 
                         chunks_received.fetch_add(1, Ordering::Relaxed);
                         {

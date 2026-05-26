@@ -234,7 +234,12 @@ impl ProjectStore {
         Ok(())
     }
 
-    pub fn add_log(&self, path: impl AsRef<Path>, label: Option<String>) {
+    pub fn add_log(
+        &self,
+        path: impl AsRef<Path>,
+        label: Option<String>,
+        kind: Option<&str>,
+    ) {
         let path = path.as_ref();
         let path_str = path.display().to_string();
         let mut doc = self.doc.lock().unwrap();
@@ -245,7 +250,7 @@ impl ProjectStore {
             path: path_str,
             label,
             added_at_ms: now_ms(),
-            kind: "output_csv".into(),
+            kind: kind.unwrap_or("output_csv").into(),
         });
         doc.touch();
         *self.dirty.lock().unwrap() = true;

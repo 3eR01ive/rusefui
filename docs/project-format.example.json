@@ -22,12 +22,20 @@
       "label": "сессия 2025-05-26",
       "addedAtMs": 1730000002000,
       "kind": "output_csv"
+    },
+    {
+      "path": "/home/user/.local/share/rusefui/composite_logs/trigger_….csv",
+      "label": "trigger 2025-05-26",
+      "addedAtMs": 1730000003000,
+      "kind": "composite_csv"
     }
   ],
   "ui": {
     "sections": {
       "composite-chart": {
-        "autostart": false
+        "autostart": false,
+        "alignTdc": false,
+        "autoStopSec": 0
       },
       "output-chart": {
         "windowSeconds": 30,

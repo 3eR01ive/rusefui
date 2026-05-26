@@ -240,6 +240,17 @@ impl OutputTimeline {
         self.status()
     }
 
+    /// Текущее окно просмотра (для синхронизации с composite timeline).
+    pub fn view_control_snapshot(&self) -> OutputTimelineViewControl {
+        OutputTimelineViewControl {
+            follow_live: Some(self.follow_live),
+            view_end_sec: Some(self.view_end_sec),
+            span_sec: Some(self.span_sec),
+            pan_sec: None,
+            zoom_factor: None,
+        }
+    }
+
     pub fn status(&self) -> OutputTimelineStatus {
         OutputTimelineStatus {
             mode: self.mode(),
@@ -316,6 +327,10 @@ impl OutputTimeline {
 
     pub fn live_sec(&self) -> f64 {
         self.effective_live_sec()
+    }
+
+    pub fn session_start_ms(&self) -> u64 {
+        self.session_start_ms
     }
 
     fn effective_live_sec(&self) -> f64 {

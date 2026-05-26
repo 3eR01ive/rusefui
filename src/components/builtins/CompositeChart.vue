@@ -8,6 +8,14 @@ import {
   type CompositeEvent,
 } from "../../composables/useCompositeLogger";
 import {
+  initCompositeTimeline,
+  useCompositeTimeline,
+  compositeTimelineLoadEpoch,
+} from "../../composables/useCompositeTimeline";
+import { useLogViewportLink } from "../../composables/useLogViewportLink";
+import { initOutputTimeline, useOutputTimeline } from "../../composables/useOutputTimeline";
+import { listen } from "@tauri-apps/api/event";
+import {
   PERSIST_KEY_COMPOSITE_CHART,
   useProject,
   type CompositeChartUiSettings,
@@ -54,10 +62,26 @@ const viewAnchorT0Us = ref<number | null>(null);
 const userAdjustedView = ref(false);
 
 const { snapshot, setLoggingEnabled } = useCompositeLogger();
+const {
+  status: timelineStatus,
+  hasFile: timelineHasFile,
+  queryView: queryTimelineView,
+  controlView: controlTimelineView,
+  pickAndLoadFile,
+  refreshStatus: refreshTimelineStatus,
+} = useCompositeTimeline();
+const { linked: viewportLinked, setLinked: setViewportLinked } = useLogViewportLink();
+const { status: outputTimelineStatus, controlView: controlOutputView } =
+  useOutputTimeline();
 const { getProjectUi, setProjectUi } = useProject();
+
+const reviewEvents = ref<CompositeEvent[]>([]);
+const openingLog = ref(false);
+const openLogError = ref<string | null>(null);
 const dataCtx = useDataContext();
 const connected = computed(() => dataCtx.connection.value.connected);
 const loggingEnabled = computed(() => snapshot.value.loggingEnabled);
+const reviewMode = computed(() => timelineHasFile.value && !loggingEnabled.value);
 const autostart = ref(false);
 const alignTdc = ref(false);
 const autoStopSec = ref(0);
@@ -94,8 +118,52 @@ function maxSpanMsFor(events: readonly CompositeEvent[]): number {
   return maxViewSpanMs(events, maxWindowMs.value, MIN_VIEW_MS);
 }
 
+function chartEvents(): CompositeEvent[] {
+  if (reviewMode.value) {
+    return reviewEvents.value;
+  }
+  return snapshot.value.events as CompositeEvent[];
+}
+
 function dataT0(events: readonly CompositeEvent[]): number {
   return events[0]!.tUs;
+}
+
+function outputLogViewport() {
+  const st = outputTimelineStatus.value;
+  return { viewEndSec: st.viewEndSec, spanSec: st.spanSec };
+}
+
+async function refreshReviewEvents(): Promise<void> {
+  if (!reviewMode.value) {
+    reviewEvents.value = [];
+    return;
+  }
+  const wrap = plotWrapRef.value;
+  const w = Math.max(64, wrap?.clientWidth ?? 800);
+  const view = await queryTimelineView(
+    w,
+    viewportLinked.value ? outputLogViewport() : undefined,
+  );
+  reviewEvents.value = view.events;
+  scheduleDraw();
+}
+
+function currentTimeRangeFromOutput(): ChartTimeRange {
+  const st = outputTimelineStatus.value;
+  const spanUs = Math.max(1, Math.round(st.spanSec * 1_000_000));
+  const tEnd = Math.round(st.viewEndSec * 1_000_000);
+  const t0 = tEnd - spanUs;
+  return { t0, tEnd: t0 + spanUs, spanUs };
+}
+
+function currentTimeRangeFromTimeline(): ChartTimeRange | null {
+  const st = timelineStatus.value;
+  if (st.eventCount < 2) return null;
+  const spanUs = Math.max(1, Math.round(st.spanSec * 1_000_000));
+  const tEnd = Math.round(st.viewEndSec * 1_000_000);
+  const t0 = tEnd - spanUs;
+  return { t0, tEnd: t0 + spanUs, spanUs };
 }
 
 function captureStartT0(events: readonly CompositeEvent[]): number {
@@ -107,7 +175,18 @@ function captureStartT0(events: readonly CompositeEvent[]): number {
 }
 
 /** Весь склеенный захват в окне просмотра. */
-function fitFullCapture(events: readonly CompositeEvent[]) {
+async function fitFullCapture(events: readonly CompositeEvent[]) {
+  if (reviewMode.value) {
+    const st = timelineStatus.value;
+    const span = Math.max(MIN_VIEW_MS / 1000, st.dataMaxSec - st.dataMinSec);
+    await controlTimelineView({
+      followLive: false,
+      viewEndSec: st.dataMaxSec,
+      spanSec: span,
+    });
+    await refreshReviewEvents();
+    return;
+  }
   if (events.length < 2) return;
   viewAnchorT0Us.value = captureStartT0(events);
   viewSpanMs.value = Math.max(MIN_VIEW_MS, bufferSpanMs(events));
@@ -122,6 +201,12 @@ function fitGrowingCapture(events: readonly CompositeEvent[]) {
 }
 
 function currentTimeRange(events: readonly CompositeEvent[]): ChartTimeRange | null {
+  if (reviewMode.value && viewportLinked.value) {
+    return currentTimeRangeFromOutput();
+  }
+  if (reviewMode.value) {
+    return currentTimeRangeFromTimeline();
+  }
   if (events.length < 2) return null;
   const dataStart = dataT0(events);
   const dataEnd = events[events.length - 1]!.tUs;
@@ -140,9 +225,9 @@ function currentTimeRange(events: readonly CompositeEvent[]): ChartTimeRange | n
 }
 
 function resetViewWindow() {
-  const events = snapshot.value.events as CompositeEvent[];
+  const events = chartEvents();
   if (events.length >= 2) {
-    fitFullCapture(events);
+    void fitFullCapture(events);
   } else {
     viewSpanMs.value = maxWindowMs.value;
     viewAnchorT0Us.value = null;
@@ -183,15 +268,6 @@ watch(
   },
 );
 
-watch(loggingEnabled, (on, wasOn) => {
-  if (wasOn && !on) {
-    const events = snapshot.value.events as CompositeEvent[];
-    if (events.length >= 2) {
-      fitFullCapture(events);
-      scheduleDraw();
-    }
-  }
-});
 
 function cssColor(canvas: HTMLCanvasElement, varName: string, fallback: string): string {
   const v = getComputedStyle(canvas).getPropertyValue(varName).trim();
@@ -383,8 +459,9 @@ function draw() {
   ctx.fillStyle = cssColor(canvas, "--color-bg", "#0f1115");
   ctx.fillRect(0, 0, cssW, cssH);
 
-  const events = snapshot.value.events as CompositeEvent[];
+  const events = chartEvents();
   const timeRange = currentTimeRange(events);
+  const sharedAxis = reviewMode.value && viewportLinked.value;
   const view = buildChartView(
     events,
     viewSpanMs.value,
@@ -393,21 +470,26 @@ function draw() {
     LABEL_W,
     CHANNELS.length,
     timeRange,
+    { allowEmptyWindow: sharedAxis },
   );
 
   if (!view) {
     ctx.fillStyle = cssColor(canvas, "--color-gray", "#888");
     ctx.font = "12px system-ui, sans-serif";
     ctx.textAlign = "left";
-    ctx.fillText(
-      events.length < 2
-        ? connected.value
-          ? "Ожидание событий триггера (composite logger)…"
-          : "Подключите ECU"
-        : "Мало точек в окне",
-      LABEL_W + 8,
-      cssH / 2,
-    );
+    const msg =
+      sharedAxis
+        ? "Нет trigger-событий в этом окне Log (общая шкала elapsed_sec)"
+        : reviewMode.value && timelineStatus.value.eventCount >= 2
+        ? "Двойной щелчок — показать весь trigger-лог"
+        : reviewMode.value
+          ? "Не удалось прочитать trigger CSV (нужен trigger_*.csv)"
+          : events.length < 2
+            ? connected.value
+              ? "Старт — запись; Стоп — просмотр. Или «Лог триггера…»"
+              : "Подключите ECU"
+            : "Мало точек в окне — двойной щелчок";
+    ctx.fillText(msg, LABEL_W + 8, cssH / 2);
     return;
   }
 
@@ -446,11 +528,22 @@ function plotWidthPx(): number {
   return Math.max(1, wrap.getBoundingClientRect().width - LABEL_W - 8);
 }
 
-function panByClientDelta(deltaX: number) {
-  const events = snapshot.value.events as CompositeEvent[];
-  if (events.length < 2) return;
+async function panByClientDelta(deltaX: number) {
+  const events = chartEvents();
   const range = currentTimeRange(events);
   if (!range) return;
+  if (!viewportLinked.value && events.length < 2) return;
+
+  if (reviewMode.value) {
+    const panSec = (-deltaX / plotWidthPx()) * (range.spanUs / 1_000_000);
+    if (viewportLinked.value) {
+      await controlOutputView({ panSec });
+    } else {
+      await controlTimelineView({ panSec });
+    }
+    await refreshReviewEvents();
+    return;
+  }
 
   const dtUs = (-deltaX / plotWidthPx()) * range.spanUs;
   const dataStart = dataT0(events);
@@ -468,8 +561,9 @@ function panByClientDelta(deltaX: number) {
 }
 
 function onPointerDown(e: PointerEvent) {
-  const events = snapshot.value.events as CompositeEvent[];
-  if (e.button !== 0 || events.length < 2) return;
+  const events = chartEvents();
+  if (e.button !== 0) return;
+  if (!viewportLinked.value && events.length < 2) return;
   const range = currentTimeRange(events);
   if (!range) return;
 
@@ -530,12 +624,22 @@ function plotFracFromClientX(clientX: number): number {
 }
 
 /** Колёсико вверх (deltaY < 0) — уже окно. */
-function zoomAtPointer(clientX: number, zoomIn: boolean) {
-  const events = snapshot.value.events as CompositeEvent[];
-  if (events.length < 2) return;
-
+async function zoomAtPointer(clientX: number, zoomIn: boolean) {
+  const events = chartEvents();
   const range = currentTimeRange(events);
   if (!range) return;
+  if (!viewportLinked.value && events.length < 2) return;
+
+  if (reviewMode.value) {
+    const factor = zoomIn ? ZOOM_STEP : 1 / ZOOM_STEP;
+    if (viewportLinked.value) {
+      await controlOutputView({ zoomFactor: factor });
+    } else {
+      await controlTimelineView({ zoomFactor: factor });
+    }
+    await refreshReviewEvents();
+    return;
+  }
 
   const spanUs = range.spanUs;
   const minSpanUs = Math.round(MIN_VIEW_MS * 1000);
@@ -564,15 +668,39 @@ function zoomAtPointer(clientX: number, zoomIn: boolean) {
 }
 
 function onCanvasWheel(e: WheelEvent) {
-  if ((snapshot.value.events as CompositeEvent[]).length < 2) return;
+  const events = chartEvents();
+  if (!viewportLinked.value && events.length < 2) return;
   if (e.deltaY === 0) return;
   e.preventDefault();
   zoomAtPointer(e.clientX, e.deltaY < 0);
 }
 
 function onPlotDblClick() {
+  if (viewportLinked.value && reviewMode.value) return;
   resetViewWindow();
-  scheduleDraw();
+}
+
+async function onOpenCompositeLog() {
+  openingLog.value = true;
+  openLogError.value = null;
+  try {
+    const st = await pickAndLoadFile();
+    if (!st) return;
+    await controlTimelineView({
+      followLive: false,
+      viewEndSec: st.dataMaxSec,
+      spanSec: Math.max(MIN_VIEW_MS / 1000, st.dataMaxSec - st.dataMinSec),
+    });
+    await refreshReviewEvents();
+    if (reviewEvents.value.length < 2) {
+      openLogError.value =
+        "Файл загружен, но в окне просмотра мало точек. Двойной щелчок по графику — показать весь файл. Нужен trigger_*.csv из composite_logs, не output_*.csv.";
+    }
+  } catch (e) {
+    openLogError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    openingLog.value = false;
+  }
 }
 
 function clearAutoStopTimer() {
@@ -617,9 +745,20 @@ async function applyLoggingEnabled(on: boolean) {
       startAutoStopTimer();
     } else {
       clearAutoStopTimer();
-      const events = snapshot.value.events as CompositeEvent[];
-      if (events.length >= 2) {
-        fitFullCapture(events);
+      await refreshTimelineStatus();
+      if (reviewMode.value) {
+        const st = timelineStatus.value;
+        await controlTimelineView({
+          followLive: false,
+          viewEndSec: st.dataMaxSec,
+          spanSec: Math.max(MIN_VIEW_MS / 1000, st.dataMaxSec - st.dataMinSec),
+        });
+        await refreshReviewEvents();
+      } else {
+        const events = snapshot.value.events as CompositeEvent[];
+        if (events.length >= 2) {
+          await fitFullCapture(events);
+        }
       }
     }
   } catch (e) {
@@ -674,8 +813,53 @@ watch(
   },
 );
 
+watch(
+  [reviewMode, () => timelineStatus.value.viewEndSec, () => timelineStatus.value.spanSec],
+  () => {
+    void refreshReviewEvents();
+  },
+);
+
+watch(compositeTimelineLoadEpoch, () => {
+  void refreshReviewEvents();
+});
+
+async function onViewportLinkChange(checked: boolean) {
+  await setViewportLinked(checked);
+  if (checked && reviewMode.value) {
+    await refreshReviewEvents();
+  }
+}
+
+watch(
+  () =>
+    viewportLinked.value
+      ? `${outputTimelineStatus.value.viewEndSec}:${outputTimelineStatus.value.spanSec}:${outputTimelineStatus.value.followLive}:${outputTimelineStatus.value.liveSec}`
+      : "",
+  () => {
+    if (viewportLinked.value && reviewMode.value) {
+      void refreshReviewEvents();
+    }
+  },
+);
+
+watch(loggingEnabled, (on, wasOn) => {
+  if (wasOn && !on) {
+    void refreshTimelineStatus().then(() => refreshReviewEvents());
+  }
+});
+
 onMounted(async () => {
   await initCompositeLogger();
+  await initCompositeTimeline();
+  await initOutputTimeline();
+  const refreshIfLinked = () => {
+    if (viewportLinked.value && reviewMode.value) {
+      void refreshReviewEvents();
+    }
+  };
+  await listen("output-timeline-status", refreshIfLinked);
+  await listen("composite-timeline-status", refreshIfLinked);
   await loadUiFromProject();
   if (connected.value && autostart.value && !loggingEnabled.value) {
     await applyLoggingEnabled(true);
@@ -723,7 +907,17 @@ const statusLine = computed(() => {
   const s = snapshot.value;
   const ev = s.events as CompositeEvent[];
   const parts: string[] = [];
-  if (s.loggingEnabled) parts.push("log on");
+  if (viewportLinked.value && reviewMode.value) {
+    const o = outputTimelineStatus.value;
+    const t0 = (o.viewEndSec - o.spanSec) * 1000;
+    const t1 = o.viewEndSec * 1000;
+    parts.push(`↔ Log ${t0.toFixed(0)}–${t1.toFixed(0)} ms`);
+  }
+  if (reviewMode.value) {
+    parts.push(`файл ${timelineStatus.value.eventCount} evt`);
+  } else if (s.loggingEnabled) {
+    parts.push("log on");
+  }
   if (autoStopRemainingSec.value != null && autoStopRemainingSec.value > 0) {
     parts.push(`стоп ${autoStopRemainingSec.value} с`);
   }
@@ -782,6 +976,23 @@ const statusLine = computed(() => {
         <input v-model="alignTdc" type="checkbox" :disabled="loggerBusy" />
         Выравнивать по TDC
       </label>
+      <label class="cc-autostart">
+        <input
+          type="checkbox"
+          :checked="viewportLinked"
+          :disabled="loggerBusy"
+          @change="onViewportLinkChange(($event.target as HTMLInputElement).checked)"
+        />
+        Одна шкала с Log (elapsed_sec)
+      </label>
+      <button
+        type="button"
+        class="btn secondary"
+        :disabled="openingLog || loggerBusy"
+        @click="onOpenCompositeLog"
+      >
+        Лог триггера…
+      </button>
       <label class="cc-timer">
         <span>Стоп через</span>
         <input
@@ -797,10 +1008,16 @@ const statusLine = computed(() => {
       </label>
     </div>
     <p v-if="loggerError" class="cc-error">{{ loggerError }}</p>
+    <p v-if="openLogError" class="cc-error">{{ openLogError }}</p>
     <div
       ref="plotWrapRef"
       class="cc-plot-wrap"
-      title="Запись → стоп → весь захват. Колёсико — масштаб, перетаскивание — перемотка, двойной щелчок — весь захват"
+      :class="{ 'cc-plot-wrap--linked': viewportLinked && reviewMode }"
+      :title="
+        viewportLinked && reviewMode
+          ? 'Связано с Log: ◀▶, колёсико и перетаскивание на графике Log'
+          : 'Запись → стоп → весь захват. Колёсико — масштаб, перетаскивание — перемотка, двойной щелчок — весь захват'
+      "
       @wheel.prevent="onCanvasWheel"
       @dblclick="onPlotDblClick"
     >
@@ -812,12 +1029,24 @@ const statusLine = computed(() => {
       />
     </div>
     <p v-if="snapshot.lastError" class="cc-error">{{ snapshot.lastError }}</p>
-    <p v-else-if="connected && !loggingEnabled && snapshot.events.length < 2" class="cc-hint">
-      «Старт» — запись с ECU, «Стоп» — склеить сессию и просмотреть весь захват (зум, перемотка).
+    <p v-else-if="connected && !loggingEnabled && !reviewMode" class="cc-hint">
+      Запись: «Старт» → «Стоп» в этой панели (Trigger logger). Файл trigger_*.csv появится здесь
+      автоматически. Кнопка «Лог output» в шапке — только RPM/CLT, не триггер.
     </p>
-    <p v-else-if="!loggingEnabled && snapshot.events.length >= 2" class="cc-hint">
-      Захват готов: {{ snapshot.events.length }} точек, {{ snapshot.recordedSpanMs.toFixed(0) }} ms.
-      Колёсико — масштаб, перетаскивание — перемотка, двойной щелчок — показать весь захват.
+    <p v-else-if="reviewMode && viewportLinked" class="cc-hint">
+      Общая шкала с Log:
+      {{ ((outputTimelineStatus.viewEndSec - outputTimelineStatus.spanSec) * 1000).toFixed(0) }}–{{
+        (outputTimelineStatus.viewEndSec * 1000).toFixed(0)
+      }}
+      ms (elapsed_sec). Нет trigger-данных в окне — пустой график. Управление — на Log (◀▶, зум, drag).
+    </p>
+    <p v-else-if="reviewMode && reviewEvents.length >= 2" class="cc-hint">
+      Trigger-лог: {{ timelineStatus.eventCount }} событий. «Одна шкала с Log» — то же окно времени, что на
+      output (мс от начала сессии).
+    </p>
+    <p v-else-if="reviewMode" class="cc-hint">
+      Файл trigger загружен ({{ timelineStatus.eventCount }} событий), но в окне мало точек.
+      Двойной щелчок по графику — показать всё.
     </p>
     <p v-else class="cc-hint">
       Идёт запись: куски ECU склеиваются в одну сессию. «Стоп» — остановить приём и просмотреть
@@ -931,6 +1160,11 @@ const statusLine = computed(() => {
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
   overflow: hidden;
+}
+
+.cc-plot-wrap--linked {
+  border-color: var(--color-accent, #2563eb);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-accent, #2563eb) 35%, transparent);
 }
 
 .cc-canvas {

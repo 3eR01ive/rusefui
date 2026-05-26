@@ -138,17 +138,20 @@ export function buildChartView(
   labelW: number,
   channelCount: number,
   timeRange: ChartTimeRange | null,
+  options?: { allowEmptyWindow?: boolean },
 ): ChartView | null {
-  if (events.length < 2 || cssW <= 0 || cssH <= 0 || !timeRange) return null;
+  if (cssW <= 0 || cssH <= 0 || !timeRange) return null;
+  const allowEmpty = options?.allowEmptyWindow ?? false;
+  if (events.length < 2 && !allowEmpty) return null;
 
   const { t0, spanUs } = timeRange;
   const span = Math.max(1, spanUs);
   const tEnd = t0 + span;
   const plotLeft = labelW;
   const plotW = cssW - labelW - 8;
-  const dataEnd = events[events.length - 1]!.tUs;
-  const visible = sliceEventsForRange(events, t0, Math.min(tEnd, dataEnd));
-  if (visible.length < 1) return null;
+  const visible =
+    events.length > 0 ? sliceEventsForRange(events, t0, tEnd) : [];
+  if (visible.length < 1 && !allowEmpty) return null;
 
   const tdcMarkers = findTdcMarkers(events).filter((m) => m.tUs >= t0 && m.tUs <= tEnd);
 

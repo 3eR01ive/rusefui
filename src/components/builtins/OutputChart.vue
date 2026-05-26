@@ -26,7 +26,14 @@ import {
   useOutputTimeline,
   type OutputTimelineView,
 } from "../../composables/useOutputTimeline";
-import { drawLogPanelsChart, type LogGraphPanelSpec, type LogTraceSpec } from "../../composables/drawTimeSeriesChart";
+import { useLogViewportLink } from "../../composables/useLogViewportLink";
+import {
+  drawLogPanelsChart,
+  logPanelMargins,
+  plotXToTime,
+  type LogGraphPanelSpec,
+  type LogTraceSpec,
+} from "../../composables/drawTimeSeriesChart";
 import type { TimeSeries } from "../../composables/useTimeSeriesBuffer";
 
 interface LogGraphGroup {
@@ -78,18 +85,21 @@ const ZOOM_STEP_MAX = 40;
 const settingsExpanded = ref(false);
 
 function clampZoomStepPct(n: number): number {
-  if (!Number.isFinite(n)) return 10;
+  if (!Number.isFinite(n)) return 1;
   return Math.min(ZOOM_STEP_MAX, Math.max(ZOOM_STEP_MIN, Math.round(n)));
 }
 
 function zoomStepFromProps(): number {
   const fromProps = Number(props.props.zoomStepPercent);
   if (Number.isFinite(fromProps)) return clampZoomStepPct(fromProps);
-  return 10;
+  return 1;
 }
 
 const zoomStepPct = ref(zoomStepFromProps());
-const zoomStepFactor = computed(() => 1 + zoomStepPct.value / 100);
+const ZOOM_SPEED = 6;
+const zoomStepFactor = computed(() => 1 + (zoomStepPct.value * ZOOM_SPEED) / 100);
+/** Колёсико — мельче кнопок ±, но с тем же коэффициентом скорости. */
+const wheelZoomFactor = computed(() => 1 + (zoomStepPct.value * ZOOM_SPEED) / 1000);
 
 function onZoomStepChange(): void {
   zoomStepPct.value = clampZoomStepPct(zoomStepPct.value);
@@ -142,6 +152,7 @@ const {
   loadEpoch,
   valueRangeForPoints,
 } = useOutputTimeline();
+const { linked: viewportLinked, setLinked: setViewportLinked } = useLogViewportLink();
 
 const graphGroups = ref<LogGraphGroup[]>([
   { id: "g1", fieldNames: [...defaultFields.value] },
@@ -405,8 +416,18 @@ const setupSummary = computed(() => {
   parts.push(`${gr || graphGroups.value.length} граф.`);
   parts.push(`окно ${timelineStatus.value.spanSec.toFixed(0)} с`);
   if (!timelineStatus.value.followLive) parts.push("пауза");
+  if (viewportLinked.value) {
+    const o = timelineStatus.value;
+    const t0 = (o.viewEndSec - o.spanSec) * 1000;
+    const t1 = o.viewEndSec * 1000;
+    parts.push(`↔ Trigger ${t0.toFixed(0)}–${t1.toFixed(0)} ms`);
+  }
   return parts.join(" · ");
 });
+
+async function onViewportLinkChange(checked: boolean) {
+  await setViewportLinked(checked);
+}
 
 const filteredFields = computed(() => {
   const q = fieldFilter.value.trim().toLowerCase();
@@ -635,7 +656,16 @@ async function panTimeline(deltaSec: number): Promise<void> {
 }
 
 async function zoomTimeline(factor: number): Promise<void> {
-  await controlView({ zoomFactor: factor });
+  const { tMin, tMax } = displayedTimeWindow();
+  const span = Math.max(tMax - tMin, 1e-9);
+  const center = (tMin + tMax) / 2;
+  const newSpan = span / factor;
+  cachedView = null;
+  await controlView({
+    followLive: false,
+    spanSec: newSpan,
+    viewEndSec: center + newSpan / 2,
+  });
   await refreshTimelineStatus();
   await redrawNow();
 }
@@ -654,8 +684,13 @@ const chartHover = ref(false);
 const chartDragging = ref(false);
 /** X курсора в координатах canvas (CSS px) для кроссхайра. */
 const crosshairX = ref<number | null>(null);
+const CLICK_PAN_THRESHOLD_PX = 5;
+
+let chartPointerDown = false;
 let dragStartX = 0;
+let dragStartY = 0;
 let dragStartViewEnd = 0;
+let dragStartTMin = 0;
 let panRaf = 0;
 let pendingViewEnd: number | null = null;
 let wheelRaf = 0;
@@ -673,29 +708,53 @@ async function toggleFollowLive(): Promise<void> {
   await redrawNow();
 }
 
-async function zoomAtPointer(clientX: number, zoomFactor: number): Promise<void> {
-  const wrap = canvasWrapRef.value;
-  if (!wrap || !canPlotTimeline()) return;
-
-  const rect = wrap.getBoundingClientRect();
-  const frac =
-    rect.width > 0
-      ? Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
-      : 1;
-
-  let viewEnd = timelineStatus.value.viewEndSec;
-  if (timelineStatus.value.followLive) {
-    viewEnd = timelineLiveSec();
+function chartMargins() {
+  let maxTraces = 1;
+  for (const g of graphGroups.value) {
+    if (g.fieldNames.length > maxTraces) maxTraces = g.fieldNames.length;
   }
-  const span = timelineStatus.value.spanSec;
-  const tAnchor = viewEnd - span + frac * span;
+  return logPanelMargins(maxTraces);
+}
+
+/** Ось времени, как на canvas (из последнего query_view), не «сырой» span/viewEnd. */
+function displayedTimeWindow(): { tMin: number; tMax: number } {
+  const view = lastView.value;
+  if (view) {
+    return { tMin: view.tMin, tMax: view.tMax };
+  }
+  const st = timelineStatus.value;
+  let tMax = st.followLive ? timelineLiveSec() : st.viewEndSec;
+  let tMin = tMax - st.spanSec;
+  if (st.followLive && tMax < st.spanSec) {
+    tMin = 0;
+    tMax = st.spanSec;
+  }
+  return { tMin, tMax };
+}
+
+function clientXToPlotTime(clientX: number): number | null {
+  const wrap = canvasWrapRef.value;
+  if (!wrap) return null;
+  const x = clientX - wrap.getBoundingClientRect().left;
+  const w = measureCanvasWidth();
+  const { tMin, tMax } = displayedTimeWindow();
+  return plotXToTime(x, w, chartMargins(), tMin, tMax);
+}
+
+async function zoomAtPointer(clientX: number, zoomFactor: number): Promise<void> {
+  if (!canPlotTimeline()) return;
+
+  const { tMin, tMax } = displayedTimeWindow();
+  const span = Math.max(tMax - tMin, 1e-9);
+  const tCursor = clientXToPlotTime(clientX) ?? tMin + span * 0.5;
+  const frac = Math.min(1, Math.max(0, (tCursor - tMin) / span));
   const newSpan = span / zoomFactor;
 
   cachedView = null;
   await controlView({
     followLive: false,
     spanSec: newSpan,
-    viewEndSec: tAnchor + frac * newSpan,
+    viewEndSec: tCursor + (1 - frac) * newSpan,
   });
   await refreshTimelineStatus();
   scheduleRedraw();
@@ -719,7 +778,7 @@ function scheduleWheelZoom(clientX: number, factor: number): void {
 function onCanvasWheel(e: WheelEvent): void {
   if (!canPlotTimeline()) return;
   e.preventDefault();
-  const step = zoomStepFactor.value;
+  const step = wheelZoomFactor.value;
   const factor = e.deltaY < 0 ? step : 1 / step;
   scheduleWheelZoom(e.clientX, factor);
 }
@@ -747,26 +806,48 @@ async function onChartPointerDown(e: PointerEvent): Promise<void> {
   if (!wrap) return;
   wrap.setPointerCapture(e.pointerId);
 
-  if (timelineStatus.value.followLive) {
-    await controlView({ followLive: false, viewEndSec: timelineLiveSec() });
-    await refreshTimelineStatus();
-  }
-
+  chartPointerDown = true;
+  chartDragging.value = false;
   dragStartX = e.clientX;
-  dragStartViewEnd = timelineStatus.value.viewEndSec;
-  chartDragging.value = true;
+  dragStartY = e.clientY;
+  const win = displayedTimeWindow();
+  dragStartTMin = win.tMin;
+  dragStartViewEnd = win.tMax;
   crosshairX.value = null;
   e.preventDefault();
 }
 
+async function startChartPanDrag(): Promise<void> {
+  if (chartDragging.value) return;
+  chartDragging.value = true;
+  if (timelineStatus.value.followLive) {
+    await controlView({ followLive: false, viewEndSec: timelineLiveSec() });
+    await refreshTimelineStatus();
+    const win = displayedTimeWindow();
+    dragStartTMin = win.tMin;
+    dragStartViewEnd = win.tMax;
+  }
+}
+
 function onChartPointerMove(e: PointerEvent): void {
-  if (chartDragging.value) {
-    const w = measureCanvasWidth();
-    const span = timelineStatus.value.spanSec;
+  if (chartPointerDown) {
     const dx = e.clientX - dragStartX;
-    pendingViewEnd = dragStartViewEnd - (dx / Math.max(w, 1)) * span;
-    schedulePanApply();
-    return;
+    const dy = e.clientY - dragStartY;
+    if (
+      !chartDragging.value &&
+      dx * dx + dy * dy > CLICK_PAN_THRESHOLD_PX * CLICK_PAN_THRESHOLD_PX
+    ) {
+      void startChartPanDrag();
+    }
+    if (chartDragging.value) {
+      const w = measureCanvasWidth();
+      const margins = chartMargins();
+      const plotW = Math.max(1, w - margins.left - margins.right);
+      const span = Math.max(dragStartViewEnd - dragStartTMin, 1e-9);
+      pendingViewEnd = dragStartViewEnd - (dx / plotW) * span;
+      schedulePanApply();
+      return;
+    }
   }
   if (!chartHover.value || !canPlotTimeline()) return;
   updateCrosshairFromEvent(e);
@@ -775,21 +856,34 @@ function onChartPointerMove(e: PointerEvent): void {
 
 function onChartPointerLeave(_e: PointerEvent): void {
   chartHover.value = false;
-  if (!chartDragging.value) {
+  if (!chartDragging.value && !chartPointerDown) {
     crosshairX.value = null;
     scheduleRedraw(true);
   }
 }
 
-async function endChartDrag(e: PointerEvent): Promise<void> {
-  if (!chartDragging.value) return;
-  chartDragging.value = false;
+async function onChartPointerUp(e: PointerEvent): Promise<void> {
+  if (!chartPointerDown) return;
+  chartPointerDown = false;
   canvasWrapRef.value?.releasePointerCapture(e.pointerId);
-  if (pendingViewEnd !== null) {
-    await applyPendingPan();
+
+  const dx = e.clientX - dragStartX;
+  const dy = e.clientY - dragStartY;
+  const isClick = dx * dx + dy * dy <= CLICK_PAN_THRESHOLD_PX * CLICK_PAN_THRESHOLD_PX;
+
+  if (chartDragging.value) {
+    chartDragging.value = false;
+    if (pendingViewEnd !== null) {
+      await applyPendingPan();
+    }
+    await refreshTimelineStatus();
+    await redrawNow();
+    return;
   }
-  await refreshTimelineStatus();
-  await redrawNow();
+
+  if (isClick && e.button === 0 && clientXToPlotTime(e.clientX) !== null) {
+    await zoomAtPointer(e.clientX, zoomStepFactor.value);
+  }
 }
 
 function onChartKeyDown(e: KeyboardEvent): void {
@@ -1132,6 +1226,17 @@ watch(chartHeight, () => scheduleRedraw());
           >
             +
           </button>
+          <label
+            class="log-viewport-link"
+            title="Trigger-график показывает то же окно elapsed_sec (пусто, если данных нет)"
+          >
+            <input
+              type="checkbox"
+              :checked="viewportLinked"
+              @change="onViewportLinkChange(($event.target as HTMLInputElement).checked)"
+            />
+            ↔ Trigger
+          </label>
         </div>
         <button type="button" class="btn-clear btn-clear--mini" title="Live вкл/выкл (пробел)" @click="toggleFollowLive">
           ↻
@@ -1323,13 +1428,13 @@ watch(chartHeight, () => scheduleRedraw());
       ref="canvasWrapRef"
       tabindex="0"
       :class="{ 'canvas-wrap--dragging': chartDragging, 'canvas-wrap--live': timelineStatus.followLive }"
-      title="Колёсико — масштаб, перетаскивание — время, пробел — live"
+      title="Клик — зум в точку, колёсико — масштаб, перетаскивание — время, пробел — live"
       @pointerenter="chartHover = true"
       @pointerleave="onChartPointerLeave"
       @pointerdown="onChartPointerDown"
       @pointermove="onChartPointerMove"
-      @pointerup="endChartDrag"
-      @pointercancel="endChartDrag"
+      @pointerup="onChartPointerUp"
+      @pointercancel="onChartPointerUp"
       @wheel.prevent="onCanvasWheel"
     >
       <canvas ref="canvasRef" class="chart-canvas" />
@@ -1399,6 +1504,17 @@ watch(chartHeight, () => scheduleRedraw());
   display: inline-flex;
   gap: 0.15rem;
   align-items: center;
+}
+
+.log-viewport-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  margin-left: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--color-text-subtle);
+  cursor: pointer;
+  user-select: none;
 }
 
 .zoom-step {
@@ -1822,7 +1938,7 @@ watch(chartHeight, () => scheduleRedraw());
 }
 
 .canvas-wrap:not(.canvas-wrap--dragging) {
-  cursor: crosshair;
+  cursor: zoom-in;
 }
 
 .canvas-wrap {

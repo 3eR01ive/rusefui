@@ -1,6 +1,7 @@
 use rusefui_runtime::{
     compute_config_diff, default_log_path, AutoConnectManager, AutoConnectSnapshot,
-    ComponentRuntime, CompositeSnapshot, ConfigDiffSnapshot, ConfigDiffStore, ConfigFieldInfo,
+    ComponentRuntime, CompositeSnapshot, CompositeTimelineStatus, CompositeTimelineView,
+    CompositeTimelineViewQuery, ConfigDiffSnapshot, ConfigDiffStore, ConfigFieldInfo,
     ConfigSnapshot, DiffSide, EcuSession, EcuSyncOnMount, OutputFieldInfo, OutputSnapshot,
     OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl, ProjectInfo,
     ProjectLogRef, ProjectStore, ProtocolLogEntry, ProtocolLogFilterSettings, ProtocolLogStore,
@@ -154,6 +155,14 @@ fn emit_composite(app: &AppHandle, snapshot: &CompositeSnapshot) {
     let snapshot = snapshot.clone();
     tauri::async_runtime::spawn(async move {
         let _ = app.emit("composite-logger", snapshot);
+    });
+}
+
+fn emit_composite_timeline(app: &AppHandle, status: &CompositeTimelineStatus) {
+    let app = app.clone();
+    let status = status.clone();
+    tauri::async_runtime::spawn(async move {
+        let _ = app.emit("composite-timeline-status", status);
     });
 }
 
@@ -625,15 +634,33 @@ pub fn composite_set_enabled(
         if state.session.config().snapshot().loading {
             return Err("Дождитесь окончания загрузки config".into());
         }
+        let log = state.session.open_composite_log()?;
         let app_emit = app.clone();
         let session = Arc::clone(&state.session);
-        state.session.composite().start(session, move |snap| {
+        state.session.composite().start(session, Some(log), move |snap| {
             emit_composite(&app_emit, &snap);
         })?;
+        emit_composite_timeline(&app, &state.session.composite_timeline_status());
     } else {
         state.session.composite().disable_on_ecu(&state.session);
         state.session.composite().stop();
+        if let Ok(Some(path)) = state.session.close_composite_log() {
+            state
+                .project
+                .lock()
+                .unwrap()
+                .add_log(
+                    std::path::Path::new(&path),
+                    None,
+                    Some("composite_csv"),
+                );
+            emit_project(&app, &state);
+        }
         emit_composite(&app, &state.session.composite().snapshot());
+        if state.session.log_viewport_linked() {
+            state.session.sync_composite_viewport_from_output();
+        }
+        emit_composite_timeline(&app, &state.session.composite_timeline_status());
     }
     Ok(state.session.composite().snapshot())
 }
@@ -641,6 +668,95 @@ pub fn composite_set_enabled(
 #[tauri::command]
 pub fn composite_set_max_window_ms(max_window_ms: f64, state: State<RuntimeState>) {
     state.session.composite().set_max_window_ms(max_window_ms);
+}
+
+#[tauri::command]
+pub fn composite_timeline_status(state: State<RuntimeState>) -> CompositeTimelineStatus {
+    state.session.composite_timeline_status()
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompositeTimelineQueryParams {
+    pub pixel_width: u32,
+    pub view_end_sec: Option<f64>,
+    pub span_sec: Option<f64>,
+}
+
+#[tauri::command]
+pub fn composite_timeline_query_view(
+    state: State<RuntimeState>,
+    params: CompositeTimelineQueryParams,
+) -> CompositeTimelineView {
+    state.session.composite_timeline_query(CompositeTimelineViewQuery {
+        pixel_width: params.pixel_width,
+        view_end_sec: params.view_end_sec,
+        span_sec: params.span_sec,
+    })
+}
+
+#[tauri::command]
+pub fn composite_timeline_set_view(
+    state: State<RuntimeState>,
+    params: OutputTimelineControlParams,
+    app: AppHandle,
+) -> CompositeTimelineStatus {
+    let st = state.session.composite_timeline_control(params.ctrl);
+    emit_composite_timeline(&app, &st);
+    if state.session.log_viewport_linked() {
+        let _ = app.emit(
+            "output-timeline-status",
+            state.session.output_timeline_status(),
+        );
+    }
+    st
+}
+
+#[tauri::command]
+pub fn composite_timeline_load_file(
+    state: State<RuntimeState>,
+    path: String,
+    app: AppHandle,
+) -> Result<CompositeTimelineStatus, String> {
+    let st = state
+        .session
+        .composite_timeline_load_file(std::path::PathBuf::from(path))?;
+    emit_composite_timeline(&app, &st);
+    Ok(st)
+}
+
+#[tauri::command]
+pub fn log_viewport_set_linked(
+    linked: bool,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> bool {
+    state.session.set_log_viewport_linked(linked);
+    if linked {
+        state.session.sync_composite_viewport_from_output();
+        emit_composite_timeline(&app, &state.session.composite_timeline_status());
+        let _ = app.emit(
+            "output-timeline-status",
+            state.session.output_timeline_status(),
+        );
+    }
+    linked
+}
+
+#[tauri::command]
+pub fn log_viewport_get_linked(state: State<RuntimeState>) -> bool {
+    state.session.log_viewport_linked()
+}
+
+/// Нативный диалог: trigger/composite CSV.
+#[tauri::command]
+pub async fn pick_composite_log_path() -> Option<String> {
+    let handle = rfd::AsyncFileDialog::new()
+        .set_title("Открыть trigger / composite log")
+        .add_filter("CSV log", &["csv"])
+        .pick_file()
+        .await?;
+    Some(handle.path().display().to_string())
 }
 
 #[derive(Debug, Deserialize)]
@@ -676,8 +792,14 @@ pub fn output_timeline_query_view(
 pub fn output_timeline_set_view(
     state: State<RuntimeState>,
     params: OutputTimelineControlParams,
+    app: AppHandle,
 ) -> OutputTimelineStatus {
-    state.session.output_timeline_control(params.ctrl)
+    let st = state.session.output_timeline_control(params.ctrl);
+    let _ = app.emit("output-timeline-status", &st);
+    if state.session.log_viewport_linked() {
+        emit_composite_timeline(&app, &state.session.composite_timeline_status());
+    }
+    st
 }
 
 #[tauri::command]
@@ -1156,14 +1278,15 @@ pub fn project_capture_ecu_config(
 pub fn project_add_log(
     path: String,
     label: Option<String>,
+    kind: Option<String>,
     state: State<RuntimeState>,
     app: AppHandle,
 ) {
-    state
-        .project
-        .lock()
-        .unwrap()
-        .add_log(std::path::Path::new(&path), label);
+    state.project.lock().unwrap().add_log(
+        std::path::Path::new(&path),
+        label,
+        kind.as_deref(),
+    );
     emit_project(&app, &state);
 }
 

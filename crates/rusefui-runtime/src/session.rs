@@ -10,7 +10,12 @@ use rusefi_protocol::{ConnectionInfo, ProtocolError, SerialLink, DEFAULT_IO_TIME
 
 use crate::ini::{find_any_local_ini, load_ini_path, resolve_ini_for_signature, ResolvedIni};
 use crate::protocol_log::ProtocolLogStore;
+use crate::sources::composite_data_log::CompositeDataLogWriter;
 use crate::sources::composite_logger::CompositeLoggerSource;
+use crate::sources::composite_timeline::{
+    CompositeTimeline, CompositeTimelineStatus, CompositeTimelineView,
+    CompositeTimelineViewQuery,
+};
 use crate::sources::config::ConfigSource;
 use crate::sources::output_channels::{IniContext, OutputChannelsSource};
 use crate::sources::output_data_log::OutputDataLogWriter;
@@ -39,6 +44,9 @@ pub struct EcuSession {
     stimulation_active: AtomicBool,
     output_data_log: Mutex<Option<OutputDataLogWriter>>,
     output_timeline: Mutex<OutputTimeline>,
+    composite_data_log: Mutex<Option<Arc<Mutex<CompositeDataLogWriter>>>>,
+    composite_timeline: Mutex<CompositeTimeline>,
+    log_viewport_linked: AtomicBool,
 }
 
 impl EcuSession {
@@ -55,7 +63,103 @@ impl EcuSession {
             stimulation_active: AtomicBool::new(false),
             output_data_log: Mutex::new(None),
             output_timeline: Mutex::new(OutputTimeline::default()),
+            composite_data_log: Mutex::new(None),
+            composite_timeline: Mutex::new(CompositeTimeline::default()),
+            log_viewport_linked: AtomicBool::new(false),
         })
+    }
+
+    pub fn log_viewport_linked(&self) -> bool {
+        self.log_viewport_linked.load(Ordering::Relaxed)
+    }
+
+    pub fn set_log_viewport_linked(&self, linked: bool) {
+        self.log_viewport_linked.store(linked, Ordering::Relaxed);
+    }
+
+    /// Скопировать окно output → composite (после включения «Связать с Log»).
+    pub fn sync_composite_viewport_from_output(&self) {
+        if !self.log_viewport_linked.load(Ordering::Relaxed) {
+            return;
+        }
+        let ctrl = self.output_timeline.lock().unwrap().view_control_snapshot();
+        let _ = self.composite_timeline.lock().unwrap().apply_view_control(ctrl);
+    }
+
+    pub fn composite_timeline_status(&self) -> CompositeTimelineStatus {
+        self.composite_timeline.lock().unwrap().status()
+    }
+
+    pub fn composite_timeline_query(
+        &self,
+        query: CompositeTimelineViewQuery,
+    ) -> CompositeTimelineView {
+        self.composite_timeline.lock().unwrap().query_view(&query)
+    }
+
+    pub fn composite_timeline_control(
+        &self,
+        ctrl: OutputTimelineViewControl,
+    ) -> CompositeTimelineStatus {
+        let mut composite = self.composite_timeline.lock().unwrap();
+        let st = composite.apply_view_control(ctrl.clone());
+        if self.log_viewport_linked.load(Ordering::Relaxed) {
+            drop(composite);
+            let _ = self.output_timeline.lock().unwrap().apply_view_control(ctrl);
+        }
+        st
+    }
+
+    pub fn composite_timeline_load_file(
+        &self,
+        path: PathBuf,
+    ) -> Result<CompositeTimelineStatus, String> {
+        let mut ct = self.composite_timeline.lock().unwrap();
+        ct.load_file(path)?;
+        Ok(ct.status())
+    }
+
+    pub fn open_composite_log(&self) -> Result<Arc<Mutex<CompositeDataLogWriter>>, String> {
+        let info = self.connection_info()?;
+        let started_ms = self.output_timeline.lock().unwrap().session_start_ms();
+        let writer = CompositeDataLogWriter::open_at(
+            &info,
+            self.loaded_ini_path().as_deref(),
+            started_ms,
+        )?;
+        let arc = Arc::new(Mutex::new(writer));
+        *self.composite_data_log.lock().unwrap() = Some(arc.clone());
+        self.composite_timeline.lock().unwrap().clear();
+        self.composite_timeline.lock().unwrap().set_live_capture(true);
+        Ok(arc)
+    }
+
+    /// После остановки poll-потока: закрыть CSV и загрузить в viewer-proxy.
+    pub fn close_composite_log(&self) -> Result<Option<String>, String> {
+        let Some(arc) = self.composite_data_log.lock().unwrap().take() else {
+            return Ok(None);
+        };
+        let writer = match Arc::try_unwrap(arc) {
+            Ok(m) => m.into_inner().map_err(|_| "composite log lock")?,
+            Err(_) => return Err("composite log ещё используется poll-потоком".into()),
+        };
+        let (path, rows) = writer.close()?;
+        self.protocol_log.log_info(&format!(
+            "Composite log: {} ({rows} строк)",
+            path.display()
+        ));
+        self.composite_timeline
+            .lock()
+            .unwrap()
+            .load_file(path.clone())?;
+        self.composite_timeline
+            .lock()
+            .unwrap()
+            .set_live_capture(false);
+        if self.log_viewport_linked.load(Ordering::Relaxed) {
+            self.sync_composite_viewport_from_output();
+        }
+        Ok(Some(path.display().to_string()))
     }
 
     pub fn output_timeline_live_sec(&self) -> f64 {
@@ -74,7 +178,19 @@ impl EcuSession {
         &self,
         ctrl: OutputTimelineViewControl,
     ) -> OutputTimelineStatus {
-        self.output_timeline.lock().unwrap().apply_view_control(ctrl)
+        let st = self
+            .output_timeline
+            .lock()
+            .unwrap()
+            .apply_view_control(ctrl.clone());
+        if self.log_viewport_linked.load(Ordering::Relaxed) {
+            let _ = self
+                .composite_timeline
+                .lock()
+                .unwrap()
+                .apply_view_control(ctrl);
+        }
+        st
     }
 
     pub fn output_timeline_load_file(&self, path: PathBuf) -> OutputTimelineStatus {
@@ -88,6 +204,8 @@ impl EcuSession {
         self.config().stop();
         self.composite().stop();
         let _ = self.stop_output_data_log();
+        *self.composite_data_log.lock().unwrap() = None;
+        self.composite_timeline.lock().unwrap().clear();
         *self.output_timeline.lock().unwrap() = OutputTimeline::default();
 
         if self.is_connected() {

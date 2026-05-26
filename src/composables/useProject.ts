@@ -144,8 +144,16 @@ export function useProject() {
     await invoke("project_capture_ecu_config");
   }
 
-  async function addLog(path: string, label?: string): Promise<void> {
-    await invoke("project_add_log", { path, label: label ?? null });
+  async function addLog(
+    path: string,
+    label?: string,
+    kind?: "output_csv" | "composite_csv",
+  ): Promise<void> {
+    await invoke("project_add_log", {
+      path,
+      label: label ?? null,
+      kind: kind ?? null,
+    });
   }
 
   async function removeLog(path: string): Promise<void> {

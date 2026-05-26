@@ -203,10 +203,10 @@ async function onBurn() {
           type="button"
           class="log-btn"
           :disabled="loadingLog"
-          title="Открыть CSV-лог output channels (офлайн просмотр)"
+          title="CSV output channels (RPM, CLT…) — график Log сверху, не trigger"
           @click="onOpenOutputLog"
         >
-          {{ loadingLog ? "Лог…" : "Открыть лог" }}
+          {{ loadingLog ? "Лог…" : "Лог output" }}
         </button>
         <button
           type="button"
