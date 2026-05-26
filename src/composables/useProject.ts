@@ -101,24 +101,11 @@ export function useProject() {
   const hasPath = hasOpenProject;
 
   /**
-   * Новый проект: при необходимости сохранить текущий, выбрать файл, создать и сбросить UI.
-   * @returns false если пользователь отменил диалог
+   * Новый проект: выбрать файл, создать и сбросить UI.
+   * Проверку несохранённого проекта / burn выполняет вызывающий код.
+   * @returns false если пользователь отменил диалог файла
    */
   async function createNewProject(): Promise<boolean> {
-    if (info.value.dirty) {
-      const save = window.confirm(
-        "Сохранить текущий проект перед созданием нового?",
-      );
-      if (save) {
-        if (info.value.path) {
-          await invoke("project_save");
-        } else {
-          const saved = await saveProjectAs();
-          if (!saved) return false;
-        }
-      }
-    }
-
     const path = await invoke<string | null>("pick_project_save_path", {
       defaultName: "Новый проект",
     });

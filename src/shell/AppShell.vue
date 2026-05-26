@@ -24,6 +24,8 @@ import ProjectMenu from "./ProjectMenu.vue";
 import { useAppFooter, setFooterLed, footerToggleProtocol } from "../composables/useAppFooter";
 import { useTabState } from "../composables/useTabState";
 import { useGlobalHotkeys, saveProjectCallback, openProjectCallback, burnCallback } from "../composables/useHotkeys";
+import UnsavedChangesDialog from "../components/UnsavedChangesDialog.vue";
+import { useUnsavedChangesGuard } from "../composables/useUnsavedChangesGuard";
 
 const dataCtx = createDataContext();
 provideDataContext(dataCtx);
@@ -55,8 +57,15 @@ const burning = ref(false);
 const burnError = ref<string | null>(null);
 const projectError = ref<string | null>(null);
 const projectBusy = ref(false);
-const showCloseDialog = ref(false);
 const ramDirty = computed(() => workspaceSnap.value.burnPending);
+
+const {
+  dialogState: unsavedDialogState,
+  onDialogPrimary: onUnsavedDialogPrimary,
+  onDialogSkip: onUnsavedDialogSkip,
+  onDialogCancel: onUnsavedDialogCancel,
+  confirmUnsavedChanges,
+} = useUnsavedChangesGuard();
 
 const { setFooterStatus } = useAppFooter();
 
@@ -113,6 +122,20 @@ useProtocolLogLifecycle();
 
 let unlistenCloseReq: (() => void) | null = null;
 
+function unsavedCheck(context: "quit" | "switch") {
+  return {
+    context,
+    projectDirty: projectInfo.value.dirty,
+    projectPath: projectInfo.value.path,
+    burnPending: ramDirty.value,
+    ecuConnected: dataCtx.connection.value.connected,
+    canBurn: canBurn.value,
+    saveProject,
+    saveProjectAs,
+    burnConfig: onBurn,
+  };
+}
+
 onMounted(async () => {
   await initProject();
   await initWorkspaceState();
@@ -121,32 +144,16 @@ onMounted(async () => {
   void initOutputTimeline();
 
   unlistenCloseReq = await listen("app-close-requested", () => {
-    if (ramDirty.value && dataCtx.connection.value.connected) {
-      showCloseDialog.value = true;
-    } else {
-      void invoke("app_force_quit");
-    }
+    void (async () => {
+      const proceed = await confirmUnsavedChanges(unsavedCheck("quit"));
+      if (proceed) void invoke("app_force_quit");
+    })();
   });
 });
 
 onUnmounted(() => {
   unlistenCloseReq?.();
 });
-
-async function onCloseDialogBurn() {
-  showCloseDialog.value = false;
-  await onBurn();
-  void invoke("app_force_quit");
-}
-
-function onCloseDialogSkip() {
-  showCloseDialog.value = false;
-  void invoke("app_force_quit");
-}
-
-function onCloseDialogCancel() {
-  showCloseDialog.value = false;
-}
 
 async function runProjectAction(fn: () => Promise<void>): Promise<void> {
   projectError.value = null;
@@ -162,12 +169,16 @@ async function runProjectAction(fn: () => Promise<void>): Promise<void> {
 
 function onNewProject(): void {
   void runProjectAction(async () => {
+    const proceed = await confirmUnsavedChanges(unsavedCheck("switch"));
+    if (!proceed) return;
     await createNewProject();
   });
 }
 
 function onOpenProject(): void {
   void runProjectAction(async () => {
+    const proceed = await confirmUnsavedChanges(unsavedCheck("switch"));
+    if (!proceed) return;
     await openProject();
   });
 }
@@ -382,26 +393,12 @@ async function onBurn() {
     </div>
 
     <!-- Диалог: несохранённые изменения при закрытии -->
-    <div v-if="showCloseDialog" class="close-dialog-overlay" @click.self="onCloseDialogCancel">
-      <div class="close-dialog" role="alertdialog" aria-modal="true">
-        <h3 class="close-dialog-title">Несохранённые изменения</h3>
-        <p class="close-dialog-body">
-          Конфигурация изменена, но не записана во flash ECU.<br>
-          Записать перед выходом?
-        </p>
-        <div class="close-dialog-actions">
-          <button type="button" class="close-dialog-btn burn" @click="onCloseDialogBurn">
-            Burn и выйти
-          </button>
-          <button type="button" class="close-dialog-btn skip" @click="onCloseDialogSkip">
-            Выйти без Burn
-          </button>
-          <button type="button" class="close-dialog-btn cancel" @click="onCloseDialogCancel">
-            Отмена
-          </button>
-        </div>
-      </div>
-    </div>
+    <UnsavedChangesDialog
+      :state="unsavedDialogState"
+      @primary="onUnsavedDialogPrimary"
+      @skip="onUnsavedDialogSkip"
+      @cancel="onUnsavedDialogCancel"
+    />
 
     <TabWorkspace ref="tabWorkspace" />
     <ProtocolLogSheet />
@@ -728,79 +725,6 @@ async function onBurn() {
   letter-spacing: 0.04em;
   margin: 0;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
-}
-
-/* Диалог закрытия */
-.close-dialog-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 9100;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.close-dialog {
-  background: var(--color-bg-elevated, #1e1e2e);
-  border: 1px solid var(--color-border-strong, #4b5563);
-  border-radius: 10px;
-  padding: 1.75rem 2rem;
-  max-width: 420px;
-  width: 90%;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-}
-
-.close-dialog-title {
-  margin: 0 0 0.75rem;
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--color-fg);
-}
-
-.close-dialog-body {
-  margin: 0 0 1.5rem;
-  font-size: 0.875rem;
-  color: var(--color-fg-muted, #9ca3af);
-  line-height: 1.5;
-}
-
-.close-dialog-actions {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-}
-
-.close-dialog-btn {
-  padding: 0.45rem 1rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid transparent;
-  transition: filter 0.15s;
-}
-
-.close-dialog-btn:hover {
-  filter: brightness(1.1);
-}
-
-.close-dialog-btn.burn {
-  background: #ea580c;
-  color: #fff;
-  border-color: #ea580c;
-}
-
-.close-dialog-btn.skip {
-  background: var(--color-bg-muted, #374151);
-  color: var(--color-fg);
-  border-color: var(--color-border-strong);
-}
-
-.close-dialog-btn.cancel {
-  background: transparent;
-  color: var(--color-fg-muted);
-  border-color: var(--color-border);
 }
 
 
