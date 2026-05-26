@@ -5,6 +5,8 @@
 mod autoconnect;
 mod component;
 mod ini;
+mod project;
+mod ui_persist;
 mod protocol_log;
 mod runtime;
 pub mod components;
@@ -21,6 +23,13 @@ pub use ini::{
     explicit_ini_path, find_any_local_ini, ini_cache_dir, load_ini_path,
     resolve_ini_for_signature, search_directories, signatures_match, IniResolveError, ResolvedIni,
 };
+pub use project::{
+    ProjectEcuConfig, ProjectInfo, ProjectLogRef, ProjectStore, RusefuiProject, FORMAT_VERSION,
+};
+pub use ui_persist::{
+    LogGraphGroupJson, LogRangeInputJson, LogUiSettings, ProjectUi, PERSIST_KEY_OUTPUT_CHART,
+};
+pub use ui_persist::{ComponentUiPersist, persist_keys as ui_persist_keys};
 pub use protocol_log::{
     default_log_path, LogLevel, ProtocolLogEntry, ProtocolLogFilterSettings, ProtocolLogStore,
 };

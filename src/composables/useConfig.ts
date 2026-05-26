@@ -5,6 +5,8 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 export interface ConfigSnapshot {
   connected: boolean;
   loaded: boolean;
+  /** Снимок из файла проекта — без записи на ECU. */
+  readOnly?: boolean;
   loading: boolean;
   progress: number;
   bytesLoaded: number;
@@ -62,8 +64,16 @@ export async function initConfig(): Promise<void> {
     await invoke("config_start_listener").catch(() => {});
 
     if (!unlisten) {
-      unlisten = await listen<ConfigSnapshot>("config-snapshot", (event) => {
+      unlisten = await listen<ConfigSnapshot>("config-snapshot", async (event) => {
         snapshot.value = event.payload;
+        if (event.payload.loaded || event.payload.fieldCount > 0) {
+          try {
+            const fields = await invoke<ConfigFieldInfo[]>("config_list_fields");
+            fieldsByName.value = new Map(fields.map((f) => [f.name, f]));
+          } catch {
+            /* ignore */
+          }
+        }
       });
       await listen<{
         loading: boolean;
@@ -114,9 +124,19 @@ export async function burnConfig(): Promise<void> {
   await invoke("config_burn");
 }
 
+export function configCanView(s: ConfigSnapshot): boolean {
+  return s.loaded && !s.loading;
+}
+
+export function configCanEdit(s: ConfigSnapshot): boolean {
+  return s.connected && s.loaded && !s.loading && !s.readOnly;
+}
+
 export function useConfig() {
   return {
     snapshot: readonly(snapshot),
+    configCanView,
+    configCanEdit,
     getField: (name: string): number | null => {
       const v = snapshot.value.values[name];
       return v === undefined ? null : v;

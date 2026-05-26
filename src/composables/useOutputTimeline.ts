@@ -1,7 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { computed, readonly, ref, shallowRef } from "vue";
-
 export type TimelineMode = "empty" | "live" | "file" | "liveAndFile";
 
 export interface OutputTimelineStatus {
@@ -99,6 +98,13 @@ export async function initOutputTimeline(): Promise<void> {
       unlistenEcu = await listen("ecu-connection", async () => {
         await refreshTimelineStatus();
       });
+      await listen("output-timeline-status", (ev) => {
+        status.value = ev.payload as OutputTimelineStatus;
+      });
+      await listen("workspace-reset", async () => {
+        timelineLoadEpoch.value += 1;
+        await refreshTimelineStatus();
+      });
     }
   })();
   return initPromise;
@@ -144,7 +150,13 @@ export async function loadTimelineFile(path: string): Promise<OutputTimelineStat
 export async function pickAndLoadTimelineFile(): Promise<OutputTimelineStatus | null> {
   const path = await invoke<string | null>("pick_output_log_path");
   if (!path) return null;
-  return loadTimelineFile(path);
+  const st = await loadTimelineFile(path);
+  try {
+    await invoke("project_add_log", { path, label: null });
+  } catch {
+    /* вне Tauri */
+  }
+  return st;
 }
 
 export function timelineFieldColor(field: string): string {

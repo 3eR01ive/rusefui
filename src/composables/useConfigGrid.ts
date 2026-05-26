@@ -1,5 +1,5 @@
 import { computed, ref, watch, type ComputedRef } from "vue";
-import { initConfig, useConfig } from "./useConfig";
+import { configCanEdit, initConfig, useConfig } from "./useConfig";
 
 export type ConfigGridKind = "table" | "curve";
 
@@ -57,9 +57,7 @@ export function useConfigGrid({ kind, props }: UseConfigGridOptions) {
   const disabled = computed(
     () =>
       !valueField.value ||
-      !snapshot.value.connected ||
-      !snapshot.value.loaded ||
-      snapshot.value.loading ||
+      !configCanEdit(snapshot.value) ||
       loading.value ||
       saving.value,
   );

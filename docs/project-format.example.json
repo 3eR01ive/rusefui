@@ -1,0 +1,47 @@
+{
+  "formatVersion": 1,
+  "name": "Пример проекта",
+  "createdAtMs": 1730000000000,
+  "updatedAtMs": 1730000000000,
+  "ini": {
+    "path": "/path/to/rusefi_proteus_f7.ini",
+    "signature": "rusEFI master.2025.09.02.proteus_f7.4139280449"
+  },
+  "ecuConfig": {
+    "capturedAtMs": 1730000001000,
+    "pageSize": 64000,
+    "rawPage0Base64": "…",
+    "values": {
+      "RPMValue": 0,
+      "coolant": 20
+    }
+  },
+  "logs": [
+    {
+      "path": "/home/user/.local/share/rusefui/output_logs/session.csv",
+      "label": "сессия 2025-05-26",
+      "addedAtMs": 1730000002000,
+      "kind": "output_csv"
+    }
+  ],
+  "ui": {
+    "sections": {
+      "output-chart": {
+        "windowSeconds": 30,
+        "chartHeight": 220,
+        "zoomStepPct": 10,
+        "settingsExpanded": false,
+        "graphGroups": [
+          {
+            "id": "g1",
+            "fieldNames": ["RPMValue", "coolant"]
+          }
+        ],
+        "activeGraphId": "g1",
+        "rangeInputs": {
+          "RPMValue": { "min": "", "max": "" }
+        }
+      }
+    }
+  }
+}

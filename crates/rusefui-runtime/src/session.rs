@@ -80,6 +80,34 @@ impl EcuSession {
         tl.status()
     }
 
+    /// Пустой рабочий стол: config, timeline, лог сессии (без отключения ECU).
+    pub fn reset_workspace_for_new_project(&self) {
+        self.config().stop();
+        let _ = self.stop_output_data_log();
+        *self.output_timeline.lock().unwrap() = OutputTimeline::default();
+
+        if self.is_connected() {
+            let ini = self.ini_context();
+            let field_names: Vec<String> = ini
+                .channels
+                .fields
+                .iter()
+                .map(|f| f.name.clone())
+                .collect();
+            if !field_names.is_empty() {
+                let started_ms = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map(|d| d.as_millis() as u64)
+                    .unwrap_or(0);
+                let mut tl = self.output_timeline.lock().unwrap();
+                tl.reset_session_with_start(&field_names, 30.0, started_ms);
+                tl.set_connected(true);
+            }
+        }
+
+        self.bootstrap_offline_ini_if_needed();
+    }
+
     pub fn record_output_sample(&self, timestamp_ms: u64, values: &HashMap<String, f64>) {
         if let Ok(mut log_guard) = self.output_data_log.try_lock() {
             if let Some(log) = log_guard.as_mut() {

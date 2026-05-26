@@ -1,8 +1,9 @@
 use rusefui_runtime::{
     default_log_path, AutoConnectManager, AutoConnectSnapshot, ComponentRuntime, ConfigFieldInfo,
     ConfigSnapshot, EcuSession, EcuSyncOnMount, OutputFieldInfo, OutputSnapshot,
-    OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl, ProtocolLogEntry,
-    ProtocolLogFilterSettings, ProtocolLogStore,
+    OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl, ProjectInfo,
+    ProjectLogRef, ProjectStore, ProtocolLogEntry, ProtocolLogFilterSettings, ProtocolLogStore,
+    RusefuiProject,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -19,6 +20,7 @@ pub struct RuntimeState {
     pub runtime: Mutex<ComponentRuntime>,
     pub protocol_log: Arc<ProtocolLogStore>,
     pub autoconnect: Arc<AutoConnectManager>,
+    pub project: Mutex<ProjectStore>,
     /// Последнее отправленное в UI `ecu-connection` (без дублей на каждый dispatch).
     last_ecu_connection_emit: Mutex<Option<EcuConnectionEvent>>,
 }
@@ -32,9 +34,24 @@ impl RuntimeState {
             runtime: Mutex::new(ComponentRuntime::new(session)),
             protocol_log,
             autoconnect,
+            project: Mutex::new(ProjectStore::new()),
             last_ecu_connection_emit: Mutex::new(None),
         }
     }
+}
+
+fn emit_project(app: &AppHandle, state: &RuntimeState) {
+    let info = state.project.lock().unwrap().info();
+    let _ = app.emit("project-changed", &info);
+}
+
+/// Сброс config/timeline в UI после смены проекта.
+fn emit_workspace_reset(app: &AppHandle, state: &RuntimeState) {
+    emit_config(app, &state.session.config().snapshot());
+    emit_output(app, &state.session.output().snapshot());
+    let timeline = state.session.output_timeline_status();
+    let _ = app.emit("output-timeline-status", timeline);
+    let _ = app.emit("workspace-reset", ());
 }
 
 impl Default for RuntimeState {
@@ -764,4 +781,170 @@ pub fn autoconnect_set_offline_mode(
 #[tauri::command]
 pub fn protocol_log_clear(state: State<RuntimeState>) {
     state.protocol_log.clear();
+}
+
+// --- Проект (JSON) ---
+
+#[tauri::command]
+pub fn project_get_info(state: State<RuntimeState>) -> ProjectInfo {
+    state.project.lock().unwrap().info()
+}
+
+#[tauri::command]
+pub fn project_get_document(state: State<RuntimeState>) -> RusefuiProject {
+    state.project.lock().unwrap().document()
+}
+
+#[tauri::command]
+pub fn project_ui_get(key: String, state: State<RuntimeState>) -> Result<Value, String> {
+    state.project.lock().unwrap().ui_get(&key)
+}
+
+#[tauri::command]
+pub fn project_ui_set(
+    key: String,
+    value: Value,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    state.project.lock().unwrap().ui_set(&key, value)?;
+    emit_project(&app, &state);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn project_ui_persist_keys(state: State<RuntimeState>) -> Vec<String> {
+    state
+        .project
+        .lock()
+        .unwrap()
+        .ui_persist_keys()
+        .into_iter()
+        .map(str::to_string)
+        .collect()
+}
+
+#[tauri::command]
+pub fn project_create_new(
+    path: String,
+    name: Option<String>,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    let label = name.unwrap_or_else(|| "Новый проект".into());
+    let store = state.project.lock().unwrap();
+    store.new_document(label);
+    store.save_to_path(std::path::Path::new(&path))?;
+    drop(store);
+    state.session.reset_workspace_for_new_project();
+    emit_project(&app, &state);
+    emit_workspace_reset(&app, &state);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn project_load(path: String, state: State<RuntimeState>, app: AppHandle) -> Result<(), String> {
+    let store = state.project.lock().unwrap();
+    store.load_from_path(std::path::Path::new(&path))?;
+    state.session.reset_workspace_for_new_project();
+    store.apply_to_session(&state.session)?;
+    drop(store);
+    emit_project(&app, &state);
+    emit_workspace_reset(&app, &state);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn project_save(state: State<RuntimeState>, app: AppHandle) -> Result<String, String> {
+    let store = state.project.lock().unwrap();
+    let path = store
+        .saved_path()
+        .ok_or_else(|| "Укажите файл: «Сохранить как…»".to_string())?;
+    store.save_to_path(&path)?;
+    drop(store);
+    emit_project(&app, &state);
+    Ok(path.display().to_string())
+}
+
+#[tauri::command]
+pub fn project_save_path(
+    path: String,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    state
+        .project
+        .lock()
+        .unwrap()
+        .save_to_path(std::path::Path::new(&path))?;
+    emit_project(&app, &state);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn project_capture_ecu_config(
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    state
+        .project
+        .lock()
+        .unwrap()
+        .capture_ecu_config(&state.session)?;
+    emit_project(&app, &state);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn project_add_log(
+    path: String,
+    label: Option<String>,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) {
+    state
+        .project
+        .lock()
+        .unwrap()
+        .add_log(std::path::Path::new(&path), label);
+    emit_project(&app, &state);
+}
+
+#[tauri::command]
+pub fn project_remove_log(path: String, state: State<RuntimeState>, app: AppHandle) {
+    state.project.lock().unwrap().remove_log(&path);
+    emit_project(&app, &state);
+}
+
+#[tauri::command]
+pub fn project_list_logs(state: State<RuntimeState>) -> Vec<ProjectLogRef> {
+    state.project.lock().unwrap().document().logs
+}
+
+#[tauri::command]
+pub async fn pick_project_open_path() -> Option<String> {
+    rfd::AsyncFileDialog::new()
+        .set_title("Открыть проект rusefui")
+        .add_filter("rusefui project", &["json"])
+        .pick_file()
+        .await
+        .map(|h| h.path().display().to_string())
+}
+
+#[tauri::command]
+pub async fn pick_project_save_path(default_name: Option<String>) -> Option<String> {
+    let mut dlg = rfd::AsyncFileDialog::new()
+        .set_title("Сохранить проект rusefui")
+        .add_filter("rusefui project", &["json"]);
+    if let Some(name) = default_name.filter(|s| !s.is_empty()) {
+        let file_name = if name.ends_with(".json") {
+            name
+        } else {
+            format!("{name}.json")
+        };
+        dlg = dlg.set_file_name(&file_name);
+    }
+    dlg.save_file()
+        .await
+        .map(|h| h.path().display().to_string())
 }

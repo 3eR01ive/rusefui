@@ -12,6 +12,7 @@ import {
 import { initConfig, useConfig } from "../composables/useConfig";
 import { useProtocolLog, useProtocolLogLifecycle } from "../composables/useProtocolLog";
 import { useEcuConnection } from "../composables/useEcuConnection";
+import { initProject, useProject } from "../composables/useProject";
 
 const dataCtx = createDataContext();
 provideDataContext(dataCtx);
@@ -20,11 +21,21 @@ const appTitle = ref("rusefui");
 const { offlineMode, scanning, busyPorts, setOfflineMode } = useEcuConnection(dataCtx);
 const { togglePanel } = useProtocolLog();
 const { snapshot: configSnap, burn: burnConfig } = useConfig();
+const {
+  info: projectInfo,
+  createNewProject,
+  openProject,
+  saveProject,
+  saveProjectAs,
+  captureEcuConfig,
+} = useProject();
 
 const burning = ref(false);
 const burnError = ref<string | null>(null);
 const loadingLog = ref(false);
 const logLoadError = ref<string | null>(null);
+const projectError = ref<string | null>(null);
+const projectBusy = ref(false);
 
 async function onOpenOutputLog(): Promise<void> {
   logLoadError.value = null;
@@ -50,10 +61,51 @@ const canBurn = computed(
 useProtocolLogLifecycle();
 
 onMounted(() => {
+  void initProject();
   void initOutputChannels();
   void initOutputTimeline();
   void initConfig();
 });
+
+async function runProjectAction(fn: () => Promise<void>): Promise<void> {
+  projectError.value = null;
+  projectBusy.value = true;
+  try {
+    await fn();
+  } catch (e) {
+    projectError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    projectBusy.value = false;
+  }
+}
+
+function onNewProject(): void {
+  void runProjectAction(async () => {
+    await createNewProject();
+  });
+}
+
+function onOpenProject(): void {
+  void runProjectAction(async () => {
+    await openProject();
+  });
+}
+
+function onSaveProject(): void {
+  void runProjectAction(async () => {
+    await saveProject();
+  });
+}
+
+function onSaveProjectAs(): void {
+  void runProjectAction(async () => {
+    await saveProjectAs();
+  });
+}
+
+function onCaptureConfigToProject(): void {
+  void runProjectAction(() => captureEcuConfig());
+}
 
 async function onBurn() {
   if (!canBurn.value) return;
@@ -78,6 +130,59 @@ async function onBurn() {
         <span class="app-subtitle">rusEFI · декларативный UI</span>
       </div>
       <div class="header-actions">
+        <div class="project-bar" :title="projectInfo.path ?? 'Файл не сохранён'">
+          <span class="project-name">
+            {{ projectInfo.name }}
+            <span v-if="projectInfo.dirty" class="project-dirty">●</span>
+          </span>
+          <div class="project-btns">
+            <button
+              type="button"
+              class="log-btn"
+              :disabled="projectBusy"
+              title="Новый проект"
+              @click="onNewProject"
+            >
+              Новый
+            </button>
+            <button
+              type="button"
+              class="log-btn"
+              :disabled="projectBusy"
+              title="Открыть проект (.json)"
+              @click="onOpenProject"
+            >
+              Открыть
+            </button>
+            <button
+              type="button"
+              class="log-btn"
+              :disabled="projectBusy"
+              title="Сохранить проект"
+              @click="onSaveProject"
+            >
+              Сохранить
+            </button>
+            <button
+              type="button"
+              class="log-btn"
+              :disabled="projectBusy"
+              title="Сохранить проект как…"
+              @click="onSaveProjectAs"
+            >
+              Сохр. как
+            </button>
+            <button
+              type="button"
+              class="log-btn"
+              :disabled="projectBusy || !dataCtx.connection.value.connected"
+              title="Скопировать текущий config page 0 с ECU в проект"
+              @click="onCaptureConfigToProject"
+            >
+              Config→проект
+            </button>
+          </div>
+        </div>
         <label class="offline-toggle" title="Не подключаться к ECU автоматически">
           <input
             type="checkbox"
@@ -136,6 +241,7 @@ async function onBurn() {
       <p v-if="logLoadError" class="burn-error" role="alert">{{ logLoadError }}</p>
     </header>
     <TabWorkspace />
+    <p v-if="projectError" class="project-error">{{ projectError }}</p>
     <ProtocolLogSheet />
     <ConfigLoadOverlay />
   </div>
@@ -197,6 +303,43 @@ async function onBurn() {
   gap: 0.5rem;
   margin-left: auto;
   flex-wrap: wrap;
+}
+
+.project-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  max-width: min(100%, 28rem);
+}
+
+.project-name {
+  font-size: 0.78rem;
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.project-dirty {
+  color: var(--color-accent);
+}
+
+.project-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  justify-content: flex-end;
+}
+
+.project-error {
+  margin: 0 0.5rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.82rem;
+  color: var(--color-error);
+  background: color-mix(in srgb, var(--color-error) 12%, transparent);
+  border-radius: var(--radius-sm);
 }
 
 .offline-toggle {

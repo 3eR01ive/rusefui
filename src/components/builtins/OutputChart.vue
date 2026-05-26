@@ -14,6 +14,14 @@ import { useEcuConnection } from "../../composables/useEcuConnection";
 import { useDataContext } from "../../core/data-context";
 import { useOutputFields } from "../../composables/useOutputFields";
 import {
+  initProject,
+  PERSIST_KEY_OUTPUT_CHART,
+  projectUiEpoch,
+  workspaceResetEpoch,
+  useProject,
+  type LogUiSettings,
+} from "../../composables/useProject";
+import {
   initOutputTimeline,
   useOutputTimeline,
   type OutputTimelineView,
@@ -43,18 +51,27 @@ const props = defineProps<{
   meta: ComponentMeta;
 }>();
 
+const chartSizeOverride = {
+  window: null as number | null,
+  height: null as number | null,
+};
+
 const windowSeconds = computed(() => {
+  if (chartSizeOverride.window !== null && chartSizeOverride.window > 0) {
+    return chartSizeOverride.window;
+  }
   const w = Number(props.props.windowSeconds ?? 30);
   return w > 0 ? w : 30;
 });
 
 const chartHeight = computed(() => {
+  if (chartSizeOverride.height !== null && chartSizeOverride.height > 120) {
+    return chartSizeOverride.height;
+  }
   const h = Number(props.props.height ?? 220);
   return h > 120 ? h : 220;
 });
 
-const LOG_SETUP_KEY = "rusefui-log-setup-expanded";
-const LOG_ZOOM_STEP_KEY = "rusefui-log-zoom-step-pct";
 const ZOOM_STEP_MIN = 1;
 const ZOOM_STEP_MAX = 40;
 
@@ -65,50 +82,26 @@ function clampZoomStepPct(n: number): number {
   return Math.min(ZOOM_STEP_MAX, Math.max(ZOOM_STEP_MIN, Math.round(n)));
 }
 
-function readZoomStepPct(): number {
-  try {
-    const v = localStorage.getItem(LOG_ZOOM_STEP_KEY);
-    if (v != null) return clampZoomStepPct(Number(v));
-  } catch {
-    /* ignore */
-  }
+function zoomStepFromProps(): number {
   const fromProps = Number(props.props.zoomStepPercent);
   if (Number.isFinite(fromProps)) return clampZoomStepPct(fromProps);
   return 10;
 }
 
-const zoomStepPct = ref(readZoomStepPct());
+const zoomStepPct = ref(zoomStepFromProps());
 const zoomStepFactor = computed(() => 1 + zoomStepPct.value / 100);
 
 function onZoomStepChange(): void {
   zoomStepPct.value = clampZoomStepPct(zoomStepPct.value);
-  try {
-    localStorage.setItem(LOG_ZOOM_STEP_KEY, String(zoomStepPct.value));
-  } catch {
-    /* ignore */
-  }
-}
-
-function loadSettingsExpanded(): void {
-  try {
-    const v = localStorage.getItem(LOG_SETUP_KEY);
-    if (v === "1") settingsExpanded.value = true;
-    else if (v === "0") settingsExpanded.value = false;
-  } catch {
-    /* ignore */
-  }
+  scheduleSaveLogUiToProject();
 }
 
 function toggleSettingsExpanded(): void {
   settingsExpanded.value = !settingsExpanded.value;
-  try {
-    localStorage.setItem(LOG_SETUP_KEY, settingsExpanded.value ? "1" : "0");
-  } catch {
-    /* ignore */
-  }
   if (!settingsExpanded.value) {
     showSuggest.value = false;
   }
+  scheduleSaveLogUiToProject();
 }
 
 const defaultFields = computed(() => {
@@ -135,6 +128,10 @@ function measureCanvasWidth(): number {
 const { snapshot } = useOutputChannels();
 const { fields: allFields, reload: reloadOutputFields } = useOutputFields();
 const { offlineMode } = useEcuConnection(useDataContext());
+const { getProjectUi, setProjectUi } = useProject();
+
+let applyingProjectUi = false;
+let saveLogUiTimer = 0;
 const {
   status: timelineStatus,
   hasHistory: timelineHasHistory,
@@ -271,6 +268,82 @@ watch(windowSeconds, (sec) => {
 });
 
 watch(graphGroups, () => syncGraphFields(), { deep: true });
+
+function buildLogUiSettings(): LogUiSettings {
+  return {
+    windowSeconds: windowSeconds.value,
+    chartHeight: chartHeight.value,
+    zoomStepPct: zoomStepPct.value,
+    settingsExpanded: settingsExpanded.value,
+    graphGroups: graphGroups.value.map((g) => ({
+      id: g.id,
+      fieldNames: [...g.fieldNames],
+    })),
+    activeGraphId: activeGraphId.value,
+    rangeInputs: Object.fromEntries(
+      Object.entries(rangeInputs.value).map(([k, v]) => [k, { min: v.min, max: v.max }]),
+    ),
+  };
+}
+
+async function applyLogUiFromProject(): Promise<void> {
+  applyingProjectUi = true;
+  try {
+    const ui = await getProjectUi<LogUiSettings>(PERSIST_KEY_OUTPUT_CHART);
+    chartSizeOverride.window = ui.windowSeconds > 0 ? ui.windowSeconds : null;
+    chartSizeOverride.height = ui.chartHeight > 120 ? ui.chartHeight : null;
+    zoomStepPct.value = clampZoomStepPct(ui.zoomStepPct);
+    settingsExpanded.value = ui.settingsExpanded;
+    graphGroups.value =
+      ui.graphGroups.length > 0
+        ? ui.graphGroups.map((g) => ({ id: g.id, fieldNames: [...g.fieldNames] }))
+        : [{ id: "g1", fieldNames: [...defaultFields.value] }];
+    activeGraphId.value =
+      graphGroups.value.some((g) => g.id === ui.activeGraphId)
+        ? ui.activeGraphId
+        : graphGroups.value[0]!.id;
+    rangeInputs.value = Object.fromEntries(
+      Object.entries(ui.rangeInputs).map(([k, v]) => [k, { min: v.min, max: v.max }]),
+    );
+    syncGraphFields();
+    await controlView({
+      spanSec: windowSeconds.value,
+      followLive: timelineStatus.value.followLive,
+    });
+    scheduleRedraw();
+  } catch {
+    /* нет ui.sections["output-chart"] — только props панели */
+  } finally {
+    applyingProjectUi = false;
+  }
+}
+
+function scheduleSaveLogUiToProject(): void {
+  if (applyingProjectUi) return;
+  if (saveLogUiTimer !== 0) window.clearTimeout(saveLogUiTimer);
+  saveLogUiTimer = window.setTimeout(() => {
+    saveLogUiTimer = 0;
+    void setProjectUi(PERSIST_KEY_OUTPUT_CHART, buildLogUiSettings());
+  }, 400);
+}
+
+watch(projectUiEpoch, () => {
+  void applyLogUiFromProject();
+});
+
+watch(workspaceResetEpoch, () => {
+  cachedView = null;
+  lastView.value = null;
+  void refreshTimelineStatus().then(() => {
+    void applyLogUiFromProject().then(() => scheduleRedraw());
+  });
+});
+
+watch(
+  [graphGroups, rangeInputs, zoomStepPct, settingsExpanded, windowSeconds, chartHeight],
+  () => scheduleSaveLogUiToProject(),
+  { deep: true },
+);
 
 function fieldValue(name: string): number | null {
   const live = snapshot.value.values[name];
@@ -901,10 +974,11 @@ async function redrawNow(): Promise<void> {
 }
 
 onMounted(async () => {
-  loadSettingsExpanded();
+  await initProject();
   await initOutputChannels();
   await initOutputTimeline();
   await refreshFieldCatalog();
+  await applyLogUiFromProject();
   await controlView({ spanSec: windowSeconds.value, followLive: true });
 
   unlistenEcu = await listen("ecu-connection", () => {
@@ -933,6 +1007,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  if (saveLogUiTimer !== 0) window.clearTimeout(saveLogUiTimer);
   resizeObserver?.disconnect();
   unlistenEcu?.();
   window.removeEventListener("keydown", onChartKeyDown);

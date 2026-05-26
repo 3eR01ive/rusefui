@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::thread::{self, sleep, JoinHandle};
 use std::time::{Duration, Instant};
 
+use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use rusefi_ini::{
     decode_array, decode_config_fields, encode_array_element,
     encode_config_value, ArrayShape, ConfigFieldKind,
@@ -12,6 +13,7 @@ use rusefi_ini::{
 use rusefi_protocol::{ProtocolError, TS_PAGE_SETTINGS};
 use serde::Serialize;
 
+use crate::project::ProjectEcuConfig;
 use crate::session::EcuSession;
 use crate::sources::output_channels::IniContext;
 
@@ -49,6 +51,9 @@ pub struct ConfigFieldInfo {
 pub struct ConfigSnapshot {
     pub connected: bool,
     pub loaded: bool,
+    /// Данные из файла проекта — просмотр без записи на ECU.
+    #[serde(default)]
+    pub read_only: bool,
     pub loading: bool,
     /// 0.0 … 1.0 во время загрузки page 0.
     pub progress: f64,
@@ -65,6 +70,7 @@ impl ConfigSnapshot {
         Self {
             connected: false,
             loaded: false,
+            read_only: false,
             loading: false,
             progress: 0.0,
             bytes_loaded: 0,
@@ -111,6 +117,49 @@ impl ConfigSource {
             raw.resize(offset + bytes.len(), 0);
         }
         raw[offset..offset + bytes.len()].copy_from_slice(bytes);
+    }
+
+    /// Подставить снимок page 0 из файла проекта (offline preview).
+    pub fn apply_from_project(&self, ecu: &ProjectEcuConfig) -> Result<(), String> {
+        let raw = B64
+            .decode(&ecu.raw_page0_base64)
+            .map_err(|e| format!("Некорректный base64 page0: {e}"))?;
+
+        let ini = self.ini.lock().unwrap().clone();
+        if ini.config_fields.is_empty() {
+            return Err(
+                "INI не загружен — сохраните проект с INI или укажите существующий ini.path"
+                    .into(),
+            );
+        }
+
+        let values = decode_config_fields(&ini.config_fields, &raw);
+
+        *self.raw.lock().unwrap() = raw.clone();
+
+        let mut snap = self.snapshot.write().unwrap();
+        snap.connected = false;
+        snap.loaded = true;
+        snap.read_only = true;
+        snap.loading = false;
+        snap.progress = 1.0;
+        snap.bytes_loaded = ecu.page_size;
+        snap.bytes_total = ecu.page_size;
+        snap.raw_len = raw.len();
+        snap.values = values;
+        snap.field_count = ini.config_fields.len();
+        snap.last_error = None;
+        Ok(())
+    }
+
+    fn ensure_writable(&self) -> Result<(), String> {
+        if self.snapshot.read().unwrap().read_only {
+            return Err(
+                "Конфиг из проекта (только просмотр). Подключите ECU и загрузите config с блока."
+                    .into(),
+            );
+        }
+        Ok(())
     }
 
     pub fn list_fields(&self) -> Vec<ConfigFieldInfo> {
@@ -193,6 +242,7 @@ impl ConfigSource {
         index: usize,
         value: f64,
     ) -> Result<(), String> {
+        self.ensure_writable()?;
         let ini = self.ini.lock().unwrap().clone();
         let field = ini
             .config_fields
@@ -247,9 +297,11 @@ impl ConfigSource {
     where
         F: Fn(ConfigSnapshot) + Send + Sync + 'static,
     {
-        if self.snapshot.read().unwrap().loaded {
+        let snap = self.snapshot.read().unwrap();
+        if snap.loaded && !snap.read_only {
             return;
         }
+        drop(snap);
 
         if self
             .loading
@@ -355,6 +407,7 @@ impl ConfigSource {
                             snap = ConfigSnapshot {
                                 connected: true,
                                 loaded: true,
+                                read_only: false,
                                 loading: false,
                                 progress: 1.0,
                                 bytes_loaded: page_size,
@@ -399,6 +452,7 @@ impl ConfigSource {
         name: &str,
         value: f64,
     ) -> Result<(), String> {
+        self.ensure_writable()?;
         let ini = self.ini.lock().unwrap().clone();
         let field = ini
             .config_fields
@@ -518,6 +572,7 @@ impl ConfigSource {
         let mut snap = self.snapshot.write().unwrap();
         snap.connected = true;
         snap.loaded = true;
+        snap.read_only = false;
         snap.loading = false;
         snap.progress = 1.0;
         snap.bytes_loaded = page_size;

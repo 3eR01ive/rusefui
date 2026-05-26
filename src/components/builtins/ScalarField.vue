@@ -2,7 +2,7 @@
 import { computed, ref, watch } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import type { DataBinding } from "../../core/types";
-import { initConfig, useConfig } from "../../composables/useConfig";
+import { configCanEdit, configCanView, initConfig, useConfig } from "../../composables/useConfig";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -53,7 +53,8 @@ const statusText = computed(() => {
   if (saving.value) return "сохранение…";
   if (snapshot.value.loading) return "загрузка конфига…";
   if (snapshot.value.lastError) return snapshot.value.lastError;
-  if (!snapshot.value.connected) return "нет подключения";
+  if (snapshot.value.readOnly && snapshot.value.loaded) return "проект (только чтение)";
+  if (!snapshot.value.connected && !configCanView(snapshot.value)) return "нет подключения";
   if (!snapshot.value.loaded) return "ожидание данных…";
   return units.value ? units.value : "config";
 });
@@ -61,9 +62,7 @@ const statusText = computed(() => {
 const disabled = computed(
   () =>
     !fieldName.value ||
-    !snapshot.value.connected ||
-    !snapshot.value.loaded ||
-    snapshot.value.loading ||
+    !configCanEdit(snapshot.value) ||
     saving.value,
 );
 

@@ -2,7 +2,7 @@
 import { computed, ref, watch } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import type { DataBinding } from "../../core/types";
-import { initConfig, useConfig } from "../../composables/useConfig";
+import { configCanEdit, configCanView, initConfig, useConfig } from "../../composables/useConfig";
 
 interface EnumOptionProp {
   value: number;
@@ -70,7 +70,8 @@ const statusText = computed(() => {
   if (saving.value) return "сохранение…";
   if (snapshot.value.loading) return "загрузка конфига…";
   if (snapshot.value.lastError) return snapshot.value.lastError;
-  if (!snapshot.value.connected) return "нет подключения";
+  if (snapshot.value.readOnly && snapshot.value.loaded) return "проект (только чтение)";
+  if (!snapshot.value.connected && !configCanView(snapshot.value)) return "нет подключения";
   if (!snapshot.value.loaded) return "ожидание данных…";
   return "enum";
 });
@@ -79,9 +80,7 @@ const disabled = computed(
   () =>
     !fieldName.value ||
     options.value.length === 0 ||
-    !snapshot.value.connected ||
-    !snapshot.value.loaded ||
-    snapshot.value.loading ||
+    !configCanEdit(snapshot.value) ||
     saving.value,
 );
 

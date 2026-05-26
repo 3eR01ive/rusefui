@@ -39,6 +39,21 @@ pub fn run() {
             runtime_cmds::protocol_log_get,
             runtime_cmds::protocol_log_set_filters,
             runtime_cmds::protocol_log_clear,
+            runtime_cmds::project_get_info,
+            runtime_cmds::project_get_document,
+            runtime_cmds::project_ui_get,
+            runtime_cmds::project_ui_set,
+            runtime_cmds::project_ui_persist_keys,
+            runtime_cmds::project_create_new,
+            runtime_cmds::project_load,
+            runtime_cmds::project_save,
+            runtime_cmds::project_save_path,
+            runtime_cmds::project_capture_ecu_config,
+            runtime_cmds::project_add_log,
+            runtime_cmds::project_remove_log,
+            runtime_cmds::project_list_logs,
+            runtime_cmds::pick_project_open_path,
+            runtime_cmds::pick_project_save_path,
         ])
         .run(tauri::generate_context!())
         .expect("error while running rusefui");
