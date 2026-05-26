@@ -1,11 +1,12 @@
 import { shallowRef, readonly } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { isConfigMergeBlocking } from "./useConfigDiff";
 
 export interface ConfigSnapshot {
   connected: boolean;
   loaded: boolean;
-  /** Снимок из файла проекта — без записи на ECU. */
+  /** Снимок из файла проекта (редактирование offline, не live ECU). */
   readOnly?: boolean;
   loading: boolean;
   progress: number;
@@ -129,7 +130,14 @@ export function configCanView(s: ConfigSnapshot): boolean {
 }
 
 export function configCanEdit(s: ConfigSnapshot): boolean {
-  return s.connected && s.loaded && !s.loading && !s.readOnly;
+  if (isConfigMergeBlocking()) return false;
+  if (!s.loaded || s.loading) return false;
+  if (s.connected && !s.readOnly) return true;
+  return Boolean(s.readOnly);
+}
+
+export function configIsProjectMode(s: ConfigSnapshot): boolean {
+  return Boolean(s.loaded && s.readOnly);
 }
 
 export function useConfig() {
@@ -137,6 +145,7 @@ export function useConfig() {
     snapshot: readonly(snapshot),
     configCanView,
     configCanEdit,
+    configIsProjectMode,
     getField: (name: string): number | null => {
       const v = snapshot.value.values[name];
       return v === undefined ? null : v;

@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from "vue";
 import TabWorkspace from "./TabWorkspace.vue";
 import ProtocolLogSheet from "./ProtocolLogSheet.vue";
 import ConfigLoadOverlay from "./ConfigLoadOverlay.vue";
+import ConfigDiffModal from "./ConfigDiffModal.vue";
 import { createDataContext, provideDataContext } from "../core/data-context";
 import { initOutputChannels } from "../composables/useOutputChannels";
 import {
@@ -55,6 +56,7 @@ const canBurn = computed(
     dataCtx.connection.value.connected &&
     configSnap.value.loaded &&
     !configSnap.value.loading &&
+    !configSnap.value.readOnly &&
     !burning.value,
 );
 
@@ -244,6 +246,7 @@ async function onBurn() {
     <p v-if="projectError" class="project-error">{{ projectError }}</p>
     <ProtocolLogSheet />
     <ConfigLoadOverlay />
+    <ConfigDiffModal />
   </div>
 </template>
 

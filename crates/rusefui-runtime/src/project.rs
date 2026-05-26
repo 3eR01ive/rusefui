@@ -7,9 +7,11 @@ use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
+use rusefi_ini::decode_config_fields;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::config_diff::encode_scalar_into_page;
 use crate::session::EcuSession;
 use crate::ui_persist::{self, ProjectUi};
 
@@ -254,6 +256,55 @@ impl ProjectStore {
         doc.logs.retain(|l| l.path != path);
         doc.touch();
         *self.dirty.lock().unwrap() = true;
+    }
+
+    /// Скопировать текущий page 0 из сессии в `ecuConfig` проекта (offline-редактирование).
+    pub fn sync_ecu_config_from_session(&self, session: &EcuSession) -> Result<(), String> {
+        let snap = session.config().snapshot();
+        if !snap.loaded {
+            return Err("Config не загружен в сессии".into());
+        }
+        let raw = session.config().page_raw();
+        if raw.is_empty() {
+            return Err("Пустой образ page 0".into());
+        }
+        let ini = session.ini_context();
+        let values = decode_config_fields(&ini.config_fields, &raw);
+        let mut doc = self.doc.lock().unwrap();
+        doc.ecu_config = Some(ProjectEcuConfig {
+            captured_at_ms: now_ms(),
+            page_size: ini.page_size,
+            raw_page0_base64: B64.encode(&raw),
+            values,
+        });
+        doc.touch();
+        *self.dirty.lock().unwrap() = true;
+        Ok(())
+    }
+
+    /// Обновить одно поле в `ecuConfig` проекта (после выбора значения с ECU в diff).
+    pub fn patch_ecu_config_field(
+        &self,
+        session: &EcuSession,
+        field: &str,
+        value: f64,
+    ) -> Result<(), String> {
+        let ini = session.ini_context();
+        let mut doc = self.doc.lock().unwrap();
+        let ecu = doc
+            .ecu_config
+            .as_mut()
+            .ok_or_else(|| "В проекте нет снимка ecuConfig".to_string())?;
+        let mut raw = B64
+            .decode(&ecu.raw_page0_base64)
+            .map_err(|e| format!("page0 base64: {e}"))?;
+        encode_scalar_into_page(&ini, &mut raw, field, value)?;
+        ecu.raw_page0_base64 = B64.encode(&raw);
+        ecu.values = decode_config_fields(&ini.config_fields, &raw);
+        ecu.values.insert(field.to_string(), value);
+        doc.touch();
+        *self.dirty.lock().unwrap() = true;
+        Ok(())
     }
 
     /// После `load_from_path`: INI из проекта + снимок config в сессию.

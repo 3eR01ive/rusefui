@@ -4,6 +4,7 @@
 
 mod autoconnect;
 mod component;
+mod config_diff;
 mod ini;
 mod project;
 mod ui_persist;
@@ -16,6 +17,9 @@ pub mod sources;
 pub use autoconnect::{AutoConnectManager, AutoConnectSnapshot, AutoConnectTick};
 pub use component::{
     ComponentAction, ComponentLogic, ComponentMeta, EcuSyncOnMount, LogicComponentType,
+};
+pub use config_diff::{
+    compute_config_diff, ConfigDiffEntry, ConfigDiffSnapshot, ConfigDiffStore, DiffSide,
 };
 pub use runtime::ComponentRuntime;
 pub use session::EcuSession;

@@ -13,6 +13,7 @@ use rusefi_ini::{
 use rusefi_protocol::{ProtocolError, TS_PAGE_SETTINGS};
 use serde::Serialize;
 
+use crate::config_diff::encode_scalar_into_page;
 use crate::project::ProjectEcuConfig;
 use crate::session::EcuSession;
 use crate::sources::output_channels::IniContext;
@@ -51,7 +52,7 @@ pub struct ConfigFieldInfo {
 pub struct ConfigSnapshot {
     pub connected: bool,
     pub loaded: bool,
-    /// Данные из файла проекта — просмотр без записи на ECU.
+    /// Данные из файла проекта (редактируются offline, не live ECU).
     #[serde(default)]
     pub read_only: bool,
     pub loading: bool,
@@ -152,13 +153,77 @@ impl ConfigSource {
         Ok(())
     }
 
-    fn ensure_writable(&self) -> Result<(), String> {
-        if self.snapshot.read().unwrap().read_only {
-            return Err(
-                "Конфиг из проекта (только просмотр). Подключите ECU и загрузите config с блока."
-                    .into(),
-            );
+    fn ensure_ecu_writable(&self) -> Result<(), String> {
+        let snap = self.snapshot.read().unwrap();
+        if snap.read_only {
+            return Err("Сейчас открыт config проекта — для записи на ECU подключитесь и дождитесь загрузки с блока.".into());
         }
+        if !snap.connected {
+            return Err("ECU не подключена".into());
+        }
+        Ok(())
+    }
+
+    fn ensure_page_raw(&self, ini: &IniContext, raw: &mut Vec<u8>) {
+        if raw.is_empty() && ini.page_size > 0 {
+            raw.resize(ini.page_size as usize, 0);
+        }
+    }
+
+    fn refresh_snapshot_from_raw(&self, ini: &IniContext, raw: &[u8], project_mode: bool) {
+        let values = decode_config_fields(&ini.config_fields, raw);
+        let mut snap = self.snapshot.write().unwrap();
+        snap.loaded = true;
+        snap.read_only = project_mode;
+        snap.connected = false;
+        snap.loading = false;
+        snap.progress = 1.0;
+        snap.bytes_loaded = ini.page_size;
+        snap.bytes_total = ini.page_size;
+        snap.raw_len = raw.len();
+        snap.values = values;
+        snap.field_count = ini.config_fields.len();
+        snap.last_error = None;
+    }
+
+    /// Изменить поле в RAM-снимке проекта (без ECU).
+    pub fn set_scalar_local(&self, name: &str, value: f64) -> Result<(), String> {
+        let ini = self.ini.lock().unwrap().clone();
+        if ini.config_fields.is_empty() {
+            return Err("INI не загружен".into());
+        }
+        let mut raw = self.raw.lock().unwrap();
+        self.ensure_page_raw(&ini, &mut raw);
+        encode_scalar_into_page(&ini, &mut raw, name, value)?;
+        let raw_copy = raw.clone();
+        drop(raw);
+        self.refresh_snapshot_from_raw(&ini, &raw_copy, true);
+        Ok(())
+    }
+
+    /// Изменить элемент таблицы/кривой в RAM-снимке проекта (без ECU).
+    pub fn set_array_value_local(&self, name: &str, index: usize, value: f64) -> Result<(), String> {
+        let ini = self.ini.lock().unwrap().clone();
+        let field = ini
+            .config_fields
+            .get(name)
+            .ok_or_else(|| format!("unknown config field: {name}"))?;
+        let ConfigFieldKind::Array(array) = field else {
+            return Err(format!("{name} is not an array field"));
+        };
+        let (offset, encoded) = encode_array_element(array, index, value)
+            .ok_or_else(|| format!("cannot encode array value for {name}[{index}]"))?;
+
+        let mut raw = self.raw.lock().unwrap();
+        self.ensure_page_raw(&ini, &mut raw);
+        let off = offset as usize;
+        if off + encoded.len() > raw.len() {
+            raw.resize(off + encoded.len(), 0);
+        }
+        raw[off..off + encoded.len()].copy_from_slice(&encoded);
+        let raw_copy = raw.clone();
+        drop(raw);
+        self.refresh_snapshot_from_raw(&ini, &raw_copy, true);
         Ok(())
     }
 
@@ -242,7 +307,7 @@ impl ConfigSource {
         index: usize,
         value: f64,
     ) -> Result<(), String> {
-        self.ensure_writable()?;
+        self.ensure_ecu_writable()?;
         let ini = self.ini.lock().unwrap().clone();
         let field = ini
             .config_fields
@@ -452,7 +517,7 @@ impl ConfigSource {
         name: &str,
         value: f64,
     ) -> Result<(), String> {
-        self.ensure_writable()?;
+        self.ensure_ecu_writable()?;
         let ini = self.ini.lock().unwrap().clone();
         let field = ini
             .config_fields

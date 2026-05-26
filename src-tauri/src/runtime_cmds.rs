@@ -1,6 +1,7 @@
 use rusefui_runtime::{
-    default_log_path, AutoConnectManager, AutoConnectSnapshot, ComponentRuntime, ConfigFieldInfo,
-    ConfigSnapshot, EcuSession, EcuSyncOnMount, OutputFieldInfo, OutputSnapshot,
+    compute_config_diff, default_log_path, AutoConnectManager, AutoConnectSnapshot,
+    ComponentRuntime, ConfigDiffSnapshot, ConfigDiffStore, ConfigFieldInfo, ConfigSnapshot,
+    DiffSide, EcuSession, EcuSyncOnMount, OutputFieldInfo, OutputSnapshot,
     OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl, ProjectInfo,
     ProjectLogRef, ProjectStore, ProtocolLogEntry, ProtocolLogFilterSettings, ProtocolLogStore,
     RusefuiProject,
@@ -21,6 +22,7 @@ pub struct RuntimeState {
     pub protocol_log: Arc<ProtocolLogStore>,
     pub autoconnect: Arc<AutoConnectManager>,
     pub project: Mutex<ProjectStore>,
+    pub config_diff: Mutex<ConfigDiffStore>,
     /// Последнее отправленное в UI `ecu-connection` (без дублей на каждый dispatch).
     last_ecu_connection_emit: Mutex<Option<EcuConnectionEvent>>,
 }
@@ -35,9 +37,57 @@ impl RuntimeState {
             protocol_log,
             autoconnect,
             project: Mutex::new(ProjectStore::new()),
+            config_diff: Mutex::new(ConfigDiffStore::default()),
             last_ecu_connection_emit: Mutex::new(None),
         }
     }
+}
+
+fn emit_config_diff(app: &AppHandle, snap: &ConfigDiffSnapshot) {
+    let app = app.clone();
+    let snap = snap.clone();
+    tauri::async_runtime::spawn(async move {
+        let _ = app.emit("config-diff", snap);
+    });
+}
+
+fn clear_config_diff(state: &RuntimeState, app: &AppHandle) {
+    state.config_diff.lock().unwrap().clear();
+    emit_config_diff(app, &state.config_diff.lock().unwrap().snapshot());
+}
+
+fn try_start_config_diff(state: &RuntimeState, app: &AppHandle) {
+    let snap = state.session.config().snapshot();
+    if !snap.connected || !snap.loaded || snap.loading {
+        return;
+    }
+
+    let project_values = {
+        let store = state.project.lock().unwrap();
+        store
+            .document()
+            .ecu_config
+            .as_ref()
+            .map(|e| e.values.clone())
+    };
+
+    let Some(project_values) = project_values else {
+        clear_config_diff(state, app);
+        return;
+    };
+
+    let ini = state.session.ini_context();
+    let entries = compute_config_diff(&project_values, &snap.values, &ini.config_fields);
+
+    let mut diff = state.config_diff.lock().unwrap();
+    if entries.is_empty() {
+        diff.clear();
+    } else {
+        diff.start(entries);
+    }
+    let out = diff.snapshot();
+    drop(diff);
+    emit_config_diff(app, &out);
 }
 
 fn emit_project(app: &AppHandle, state: &RuntimeState) {
@@ -291,6 +341,10 @@ fn sync_config_load(state: &RuntimeState, app: &AppHandle) {
     state.session.config().start_load(session.clone(), move |snap| {
         emit_config_update(&app, &snap);
         if !snap.loading {
+            if snap.loaded {
+                let st = app.state::<RuntimeState>();
+                try_start_config_diff(&st, &app);
+            }
             sync_output_poll_session(&session, &app);
         }
     });
@@ -300,6 +354,7 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
     if !state.session.is_connected() {
         state.session.config().stop();
         state.session.output().stop();
+        clear_config_diff(state, app);
         emit_config_update(app, &state.session.config().snapshot());
         emit_output(app, &state.session.output().snapshot());
         return;
@@ -613,10 +668,141 @@ pub fn config_start_listener(state: State<RuntimeState>, app: AppHandle) {
     sync_ecu_data(&state, &app);
 }
 
+#[tauri::command]
+pub fn config_diff_get(state: State<RuntimeState>) -> ConfigDiffSnapshot {
+    state.config_diff.lock().unwrap().snapshot()
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConfigDiffChoiceParams {
+    pub field: String,
+    pub side: String,
+}
+
+#[tauri::command]
+pub fn config_diff_set_choice(
+    params: ConfigDiffChoiceParams,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<ConfigDiffSnapshot, String> {
+    let side = match params.side.as_str() {
+        "project" => DiffSide::Project,
+        "ecu" => DiffSide::Ecu,
+        _ => return Err(format!("сторона должна быть project или ecu, получено {:?}", params.side)),
+    };
+    let mut diff = state.config_diff.lock().unwrap();
+    diff.set_choice(&params.field, side)?;
+    let snap = diff.snapshot();
+    drop(diff);
+    emit_config_diff(&app, &snap);
+    Ok(snap)
+}
+
+#[tauri::command]
+pub fn config_diff_set_all(
+    side: String,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<ConfigDiffSnapshot, String> {
+    let side = match side.as_str() {
+        "project" => DiffSide::Project,
+        "ecu" => DiffSide::Ecu,
+        _ => return Err("сторона: project | ecu".into()),
+    };
+    let mut diff = state.config_diff.lock().unwrap();
+    diff.set_all_choices(side);
+    let snap = diff.snapshot();
+    drop(diff);
+    emit_config_diff(&app, &snap);
+    Ok(snap)
+}
+
+#[tauri::command]
+pub fn config_diff_apply(state: State<RuntimeState>, app: AppHandle) -> Result<(), String> {
+    let plan: Vec<(String, DiffSide, f64)> = {
+        let diff = state.config_diff.lock().unwrap();
+        if !diff.snapshot().active {
+            return Err("Нет активного сравнения config".into());
+        }
+        diff.snapshot()
+            .entries
+            .iter()
+            .map(|e| {
+                let side = diff.choice_for(&e.field).unwrap_or(DiffSide::Ecu);
+                let value = match side {
+                    DiffSide::Project => e.project,
+                    DiffSide::Ecu => e.ecu,
+                };
+                (e.field.clone(), side, value)
+            })
+            .collect()
+    };
+
+    state.session.output().stop();
+    let session = Arc::clone(&state.session);
+    for (field, side, value) in plan {
+        match side {
+            DiffSide::Project => {
+                session.config().write_scalar(&session, &field, value)?;
+            }
+            DiffSide::Ecu => {
+                state
+                    .project
+                    .lock()
+                    .unwrap()
+                    .patch_ecu_config_field(&session, &field, value)?;
+            }
+        }
+    }
+
+    clear_config_diff(&state, &app);
+    emit_config_update(&app, &state.session.config().snapshot());
+    emit_project(&app, &state);
+    if state.session.should_poll_output_channels() {
+        sync_output_poll_session(&state.session, &app);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn config_diff_dismiss(state: State<RuntimeState>, app: AppHandle) {
+    clear_config_diff(&state, &app);
+}
+
 #[derive(Debug, Deserialize)]
 pub struct ConfigSetScalarParams {
     pub field: String,
     pub value: f64,
+}
+
+fn write_config_scalar(
+    state: &RuntimeState,
+    field: &str,
+    value: f64,
+) -> Result<ConfigSnapshot, String> {
+    let snap = state.session.config().snapshot();
+    if state.session.is_connected() && snap.loaded && !snap.read_only {
+        state.session.output().stop();
+        let session = Arc::clone(&state.session);
+        session.config().write_scalar(&session, field, value)?;
+    } else if snap.loaded && snap.read_only {
+        state
+            .session
+            .config()
+            .set_scalar_local(field, value)?;
+        state
+            .project
+            .lock()
+            .unwrap()
+            .sync_ecu_config_from_session(&state.session)?;
+    } else {
+        return Err(
+            "Нет config для редактирования — откройте проект с ecuConfig или подключите ECU"
+                .into(),
+        );
+    }
+    Ok(state.session.config().snapshot())
 }
 
 #[tauri::command]
@@ -625,20 +811,14 @@ pub fn config_set_scalar(
     state: State<RuntimeState>,
     app: AppHandle,
 ) -> Result<ConfigSnapshot, String> {
-    state.session.output().stop();
-
-    let session = Arc::clone(&state.session);
-    session
-        .config()
-        .write_scalar(&session, &params.field, params.value)?;
-
-    let snap = session.config().snapshot();
+    let snap = write_config_scalar(&state, &params.field, params.value)?;
     emit_config_update(&app, &snap);
-
-    if session.should_poll_output_channels() {
-        sync_output_poll_session(&session, &app);
+    if state.project.lock().unwrap().info().dirty {
+        emit_project(&app, &state);
     }
-
+    if state.session.should_poll_output_channels() {
+        sync_output_poll_session(&state.session, &app);
+    }
     Ok(snap)
 }
 
@@ -691,15 +871,36 @@ pub fn config_set_array_value(
     state: State<RuntimeState>,
     app: AppHandle,
 ) -> Result<ConfigSnapshot, String> {
-    state.session.config().write_array_value(
-        &state.session,
-        &params.field,
-        params.index,
-        params.value,
-    )?;
+    let snap = state.session.config().snapshot();
+    if state.session.is_connected() && snap.loaded && !snap.read_only {
+        state.session.config().write_array_value(
+            &state.session,
+            &params.field,
+            params.index,
+            params.value,
+        )?;
+    } else if snap.loaded && snap.read_only {
+        state.session.config().set_array_value_local(
+            &params.field,
+            params.index,
+            params.value,
+        )?;
+        state
+            .project
+            .lock()
+            .unwrap()
+            .sync_ecu_config_from_session(&state.session)?;
+    } else {
+        return Err(
+            "Нет config для редактирования — откройте проект с ecuConfig или подключите ECU".into(),
+        );
+    }
 
     let snap = state.session.config().snapshot();
-    emit_config(&app, &snap);
+    emit_config_update(&app, &snap);
+    if state.project.lock().unwrap().info().dirty {
+        emit_project(&app, &state);
+    }
     Ok(snap)
 }
 
@@ -837,6 +1038,7 @@ pub fn project_create_new(
     store.save_to_path(std::path::Path::new(&path))?;
     drop(store);
     state.session.reset_workspace_for_new_project();
+    clear_config_diff(&state, &app);
     emit_project(&app, &state);
     emit_workspace_reset(&app, &state);
     Ok(())
@@ -849,8 +1051,12 @@ pub fn project_load(path: String, state: State<RuntimeState>, app: AppHandle) ->
     state.session.reset_workspace_for_new_project();
     store.apply_to_session(&state.session)?;
     drop(store);
+    clear_config_diff(&state, &app);
     emit_project(&app, &state);
     emit_workspace_reset(&app, &state);
+    if state.session.is_connected() && state.session.config().snapshot().loaded {
+        try_start_config_diff(&state, &app);
+    }
     Ok(())
 }
 

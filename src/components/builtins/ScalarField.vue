@@ -53,7 +53,7 @@ const statusText = computed(() => {
   if (saving.value) return "сохранение…";
   if (snapshot.value.loading) return "загрузка конфига…";
   if (snapshot.value.lastError) return snapshot.value.lastError;
-  if (snapshot.value.readOnly && snapshot.value.loaded) return "проект (только чтение)";
+  if (snapshot.value.readOnly && snapshot.value.loaded) return "проект (offline)";
   if (!snapshot.value.connected && !configCanView(snapshot.value)) return "нет подключения";
   if (!snapshot.value.loaded) return "ожидание данных…";
   return units.value ? units.value : "config";
