@@ -346,7 +346,9 @@ impl ConfigSource {
 
     pub fn stop(&self) {
         self.loading.store(false, Ordering::SeqCst);
-        let _ = self.thread.lock().unwrap().take();
+        if let Some(handle) = self.thread.lock().unwrap().take() {
+            let _ = handle.join();
+        }
         let ini = self.ini.lock().unwrap().clone();
         *self.raw.lock().unwrap() = Vec::new();
         *self.snapshot.write().unwrap() = ConfigSnapshot::disconnected(&ini);
@@ -363,7 +365,7 @@ impl ConfigSource {
         F: Fn(ConfigSnapshot) + Send + Sync + 'static,
     {
         let snap = self.snapshot.read().unwrap();
-        if snap.loaded && !snap.read_only {
+        if snap.loaded {
             return;
         }
         drop(snap);
@@ -502,6 +504,9 @@ impl ConfigSource {
                 }
 
                 loading.store(false, Ordering::SeqCst);
+                if snapshot.read().unwrap().read_only {
+                    return;
+                }
                 *snapshot.write().unwrap() = snap.clone();
                 on_update(snap);
             })

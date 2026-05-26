@@ -1,5 +1,6 @@
 import { computed, ref, watch, type ComputedRef } from "vue";
 import { configCanEdit, initConfig, useConfig } from "./useConfig";
+import { useProject } from "./useProject";
 
 export type ConfigGridKind = "table" | "curve";
 
@@ -12,6 +13,7 @@ export function useConfigGrid({ kind, props }: UseConfigGridOptions) {
   void initConfig();
 
   const { snapshot, getArray, setArrayValue } = useConfig();
+  const { info: projectInfo } = useProject();
 
   const isCurve = kind === "curve";
 
@@ -57,7 +59,7 @@ export function useConfigGrid({ kind, props }: UseConfigGridOptions) {
   const disabled = computed(
     () =>
       !valueField.value ||
-      !configCanEdit(snapshot.value) ||
+      !configCanEdit(snapshot.value, projectInfo.value) ||
       loading.value ||
       saving.value,
   );

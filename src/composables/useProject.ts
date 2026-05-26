@@ -61,6 +61,9 @@ const info = shallowRef<ProjectInfo>({
   hasEcuConfig: false,
 });
 
+/** `initProject()` завершён — можно показывать экран выбора проекта. */
+export const projectInitialized = ref(false);
+
 let initPromise: Promise<void> | null = null;
 let unlisten: UnlistenFn | null = null;
 
@@ -81,12 +84,15 @@ export async function initProject(): Promise<void> {
         workspaceResetEpoch.value += 1;
       });
     }
+    projectInitialized.value = true;
   })();
   return initPromise;
 }
 
 export function useProject() {
-  const hasPath = computed(() => Boolean(info.value.path));
+  /** Проект привязан к файлу на диске — можно работать с ECU и настройками. */
+  const hasOpenProject = computed(() => Boolean(info.value.path));
+  const hasPath = hasOpenProject;
 
   /**
    * Новый проект: при необходимости сохранить текущий, выбрать файл, создать и сбросить UI.
@@ -178,6 +184,7 @@ export function useProject() {
 
   return {
     info: readonly(info),
+    hasOpenProject,
     hasPath,
     projectUiEpoch: readonly(projectUiEpoch),
     refreshInfo,

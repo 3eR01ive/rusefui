@@ -339,9 +339,21 @@ fn sync_output_poll_session(session: &Arc<EcuSession>, app: &AppHandle) {
     }
 }
 
+/// Снимок config из файла проекта (offline), не сбрасывать при отключённой ECU.
+fn snapshot_is_project_preview(snap: &ConfigSnapshot) -> bool {
+    snap.loaded && snap.read_only
+}
+
+fn stop_config_unless_project_preview(session: &EcuSession) {
+    let snap = session.config().snapshot();
+    if !snapshot_is_project_preview(&snap) {
+        session.config().stop();
+    }
+}
+
 fn sync_config_load(state: &RuntimeState, app: &AppHandle) {
     if !state.session.is_connected() {
-        state.session.config().stop();
+        stop_config_unless_project_preview(&state.session);
         emit_config_update(app, &state.session.config().snapshot());
         return;
     }
@@ -371,7 +383,7 @@ fn sync_config_load(state: &RuntimeState, app: &AppHandle) {
 
 fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
     if !state.session.is_connected() {
-        state.session.config().stop();
+        stop_config_unless_project_preview(&state.session);
         state.session.output().stop();
         state.session.composite().disable_on_ecu(&state.session);
         state.session.composite().stop();
@@ -947,6 +959,19 @@ pub struct ConfigSetScalarParams {
     pub value: f64,
 }
 
+/// Сессия потеряла project-preview (например, после гонки с загрузкой ECU) — восстановить из файла.
+fn try_apply_project_config_for_edit(state: &RuntimeState) -> Result<bool, String> {
+    let store = state.project.lock().unwrap();
+    let info = store.info();
+    if info.path.is_none() || !info.has_ecu_config {
+        return Ok(false);
+    }
+    drop(store);
+    state.project.lock().unwrap().apply_to_session(&state.session)?;
+    let snap = state.session.config().snapshot();
+    Ok(snap.loaded && snap.read_only)
+}
+
 fn write_config_scalar(
     state: &RuntimeState,
     field: &str,
@@ -958,6 +983,16 @@ fn write_config_scalar(
         let session = Arc::clone(&state.session);
         session.config().write_scalar(&session, field, value)?;
     } else if snap.loaded && snap.read_only {
+        state
+            .session
+            .config()
+            .set_scalar_local(field, value)?;
+        state
+            .project
+            .lock()
+            .unwrap()
+            .sync_ecu_config_from_session(&state.session)?;
+    } else if try_apply_project_config_for_edit(state)? {
         state
             .session
             .config()
@@ -1053,6 +1088,17 @@ pub fn config_set_array_value(
             params.value,
         )?;
     } else if snap.loaded && snap.read_only {
+        state.session.config().set_array_value_local(
+            &params.field,
+            params.index,
+            params.value,
+        )?;
+        state
+            .project
+            .lock()
+            .unwrap()
+            .sync_ecu_config_from_session(&state.session)?;
+    } else if try_apply_project_config_for_edit(&state)? {
         state.session.config().set_array_value_local(
             &params.field,
             params.index,

@@ -91,10 +91,29 @@ export async function initConfig(): Promise<void> {
           bytesTotal: p.bytesTotal,
         };
       });
+      await listen("workspace-reset", async () => {
+        try {
+          snapshot.value = await invoke<ConfigSnapshot>("config_get_snapshot");
+          const fields = await invoke<ConfigFieldInfo[]>("config_list_fields");
+          fieldsByName.value = new Map(fields.map((f) => [f.name, f]));
+        } catch {
+          /* ignore */
+        }
+      });
     }
   })();
 
   return initPromise;
+}
+
+export async function refreshConfigSnapshot(): Promise<void> {
+  try {
+    snapshot.value = await invoke<ConfigSnapshot>("config_get_snapshot");
+    const fields = await invoke<ConfigFieldInfo[]>("config_list_fields");
+    fieldsByName.value = new Map(fields.map((f) => [f.name, f]));
+  } catch {
+    /* not in tauri */
+  }
 }
 
 export async function setConfigScalar(
@@ -129,11 +148,15 @@ export function configCanView(s: ConfigSnapshot): boolean {
   return s.loaded && !s.loading;
 }
 
-export function configCanEdit(s: ConfigSnapshot): boolean {
+export function configCanEdit(
+  s: ConfigSnapshot,
+  project?: { path: string | null; hasEcuConfig: boolean },
+): boolean {
   if (isConfigMergeBlocking()) return false;
   if (!s.loaded || s.loading) return false;
   if (s.connected && !s.readOnly) return true;
-  return Boolean(s.readOnly);
+  if (s.readOnly) return true;
+  return Boolean(project?.path && project.hasEcuConfig);
 }
 
 export function configIsProjectMode(s: ConfigSnapshot): boolean {

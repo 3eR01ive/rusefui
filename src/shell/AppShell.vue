@@ -13,7 +13,12 @@ import {
 import { initConfig, useConfig } from "../composables/useConfig";
 import { useProtocolLog, useProtocolLogLifecycle } from "../composables/useProtocolLog";
 import { useEcuConnection } from "../composables/useEcuConnection";
-import { initProject, useProject } from "../composables/useProject";
+import {
+  initProject,
+  projectInitialized,
+  useProject,
+} from "../composables/useProject";
+import ProjectGate from "./ProjectGate.vue";
 
 const dataCtx = createDataContext();
 provideDataContext(dataCtx);
@@ -24,6 +29,7 @@ const { togglePanel } = useProtocolLog();
 const { snapshot: configSnap, burn: burnConfig } = useConfig();
 const {
   info: projectInfo,
+  hasOpenProject,
   createNewProject,
   openProject,
   saveProject,
@@ -62,11 +68,11 @@ const canBurn = computed(
 
 useProtocolLogLifecycle();
 
-onMounted(() => {
-  void initProject();
+onMounted(async () => {
+  await initProject();
+  await initConfig();
   void initOutputChannels();
   void initOutputTimeline();
-  void initConfig();
 });
 
 async function runProjectAction(fn: () => Promise<void>): Promise<void> {
@@ -124,7 +130,9 @@ async function onBurn() {
 </script>
 
 <template>
-  <div class="app-shell">
+  <ProjectGate v-if="projectInitialized && !hasOpenProject" />
+
+  <div v-if="projectInitialized && hasOpenProject" class="app-shell">
     <header class="app-header">
       <div class="brand-mark" aria-hidden="true" />
       <div>

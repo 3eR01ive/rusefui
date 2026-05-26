@@ -3,6 +3,7 @@ import { computed, ref, watch } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import type { DataBinding } from "../../core/types";
 import { configCanEdit, configCanView, initConfig, useConfig } from "../../composables/useConfig";
+import { useProject } from "../../composables/useProject";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -15,6 +16,7 @@ const props = defineProps<{
 void initConfig();
 
 const { snapshot, getField, getFieldInfo, setField } = useConfig();
+const { info: projectInfo } = useProject();
 
 const bind = computed(() => props.instance.bind as DataBinding | undefined);
 const fieldName = computed(() => bind.value?.field ?? "");
@@ -62,7 +64,7 @@ const statusText = computed(() => {
 const disabled = computed(
   () =>
     !fieldName.value ||
-    !configCanEdit(snapshot.value) ||
+    !configCanEdit(snapshot.value, projectInfo.value) ||
     saving.value,
 );
 
