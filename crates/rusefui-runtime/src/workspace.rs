@@ -207,7 +207,8 @@ fn phase_from_inputs(inputs: &WorkspaceInputs, config_source: ConfigSource) -> W
     }
 
     match config_source {
-        ConfigSource::ProjectFile => WorkspacePhase::ConfigFromProject,
+        // Снимок из проекта при live ECU — только preview, нужна загрузка page 0 с блока.
+        ConfigSource::ProjectFile => WorkspacePhase::EcuConnectedIdle,
         ConfigSource::EcuLive => WorkspacePhase::ConfigFromEcu,
         ConfigSource::None if inputs.config.loading => WorkspacePhase::ConfigLoadingFromEcu,
         ConfigSource::None => WorkspacePhase::EcuConnectedIdle,
@@ -370,6 +371,16 @@ mod tests {
         let snap = inputs(Some("/p.json"), true, false, cfg);
         assert_eq!(snap.derive().phase, WorkspacePhase::ConfigFromProject);
         assert!(snap.derive().capabilities.edit_project_config);
+    }
+
+    #[test]
+    fn project_preview_with_live_ecu_starts_ecu_load() {
+        let mut cfg = disconnected_config();
+        cfg.loaded = true;
+        cfg.read_only = true;
+        let snap = inputs(Some("/p.json"), false, true, cfg);
+        assert_eq!(snap.derive().phase, WorkspacePhase::EcuConnectedIdle);
+        assert!(!snap.derive().capabilities.burn_to_flash);
     }
 
     fn disconnected_config() -> ConfigSnapshot {

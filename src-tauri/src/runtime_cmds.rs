@@ -166,9 +166,7 @@ fn emit_project(app: &AppHandle, state: &RuntimeState) {
 fn emit_workspace_reset(app: &AppHandle, state: &RuntimeState) {
     state.workspace_fsm.lock().unwrap().reset();
     let _ = reconcile_workspace(state, app);
-    emit_config(app, &state.session.config().snapshot());
-    emit_output(app, &state.session.output().snapshot());
-    emit_composite(app, &state.session.composite().snapshot());
+    sync_ecu_data(state, app);
     let timeline = state.session.output_timeline_status();
     let _ = app.emit("output-timeline-status", timeline);
     let _ = app.emit("workspace-reset", ());
@@ -364,7 +362,7 @@ pub fn start_autoconnect(app: AppHandle) {
             "Лог протокола: {}",
             state.protocol_log.path().display()
         ));
-    schedule_ecu_notify(&app, false);
+    schedule_ecu_notify(&app, true);
     schedule_autoconnect_ui(&app);
     let _ = reconcile_workspace(&state, &app);
 }
@@ -418,8 +416,16 @@ fn sync_config_load(state: &RuntimeState, app: &AppHandle) {
     }
 
     let cfg = state.session.config().snapshot();
-    if cfg.loaded || cfg.loading {
+    if cfg.loading {
         return;
+    }
+    // Live config с ECU уже в RAM.
+    if cfg.loaded && !cfg.read_only {
+        return;
+    }
+    // Preview из проекта — сбросить и загрузить с блока.
+    if cfg.loaded && cfg.read_only {
+        state.session.config().stop();
     }
 
     state.session.output().stop();

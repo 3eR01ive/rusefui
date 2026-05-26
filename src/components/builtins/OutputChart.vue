@@ -228,6 +228,9 @@ async function refreshFieldCatalog(): Promise<void> {
 }
 const fieldFilter = ref("");
 const showSuggest = ref(false);
+/** Канал под курсором/фокусом списка (превью на графе без добавления до клика). */
+const suggestPreviewField = ref<string | null>(null);
+const suggestListRef = ref<HTMLUListElement | null>(null);
 const suggestStyle = ref({ top: "0px", left: "0px", width: "0px" });
 const lastView = shallowRef<OutputTimelineView | null>(null);
 
@@ -251,6 +254,59 @@ function closeSuggestSoon(): void {
   window.setTimeout(() => {
     showSuggest.value = false;
   }, 160);
+}
+
+function effectiveSuggestPreviewField(): string | null {
+  if (!showSuggest.value) return null;
+  const p = suggestPreviewField.value;
+  if (!p || isFieldOnActiveGraph(p)) return null;
+  return p;
+}
+
+function fieldsForTimelineQuery(): string[] {
+  const base = uniquePollFields();
+  const extra = effectiveSuggestPreviewField();
+  if (extra && !base.includes(extra)) {
+    return [...base, extra];
+  }
+  return base;
+}
+
+function setSuggestPreview(name: string): void {
+  if (!showSuggest.value) return;
+  if (isFieldOnActiveGraph(name)) {
+    if (suggestPreviewField.value !== null) {
+      suggestPreviewField.value = null;
+      cachedView = null;
+      scheduleRedraw();
+    }
+    return;
+  }
+  if (suggestPreviewField.value === name) return;
+  suggestPreviewField.value = name;
+  cachedView = null;
+  scheduleRedraw();
+}
+
+function clearSuggestPreview(): void {
+  if (suggestPreviewField.value === null) return;
+  suggestPreviewField.value = null;
+  cachedView = null;
+  scheduleRedraw();
+}
+
+function onSuggestItemBlur(): void {
+  window.requestAnimationFrame(() => {
+    const root = suggestListRef.value;
+    const ae = document.activeElement as Node | null;
+    if (root && ae && root.contains(ae)) return;
+    clearSuggestPreview();
+  });
+}
+
+function onSuggestPick(name: string): void {
+  suggestPreviewField.value = null;
+  toggleField(name);
 }
 
 /** min/max для шкалы Y; пустая строка = авто по данным окна. */
@@ -499,6 +555,7 @@ function buildPanels(
   _tMin: number,
   _tMax: number,
   resolveSeries: (name: string) => TimeSeries | null,
+  previewFieldName: string | null,
 ): LogGraphPanelSpec[] {
   const panels: LogGraphPanelSpec[] = [];
   graphGroups.value.forEach((group, gi) => {
@@ -521,6 +578,31 @@ function buildPanels(
         units: meta?.units ?? "",
         color: s.color,
       });
+    }
+    if (
+      previewFieldName &&
+      group.id === activeGraphId.value &&
+      !group.fieldNames.includes(previewFieldName)
+    ) {
+      const s = resolveSeries(previewFieldName);
+      if (s) {
+        const inp = rangeInputs.value[previewFieldName] ?? { min: "", max: "" };
+        const { vMin, vMax } = valueRangeForPoints(
+          s.points,
+          parseRangeInput(inp.min),
+          parseRangeInput(inp.max),
+        );
+        const meta = allFields.value.find((f) => f.name === previewFieldName);
+        traces.push({
+          series: s,
+          vMin,
+          vMax,
+          name: previewFieldName,
+          units: meta?.units ?? "",
+          color: s.color,
+          preview: true,
+        });
+      }
     }
     if (traces.length > 0) {
       panels.push({ traces, title: `Граф ${gi + 1}` });
@@ -732,8 +814,13 @@ async function toggleFollowLive(): Promise<void> {
 
 function chartMargins() {
   let maxTraces = 1;
+  const pv = effectiveSuggestPreviewField();
   for (const g of graphGroups.value) {
-    if (g.fieldNames.length > maxTraces) maxTraces = g.fieldNames.length;
+    let n = g.fieldNames.length;
+    if (pv && g.id === activeGraphId.value && !g.fieldNames.includes(pv)) {
+      n += 1;
+    }
+    if (n > maxTraces) maxTraces = n;
   }
   return logPanelMargins(maxTraces);
 }
@@ -955,10 +1042,21 @@ function paintFromView(
 ): void {
   const { tMin, tMax } = view;
   const crosshair = crosshairSpec();
-  const fields = uniquePollFields();
-  let panels = buildPanels(tMin, tMax, (name) => seriesForField(name, view));
+  const fields = fieldsForTimelineQuery();
+  const previewName = effectiveSuggestPreviewField();
+  let panels = buildPanels(
+    tMin,
+    tMax,
+    (name) => seriesForField(name, view),
+    previewName,
+  );
   if (panels.length === 0 && fields.length > 0) {
-    panels = buildPanels(tMin, tMax, (name) => fallbackSeries(name, tMin, tMax));
+    panels = buildPanels(
+      tMin,
+      tMax,
+      (name) => fallbackSeries(name, tMin, tMax),
+      previewName,
+    );
     if (panels.length > 0) {
       drawLogPanelsChart(ctx, w, h, panels, tMin, tMax, crosshair);
       return;
@@ -1036,7 +1134,7 @@ async function redraw(skipFetch = false): Promise<void> {
   if (!ctx) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  const fields = uniquePollFields();
+  const fields = fieldsForTimelineQuery();
   if (fields.length === 0) {
     ctx.clearRect(0, 0, w, h);
     return;
@@ -1137,6 +1235,9 @@ watch(showSuggest, (open) => {
     window.addEventListener("scroll", updateSuggestPosition, true);
     window.addEventListener("resize", updateSuggestPosition);
   } else {
+    suggestPreviewField.value = null;
+    cachedView = null;
+    scheduleRedraw();
     window.removeEventListener("scroll", updateSuggestPosition, true);
     window.removeEventListener("resize", updateSuggestPosition);
   }
@@ -1326,8 +1427,10 @@ watch(chartHeight, () => scheduleRedraw());
         <Teleport to="body">
           <ul
             v-if="showSuggest"
+            ref="suggestListRef"
             class="field-suggest field-suggest-portal"
             :style="suggestStyle"
+            @mouseleave="clearSuggestPreview"
           >
             <li v-if="suggestEmptyHint" class="field-suggest-empty">
               {{ suggestEmptyHint }}
@@ -1338,9 +1441,16 @@ watch(chartHeight, () => scheduleRedraw());
               :class="{
                 active: isFieldOnActiveGraph(f.name),
                 'on-other-graph': isFieldOnAnyGraph(f.name) && !isFieldOnActiveGraph(f.name),
+                'suggest-preview-hint': suggestPreviewField === f.name,
               }"
             >
-              <button type="button" @mousedown.prevent="toggleField(f.name)">
+              <button
+                type="button"
+                @mousedown.prevent="onSuggestPick(f.name)"
+                @pointerenter="setSuggestPreview(f.name)"
+                @focus="setSuggestPreview(f.name)"
+                @blur="onSuggestItemBlur"
+              >
                 {{ f.name }}
                 <span v-if="f.units" class="units">{{ f.units }}</span>
               </button>
@@ -1748,6 +1858,11 @@ watch(chartHeight, () => scheduleRedraw());
 
 .field-suggest-portal li.on-other-graph button {
   border-left: 2px solid var(--color-accent);
+}
+
+.field-suggest-portal li.suggest-preview-hint button {
+  outline: 1px solid var(--color-border-strong);
+  background: var(--color-bg-muted);
 }
 
 .field-suggest-portal button {

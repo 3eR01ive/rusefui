@@ -20,6 +20,8 @@ export interface LogTraceSpec {
   name: string;
   units: string;
   color: string;
+  /** Временная кривая при наведении/фокусе списка каналов (ещё не выбрана в граф). */
+  preview?: boolean;
 }
 
 export interface LogGraphPanelSpec {
@@ -185,35 +187,48 @@ export function drawLogGraphPanel(
 
     const pts = [...tr.series.points].sort((a, b) => a.t - b.t);
     if (pts.length < 1) continue;
-    ctx.strokeStyle = tr.color;
-    ctx.lineWidth = 2;
-    ctx.lineJoin = "round";
-    ctx.lineCap = "round";
-    if (pts.length === 1) {
-      const p = pts[0]!;
-      const x = toX(p.t);
-      const y = toY(p.v);
-      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-      ctx.beginPath();
-      ctx.arc(x, y, 2.5, 0, Math.PI * 2);
-      ctx.fillStyle = tr.color;
-      ctx.fill();
-      continue;
-    }
-    ctx.beginPath();
-    let started = false;
-    for (const p of pts) {
-      const x = toX(p.t);
-      const y = toY(p.v);
-      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-      if (!started) {
-        ctx.moveTo(x, y);
-        started = true;
+    ctx.save();
+    try {
+      if (tr.preview) {
+        ctx.globalAlpha = 0.72;
+        ctx.setLineDash([5, 4]);
+        ctx.lineWidth = 1.75;
       } else {
-        ctx.lineTo(x, y);
+        ctx.setLineDash([]);
+        ctx.lineWidth = 2;
       }
+      ctx.strokeStyle = tr.color;
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      if (pts.length === 1) {
+        const p = pts[0]!;
+        const x = toX(p.t);
+        const y = toY(p.v);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+        ctx.beginPath();
+        ctx.arc(x, y, tr.preview ? 2 : 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = tr.color;
+        ctx.globalAlpha = tr.preview ? 0.72 : 1;
+        ctx.fill();
+        continue;
+      }
+      ctx.beginPath();
+      let started = false;
+      for (const p of pts) {
+        const x = toX(p.t);
+        const y = toY(p.v);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+        if (!started) {
+          ctx.moveTo(x, y);
+          started = true;
+        } else {
+          ctx.lineTo(x, y);
+        }
+      }
+      if (started) ctx.stroke();
+    } finally {
+      ctx.restore();
     }
-    if (started) ctx.stroke();
   }
 
   if (crosshairT !== null && Number.isFinite(crosshairT)) {
