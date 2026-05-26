@@ -15,6 +15,8 @@ import { drawDynoChart } from "../../composables/drawDynoChart";
 import {
   DynoView,
   dynoConfigFromValues,
+  DEFAULT_DYNO_RUN_OPTIONS,
+  type DynoRunOptions,
   type DynoRunPoint,
 } from "../../lib/dynoView";
 
@@ -46,6 +48,21 @@ const recording = ref(false);
 const runPoints = shallowRef<DynoRunPoint[]>([]);
 const statusMessage = ref<string | null>(null);
 
+const ignoreTpsMin = ref(DEFAULT_DYNO_RUN_OPTIONS.ignoreTpsMin);
+const minRpm = ref(DEFAULT_DYNO_RUN_OPTIONS.minRpm);
+
+function runOptions(): DynoRunOptions {
+  const min = Math.max(0, Math.round(minRpm.value));
+  return {
+    ignoreTpsMin: ignoreTpsMin.value,
+    minRpm: min,
+  };
+}
+
+function applyRunOptions(): void {
+  dyno?.setRunOptions(runOptions());
+}
+
 let dyno: DynoView | null = null;
 let timeOffsetSec = 0;
 let lastSampleSec = -1;
@@ -75,6 +92,21 @@ function rebuildDyno(): void {
   } else {
     dyno = new DynoView(cfg);
   }
+  applyRunOptions();
+}
+
+function recordingHint(): string {
+  const parts: string[] = [];
+  if (!ignoreTpsMin.value) {
+    parts.push("TPS ≥ 30%");
+  }
+  if (minRpm.value > 0) {
+    parts.push(`RPM ≥ ${Math.round(minRpm.value)}`);
+  }
+  if (parts.length === 0) {
+    return "Запись: разгон по RPM (ограничения TPS/RPM сняты).";
+  }
+  return `Запись: ${parts.join(", ")}, без резкого сброса газа.`;
 }
 
 function processSample(): void {
@@ -103,7 +135,7 @@ function startRun(): void {
   timeOffsetSec = timelineLiveSec();
   lastSampleSec = -1;
   recording.value = true;
-  statusMessage.value = "Запись: держите TPS ≥ 30%, разгон без сброса газа.";
+  statusMessage.value = recordingHint();
   scheduleRedraw();
 }
 
@@ -113,7 +145,7 @@ function stopRun(): void {
   statusMessage.value =
     runPoints.value.length > 0
       ? `Готово: ${runPoints.value.length} точек.`
-      : "Запись остановлена без точек (нужен разгон при TPS ≥ 30%).";
+      : `Запись остановлена без точек (${recordingHint().replace(/^Запись: /, "")}).`;
 }
 
 function clearRun(): void {
@@ -162,6 +194,13 @@ watch(
   { deep: true },
 );
 
+watch([ignoreTpsMin, minRpm], () => {
+  applyRunOptions();
+  if (recording.value) {
+    statusMessage.value = recordingHint();
+  }
+});
+
 watch([runPoints, chartHeight, canvasWidth], () => scheduleRedraw(), { deep: true });
 
 onMounted(async () => {
@@ -207,6 +246,28 @@ onUnmounted(() => {
           Tq {{ currentTorque.toFixed(1) }} Nm · HP {{ currentHp.toFixed(1) }}
         </span>
       </div>
+    </div>
+
+    <div class="dyno-options">
+      <label class="option-check">
+        <input v-model="ignoreTpsMin" type="checkbox" :disabled="recording" />
+        <span>Без ограничения TPS</span>
+      </label>
+      <label class="option-rpm">
+        <span>Мин. RPM</span>
+        <input
+          v-model.number="minRpm"
+          type="number"
+          min="0"
+          max="20000"
+          step="100"
+          :disabled="recording"
+          title="0 — не использовать; точки ниже порога не пишутся"
+        />
+      </label>
+      <p class="hint options-hint">
+        Мин. RPM: ждём разгона до порога; при падении ниже — сброс заезда. Без TPS — для стимулятора.
+      </p>
     </div>
 
     <p v-if="!connected" class="message warn">Подключите ECU для live output.</p>
@@ -283,6 +344,53 @@ onUnmounted(() => {
   font-size: 0.88rem;
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+.dyno-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.25rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-elevated);
+}
+
+.option-check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.88rem;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.option-check input {
+  width: 1rem;
+  height: 1rem;
+}
+
+.option-rpm {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  color: var(--color-text-muted);
+}
+
+.option-rpm input {
+  width: 5.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.options-hint {
+  flex: 1 1 100%;
+  margin: 0;
 }
 
 .message {

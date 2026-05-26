@@ -88,7 +88,7 @@ export function drawDynoChart(
     ctx.fillStyle = cssVar("--color-text-subtle", "#9c948a");
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("Нажмите Start и выполните разгон (TPS ≥ 30%)", width / 2, height / 2);
+    ctx.fillText("Нажмите Start и выполните разгон", width / 2, height / 2);
     return;
   }
 

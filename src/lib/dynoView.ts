@@ -41,6 +41,19 @@ export interface DynoRunPoint {
   hp: number;
 }
 
+/** Параметры записи заезда (UI), не из ECU config. */
+export interface DynoRunOptions {
+  /** Не требовать TPS ≥ 30% для старта/продолжения заезда. */
+  ignoreTpsMin: boolean;
+  /** Не записывать точки ниже этого RPM; 0 = выкл. До первой точки — ожидание без сброса. */
+  minRpm: number;
+}
+
+export const DEFAULT_DYNO_RUN_OPTIONS: DynoRunOptions = {
+  ignoreTpsMin: false,
+  minRpm: 0,
+};
+
 const DYNO_VIEW_WINDOW_SIZE = 7;
 const DYNO_VIEW_WINDOW_SIZE_RPM = 10;
 const DYNO_VIEW_TPS_MIN_FOR_RUN = 30;
@@ -88,9 +101,14 @@ export class DynoView {
   private readonly tailRpm = new Float64Array(DYNO_VIEW_WINDOW_SIZE_RPM);
 
   private initialized = false;
+  private runOptions: DynoRunOptions = { ...DEFAULT_DYNO_RUN_OPTIONS };
 
   constructor(private config: DynoConfig) {
     this.init();
+  }
+
+  setRunOptions(options: DynoRunOptions): void {
+    this.runOptions = { ...options };
   }
 
   static emptyPoint(): DynoPoint {
@@ -158,11 +176,22 @@ export class DynoView {
 
   /** @returns точка кривой или null, если сэмпл отфильтрован */
   onRpm(rpm: number, time: number, tps: number): DynoRunPoint | null {
-    if (
-      tps < DYNO_VIEW_TPS_MIN_FOR_RUN ||
-      this.dynoViewPointPrev.tps - tps > DYNO_VIEW_TPS_DIFF_TO_RESET_RUN
-    ) {
-      this.reset();
+    const { ignoreTpsMin, minRpm } = this.runOptions;
+
+    if (!ignoreTpsMin) {
+      if (
+        tps < DYNO_VIEW_TPS_MIN_FOR_RUN ||
+        this.dynoViewPointPrev.tps - tps > DYNO_VIEW_TPS_DIFF_TO_RESET_RUN
+      ) {
+        this.reset();
+        return null;
+      }
+    }
+
+    if (minRpm > 0 && rpm < minRpm) {
+      if (this.count > 0) {
+        this.reset();
+      }
       return null;
     }
 
