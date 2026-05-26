@@ -14,6 +14,7 @@ import IniPanelsBrowser from "./builtins/IniPanelsBrowser.vue";
 import OutputChart from "./builtins/OutputChart.vue";
 import CompositeChart from "./builtins/CompositeChart.vue";
 import OutputValue from "./builtins/OutputValue.vue";
+import Dyno from "./builtins/Dyno.vue";
 
 let registered = false;
 
@@ -187,5 +188,16 @@ export function registerBuiltinComponents(): void {
       description: "Значение из outputChannels",
     },
     OutputValue,
+  );
+
+  registerComponent(
+    {
+      type: "dyno",
+      label: "Virtual Dyno",
+      mode: "display",
+      isContainer: false,
+      description: "Virtual dyno: HP/Torque vs RPM из output (RPMValue, TPSValue)",
+    },
+    Dyno,
   );
 }

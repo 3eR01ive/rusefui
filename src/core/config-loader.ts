@@ -50,14 +50,18 @@ async function resolveInstanceTree(
     return {
       id: node.$component,
       type: "composite",
-      children,
+      children: await Promise.all(children.map(resolveInstanceTree)),
     };
   }
 
   const resolved: ComponentInstance = {
     ...node,
     children: node.children
-      ? await Promise.all(node.children.map(resolveInstanceTree))
+      ? await Promise.all(
+          node.children.map((child) =>
+            resolveInstanceTree(child as ComponentInstance | ComponentRef),
+          ),
+        )
       : undefined,
   };
   return resolved;
@@ -74,7 +78,7 @@ async function loadTab(tabPath: string): Promise<ResolvedTab> {
     root = {
       id: doc.root.$component,
       type: "composite",
-      children,
+      children: await Promise.all(children.map(resolveInstanceTree)),
     };
   } else {
     root = await resolveInstanceTree(doc.root);

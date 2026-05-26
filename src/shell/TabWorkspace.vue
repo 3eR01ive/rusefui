@@ -13,14 +13,21 @@ const tabs = computed<ResolvedTab[]>(() => config.value?.tabs ?? []);
 /** Expose resolved tabs so AppShell can render the icon bar. */
 defineExpose({ tabs });
 
+function syncActiveTab(ids: string[]): void {
+  tabOrder.value = ids;
+  if (!ids.length) {
+    activeTabId.value = "";
+    return;
+  }
+  if (!ids.includes(activeTabId.value)) {
+    activeTabId.value = ids[0]!;
+  }
+}
+
 onMounted(async () => {
   try {
     config.value = await loadAppConfig();
-    const ids = (config.value?.tabs ?? []).map((t) => t.id);
-    tabOrder.value = ids;
-    if (ids.length && !activeTabId.value) {
-      activeTabId.value = ids[0]!;
-    }
+    syncActiveTab((config.value?.tabs ?? []).map((t) => t.id));
   } catch (e) {
     loadError.value = String(e);
   }

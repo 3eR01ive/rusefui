@@ -1,0 +1,6 @@
+tab:
+  id: run
+  title: Run
+
+root:
+  $component: run.panel
