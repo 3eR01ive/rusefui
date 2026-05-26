@@ -1,6 +1,6 @@
 tab:
   id: monitor
-  title: Монитор
+  title: Monitor
 
 root:
   $component: monitor.panel

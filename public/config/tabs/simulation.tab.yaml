@@ -1,6 +1,6 @@
 tab:
   id: simulation
-  title: Стимуляция
+  title: Control
 
 root:
   $component: simulation.panel
