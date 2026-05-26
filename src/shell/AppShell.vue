@@ -20,14 +20,16 @@ import {
   type WorkspacePhase,
 } from "../composables/useWorkspaceState";
 import ProjectGate from "./ProjectGate.vue";
-import { useAppFooter, setFooterLed } from "../composables/useAppFooter";
+import EcuConnectionModal from "./EcuConnectionModal.vue";
+import { useAppFooter, setFooterLed, footerToggleProtocol } from "../composables/useAppFooter";
 
 const dataCtx = createDataContext();
 provideDataContext(dataCtx);
 
 const appTitle = ref("rusefui");
-const { offlineMode, scanning, busyPorts, setOfflineMode } = useEcuConnection(dataCtx);
+const { offlineMode, scanning, busyPorts } = useEcuConnection(dataCtx);
 const { togglePanel } = useProtocolLog();
+footerToggleProtocol.value = togglePanel;
 const { burn: burnConfig } = useConfig();
 const {
   info: projectInfo,
@@ -263,14 +265,6 @@ async function onBurn() {
             </button>
           </div>
         </div>
-        <label class="offline-toggle" title="Не подключаться к ECU автоматически">
-          <input
-            type="checkbox"
-            :checked="offlineMode"
-            @change="setOfflineMode(($event.target as HTMLInputElement).checked)"
-          />
-          <span>Offline mode</span>
-        </label>
         <button
           type="button"
           class="log-btn"
@@ -281,41 +275,22 @@ async function onBurn() {
           {{ loadingLog ? "Лог…" : "Лог output" }}
         </button>
         <button
+          v-if="dataCtx.connection.value.connected"
           type="button"
-          class="log-btn"
-          title="Лог USB, подключения и протокола ECU"
-          @click="togglePanel"
+          class="burn-btn"
+          :disabled="!canBurn"
+          :title="burnError ?? 'Записать конфигурацию во flash (команда B, как Burn в TunerStudio)'"
+          @click="onBurn"
         >
-          Протокол
+          {{ burning ? "Burn…" : "Burn" }}
         </button>
-        <template v-if="dataCtx.connection.value.connected">
-          <button
-            type="button"
-            class="burn-btn"
-            :disabled="!canBurn"
-            :title="
-              burnError ??
-              'Записать конфигурацию во flash (команда B, как Burn в TunerStudio)'
-            "
-            @click="onBurn"
-          >
-            {{ burning ? "Burn…" : "Burn" }}
-          </button>
-          <button
-            type="button"
-            class="conn-badge"
-            title="Протокол ECU — команды и ответы"
-            @click="togglePanel"
-          >
-            ECU
-          </button>
-        </template>
       </div>
     </header>
     <TabWorkspace />
     <ProtocolLogSheet />
     <ConfigLoadOverlay />
     <ConfigDiffModal />
+    <EcuConnectionModal />
   </div>
 </template>
 
@@ -458,20 +433,5 @@ async function onBurn() {
   cursor: not-allowed;
 }
 
-.conn-badge {
-  padding: 0.25rem 0.55rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-accent-hover);
-  background: var(--color-bg-accent-soft);
-  border: 1px solid var(--color-success-border);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
 
-.conn-badge:hover {
-  background: #fce8d8;
-}
 </style>

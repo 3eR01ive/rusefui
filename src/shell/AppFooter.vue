@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useAppFooter } from "../composables/useAppFooter";
 
-const { line, hasError, hasWarn, ledState, ledLabel } = useAppFooter();
+const { line, hasError, hasWarn, ledState, ledLabel, ecuModalOpen, footerToggleProtocol } = useAppFooter();
 </script>
 
 <template>
@@ -11,12 +11,27 @@ const { line, hasError, hasWarn, ledState, ledLabel } = useAppFooter();
     role="status"
     aria-live="polite"
   >
-    <span class="ecu-status" :class="`ecu-status--${ledState}`">
+    <button
+      type="button"
+      class="ecu-status"
+      :class="`ecu-status--${ledState}`"
+      title="Настройки подключения ECU"
+      @click="ecuModalOpen = true"
+    >
       <span class="ecu-led" aria-hidden="true" />
-      <span class="ecu-label">{{ ledLabel || "\u00a0" }}</span>
-    </span>
+      <span class="ecu-label">{{ ledLabel || "нет ECU" }}</span>
+    </button>
     <span class="footer-sep" aria-hidden="true" />
     <span class="app-footer-text" :title="line || undefined">{{ line || "\u00a0" }}</span>
+    <span
+      v-if="footerToggleProtocol"
+      class="footer-log-link"
+      role="button"
+      tabindex="0"
+      title="Лог протокола ECU"
+      @click="footerToggleProtocol?.()"
+      @keydown.enter.space.prevent="footerToggleProtocol?.()"
+    >logging</span>
   </footer>
 </template>
 
@@ -59,6 +74,18 @@ const { line, hasError, hasWarn, ledState, ledLabel } = useAppFooter();
   gap: 0.35rem;
   flex-shrink: 0;
   white-space: nowrap;
+  background: none;
+  border: none;
+  padding: 0 0.35rem;
+  margin: 0 -0.35rem;
+  height: 100%;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.ecu-status:hover {
+  background: color-mix(in srgb, var(--color-border) 60%, transparent);
 }
 
 .ecu-led {
@@ -125,6 +152,28 @@ const { line, hasError, hasWarn, ledState, ledLabel } = useAppFooter();
   height: 0.75rem;
   background: var(--color-border);
   flex-shrink: 0;
+}
+
+/* ---- protocol log link ---- */
+.footer-log-link {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  color: var(--color-text-subtle);
+  opacity: 0.55;
+  cursor: pointer;
+  padding: 0 0.25rem;
+  border-radius: var(--radius-sm);
+  transition: opacity 0.15s, color 0.15s;
+  user-select: none;
+}
+
+.footer-log-link:hover {
+  opacity: 1;
+  color: var(--color-text-muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* ---- text ---- */

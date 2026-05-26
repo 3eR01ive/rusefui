@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, watch } from "vue";
+import { computed, watch } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useDataContext } from "../../core/data-context";
 import { useRustComponent } from "../../composables/useRustComponent";
@@ -12,7 +12,7 @@ const props = defineProps<{
   meta: ComponentMeta;
 }>();
 
-const { state, dispatch, error, hasLogic } = useRustComponent(props.instance, props.path);
+const { state, dispatch, error, ready } = useRustComponent(props.instance, props.path);
 const dataCtx = useDataContext();
 
 const ports = computed(() => (state.value.ports as string[]) ?? []);
@@ -51,11 +51,17 @@ watch(
   { deep: true },
 );
 
-/** Синхронизация порта/подписи — только при переходе в connected (не на каждый autoconnect-state). */
+/** Синхронизация порта/подписи: при переходе в connected ИЛИ при первом mount если уже connected. */
+watch(ready, (isReady) => {
+  if (isReady && dataCtx.connection.value.connected) {
+    void dispatch("sync_from_session");
+  }
+});
+
 watch(
   () => dataCtx.connection.value.connected,
   (connected, was) => {
-    if (connected && !was && hasLogic.value) {
+    if (connected && !was && ready.value) {
       void dispatch("sync_from_session");
     }
   },
@@ -72,12 +78,6 @@ function connect() {
 function disconnect() {
   return dispatch("disconnect");
 }
-
-onMounted(() => {
-  if (dataCtx.connection.value.connected && hasLogic.value) {
-    void dispatch("sync_from_session");
-  }
-});
 </script>
 
 <template>

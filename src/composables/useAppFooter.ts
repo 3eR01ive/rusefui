@@ -11,6 +11,8 @@ export type LedState = "connected" | "scanning" | "error" | "off";
 
 const ledState = shallowRef<LedState>("off");
 const ledLabel = shallowRef<string>("");
+export const ecuModalOpen = shallowRef(false);
+export const footerToggleProtocol = shallowRef<(() => void) | null>(null);
 
 export function setFooterLed(state: LedState, label = ""): void {
   ledState.value = state;
@@ -57,7 +59,7 @@ export function useAppFooter() {
   const hasError = computed(() => segments.value.some((s) => s.error));
   const hasWarn = computed(() => segments.value.some((s) => s.warn && !s.error));
 
-  return { segments, line, hasError, hasWarn, setFooterStatus, ledState, ledLabel };
+  return { segments, line, hasError, hasWarn, setFooterStatus, ledState, ledLabel, ecuModalOpen, footerToggleProtocol };
 }
 
 export function useFooterSlot(
