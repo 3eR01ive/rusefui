@@ -52,8 +52,40 @@ const chartHeight = computed(() => {
 });
 
 const LOG_SETUP_KEY = "rusefui-log-setup-expanded";
+const LOG_ZOOM_STEP_KEY = "rusefui-log-zoom-step-pct";
+const ZOOM_STEP_MIN = 1;
+const ZOOM_STEP_MAX = 40;
 
 const settingsExpanded = ref(false);
+
+function clampZoomStepPct(n: number): number {
+  if (!Number.isFinite(n)) return 10;
+  return Math.min(ZOOM_STEP_MAX, Math.max(ZOOM_STEP_MIN, Math.round(n)));
+}
+
+function readZoomStepPct(): number {
+  try {
+    const v = localStorage.getItem(LOG_ZOOM_STEP_KEY);
+    if (v != null) return clampZoomStepPct(Number(v));
+  } catch {
+    /* ignore */
+  }
+  const fromProps = Number(props.props.zoomStepPercent);
+  if (Number.isFinite(fromProps)) return clampZoomStepPct(fromProps);
+  return 10;
+}
+
+const zoomStepPct = ref(readZoomStepPct());
+const zoomStepFactor = computed(() => 1 + zoomStepPct.value / 100);
+
+function onZoomStepChange(): void {
+  zoomStepPct.value = clampZoomStepPct(zoomStepPct.value);
+  try {
+    localStorage.setItem(LOG_ZOOM_STEP_KEY, String(zoomStepPct.value));
+  } catch {
+    /* ignore */
+  }
+}
 
 function loadSettingsExpanded(): void {
   try {
@@ -601,7 +633,8 @@ function scheduleWheelZoom(clientX: number, factor: number): void {
 function onCanvasWheel(e: WheelEvent): void {
   if (!canPlotTimeline()) return;
   e.preventDefault();
-  const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+  const step = zoomStepFactor.value;
+  const factor = e.deltaY < 0 ? step : 1 / step;
   scheduleWheelZoom(e.clientX, factor);
 }
 
@@ -946,8 +979,34 @@ watch(chartHeight, () => scheduleRedraw());
             ●
           </button>
           <button type="button" class="btn-clear btn-clear--mini" title="Вперёд" @click="panTimeline(timelineStatus.spanSec * 0.25)">▶</button>
-          <button type="button" class="btn-clear btn-clear--mini" title="Уменьшить окно" @click="zoomTimeline(1.25)">−</button>
-          <button type="button" class="btn-clear btn-clear--mini" title="Увеличить окно" @click="zoomTimeline(0.8)">+</button>
+          <label class="zoom-step" title="Шаг зума, % (колёсико и ±)">
+            <input
+              v-model.number="zoomStepPct"
+              type="number"
+              class="zoom-step-input"
+              min="1"
+              max="40"
+              step="1"
+              @change="onZoomStepChange"
+            />
+            <span class="zoom-step-suffix">%</span>
+          </label>
+          <button
+            type="button"
+            class="btn-clear btn-clear--mini"
+            :title="`Уменьшить окно (${zoomStepPct}%)`"
+            @click="zoomTimeline(zoomStepFactor)"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            class="btn-clear btn-clear--mini"
+            :title="`Увеличить окно (${zoomStepPct}%)`"
+            @click="zoomTimeline(1 / zoomStepFactor)"
+          >
+            +
+          </button>
         </div>
         <button type="button" class="btn-clear btn-clear--mini" title="Live вкл/выкл (пробел)" @click="toggleFollowLive">
           ↻
@@ -1057,6 +1116,28 @@ watch(chartHeight, () => scheduleRedraw());
 
       <div class="toolbar-actions">
         <span class="window-hint">окно {{ windowSeconds }} с · автопромотка</span>
+        <label class="zoom-step zoom-step--wide" title="Шаг зума, % (колёсико и ±)">
+          <span class="zoom-step-label">Шаг зума</span>
+          <input
+            v-model.number="zoomStepPct"
+            type="range"
+            class="zoom-step-range"
+            min="1"
+            max="40"
+            step="1"
+            @change="onZoomStepChange"
+          />
+          <input
+            v-model.number="zoomStepPct"
+            type="number"
+            class="zoom-step-input"
+            min="1"
+            max="40"
+            step="1"
+            @change="onZoomStepChange"
+          />
+          <span class="zoom-step-suffix">%</span>
+        </label>
         <button type="button" class="btn-clear" @click="clearHistory">Сброс</button>
       </div>
     </div>
@@ -1193,6 +1274,49 @@ watch(chartHeight, () => scheduleRedraw());
   display: inline-flex;
   gap: 0.15rem;
   align-items: center;
+}
+
+.zoom-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.72rem;
+  color: var(--color-text-subtle);
+}
+
+.zoom-step--wide {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 14rem;
+}
+
+.zoom-step-label {
+  width: 100%;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-gray);
+}
+
+.zoom-step-input {
+  width: 2.75rem;
+  padding: 0.15rem 0.25rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+.zoom-step-range {
+  flex: 1 1 5rem;
+  min-width: 4rem;
+  accent-color: var(--color-accent);
+}
+
+.zoom-step-suffix {
+  font-size: 0.72rem;
 }
 
 .btn-clear--mini.active {
