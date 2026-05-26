@@ -147,9 +147,14 @@ impl ProjectStore {
 
     pub fn ui_set(&self, key: &str, value: Value) -> Result<(), String> {
         let mut doc = self.doc.lock().unwrap();
+        // Не помечать грязным если значение не изменилось (например, восстановление UI после загрузки).
+        let existing = doc.ui.sections.get(key).cloned();
         ui_persist::set(&mut doc.ui, key, value)?;
-        doc.touch();
-        *self.dirty.lock().unwrap() = true;
+        let changed = existing.as_ref() != doc.ui.sections.get(key);
+        if changed {
+            doc.touch();
+            *self.dirty.lock().unwrap() = true;
+        }
         Ok(())
     }
 
