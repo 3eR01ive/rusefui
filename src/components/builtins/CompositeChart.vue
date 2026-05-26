@@ -7,6 +7,18 @@ import {
   useCompositeLogger,
   type CompositeEvent,
 } from "../../composables/useCompositeLogger";
+import {
+  buildChartView,
+  channelValue,
+  crankAngleDeg,
+  CRANK_CYCLE_DEG,
+  laneY,
+  timeAtX,
+  valueAtTime,
+  xAtTime,
+  type ChannelKey,
+  type ChartView,
+} from "./compositeChartGeometry";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -24,21 +36,193 @@ const dataCtx = useDataContext();
 const connected = computed(() => dataCtx.connection.value.connected);
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
+const hoverX = ref<number | null>(null);
+const hoverInside = ref(false);
 let ro: ResizeObserver | null = null;
 
-const CHANNELS = [
-  { key: "pri" as const, label: "Pri", color: "#3b82f6" },
-  { key: "sec" as const, label: "Sec", color: "#8b5cf6" },
-  { key: "trg" as const, label: "TDC", color: "#f59e0b" },
-  { key: "sync" as const, label: "Sync", color: "#10b981" },
-  { key: "coil" as const, label: "Coil", color: "#ef4444" },
-  { key: "inj" as const, label: "Inj", color: "#06b6d4" },
+const CHANNELS: { key: ChannelKey; label: string; color: string }[] = [
+  { key: "pri", label: "Pri", color: "#3b82f6" },
+  { key: "sec", label: "Sec", color: "#8b5cf6" },
+  { key: "trg", label: "TDC", color: "#f59e0b" },
+  { key: "sync", label: "Sync", color: "#10b981" },
+  { key: "coil", label: "Coil", color: "#ef4444" },
+  { key: "inj", label: "Inj", color: "#06b6d4" },
 ];
 
 const LABEL_W = 44;
 
-function channelValue(ev: CompositeEvent, key: (typeof CHANNELS)[number]["key"]): boolean {
-  return ev[key];
+function cssColor(canvas: HTMLCanvasElement, varName: string, fallback: string): string {
+  const v = getComputedStyle(canvas).getPropertyValue(varName).trim();
+  return v || fallback;
+}
+
+function drawWaveforms(
+  ctx: CanvasRenderingContext2D,
+  view: ChartView,
+  canvas: HTMLCanvasElement,
+) {
+  CHANNELS.forEach((ch, idx) => {
+    const { yHigh, yLow } = laneY(idx, view, true);
+    const yMid = (yHigh + yLow) / 2;
+
+    ctx.fillStyle = cssColor(canvas, "--color-gray", "#9ca3af");
+    ctx.font = "11px system-ui, sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(ch.label, LABEL_W - 6, yMid + 4);
+
+    const toX = (tUs: number) => xAtTime(tUs, view);
+    const visible = view.visible;
+    let prevT = view.t0;
+    let prevVal = valueAtTime(view.t0, visible, ch.key);
+
+    for (const ev of visible) {
+      const x = toX(ev.tUs);
+      const val = channelValue(ev, ch.key);
+      if (ev.tUs > prevT) {
+        ctx.strokeStyle = ch.color;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(toX(prevT), prevVal ? yHigh : yLow);
+        ctx.lineTo(x, prevVal ? yHigh : yLow);
+        ctx.stroke();
+      }
+      if (val !== prevVal) {
+        ctx.beginPath();
+        ctx.moveTo(x, prevVal ? yHigh : yLow);
+        ctx.lineTo(x, val ? yHigh : yLow);
+        ctx.stroke();
+      }
+      prevT = ev.tUs;
+      prevVal = val;
+    }
+
+    const xEnd = view.plotLeft + view.plotW;
+    ctx.beginPath();
+    ctx.moveTo(toX(prevT), prevVal ? yHigh : yLow);
+    ctx.lineTo(xEnd, prevVal ? yHigh : yLow);
+    ctx.stroke();
+  });
+}
+
+function drawCycleMarkers(
+  ctx: CanvasRenderingContext2D,
+  view: ChartView,
+  canvas: HTMLCanvasElement,
+) {
+  const cycleColor = cssColor(canvas, "--color-warning", "#d97706");
+  ctx.save();
+  ctx.strokeStyle = cycleColor;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([5, 4]);
+  ctx.globalAlpha = 0.85;
+
+  for (const tTdc of view.tdcTimes) {
+    const x = xAtTime(tTdc, view);
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, view.cssH);
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = cycleColor;
+    ctx.font = "10px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("0°", x, 11);
+    ctx.globalAlpha = 0.85;
+    ctx.setLineDash([5, 4]);
+  }
+
+  ctx.restore();
+}
+
+function drawCrosshair(
+  ctx: CanvasRenderingContext2D,
+  view: ChartView,
+  canvas: HTMLCanvasElement,
+  x: number,
+  rpm: number | null | undefined,
+) {
+  const tUs = timeAtX(x, view);
+  const angle = crankAngleDeg(tUs, view, rpm);
+  const lineColor = cssColor(canvas, "--color-fg", "#e5e7eb");
+
+  ctx.save();
+  ctx.strokeStyle = lineColor;
+  ctx.lineWidth = 1;
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 0.55;
+  ctx.beginPath();
+  ctx.moveTo(x, 0);
+  ctx.lineTo(x, view.cssH);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  const angleLabel = `${angle.toFixed(1)}°`;
+  ctx.font = "bold 11px system-ui, sans-serif";
+  const angleW = ctx.measureText(angleLabel).width;
+  const boxPad = 4;
+  const angleBoxW = angleW + boxPad * 2;
+  let boxX = x - angleBoxW / 2;
+  boxX = Math.max(view.plotLeft, Math.min(boxX, view.plotLeft + view.plotW - angleBoxW));
+
+  ctx.fillStyle = cssColor(canvas, "--color-bg-elevated", "rgba(20,22,28,0.92)");
+  ctx.strokeStyle = lineColor;
+  ctx.lineWidth = 1;
+  ctx.fillRect(boxX, 2, angleBoxW, 16);
+  ctx.strokeRect(boxX, 2, angleBoxW, 16);
+  ctx.fillStyle = lineColor;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(angleLabel, boxX + angleBoxW / 2, 10);
+
+  const labels: string[] = [];
+  const dots: { y: number; color: string }[] = [];
+
+  CHANNELS.forEach((ch, idx) => {
+    const on = valueAtTime(tUs, view.visible, ch.key);
+    const { y } = laneY(idx, view, on);
+    dots.push({ y, color: ch.color });
+    labels.push(`${ch.label}: ${on ? "1" : "0"}`);
+  });
+
+  for (const d of dots) {
+    ctx.fillStyle = d.color;
+    ctx.beginPath();
+    ctx.arc(x, d.y, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = cssColor(canvas, "--color-bg", "#0f1115");
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  ctx.font = "10px ui-monospace, monospace";
+  const lineH = 13;
+  const maxW = Math.max(...labels.map((l) => ctx.measureText(l).width));
+  const tipW = maxW + boxPad * 2;
+  const tipH = labels.length * lineH + boxPad * 2;
+  let tipX = x + 10;
+  if (tipX + tipW > view.plotLeft + view.plotW) {
+    tipX = x - 10 - tipW;
+  }
+  let tipY = 22;
+  if (tipY + tipH > view.cssH) tipY = view.cssH - tipH - 4;
+
+  ctx.fillStyle = cssColor(canvas, "--color-bg-elevated", "rgba(20,22,28,0.94)");
+  ctx.strokeStyle = cssColor(canvas, "--color-border", "#444");
+  ctx.fillRect(tipX, tipY, tipW, tipH);
+  ctx.strokeRect(tipX, tipY, tipW, tipH);
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  labels.forEach((text, i) => {
+    const ch = CHANNELS[i]!;
+    ctx.fillStyle = ch.color;
+    ctx.fillText(text, tipX + boxPad, tipY + boxPad + i * lineH);
+  });
+
+  ctx.restore();
 }
 
 function draw() {
@@ -56,104 +240,78 @@ function draw() {
   canvas.height = Math.floor(cssH * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  ctx.fillStyle = getComputedStyle(canvas).getPropertyValue("--color-bg").trim() || "#0f1115";
+  ctx.fillStyle = cssColor(canvas, "--color-bg", "#0f1115");
   ctx.fillRect(0, 0, cssW, cssH);
 
-  const events = snapshot.value.events;
-  if (events.length < 2) {
-    ctx.fillStyle = getComputedStyle(canvas).getPropertyValue("--color-gray").trim() || "#888";
+  const events = snapshot.value.events as CompositeEvent[];
+  const view = buildChartView(
+    events,
+    windowMs.value,
+    cssW,
+    cssH,
+    LABEL_W,
+    CHANNELS.length,
+  );
+
+  if (!view) {
+    ctx.fillStyle = cssColor(canvas, "--color-gray", "#888");
     ctx.font = "12px system-ui, sans-serif";
+    ctx.textAlign = "left";
     ctx.fillText(
-      connected.value
-        ? "Ожидание событий триггера (composite logger)…"
-        : "Подключите ECU",
+      events.length < 2
+        ? connected.value
+          ? "Ожидание событий триггера (composite logger)…"
+          : "Подключите ECU"
+        : "Мало точек в окне",
       LABEL_W + 8,
       cssH / 2,
     );
     return;
   }
 
-  const tEnd = events[events.length - 1]!.tUs;
-  const windowUs = Math.round(windowMs.value * 1000);
-  const tStart = Math.max(0, tEnd - windowUs);
-
-  const plotW = cssW - LABEL_W - 8;
-  const laneH = (cssH - 8) / CHANNELS.length;
-
-  const t0 = Math.max(0, tStart);
-  const span = Math.max(1, tEnd - t0);
-
-  const visible = events.filter((e) => e.tUs >= t0 && e.tUs <= tEnd);
-  if (visible.length < 2) {
-    ctx.fillStyle = "#888";
-    ctx.font = "12px system-ui";
-    ctx.fillText("Мало точек в окне", LABEL_W + 8, cssH / 2);
-    return;
-  }
-
-  const gridColor =
-    getComputedStyle(canvas).getPropertyValue("--color-border").trim() || "#333";
+  const gridColor = cssColor(canvas, "--color-border", "#333");
   ctx.strokeStyle = gridColor;
   ctx.lineWidth = 1;
+  ctx.setLineDash([]);
   for (let i = 0; i <= 4; i++) {
-    const x = LABEL_W + (plotW * i) / 4;
+    const x = view.plotLeft + (view.plotW * i) / 4;
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, cssH);
     ctx.stroke();
   }
 
-  CHANNELS.forEach((ch, idx) => {
-    const y0 = idx * laneH + 4;
-    const yMid = y0 + laneH * 0.5;
-    const yHigh = y0 + laneH * 0.22;
-    const yLow = y0 + laneH * 0.78;
+  drawWaveforms(ctx, view, canvas);
+  drawCycleMarkers(ctx, view, canvas);
 
-    ctx.fillStyle =
-      getComputedStyle(canvas).getPropertyValue("--color-gray").trim() || "#9ca3af";
-    ctx.font = "11px system-ui, sans-serif";
-    ctx.textAlign = "right";
-    ctx.fillText(ch.label, LABEL_W - 6, yMid + 4);
+  if (hoverInside.value && hoverX.value != null) {
+    drawCrosshair(ctx, view, canvas, hoverX.value, snapshot.value.rpm);
+  }
 
-    const toX = (tUs: number) => LABEL_W + ((tUs - t0) / span) * plotW;
-
-    let prevT = t0;
-    let prevVal = channelValue(visible[0]!, ch.key);
-    for (const ev of visible) {
-      const x = toX(ev.tUs);
-      const val = channelValue(ev, ch.key);
-      if (ev.tUs > prevT) {
-        ctx.strokeStyle = ch.color;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(toX(prevT), prevVal ? yHigh : yLow);
-        ctx.lineTo(x, prevVal ? yHigh : yLow);
-        ctx.stroke();
-      }
-      if (val !== prevVal) {
-        ctx.strokeStyle = ch.color;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(x, prevVal ? yHigh : yLow);
-        ctx.lineTo(x, val ? yHigh : yLow);
-        ctx.stroke();
-      }
-      prevT = ev.tUs;
-      prevVal = val;
-    }
-
-    const xEnd = LABEL_W + plotW;
-    ctx.strokeStyle = ch.color;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(toX(prevT), prevVal ? yHigh : yLow);
-    ctx.lineTo(xEnd, prevVal ? yHigh : yLow);
-    ctx.stroke();
-  });
+  ctx.fillStyle = cssColor(canvas, "--color-gray", "#6b7280");
+  ctx.font = "9px system-ui, sans-serif";
+  ctx.textAlign = "right";
+  ctx.fillText(`цикл ${CRANK_CYCLE_DEG}°`, view.plotLeft + view.plotW, cssH - 3);
 }
 
 function scheduleDraw() {
   requestAnimationFrame(draw);
+}
+
+function onPointerMove(e: PointerEvent) {
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  hoverX.value = x;
+  hoverInside.value = x >= LABEL_W && x <= rect.width - 4;
+  scheduleDraw();
+}
+
+function onPointerLeave() {
+  hoverInside.value = false;
+  hoverX.value = null;
+  scheduleDraw();
 }
 
 onMounted(async () => {
@@ -162,15 +320,22 @@ onMounted(async () => {
   if (canvas) {
     ro = new ResizeObserver(scheduleDraw);
     ro.observe(canvas);
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerleave", onPointerLeave);
   }
   scheduleDraw();
 });
 
 onUnmounted(() => {
   ro?.disconnect();
+  const canvas = canvasRef.value;
+  canvas?.removeEventListener("pointermove", onPointerMove);
+  canvas?.removeEventListener("pointerleave", onPointerLeave);
 });
 
-watch([snapshot, windowMs, chartHeight, connected], scheduleDraw, { deep: true });
+watch([snapshot, windowMs, chartHeight, connected, hoverX, hoverInside], scheduleDraw, {
+  deep: true,
+});
 
 const statusLine = computed(() => {
   const s = snapshot.value;
@@ -199,6 +364,10 @@ const statusLine = computed(() => {
     <p v-if="snapshot.lastError" class="cc-error">{{ snapshot.lastError }}</p>
     <p v-else-if="connected && !snapshot.polling" class="cc-hint">
       Опрос composite не запущен (загрузка config или отключение).
+    </p>
+    <p v-else class="cc-hint">
+      Вертикальные штрихи — TDC (0°), полный цикл {{ CRANK_CYCLE_DEG }}°. Наведите курсор для угла и
+      значений.
     </p>
   </div>
 </template>
@@ -244,6 +413,7 @@ const statusLine = computed(() => {
   display: block;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
+  cursor: crosshair;
 }
 
 .cc-error {
