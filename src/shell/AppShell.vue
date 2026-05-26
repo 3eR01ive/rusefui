@@ -24,7 +24,7 @@ import EcuConnectionModal from "./EcuConnectionModal.vue";
 import ProjectMenu from "./ProjectMenu.vue";
 import { useAppFooter, setFooterLed, footerToggleProtocol } from "../composables/useAppFooter";
 import { useTabState } from "../composables/useTabState";
-import { useGlobalHotkeys } from "../composables/useHotkeys";
+import { useGlobalHotkeys, saveProjectCallback, openProjectCallback } from "../composables/useHotkeys";
 
 const dataCtx = createDataContext();
 provideDataContext(dataCtx);
@@ -48,6 +48,8 @@ const { showMainUi, canBurn: workspaceCanBurn, snapshot: workspaceSnap } =
 const { activeTabId, setTab } = useTabState();
 const tabWorkspaceRef = useTemplateRef<{ tabs: { id: string; title: string }[] }>("tabWorkspace");
 useGlobalHotkeys();
+saveProjectCallback.value = () => onSaveProject();
+openProjectCallback.value = () => onOpenProject();
 
 const burning = ref(false);
 const burnError = ref<string | null>(null);

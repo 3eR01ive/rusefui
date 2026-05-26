@@ -4,8 +4,26 @@ import { activeTabId } from "./useTabState";
 /** Список tab id в порядке навигации — заполняется при монтировании TabWorkspace. */
 export const tabOrder = { value: [] as string[] };
 
+/** Коллбэк сохранения проекта — регистрируется из AppShell. */
+export const saveProjectCallback = { value: null as (() => void) | null };
+export const openProjectCallback = { value: null as (() => void) | null };
+
 export function useGlobalHotkeys() {
   function onKeydown(e: KeyboardEvent) {
+    if (e.ctrlKey || e.metaKey) {
+      // e.code не зависит от раскладки клавиатуры
+      if (e.code === "KeyS") {
+        e.preventDefault();
+        saveProjectCallback.value?.();
+        return;
+      }
+      if (e.code === "KeyO") {
+        e.preventDefault();
+        openProjectCallback.value?.();
+        return;
+      }
+    }
+
     if (!e.altKey) return;
 
     const ids = tabOrder.value;
@@ -22,6 +40,6 @@ export function useGlobalHotkeys() {
     }
   }
 
-  onMounted(() => window.addEventListener("keydown", onKeydown));
-  onUnmounted(() => window.removeEventListener("keydown", onKeydown));
+  onMounted(() => window.addEventListener("keydown", onKeydown, true));
+  onUnmounted(() => window.removeEventListener("keydown", onKeydown, true));
 }
