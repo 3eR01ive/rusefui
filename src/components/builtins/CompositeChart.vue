@@ -938,10 +938,9 @@ const statusLine = computed(() => {
 
 <template>
   <div class="composite-chart">
-    <header class="cc-header">
-      <span class="cc-title">Trigger logger</span>
+    <div class="cc-header">
       <span class="cc-status" :class="{ warn: !connected }">{{ statusLine }}</span>
-    </header>
+    </div>
     <div class="cc-toolbar">
       <!-- Старт / Стоп split-кнопка -->
       <div class="btn-split">
