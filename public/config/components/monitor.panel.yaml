@@ -25,6 +25,7 @@ children:
         props:
           height: 220
           windowMs: 500
+          # autoStopSec: 0  # авто-disable на ECU через N с (0 = только в UI)
 
   - type: section
     props:

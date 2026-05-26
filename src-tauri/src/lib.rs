@@ -22,6 +22,7 @@ pub fn run() {
             runtime_cmds::output_start_listener,
             runtime_cmds::composite_get_snapshot,
             runtime_cmds::composite_set_enabled,
+            runtime_cmds::composite_set_max_window_ms,
             runtime_cmds::output_timeline_status,
             runtime_cmds::output_timeline_query_view,
             runtime_cmds::output_timeline_set_view,

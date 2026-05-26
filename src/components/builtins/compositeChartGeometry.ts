@@ -5,9 +5,17 @@ export const CRANK_CYCLE_DEG = 720;
 
 export type ChannelKey = "pri" | "sec" | "trg" | "sync" | "coil" | "inj";
 
+export interface TdcMarker {
+  tUs: number;
+  /** Номер цикла (1 = первый TDC в буфере). */
+  cycle: number;
+}
+
 export interface ChartView {
   t0: number;
+  /** Правый край оси X (= t0 + span). */
   tEnd: number;
+  /** Фиксированная ширина окна (µs), не сжимается пока буфер растёт. */
   span: number;
   plotW: number;
   plotLeft: number;
@@ -15,13 +23,14 @@ export interface ChartView {
   cssH: number;
   laneH: number;
   visible: readonly CompositeEvent[];
-  /** Времена импульсов TDC (переход trg → true). */
-  tdcTimes: number[];
+  tdcMarkers: readonly TdcMarker[];
 }
 
 export interface ChartTimeRange {
   t0: number;
+  /** Правый край оси (= t0 + spanUs). */
   tEnd: number;
+  spanUs: number;
 }
 
 export function channelValue(ev: CompositeEvent, key: ChannelKey): boolean {
@@ -44,6 +53,42 @@ export function findTdcTimes(events: readonly CompositeEvent[]): number[] {
     prev = cur.trg;
   }
   return out;
+}
+
+/** TDC: глобальный номер цикла с ECU (`tdcCycle`), иначе фронт по `trg`. */
+export function findTdcMarkers(events: readonly CompositeEvent[]): TdcMarker[] {
+  const fromField: TdcMarker[] = [];
+  for (const e of events) {
+    if (e.tdcCycle != null && e.tdcCycle > 0) {
+      fromField.push({ tUs: e.tUs, cycle: e.tdcCycle });
+    }
+  }
+  if (fromField.length > 0) {
+    return fromField;
+  }
+  return findTdcTimes(events).map((tUs, i) => ({ tUs, cycle: i + 1 }));
+}
+
+/** Последний TDC не позже `beforeUs` (для привязки левого края графика). */
+export function latestTdcAtOrBefore(
+  events: readonly CompositeEvent[],
+  beforeUs: number,
+): number | null {
+  let last: number | null = null;
+  for (const m of findTdcMarkers(events)) {
+    if (m.tUs <= beforeUs) {
+      last = m.tUs;
+    } else {
+      break;
+    }
+  }
+  return last;
+}
+
+/** Привязать t0 к ближайшему TDC слева (не позже `t0`). */
+export function snapT0ToTdc(events: readonly CompositeEvent[], t0: number): number {
+  const tdc = latestTdcAtOrBefore(events, t0);
+  return tdc ?? t0;
 }
 
 /** Длительность данных в текущем буфере (мс). */
@@ -96,14 +141,16 @@ export function buildChartView(
 ): ChartView | null {
   if (events.length < 2 || cssW <= 0 || cssH <= 0 || !timeRange) return null;
 
-  const { t0, tEnd } = timeRange;
-  const span = Math.max(1, tEnd - t0);
+  const { t0, spanUs } = timeRange;
+  const span = Math.max(1, spanUs);
+  const tEnd = t0 + span;
   const plotLeft = labelW;
   const plotW = cssW - labelW - 8;
-  const visible = sliceEventsForRange(events, t0, tEnd);
+  const dataEnd = events[events.length - 1]!.tUs;
+  const visible = sliceEventsForRange(events, t0, Math.min(tEnd, dataEnd));
   if (visible.length < 1) return null;
 
-  const tdcTimes = findTdcTimes(visible);
+  const tdcMarkers = findTdcMarkers(events).filter((m) => m.tUs >= t0 && m.tUs <= tEnd);
 
   return {
     t0,
@@ -115,7 +162,7 @@ export function buildChartView(
     cssH,
     laneH: (cssH - 8) / channelCount,
     visible,
-    tdcTimes,
+    tdcMarkers,
   };
 }
 
@@ -168,7 +215,7 @@ export function crankAngleDeg(
   view: ChartView,
   rpm: number | null | undefined,
 ): number {
-  const { tdcTimes } = view;
+  const tdcTimes = view.tdcMarkers.map((m) => m.tUs);
   if (tdcTimes.length > 0) {
     let i = 0;
     while (i < tdcTimes.length && tdcTimes[i]! <= tUs) i++;

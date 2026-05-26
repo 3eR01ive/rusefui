@@ -11,11 +11,21 @@ pub struct CompositeChartUiSettings {
     /// Запускать trigger logger при подключении ECU.
     #[serde(default)]
     pub autostart: bool,
+    /// Левый край графика (после подписей каналов) на линии TDC.
+    #[serde(default)]
+    pub align_tdc: bool,
+    /// Авто-стоп через N с после «Старт»; 0 = выкл.
+    #[serde(default)]
+    pub auto_stop_sec: u32,
 }
 
 impl Default for CompositeChartUiSettings {
     fn default() -> Self {
-        Self { autostart: false }
+        Self {
+            autostart: false,
+            align_tdc: false,
+            auto_stop_sec: 0,
+        }
     }
 }
 

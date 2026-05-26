@@ -1,4 +1,4 @@
-//! High-speed trigger (composite) logger — `TS_GET_COMPOSITE_BUFFER` (`8`) / `l`+`3`.
+//! High-speed trigger (composite) logger — `l`+`3` read, склейка сессии как у лог. анализатора.
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -11,18 +11,16 @@ use serde::Serialize;
 
 use crate::session::EcuSession;
 
-const COMPOSITE_POLL_HZ: f64 = 25.0;
-const POLL_INTERVAL: Duration =
-    Duration::from_nanos((1_000_000_000.0 / COMPOSITE_POLL_HZ) as u64);
-const EMIT_INTERVAL: Duration = Duration::from_millis(33);
-/// Как Java `BinaryProtocolLogger.COMPOSITE_OFF_RPM`.
-const COMPOSITE_OFF_RPM: f64 = 700.0;
-const HIGH_RPM_HOLD_SEC: f64 = 10.0;
-const RING_CAP: usize = 4_000;
-/// Сколько последних событий отдаём в UI за один emit (IPC + canvas).
-const EMIT_UI_EVENT_CAP: usize = 400;
-/// Не шире типичного окна графика (300 ms) + запас под зум/хвост.
-const EMIT_UI_TIME_WINDOW_US: u64 = 450_000;
+/// Пока буфер на ECU не готов — короткая пауза и снова read.
+const POLL_WAIT_READY: Duration = Duration::from_millis(2);
+/// После успешного read — сразу снова (следующий кусок).
+const POLL_AFTER_CHUNK: Duration = Duration::from_millis(1);
+/// Пауза, если опрос временно запрещён (config load и т.д.).
+const POLL_IDLE: Duration = Duration::from_millis(40);
+const STATUS_EMIT_INTERVAL: Duration = Duration::from_secs(1);
+
+/// Вся сессия записи (до «Стоп») — без обрезки по windowMs.
+const RING_CAP: usize = 8_000;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -34,6 +32,9 @@ pub struct CompositeEventJson {
     pub sync: bool,
     pub coil: bool,
     pub inj: bool,
+    /// Номер цикла TDC с начала сессии логгера (фронт `trg`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tdc_cycle: Option<u64>,
 }
 
 impl From<CompositeRecord> for CompositeEventJson {
@@ -46,6 +47,7 @@ impl From<CompositeRecord> for CompositeEventJson {
             sync: r.sync,
             coil: r.coil,
             inj: r.injector,
+            tdc_cycle: None,
         }
     }
 }
@@ -54,12 +56,18 @@ impl From<CompositeRecord> for CompositeEventJson {
 #[serde(rename_all = "camelCase")]
 pub struct CompositeSnapshot {
     pub connected: bool,
-    /// Пользователь включил опрос (кнопка или autostart).
     pub logging_enabled: bool,
     pub polling: bool,
     pub events: Vec<CompositeEventJson>,
     pub total_events: u64,
     pub last_batch: usize,
+    /// Длительность склеенной сессии в ring (мс).
+    pub recorded_span_ms: f64,
+    /// Разрыв по времени до предыдущего куска (мс), 0 если первый или стык.
+    pub last_chunk_gap_ms: f64,
+    pub chunks_received: u64,
+    /// Всего TDC (фронтов `trg`) с начала сессии.
+    pub tdc_cycles_total: u64,
     pub last_error: Option<String>,
     pub rpm: Option<f64>,
 }
@@ -73,6 +81,10 @@ impl CompositeSnapshot {
             events: Vec::new(),
             total_events: 0,
             last_batch: 0,
+            recorded_span_ms: 0.0,
+            last_chunk_gap_ms: 0.0,
+            chunks_received: 0,
+            tdc_cycles_total: 0,
             last_error: None,
             rpm: None,
         }
@@ -88,6 +100,90 @@ pub struct CompositeLoggerSource {
     thread: Mutex<Option<JoinHandle<()>>>,
 }
 
+fn recorded_span_ms(ring: &VecDeque<CompositeEventJson>) -> f64 {
+    if ring.len() < 2 {
+        return 0.0;
+    }
+    let a = ring.front().unwrap().t_us;
+    let b = ring.back().unwrap().t_us;
+    (b.saturating_sub(a)) as f64 / 1000.0
+}
+
+fn trim_ring_cap(ring: &mut VecDeque<CompositeEventJson>) {
+    while ring.len() > RING_CAP {
+        ring.pop_front();
+    }
+}
+
+fn ring_to_vec(ring: &VecDeque<CompositeEventJson>) -> Vec<CompositeEventJson> {
+    ring.iter().cloned().collect()
+}
+
+fn build_snapshot(
+    ring: &VecDeque<CompositeEventJson>,
+    logging_enabled: bool,
+    polling: bool,
+    connected: bool,
+    rpm: Option<f64>,
+    last_error: Option<String>,
+    last_batch: usize,
+    last_chunk_gap_ms: f64,
+    chunks_received: u64,
+    tdc_cycles_total: u64,
+    total_events: u64,
+) -> CompositeSnapshot {
+    CompositeSnapshot {
+        connected,
+        logging_enabled,
+        polling,
+        events: ring_to_vec(ring),
+        total_events,
+        last_batch,
+        recorded_span_ms: recorded_span_ms(ring),
+        last_chunk_gap_ms,
+        chunks_received,
+        tdc_cycles_total,
+        last_error,
+        rpm,
+    }
+}
+
+fn append_chunk(
+    ring: &mut VecDeque<CompositeEventJson>,
+    batch: &[CompositeEventJson],
+    next_tdc_cycle: &AtomicU64,
+) -> f64 {
+    if batch.is_empty() {
+        return 0.0;
+    }
+    let gap_ms = ring.back().map(|last| {
+        let dt = batch[0].t_us.saturating_sub(last.t_us);
+        if dt == 0 { 0.0 } else { dt as f64 / 1000.0 }
+    }).unwrap_or(0.0);
+
+    let mut last_t = ring.back().map(|e| e.t_us);
+    let mut prev_trg = ring.back().map(|e| e.trg);
+    for rec in batch {
+        let mut ev = rec.clone();
+        if last_t.is_some_and(|t| ev.t_us < t) {
+            ev.t_us = last_t.unwrap() + 1;
+        } else if last_t.is_some_and(|t| ev.t_us == t) {
+            continue;
+        }
+
+        let trg_rise = ev.trg && !prev_trg.unwrap_or(false);
+        if trg_rise {
+            let n = next_tdc_cycle.fetch_add(1, Ordering::Relaxed) + 1;
+            ev.tdc_cycle = Some(n);
+        }
+
+        ring.push_back(ev);
+        last_t = Some(ring.back().unwrap().t_us);
+        prev_trg = Some(ring.back().unwrap().trg);
+    }
+    gap_ms
+}
+
 impl CompositeLoggerSource {
     pub fn new() -> Self {
         Self {
@@ -100,6 +196,9 @@ impl CompositeLoggerSource {
         }
     }
 
+    /// Оставлено для совместимости; на ring не влияет (окно только во Vue).
+    pub fn set_max_window_ms(&self, _max_window_ms: f64) {}
+
     pub fn snapshot(&self) -> CompositeSnapshot {
         self.snapshot.read().unwrap().clone()
     }
@@ -108,20 +207,39 @@ impl CompositeLoggerSource {
         self.running.load(Ordering::SeqCst) && self.thread.lock().unwrap().is_some()
     }
 
+    fn clear_session(&self) {
+        self.ring.lock().unwrap().clear();
+        *self.parse_state.lock().unwrap() = CompositeParseState::default();
+    }
+
+    /// Остановить опрос; склеенная сессия остаётся в snapshot.
     pub fn stop(&self) {
         self.running.store(false, Ordering::SeqCst);
         if let Some(handle) = self.thread.lock().unwrap().take() {
             let _ = handle.join();
         }
-        self.ring.lock().unwrap().clear();
-        *self.parse_state.lock().unwrap() = CompositeParseState::default();
-        let mut snap = CompositeSnapshot::disconnected();
-        snap.logging_enabled = false;
+
+        let snap = {
+            let ring = self.ring.lock().unwrap();
+            let prev = self.snapshot.read().unwrap();
+            build_snapshot(
+                &ring,
+                false,
+                false,
+                prev.connected,
+                prev.rpm,
+                prev.last_error.clone(),
+                prev.last_batch,
+                prev.last_chunk_gap_ms,
+                prev.chunks_received,
+                prev.tdc_cycles_total,
+                prev.total_events,
+            )
+        };
         *self.snapshot.write().unwrap() = snap;
         self.logger_enabled_on_ecu.store(false, Ordering::SeqCst);
     }
 
-    /// Выключить логгер на ECU (best-effort).
     pub fn disable_on_ecu(&self, session: &EcuSession) {
         if !self.logger_enabled_on_ecu.load(Ordering::SeqCst) {
             return;
@@ -137,13 +255,28 @@ impl CompositeLoggerSource {
         if self.is_polling() {
             return Ok(());
         }
-        self.stop();
+
+        self.running.store(false, Ordering::SeqCst);
+        if let Some(handle) = self.thread.lock().unwrap().take() {
+            let _ = handle.join();
+        }
+        self.clear_session();
+
         session.with_link(|link| link.set_composite_logger_enabled(true))?;
         self.logger_enabled_on_ecu.store(true, Ordering::SeqCst);
         {
             let mut snap = self.snapshot.write().unwrap();
             snap.logging_enabled = true;
             snap.connected = session.is_connected();
+            snap.polling = false;
+            snap.events.clear();
+            snap.total_events = 0;
+            snap.last_batch = 0;
+            snap.recorded_span_ms = 0.0;
+            snap.last_chunk_gap_ms = 0.0;
+            snap.chunks_received = 0;
+            snap.tdc_cycles_total = 0;
+            snap.last_error = None;
         }
         self.running.store(true, Ordering::SeqCst);
 
@@ -151,7 +284,7 @@ impl CompositeLoggerSource {
         let snapshot = Arc::clone(&self.snapshot);
         let ring = Arc::clone(&self.ring);
         let parse_state = Arc::clone(&self.parse_state);
-        let logger_enabled = Arc::clone(&self.logger_enabled_on_ecu);
+        let next_tdc_cycle = Arc::new(AtomicU64::new(0));
         let on_tick = Arc::new(on_tick);
 
         let handle = thread::Builder::new()
@@ -163,7 +296,7 @@ impl CompositeLoggerSource {
                     snapshot,
                     ring,
                     parse_state,
-                    logger_enabled,
+                    next_tdc_cycle,
                     on_tick,
                 );
             })
@@ -180,20 +313,46 @@ fn poll_loop(
     snapshot: Arc<RwLock<CompositeSnapshot>>,
     ring: Arc<Mutex<VecDeque<CompositeEventJson>>>,
     parse_state: Arc<Mutex<CompositeParseState>>,
-    logger_enabled_on_ecu: Arc<AtomicBool>,
+    next_tdc_cycle: Arc<AtomicU64>,
     on_tick: Arc<dyn Fn(CompositeSnapshot) + Send + Sync>,
 ) {
-    let last_emit_ms = AtomicU64::new(0);
-    let mut high_rpm_since: Option<std::time::Instant> = None;
-    let mut events_dirty = false;
     let mut last_rpm_check = std::time::Instant::now();
+    let mut last_status_emit = std::time::Instant::now();
+    let chunks_received = Arc::new(AtomicU64::new(0));
     const RPM_CHECK_INTERVAL: Duration = Duration::from_millis(250);
+
+    let emit_to_ui = |connected: bool,
+                      allow_poll: bool,
+                      rpm: Option<f64>,
+                      last_error: &Option<String>,
+                      last_batch: usize| {
+        let snap = {
+            let ring_guard = ring.lock().unwrap();
+            let snap_ro = snapshot.read().unwrap();
+            build_snapshot(
+                &ring_guard,
+                true,
+                allow_poll,
+                connected,
+                rpm,
+                last_error.clone(),
+                last_batch,
+                snap_ro.last_chunk_gap_ms,
+                chunks_received.load(Ordering::Relaxed),
+                next_tdc_cycle.load(Ordering::Relaxed),
+                snap_ro.total_events,
+            )
+        };
+        *snapshot.write().unwrap() = snap.clone();
+        on_tick(snap);
+    };
 
     while running.load(Ordering::SeqCst) {
         let connected = session.is_connected();
         let mut last_error: Option<String> = None;
+        let mut last_batch = 0usize;
 
-        let mut allow_poll = connected && !session.config().snapshot().loading;
+        let allow_poll = connected && !session.config().snapshot().loading;
 
         let rpm = if last_rpm_check.elapsed() >= RPM_CHECK_INTERVAL {
             last_rpm_check = std::time::Instant::now();
@@ -207,112 +366,56 @@ fn poll_loop(
             snapshot.read().unwrap().rpm
         };
 
-        if let Some(r) = rpm {
-            if r <= COMPOSITE_OFF_RPM {
-                high_rpm_since = None;
-            } else if high_rpm_since.is_none() {
-                high_rpm_since = Some(std::time::Instant::now());
-            }
-            if let Some(since) = high_rpm_since {
-                if since.elapsed().as_secs_f64() >= HIGH_RPM_HOLD_SEC {
-                    allow_poll = false;
-                    if logger_enabled_on_ecu.load(Ordering::SeqCst) {
-                        let _ = session.try_with_link(|link| {
-                            link.set_composite_logger_enabled(false)
-                        });
-                        logger_enabled_on_ecu.store(false, Ordering::SeqCst);
-                    }
-                }
-            }
-        }
-
         if allow_poll {
             if let Some(result) = session.try_with_link(|link| link.read_composite_buffer()) {
                 match result {
-                    Ok(payload) if !payload.is_empty() => {
-                        let parsed = {
-                            let mut st = parse_state.lock().unwrap();
-                            parse_composite_records(&payload, &mut st)
-                        };
-                        if !parsed.is_empty() {
-                            let batch = parsed.len();
-                            let mut r = ring.lock().unwrap();
-                            for rec in parsed {
-                                if r.len() >= RING_CAP {
-                                    r.pop_front();
-                                }
-                                r.push_back(rec.into());
-                            }
-                            drop(r);
+                Ok(payload) if !payload.is_empty() => {
+                    let parsed = {
+                        let mut st = parse_state.lock().unwrap();
+                        parse_composite_records(&payload, &mut st)
+                    };
+                    if !parsed.is_empty() {
+                        let batch: Vec<CompositeEventJson> =
+                            parsed.into_iter().map(Into::into).collect();
+                        last_batch = batch.len();
+                        let mut r = ring.lock().unwrap();
+                        let gap_ms = append_chunk(&mut r, &batch, &next_tdc_cycle);
+                        trim_ring_cap(&mut r);
+                        drop(r);
+
+                        chunks_received.fetch_add(1, Ordering::Relaxed);
+                        {
                             let mut snap = snapshot.write().unwrap();
-                            snap.last_batch = batch;
                             snap.total_events =
-                                snap.total_events.saturating_add(batch as u64);
-                            events_dirty = true;
+                                snap.total_events.saturating_add(last_batch as u64);
+                            snap.last_chunk_gap_ms = gap_ms;
                         }
+                        emit_to_ui(connected, allow_poll, rpm, &last_error, last_batch);
+                        thread::sleep(POLL_AFTER_CHUNK);
+                        continue;
                     }
-                    Ok(_) => {}
-                    Err(e) => {
-                        if !e.contains("0x84") {
-                            last_error = Some(e);
-                            events_dirty = true;
-                        }
-                    }
+                }
+                Ok(_) => {}
+                Err(e) if e.contains("0x84") => {
+                    thread::sleep(POLL_WAIT_READY);
+                    continue;
+                }
+                Err(e) => {
+                    last_error = Some(e);
+                }
                 }
             }
         }
 
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_millis() as u64)
-            .unwrap_or(0);
-        let prev = last_emit_ms.load(Ordering::Relaxed);
-        if now.saturating_sub(prev) >= EMIT_INTERVAL.as_millis() as u64 {
-            last_emit_ms.store(now, Ordering::Relaxed);
-
-            let status_changed = last_error.is_some()
-                || connected != snapshot.read().unwrap().connected;
-
-            if events_dirty || status_changed {
-                let events: Vec<CompositeEventJson> = {
-                let ring_guard = ring.lock().unwrap();
-                if ring_guard.is_empty() {
-                    Vec::new()
-                } else {
-                    let t_end = ring_guard.back().unwrap().t_us;
-                    let t_min = t_end.saturating_sub(EMIT_UI_TIME_WINDOW_US);
-                    let mut out: Vec<CompositeEventJson> = ring_guard
-                        .iter()
-                        .filter(|e| e.t_us >= t_min)
-                        .cloned()
-                        .collect();
-                    if out.len() > EMIT_UI_EVENT_CAP {
-                        let drop = out.len() - EMIT_UI_EVENT_CAP;
-                        out.drain(0..drop);
-                    }
-                    out
-                }
-                };
-
-                let snap = {
-                    let mut snap = snapshot.write().unwrap();
-                    snap.connected = connected;
-                    snap.logging_enabled = true;
-                    snap.polling = allow_poll;
-                    snap.events = events;
-                    snap.rpm = rpm;
-                    match &last_error {
-                        Some(err) => snap.last_error = Some(err.clone()),
-                        None if snap.last_error.is_some() => snap.last_error = None,
-                        None => {}
-                    }
-                    snap.clone()
-                };
-                events_dirty = false;
-                on_tick(snap);
-            }
+        if last_error.is_some() || last_status_emit.elapsed() >= STATUS_EMIT_INTERVAL {
+            last_status_emit = std::time::Instant::now();
+            emit_to_ui(connected, allow_poll, rpm, &last_error, last_batch);
         }
 
-        thread::sleep(POLL_INTERVAL);
+        thread::sleep(if allow_poll {
+            POLL_WAIT_READY
+        } else {
+            POLL_IDLE
+        });
     }
 }

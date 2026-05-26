@@ -8,6 +8,8 @@ export const PERSIST_KEY_COMPOSITE_CHART = "composite-chart";
 
 export interface CompositeChartUiSettings {
   autostart: boolean;
+  alignTdc?: boolean;
+  autoStopSec?: number;
 }
 
 export interface ProjectInfo {

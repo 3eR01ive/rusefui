@@ -13,13 +13,14 @@ import {
   type CompositeChartUiSettings,
 } from "../../composables/useProject";
 import {
-  buildChartView,
   bufferSpanMs,
+  buildChartView,
   channelValue,
   crankAngleDeg,
   CRANK_CYCLE_DEG,
   laneY,
   maxViewSpanMs,
+  snapT0ToTdc,
   timeAtX,
   valueAtTime,
   xAtTime,
@@ -38,14 +39,19 @@ const props = defineProps<{
 
 const maxWindowMs = computed(() => Math.max(5, Number(props.props.windowMs ?? 300)));
 const chartHeight = computed(() => Math.max(120, Number(props.props.height ?? 220)));
+const defaultAutoStopSec = computed(() =>
+  Math.max(0, Math.round(Number(props.props.autoStopSec ?? 0))),
+);
 
 const MIN_VIEW_MS = 5;
 const ZOOM_STEP = 1.12;
 
-/** Ширина окна просмотра (мс), ≤ maxWindowMs и ≤ буфера. */
+/** Ширина окна просмотра (мс). */
 const viewSpanMs = ref(maxWindowMs.value);
-/** `null` — хвост live; иначе фиксированный t0 (µs). */
+/** Левый край окна просмотра (µs). */
 const viewAnchorT0Us = ref<number | null>(null);
+/** Пользователь менял зум/пан — не подстраивать вид во время записи. */
+const userAdjustedView = ref(false);
 
 const { snapshot, setLoggingEnabled } = useCompositeLogger();
 const { getProjectUi, setProjectUi } = useProject();
@@ -53,14 +59,23 @@ const dataCtx = useDataContext();
 const connected = computed(() => dataCtx.connection.value.connected);
 const loggingEnabled = computed(() => snapshot.value.loggingEnabled);
 const autostart = ref(false);
+const alignTdc = ref(false);
+const autoStopSec = ref(0);
+const autoStopRemainingSec = ref<number | null>(null);
 const loggerBusy = ref(false);
 const loggerError = ref<string | null>(null);
+
+let autoStopTimer: ReturnType<typeof setInterval> | null = null;
+let autoStopDeadlineMs = 0;
 
 const plotWrapRef = ref<HTMLDivElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const hoverX = ref<number | null>(null);
 const hoverInside = ref(false);
 let ro: ResizeObserver | null = null;
+let panPointerId: number | null = null;
+let panStartClientX = 0;
+let panStartT0Us = 0;
 
 const CHANNELS: { key: ChannelKey; label: string; color: string }[] = [
   { key: "pri", label: "Pri", color: "#3b82f6" },
@@ -83,33 +98,56 @@ function dataT0(events: readonly CompositeEvent[]): number {
   return events[0]!.tUs;
 }
 
+function captureStartT0(events: readonly CompositeEvent[]): number {
+  let t0 = dataT0(events);
+  if (alignTdc.value) {
+    t0 = snapT0ToTdc(events, t0);
+  }
+  return t0;
+}
+
+/** Весь склеенный захват в окне просмотра. */
+function fitFullCapture(events: readonly CompositeEvent[]) {
+  if (events.length < 2) return;
+  viewAnchorT0Us.value = captureStartT0(events);
+  viewSpanMs.value = Math.max(MIN_VIEW_MS, bufferSpanMs(events));
+  userAdjustedView.value = false;
+  clampViewToBuffer(events);
+}
+
+/** Во время записи — показывать всё накопленное с начала сессии. */
+function fitGrowingCapture(events: readonly CompositeEvent[]) {
+  if (userAdjustedView.value || events.length < 2) return;
+  fitFullCapture(events);
+}
+
 function currentTimeRange(events: readonly CompositeEvent[]): ChartTimeRange | null {
   if (events.length < 2) return null;
-  const tFirst = dataT0(events);
+  const dataStart = dataT0(events);
   const dataEnd = events[events.length - 1]!.tUs;
   const spanUs = Math.round(viewSpanMs.value * 1000);
 
-  if (viewAnchorT0Us.value == null) {
-    const tEnd = dataEnd;
-    return { t0: Math.max(tFirst, tEnd - spanUs), tEnd };
+  let t0 = viewAnchorT0Us.value ?? captureStartT0(events);
+  if (alignTdc.value) {
+    t0 = snapT0ToTdc(events, t0);
   }
 
-  let t0 = Math.max(tFirst, viewAnchorT0Us.value);
-  let tEnd = t0 + spanUs;
-  if (tEnd > dataEnd) {
-    tEnd = dataEnd;
-    t0 = Math.max(tFirst, tEnd - spanUs);
-  }
-  return { t0, tEnd };
+  const maxT0 = Math.max(dataStart, dataEnd - spanUs);
+  if (t0 > maxT0) t0 = maxT0;
+  if (t0 < dataStart) t0 = dataStart;
+
+  return { t0, tEnd: t0 + spanUs, spanUs };
 }
 
-function resetViewWindow(events?: readonly CompositeEvent[]) {
-  const ev = (events ?? snapshot.value.events) as CompositeEvent[];
-  viewSpanMs.value =
-    ev.length >= 2
-      ? Math.min(maxWindowMs.value, Math.max(MIN_VIEW_MS, bufferSpanMs(ev)))
-      : maxWindowMs.value;
-  viewAnchorT0Us.value = null;
+function resetViewWindow() {
+  const events = snapshot.value.events as CompositeEvent[];
+  if (events.length >= 2) {
+    fitFullCapture(events);
+  } else {
+    viewSpanMs.value = maxWindowMs.value;
+    viewAnchorT0Us.value = null;
+    userAdjustedView.value = false;
+  }
 }
 
 function clampViewToBuffer(events: readonly CompositeEvent[]) {
@@ -134,12 +172,26 @@ watch(
   () => {
     const ev = snapshot.value.events;
     if (ev.length === 0) return "0";
-    return `${ev.length}:${ev[ev.length - 1]!.tUs}`;
+    return `${ev.length}:${ev[0]!.tUs}:${ev[ev.length - 1]!.tUs}`;
   },
   () => {
-    clampViewToBuffer(snapshot.value.events as CompositeEvent[]);
+    const events = snapshot.value.events as CompositeEvent[];
+    clampViewToBuffer(events);
+    if (loggingEnabled.value) {
+      fitGrowingCapture(events);
+    }
   },
 );
+
+watch(loggingEnabled, (on, wasOn) => {
+  if (wasOn && !on) {
+    const events = snapshot.value.events as CompositeEvent[];
+    if (events.length >= 2) {
+      fitFullCapture(events);
+      scheduleDraw();
+    }
+  }
+});
 
 function cssColor(canvas: HTMLCanvasElement, varName: string, fallback: string): string {
   const v = getComputedStyle(canvas).getPropertyValue(varName).trim();
@@ -207,8 +259,10 @@ function drawCycleMarkers(
   ctx.setLineDash([5, 4]);
   ctx.globalAlpha = 0.85;
 
-  for (const tTdc of view.tdcTimes) {
-    const x = xAtTime(tTdc, view);
+  for (const { tUs, cycle } of view.tdcMarkers) {
+    const x = xAtTime(tUs, view);
+    if (x < view.plotLeft - 2 || x > view.plotLeft + view.plotW + 2) continue;
+
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, view.cssH);
@@ -217,9 +271,12 @@ function drawCycleMarkers(
     ctx.setLineDash([]);
     ctx.globalAlpha = 1;
     ctx.fillStyle = cycleColor;
-    ctx.font = "10px system-ui, sans-serif";
+    ctx.font = "bold 10px system-ui, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("0°", x, 11);
+    ctx.textBaseline = "top";
+    ctx.fillText(`#${cycle}`, x, 4);
+    ctx.font = "9px system-ui, sans-serif";
+    ctx.fillText("0°", x, 16);
     ctx.globalAlpha = 0.85;
     ctx.setLineDash([5, 4]);
   }
@@ -383,14 +440,78 @@ function scheduleDraw() {
   requestAnimationFrame(draw);
 }
 
+function plotWidthPx(): number {
+  const wrap = plotWrapRef.value;
+  if (!wrap) return 1;
+  return Math.max(1, wrap.getBoundingClientRect().width - LABEL_W - 8);
+}
+
+function panByClientDelta(deltaX: number) {
+  const events = snapshot.value.events as CompositeEvent[];
+  if (events.length < 2) return;
+  const range = currentTimeRange(events);
+  if (!range) return;
+
+  const dtUs = (-deltaX / plotWidthPx()) * range.spanUs;
+  const dataStart = dataT0(events);
+  const dataEnd = events[events.length - 1]!.tUs;
+  const spanUs = range.spanUs;
+  let t0 = panStartT0Us + dtUs;
+  const maxT0 = Math.max(dataStart, dataEnd - spanUs);
+  t0 = Math.min(maxT0, Math.max(dataStart, t0));
+  if (alignTdc.value) {
+    t0 = snapT0ToTdc(events, t0);
+    if (t0 > maxT0) t0 = maxT0;
+  }
+  viewAnchorT0Us.value = t0;
+  scheduleDraw();
+}
+
+function onPointerDown(e: PointerEvent) {
+  const events = snapshot.value.events as CompositeEvent[];
+  if (e.button !== 0 || events.length < 2) return;
+  const range = currentTimeRange(events);
+  if (!range) return;
+
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+
+  panPointerId = e.pointerId;
+  panStartClientX = e.clientX;
+  panStartT0Us = range.t0;
+  viewAnchorT0Us.value = range.t0;
+  userAdjustedView.value = true;
+  canvas.setPointerCapture(e.pointerId);
+}
+
 function onPointerMove(e: PointerEvent) {
   const canvas = canvasRef.value;
   if (!canvas) return;
+
+  if (panPointerId === e.pointerId) {
+    panByClientDelta(e.clientX - panStartClientX);
+    return;
+  }
+
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
   hoverX.value = x;
   hoverInside.value = x >= LABEL_W && x <= rect.width - 4;
   scheduleDraw();
+}
+
+function endPan(e: PointerEvent) {
+  if (panPointerId !== e.pointerId) return;
+  panPointerId = null;
+  canvasRef.value?.releasePointerCapture(e.pointerId);
+}
+
+function onPointerUp(e: PointerEvent) {
+  endPan(e);
+}
+
+function onPointerCancel(e: PointerEvent) {
+  endPan(e);
 }
 
 function onPointerLeave() {
@@ -416,27 +537,27 @@ function zoomAtPointer(clientX: number, zoomIn: boolean) {
   const range = currentTimeRange(events);
   if (!range) return;
 
-  const tFirst = dataT0(events);
-  const spanUs = range.tEnd - range.t0;
+  const spanUs = range.spanUs;
   const minSpanUs = Math.round(MIN_VIEW_MS * 1000);
   const maxSpanUs = Math.round(maxSpanMsFor(events) * 1000);
   const frac = plotFracFromClientX(clientX);
   const tAnchor = range.t0 + frac * spanUs;
 
+  userAdjustedView.value = true;
+
   if (zoomIn) {
     if (spanUs <= minSpanUs) return;
     const newSpanUs = Math.max(minSpanUs, Math.round(spanUs / ZOOM_STEP));
     viewSpanMs.value = newSpanUs / 1000;
-    viewAnchorT0Us.value = Math.max(tFirst, tAnchor - frac * newSpanUs);
+    viewAnchorT0Us.value = tAnchor - frac * newSpanUs;
   } else {
     if (spanUs >= maxSpanUs - 1) {
-      viewSpanMs.value = maxSpanMsFor(events);
-      viewAnchorT0Us.value = null;
-    } else {
-      const newSpanUs = Math.min(maxSpanUs, Math.round(spanUs * ZOOM_STEP));
-      viewSpanMs.value = newSpanUs / 1000;
-      viewAnchorT0Us.value = Math.max(tFirst, tAnchor - frac * newSpanUs);
+      fitFullCapture(events);
+      return;
     }
+    const newSpanUs = Math.min(maxSpanUs, Math.round(spanUs * ZOOM_STEP));
+    viewSpanMs.value = newSpanUs / 1000;
+    viewAnchorT0Us.value = tAnchor - frac * newSpanUs;
   }
   clampViewToBuffer(events);
   scheduleDraw();
@@ -454,29 +575,94 @@ function onPlotDblClick() {
   scheduleDraw();
 }
 
+function clearAutoStopTimer() {
+  if (autoStopTimer != null) {
+    clearInterval(autoStopTimer);
+    autoStopTimer = null;
+  }
+  autoStopRemainingSec.value = null;
+  autoStopDeadlineMs = 0;
+}
+
+function startAutoStopTimer() {
+  clearAutoStopTimer();
+  const sec = Math.round(autoStopSec.value);
+  if (sec <= 0) return;
+
+  autoStopDeadlineMs = Date.now() + sec * 1000;
+  autoStopRemainingSec.value = sec;
+
+  autoStopTimer = setInterval(() => {
+    const left = Math.ceil((autoStopDeadlineMs - Date.now()) / 1000);
+    if (left <= 0) {
+      clearAutoStopTimer();
+      if (loggingEnabled.value && !loggerBusy.value) {
+        void applyLoggingEnabled(false);
+      }
+      return;
+    }
+    autoStopRemainingSec.value = left;
+  }, 250);
+}
+
 async function applyLoggingEnabled(on: boolean) {
   loggerBusy.value = true;
   loggerError.value = null;
   try {
     await setLoggingEnabled(on);
+    if (on) {
+      userAdjustedView.value = false;
+      viewAnchorT0Us.value = null;
+      viewSpanMs.value = maxWindowMs.value;
+      startAutoStopTimer();
+    } else {
+      clearAutoStopTimer();
+      const events = snapshot.value.events as CompositeEvent[];
+      if (events.length >= 2) {
+        fitFullCapture(events);
+      }
+    }
   } catch (e) {
     loggerError.value = e instanceof Error ? e.message : String(e);
+    clearAutoStopTimer();
   } finally {
     loggerBusy.value = false;
   }
 }
 
-async function loadAutostartFromProject() {
+async function loadUiFromProject() {
   try {
     const ui = await getProjectUi<CompositeChartUiSettings>(PERSIST_KEY_COMPOSITE_CHART);
     autostart.value = Boolean(ui.autostart);
+    alignTdc.value = Boolean(ui.alignTdc);
+    if (ui.autoStopSec != null && ui.autoStopSec >= 0) {
+      autoStopSec.value = Math.round(ui.autoStopSec);
+    } else {
+      autoStopSec.value = defaultAutoStopSec.value;
+    }
   } catch {
     autostart.value = false;
+    alignTdc.value = false;
+    autoStopSec.value = defaultAutoStopSec.value;
   }
 }
 
-watch(autostart, (v) => {
-  void setProjectUi(PERSIST_KEY_COMPOSITE_CHART, { autostart: v });
+function persistUiSettings() {
+  void setProjectUi(PERSIST_KEY_COMPOSITE_CHART, {
+    autostart: autostart.value,
+    alignTdc: alignTdc.value,
+    autoStopSec: Math.max(0, Math.round(autoStopSec.value)),
+  });
+}
+
+watch(autostart, persistUiSettings);
+watch(alignTdc, () => {
+  persistUiSettings();
+  scheduleDraw();
+});
+watch(autoStopSec, () => {
+  persistUiSettings();
+  if (loggingEnabled.value) startAutoStopTimer();
 });
 
 watch(
@@ -490,7 +676,7 @@ watch(
 
 onMounted(async () => {
   await initCompositeLogger();
-  await loadAutostartFromProject();
+  await loadUiFromProject();
   if (connected.value && autostart.value && !loggingEnabled.value) {
     await applyLoggingEnabled(true);
   }
@@ -498,20 +684,27 @@ onMounted(async () => {
   if (canvas) {
     ro = new ResizeObserver(scheduleDraw);
     ro.observe(canvas);
+    canvas.addEventListener("pointerdown", onPointerDown);
     canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup", onPointerUp);
+    canvas.addEventListener("pointercancel", onPointerCancel);
     canvas.addEventListener("pointerleave", onPointerLeave);
   }
-  resetViewWindow(snapshot.value.events as CompositeEvent[]);
+  resetViewWindow();
   scheduleDraw();
 });
 
 onUnmounted(() => {
+  clearAutoStopTimer();
   if (loggingEnabled.value) {
     void setLoggingEnabled(false);
   }
   ro?.disconnect();
   const canvas = canvasRef.value;
+  canvas?.removeEventListener("pointerdown", onPointerDown);
   canvas?.removeEventListener("pointermove", onPointerMove);
+  canvas?.removeEventListener("pointerup", onPointerUp);
+  canvas?.removeEventListener("pointercancel", onPointerCancel);
   canvas?.removeEventListener("pointerleave", onPointerLeave);
 });
 
@@ -523,7 +716,7 @@ watch(
   },
   scheduleDraw,
 );
-watch([maxWindowMs, viewSpanMs, chartHeight, connected], scheduleDraw);
+watch([maxWindowMs, viewSpanMs, chartHeight, connected, alignTdc], scheduleDraw);
 watch([hoverX, hoverInside], scheduleDraw);
 
 const statusLine = computed(() => {
@@ -531,16 +724,29 @@ const statusLine = computed(() => {
   const ev = s.events as CompositeEvent[];
   const parts: string[] = [];
   if (s.loggingEnabled) parts.push("log on");
+  if (autoStopRemainingSec.value != null && autoStopRemainingSec.value > 0) {
+    parts.push(`стоп ${autoStopRemainingSec.value} с`);
+  }
   if (s.polling) parts.push("poll");
   if (s.rpm != null) parts.push(`${Math.round(s.rpm)} RPM`);
   const cap = ev.length >= 2 ? maxSpanMsFor(ev) : maxWindowMs.value;
+  const rec = s.recordedSpanMs > 0 ? s.recordedSpanMs : ev.length >= 2 ? bufferSpanMs(ev) : 0;
   const win =
     viewSpanMs.value < cap - 0.5
-      ? `окно ${viewSpanMs.value.toFixed(0)}/${cap.toFixed(0)} ms`
-      : `окно ${cap.toFixed(0)} ms`;
+      ? `вид ${viewSpanMs.value.toFixed(0)}/${cap.toFixed(0)} ms`
+      : `вид ${cap.toFixed(0)} ms`;
   parts.push(win);
+  if (rec > 0 && !s.loggingEnabled) {
+    parts.push(`захват ${rec.toFixed(0)} ms`);
+  }
+  if (s.recordedSpanMs > 0) {
+    parts.push(`запись ${s.recordedSpanMs.toFixed(0)} ms`);
+  }
   parts.push(`${s.events.length} pts`);
+  if (s.tdcCyclesTotal > 0) parts.push(`TDC #${s.tdcCyclesTotal}`);
+  if (s.chunksReceived > 0) parts.push(`${s.chunksReceived} chunk`);
   if (s.lastBatch > 0) parts.push(`+${s.lastBatch}`);
+  if (s.lastChunkGapMs > 1) parts.push(`разрыв ${s.lastChunkGapMs.toFixed(1)} ms`);
   return parts.join(" · ");
 });
 </script>
@@ -572,12 +778,29 @@ const statusLine = computed(() => {
         <input v-model="autostart" type="checkbox" :disabled="loggerBusy" />
         Автозапуск при подключении
       </label>
+      <label class="cc-autostart">
+        <input v-model="alignTdc" type="checkbox" :disabled="loggerBusy" />
+        Выравнивать по TDC
+      </label>
+      <label class="cc-timer">
+        <span>Стоп через</span>
+        <input
+          v-model.number="autoStopSec"
+          type="number"
+          min="0"
+          max="86400"
+          step="1"
+          :disabled="loggerBusy"
+          title="0 — без автоматического стопа"
+        />
+        <span>с</span>
+      </label>
     </div>
     <p v-if="loggerError" class="cc-error">{{ loggerError }}</p>
     <div
       ref="plotWrapRef"
       class="cc-plot-wrap"
-      title="Колёсико — масштаб, двойной щелчок — сброс"
+      title="Запись → стоп → весь захват. Колёсико — масштаб, перетаскивание — перемотка, двойной щелчок — весь захват"
       @wheel.prevent="onCanvasWheel"
       @dblclick="onPlotDblClick"
     >
@@ -589,12 +812,16 @@ const statusLine = computed(() => {
       />
     </div>
     <p v-if="snapshot.lastError" class="cc-error">{{ snapshot.lastError }}</p>
-    <p v-else-if="connected && !loggingEnabled" class="cc-hint">
-      Нажмите «Старт» или включите автозапуск.
+    <p v-else-if="connected && !loggingEnabled && snapshot.events.length < 2" class="cc-hint">
+      «Старт» — запись с ECU, «Стоп» — склеить сессию и просмотреть весь захват (зум, перемотка).
+    </p>
+    <p v-else-if="!loggingEnabled && snapshot.events.length >= 2" class="cc-hint">
+      Захват готов: {{ snapshot.events.length }} точек, {{ snapshot.recordedSpanMs.toFixed(0) }} ms.
+      Колёсико — масштаб, перетаскивание — перемотка, двойной щелчок — показать весь захват.
     </p>
     <p v-else class="cc-hint">
-      Колёсико над графиком — масштаб (до {{ maxWindowMs }} ms и ширины буфера). Двойной щелчок — сброс.
-      TDC = 0°, цикл {{ CRANK_CYCLE_DEG }}°.
+      Идёт запись: куски ECU склеиваются в одну сессию. «Стоп» — остановить приём и просмотреть
+      всё накопленное. TDC = 0°, цикл {{ CRANK_CYCLE_DEG }}°.
     </p>
   </div>
 </template>
@@ -664,6 +891,25 @@ const statusLine = computed(() => {
   margin: 0;
 }
 
+.cc-timer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--color-fg-muted);
+  cursor: default;
+}
+
+.cc-timer input {
+  width: 4.25rem;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-fg);
+}
+
 .cc-title {
   font-size: 0.8rem;
   font-weight: 600;
@@ -691,6 +937,7 @@ const statusLine = computed(() => {
   width: 100%;
   display: block;
   cursor: crosshair;
+  touch-action: none;
 }
 
 .cc-error {

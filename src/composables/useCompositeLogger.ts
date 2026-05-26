@@ -10,6 +10,8 @@ export interface CompositeEvent {
   sync: boolean;
   coil: boolean;
   inj: boolean;
+  /** Номер TDC с начала сессии (только на фронте `trg`). */
+  tdcCycle?: number | null;
 }
 
 export interface CompositeSnapshot {
@@ -19,6 +21,10 @@ export interface CompositeSnapshot {
   events: CompositeEvent[];
   totalEvents: number;
   lastBatch: number;
+  recordedSpanMs: number;
+  lastChunkGapMs: number;
+  chunksReceived: number;
+  tdcCyclesTotal: number;
   lastError?: string | null;
   rpm?: number | null;
 }
@@ -64,9 +70,18 @@ export async function setCompositeLoggingEnabled(
   return snap;
 }
 
+export async function setCompositeMaxWindowMs(maxWindowMs: number): Promise<void> {
+  try {
+    await invoke("composite_set_max_window_ms", { maxWindowMs });
+  } catch {
+    /* not in tauri */
+  }
+}
+
 export function useCompositeLogger() {
   return {
     snapshot: readonly(snapshot),
     setLoggingEnabled: setCompositeLoggingEnabled,
+    setMaxWindowMs: setCompositeMaxWindowMs,
   };
 }

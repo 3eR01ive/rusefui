@@ -638,6 +638,11 @@ pub fn composite_set_enabled(
     Ok(state.session.composite().snapshot())
 }
 
+#[tauri::command]
+pub fn composite_set_max_window_ms(max_window_ms: f64, state: State<RuntimeState>) {
+    state.session.composite().set_max_window_ms(max_window_ms);
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputTimelineQueryParams {
