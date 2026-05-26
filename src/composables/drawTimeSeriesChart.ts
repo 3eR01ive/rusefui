@@ -66,8 +66,10 @@ export function drawLogGraphPanel(
   const plotH = height - margins.top - margins.bottom;
   if (plotW <= 0 || plotH <= 0) return;
 
-  const tSpan = Math.max(tMax - tMin, 0.001);
-  const toX = (t: number) => margins.left + ((t - tMin) / tSpan) * plotW;
+  const plotTMin = tMin;
+  const plotTMax = tMax;
+  const tSpan = Math.max(plotTMax - plotTMin, 0.001);
+  const toX = (t: number) => margins.left + ((t - plotTMin) / tSpan) * plotW;
 
   ctx.fillStyle = cssVar("--color-bg-elevated", "#fff");
   ctx.fillRect(margins.left, margins.top, plotW, plotH);
@@ -96,16 +98,29 @@ export function drawLogGraphPanel(
     const toY = (v: number) =>
       margins.top + plotH - ((v - tr.vMin) / vSpan) * plotH;
 
-    if (tr.series.points.length < 2) continue;
+    const pts = [...tr.series.points].sort((a, b) => a.t - b.t);
+    if (pts.length < 1) continue;
     ctx.strokeStyle = tr.color;
-    ctx.lineWidth = 1.75;
+    ctx.lineWidth = 2;
     ctx.lineJoin = "round";
-    ctx.beginPath();
-    let started = false;
-    for (const p of tr.series.points) {
-      if (p.t < tMin - 0.01) continue;
+    ctx.lineCap = "round";
+    if (pts.length === 1) {
+      const p = pts[0]!;
       const x = toX(p.t);
       const y = toY(p.v);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+      ctx.beginPath();
+      ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = tr.color;
+      ctx.fill();
+      continue;
+    }
+    ctx.beginPath();
+    let started = false;
+    for (const p of pts) {
+      const x = toX(p.t);
+      const y = toY(p.v);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
       if (!started) {
         ctx.moveTo(x, y);
         started = true;
@@ -113,7 +128,7 @@ export function drawLogGraphPanel(
         ctx.lineTo(x, y);
       }
     }
-    ctx.stroke();
+    if (started) ctx.stroke();
   }
 
   ctx.restore();

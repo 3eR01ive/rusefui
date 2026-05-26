@@ -34,6 +34,8 @@ pub struct OutputSnapshot {
     pub ini_field_count: usize,
     /// Путь CSV-лога output channels для текущей сессии ECU.
     pub session_log_path: Option<String>,
+    /// `elapsed_sec` live-головы timeline (ось времени log = CSV).
+    pub timeline_live_sec: f64,
 }
 
 impl OutputSnapshot {
@@ -47,6 +49,7 @@ impl OutputSnapshot {
             ini_signature: ini.signature.clone(),
             ini_field_count: ini.channels.fields.len(),
             session_log_path: None,
+            timeline_live_sec: 0.0,
         }
     }
 }
@@ -247,6 +250,7 @@ fn poll_loop(
             ini_signature: ini.signature.clone(),
             ini_field_count: ini.channels.fields.len(),
             session_log_path: session.output_session_log_path(),
+            timeline_live_sec: session.output_timeline_live_sec(),
         };
 
         if snap.connected {

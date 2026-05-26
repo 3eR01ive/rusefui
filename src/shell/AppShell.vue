@@ -5,6 +5,7 @@ import ProtocolLogSheet from "./ProtocolLogSheet.vue";
 import ConfigLoadOverlay from "./ConfigLoadOverlay.vue";
 import { createDataContext, provideDataContext } from "../core/data-context";
 import { initOutputChannels } from "../composables/useOutputChannels";
+import { initOutputTimeline } from "../composables/useOutputTimeline";
 import { initConfig, useConfig } from "../composables/useConfig";
 import { useProtocolLog, useProtocolLogLifecycle } from "../composables/useProtocolLog";
 import { useEcuConnection } from "../composables/useEcuConnection";
@@ -32,6 +33,7 @@ useProtocolLogLifecycle();
 
 onMounted(() => {
   void initOutputChannels();
+  void initOutputTimeline();
   void initConfig();
 });
 

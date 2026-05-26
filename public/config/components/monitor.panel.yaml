@@ -44,5 +44,5 @@ children:
 
       - type: text
         props:
-          text: "Опрос outputChannels ~200 Hz. Все параметры пишутся в CSV на сессию (см. sessionLogPath / protocol.log при подключении)."
+          text: "Output: live snapshot + OutputTimeline (окно, перемотка, CSV-сессия). Log читает через timeline."
           variant: hint

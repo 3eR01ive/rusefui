@@ -1,6 +1,7 @@
 use rusefui_runtime::{
     default_log_path, AutoConnectManager, AutoConnectSnapshot, ComponentRuntime, ConfigFieldInfo,
-    ConfigSnapshot, EcuSession, EcuSyncOnMount, OutputFieldInfo, OutputSnapshot, ProtocolLogEntry,
+    ConfigSnapshot, EcuSession, EcuSyncOnMount, OutputFieldInfo, OutputSnapshot,
+    OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl, ProtocolLogEntry,
     ProtocolLogFilterSettings, ProtocolLogStore,
 };
 use serde::{Deserialize, Serialize};
@@ -517,6 +518,53 @@ pub fn output_list_fields(state: State<RuntimeState>) -> Vec<OutputFieldInfo> {
 pub fn output_start_listener(state: State<RuntimeState>, app: AppHandle) {
     emit_output(&app, &state.session.output().snapshot());
     sync_ecu_data(&state, &app);
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputTimelineQueryParams {
+    pub fields: Vec<String>,
+    pub pixel_width: u32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputTimelineControlParams {
+    pub ctrl: OutputTimelineViewControl,
+}
+
+#[tauri::command]
+pub fn output_timeline_status(state: State<RuntimeState>) -> OutputTimelineStatus {
+    state.session.output_timeline_status()
+}
+
+#[tauri::command]
+pub fn output_timeline_query_view(
+    state: State<RuntimeState>,
+    params: OutputTimelineQueryParams,
+) -> OutputTimelineView {
+    state.session.output_timeline_query(rusefui_runtime::OutputTimelineViewQuery {
+        fields: params.fields,
+        pixel_width: params.pixel_width,
+    })
+}
+
+#[tauri::command]
+pub fn output_timeline_set_view(
+    state: State<RuntimeState>,
+    params: OutputTimelineControlParams,
+) -> OutputTimelineStatus {
+    state.session.output_timeline_control(params.ctrl)
+}
+
+#[tauri::command]
+pub fn output_timeline_load_file(
+    state: State<RuntimeState>,
+    path: String,
+) -> Result<OutputTimelineStatus, String> {
+    Ok(state
+        .session
+        .output_timeline_load_file(std::path::PathBuf::from(path)))
 }
 
 #[tauri::command]

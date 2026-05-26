@@ -12,10 +12,12 @@ import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { initOutputChannels, useOutputChannels } from "../../composables/useOutputChannels";
 import { useOutputFields } from "../../composables/useOutputFields";
 import {
-  createTimeSeriesStore,
-  type TimeSeries,
-} from "../../composables/useTimeSeriesBuffer";
+  initOutputTimeline,
+  useOutputTimeline,
+  type OutputTimelineView,
+} from "../../composables/useOutputTimeline";
 import { drawLogPanelsChart, type LogGraphPanelSpec, type LogTraceSpec } from "../../composables/drawTimeSeriesChart";
+import type { TimeSeries } from "../../composables/useTimeSeriesBuffer";
 
 interface LogGraphGroup {
   id: string;
@@ -84,12 +86,29 @@ const defaultFields = computed(() => {
 });
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
-const containerRef = ref<HTMLDivElement | null>(null);
+const canvasWrapRef = ref<HTMLDivElement | null>(null);
 const searchInputRef = ref<HTMLInputElement | null>(null);
-const canvasWidth = ref(640);
+const canvasWidth = ref(0);
+
+function measureCanvasWidth(): number {
+  const wrap = canvasWrapRef.value;
+  if (wrap && wrap.clientWidth > 0) {
+    return Math.max(200, Math.floor(wrap.clientWidth));
+  }
+  return Math.max(200, canvasWidth.value);
+}
 
 const { snapshot } = useOutputChannels();
 const { fields: allFields, reload: reloadOutputFields } = useOutputFields();
+const {
+  status: timelineStatus,
+  hasHistory: timelineHasHistory,
+  fieldColor,
+  queryView,
+  controlView,
+  refreshStatus: refreshTimelineStatus,
+  valueRangeForPoints,
+} = useOutputTimeline();
 
 const graphGroups = ref<LogGraphGroup[]>([
   { id: "g1", fieldNames: [...defaultFields.value] },
@@ -121,9 +140,8 @@ function isFieldOnAnyGraph(name: string): boolean {
   return allSelectedFields().includes(name);
 }
 
-function syncGraphStore(): void {
+function syncGraphFields(): void {
   syncRangeInputs();
-  store.value.setFields(uniquePollFields());
 }
 
 async function refreshFieldCatalog(): Promise<void> {
@@ -140,12 +158,12 @@ async function refreshFieldCatalog(): Promise<void> {
   graphGroups.value = [{ id: "g1", fieldNames: names }];
   activeGraphId.value = "g1";
   graphIdSeq = 1;
-  syncGraphStore();
+  syncGraphFields();
 }
 const fieldFilter = ref("");
 const showSuggest = ref(false);
 const suggestStyle = ref({ top: "0px", left: "0px", width: "0px" });
-const store = shallowRef(createTimeSeriesStore(windowSeconds.value));
+const lastView = shallowRef<OutputTimelineView | null>(null);
 
 function updateSuggestPosition(): void {
   const el = searchInputRef.value;
@@ -190,13 +208,13 @@ function parseRangeInput(raw: string): number | null {
 function setRangeMin(name: string, value: string): void {
   const prev = rangeInputs.value[name] ?? { min: "", max: "" };
   rangeInputs.value = { ...rangeInputs.value, [name]: { ...prev, min: value } };
-  redraw();
+  scheduleRedraw();
 }
 
 function setRangeMax(name: string, value: string): void {
   const prev = rangeInputs.value[name] ?? { min: "", max: "" };
   rangeInputs.value = { ...rangeInputs.value, [name]: { ...prev, max: value } };
-  redraw();
+  scheduleRedraw();
 }
 
 watch(
@@ -209,11 +227,19 @@ watch(
 );
 
 watch(windowSeconds, (sec) => {
-  store.value = createTimeSeriesStore(sec);
-  store.value.setFields(uniquePollFields());
+  void controlView({ spanSec: sec, followLive: timelineStatus.value.followLive });
 });
 
-watch(graphGroups, () => syncGraphStore(), { deep: true });
+watch(graphGroups, () => syncGraphFields(), { deep: true });
+
+function fieldValue(name: string): number | null {
+  const live = snapshot.value.values[name];
+  if (live !== undefined) return live;
+  const series = lastView.value?.series.find((s) => s.field === name);
+  const pts = series?.points;
+  if (pts && pts.length > 0) return pts[pts.length - 1]!.v;
+  return null;
+}
 
 const channelRows = computed(() => {
   const rows: {
@@ -229,17 +255,15 @@ const channelRows = computed(() => {
   }[] = [];
   graphGroups.value.forEach((g, gi) => {
     g.fieldNames.forEach((name, idx) => {
-      const s = store.value.seriesMap.get(name);
       const meta = allFields.value.find((f) => f.name === name);
-      const pts = s?.points;
-      const last = pts && pts.length > 0 ? pts[pts.length - 1]!.v : null;
+      const last = fieldValue(name);
       const ranges = rangeInputs.value[name] ?? { min: "", max: "" };
       rows.push({
         slotKey: `${g.id}:${name}:${idx}`,
         name,
         graphId: g.id,
         graphLabel: `Граф ${gi + 1}`,
-        color: s?.color ?? "#888",
+        color: fieldColor(name),
         units: meta?.units ?? "",
         value: last,
         min: ranges.min,
@@ -266,7 +290,8 @@ const setupSummary = computed(() => {
   const parts: string[] = [];
   if (ch > 0) parts.push(`${ch} кан.`);
   parts.push(`${gr || graphGroups.value.length} граф.`);
-  parts.push(`окно ${windowSeconds.value} с`);
+  parts.push(`окно ${timelineStatus.value.spanSec.toFixed(0)} с`);
+  if (!timelineStatus.value.followLive) parts.push("пауза");
   return parts.join(" · ");
 });
 
@@ -290,14 +315,128 @@ const suggestEmptyHint = computed(() => {
   return null;
 });
 
-const activeSeries = computed((): TimeSeries[] => {
-  const out: TimeSeries[] = [];
-  for (const f of uniquePollFields()) {
-    const s = store.value.seriesMap.get(f);
-    if (s) out.push(s);
+function fallbackSeries(name: string, tMin: number, tMax: number): TimeSeries | null {
+  const v = snapshot.value.values[name];
+  if (v === undefined || !snapshot.value.connected) return null;
+  const t0 = Math.max(tMin, tMax - 0.001);
+  return {
+    field: name,
+    color: fieldColor(name),
+    points: [
+      { t: t0, v },
+      { t: tMax, v },
+    ],
+  };
+}
+
+function timelineLiveSec(): number {
+  const fromSnap = snapshot.value.timelineLiveSec;
+  if (fromSnap !== undefined && Number.isFinite(fromSnap)) return fromSnap;
+  return timelineStatus.value.liveSec;
+}
+
+function buildPanels(
+  _tMin: number,
+  _tMax: number,
+  resolveSeries: (name: string) => TimeSeries | null,
+): LogGraphPanelSpec[] {
+  const panels: LogGraphPanelSpec[] = [];
+  graphGroups.value.forEach((group, gi) => {
+    const traces: LogTraceSpec[] = [];
+    for (const name of group.fieldNames) {
+      const s = resolveSeries(name);
+      if (!s) continue;
+      const inp = rangeInputs.value[name] ?? { min: "", max: "" };
+      const { vMin, vMax } = valueRangeForPoints(
+        s.points,
+        parseRangeInput(inp.min),
+        parseRangeInput(inp.max),
+      );
+      const meta = allFields.value.find((f) => f.name === name);
+      traces.push({
+        series: s,
+        vMin,
+        vMax,
+        name,
+        units: meta?.units ?? "",
+        color: s.color,
+      });
+    }
+    if (traces.length > 0) {
+      panels.push({ traces, title: `Граф ${gi + 1}` });
+    }
+  });
+  return panels;
+}
+
+function spreadPointsForDraw(
+  points: { t: number; v: number }[],
+  tMin: number,
+  tMax: number,
+): { t: number; v: number }[] {
+  const pts = points
+    .map((p) => ({ t: Number(p.t), v: Number(p.v) }))
+    .filter((p) => Number.isFinite(p.t) && Number.isFinite(p.v))
+    .sort((a, b) => a.t - b.t);
+  if (pts.length === 0) return pts;
+  const span = Math.max(tMax - tMin, 0.001);
+  const hasSpan =
+    pts.length >= 2 &&
+    Math.abs(pts[pts.length - 1]!.t - pts[0]!.t) > span * 1e-6;
+  if (hasSpan) return pts;
+  const v = pts[pts.length - 1]!.v;
+  return [
+    { t: Math.max(tMin, tMax - span * 0.02), v },
+    { t: tMax, v },
+  ];
+}
+
+function seriesForField(name: string, view: OutputTimelineView): TimeSeries | null {
+  const fv = view.series.find((s) => s.field === name);
+  let base: TimeSeries | null = null;
+  if (fv && fv.points.length > 0) {
+    base = {
+      field: name,
+      color: fieldColor(name),
+      points: fv.points.map((p) => ({ t: Number(p.t), v: Number(p.v) })),
+    };
+  } else {
+    base = fallbackSeries(name, view.tMin, view.tMax);
   }
-  return out;
-});
+  if (!base) return null;
+  const tMax = Math.max(view.tMax, timelineLiveSec());
+  const withTail = withLiveTail(base, view);
+  return {
+    ...withTail,
+    points: spreadPointsForDraw(withTail.points, view.tMin, tMax),
+  };
+}
+
+/** Хвост кривой из live snapshot (elapsed_sec timeline), между query_view. */
+function withLiveTail(series: TimeSeries, view: OutputTimelineView): TimeSeries {
+  const live = snapshot.value.values[series.field];
+  if (live === undefined || !snapshot.value.connected) return series;
+  if (!timelineStatus.value.followLive) return series;
+  const tMax = Math.max(view.tMax, timelineLiveSec());
+  const pts = series.points.map((p) => ({ t: p.t, v: p.v }));
+  if (pts.length === 0) {
+    const t0 = Math.max(view.tMin, tMax - Math.max(view.tMax - view.tMin, 0.05) * 0.02);
+    return {
+      ...series,
+      points: [
+        { t: t0, v: live },
+        { t: tMax, v: live },
+      ],
+    };
+  }
+  const last = pts[pts.length - 1]!;
+  if (tMax - last.t < 1e-9) {
+    pts[pts.length - 1] = { t: tMax, v: live };
+  } else {
+    pts.push({ t: tMax, v: live });
+  }
+  return { ...series, points: pts };
+}
 
 const legendItems = computed(() =>
   channelRows.value.map((row) => ({
@@ -324,7 +463,7 @@ function removeGraph(id: string): void {
   if (activeGraphId.value === id) {
     activeGraphId.value = graphGroups.value[0]!.id;
   }
-  syncGraphStore();
+  syncGraphFields();
 }
 
 function moveFieldToGraph(name: string, fromGraphId: string, toGraphId: string): void {
@@ -339,8 +478,8 @@ function moveFieldToGraph(name: string, fromGraphId: string, toGraphId: string):
     to.fieldNames = [...to.fieldNames, name];
   }
   graphGroups.value = [...graphGroups.value];
-  syncGraphStore();
-  redraw();
+  syncGraphFields();
+  scheduleRedraw();
 }
 
 function toggleField(name: string): void {
@@ -349,7 +488,7 @@ function toggleField(name: string): void {
   if (g.fieldNames.includes(name)) {
     g.fieldNames = g.fieldNames.filter((f) => f !== name);
     graphGroups.value = [...graphGroups.value];
-    syncGraphStore();
+    syncGraphFields();
     return;
   }
   if (allSelectedFields().length >= MAX_CHANNELS) return;
@@ -358,7 +497,7 @@ function toggleField(name: string): void {
     rangeInputs.value[name] = { min: "", max: "" };
   }
   graphGroups.value = [...graphGroups.value];
-  syncGraphStore();
+  syncGraphFields();
 }
 
 function removeField(name: string, graphId: string): void {
@@ -368,82 +507,209 @@ function removeField(name: string, graphId: string): void {
   if (idx < 0) return;
   g.fieldNames = g.fieldNames.filter((_, i) => i !== idx);
   graphGroups.value = [...graphGroups.value];
-  syncGraphStore();
+  syncGraphFields();
+}
+
+async function panTimeline(deltaSec: number): Promise<void> {
+  await controlView({ panSec: deltaSec, followLive: false });
+  await refreshTimelineStatus();
+  await redrawNow();
+}
+
+async function zoomTimeline(factor: number): Promise<void> {
+  await controlView({ zoomFactor: factor });
+  await refreshTimelineStatus();
+  await redrawNow();
+}
+
+async function followLive(): Promise<void> {
+  await controlView({ followLive: true, spanSec: windowSeconds.value });
+  await refreshTimelineStatus();
+  await redrawNow();
 }
 
 function clearHistory(): void {
-  store.value.resetTimeOrigin();
-}
-
-function redraw(): void {
-  const canvas = canvasRef.value;
-  if (!canvas) return;
-  const dpr = window.devicePixelRatio || 1;
-  const w = canvasWidth.value;
-  const h = canvasHeight.value;
-  canvas.width = Math.floor(w * dpr);
-  canvas.height = Math.floor(h * dpr);
-  canvas.style.width = `${w}px`;
-  canvas.style.height = `${h}px`;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-  const { tMin, tMax } = store.value.visibleRange();
-  const panels: LogGraphPanelSpec[] = [];
-  graphGroups.value.forEach((group, gi) => {
-    const traces: LogTraceSpec[] = [];
-    for (const name of group.fieldNames) {
-      const s = store.value.seriesMap.get(name);
-      if (!s) continue;
-      const inp = rangeInputs.value[name] ?? { min: "", max: "" };
-      const { vMin, vMax } = store.value.valueRangeForSeries(
-        s,
-        tMin,
-        tMax,
-        parseRangeInput(inp.min),
-        parseRangeInput(inp.max),
-      );
-      const meta = allFields.value.find((f) => f.name === name);
-      traces.push({
-        series: s,
-        vMin,
-        vMax,
-        name,
-        units: meta?.units ?? "",
-        color: s.color,
-      });
-    }
-    if (traces.length > 0) {
-      panels.push({ traces, title: `Граф ${gi + 1}` });
-    }
-  });
-  drawLogPanelsChart(ctx, w, h, panels, tMin, tMax);
+  void followLive();
 }
 
 let resizeObserver: ResizeObserver | null = null;
 let unlistenEcu: UnlistenFn | null = null;
+let redrawGeneration = 0;
+let redrawRaf = 0;
+let redrawInflight: Promise<void> | null = null;
+let lastCanvasW = 0;
+let lastCanvasH = 0;
+let lastCanvasDpr = 1;
+let cachedView: OutputTimelineView | null = null;
+let cachedViewAt = 0;
+const VIEW_QUERY_MS = 80;
+
+function canPlotTimeline(): boolean {
+  return (
+    snapshot.value.connected ||
+    timelineHasHistory.value ||
+    Boolean(snapshot.value.sessionLogPath ?? timelineStatus.value.sessionLogPath)
+  );
+}
+
+function paintFromView(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  view: OutputTimelineView,
+): void {
+  const { tMin, tMax } = view;
+  const drawTMax = Math.max(tMax, timelineLiveSec());
+  const fields = uniquePollFields();
+  let panels = buildPanels(tMin, drawTMax, (name) => seriesForField(name, view));
+  if (panels.length === 0 && fields.length > 0) {
+    const tMaxF = Math.max(tMax, windowSeconds.value);
+    const tMinF = Math.max(0, tMaxF - windowSeconds.value);
+    panels = buildPanels(tMinF, tMaxF, (name) => fallbackSeries(name, tMinF, tMaxF));
+    if (panels.length > 0) {
+      drawLogPanelsChart(ctx, w, h, panels, tMinF, tMaxF);
+      return;
+    }
+  }
+  if (panels.length > 0) {
+    drawLogPanelsChart(ctx, w, h, panels, tMin, drawTMax);
+  } else {
+    ctx.clearRect(0, 0, w, h);
+  }
+}
+
+function scheduleRedraw(): void {
+  if (redrawRaf !== 0) return;
+  redrawRaf = requestAnimationFrame(() => {
+    redrawRaf = 0;
+    redrawInflight = redraw().finally(() => {
+      redrawInflight = null;
+    });
+  });
+}
+
+async function fetchTimelineView(
+  fields: string[],
+  w: number,
+  force = false,
+): Promise<OutputTimelineView> {
+  const now = performance.now();
+  const live = timelineLiveSec();
+  if (
+    !force &&
+    cachedView &&
+    now - cachedViewAt < VIEW_QUERY_MS &&
+    timelineStatus.value.followLive &&
+    Math.abs(live - cachedView.tMax) < 1.0
+  ) {
+    return cachedView;
+  }
+  const view = await queryView(fields, w);
+  cachedView = view;
+  cachedViewAt = now;
+  return view;
+}
+
+async function redraw(): Promise<void> {
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = measureCanvasWidth();
+  canvasWidth.value = w;
+  const h = canvasHeight.value;
+  const pw = Math.floor(w * dpr);
+  const ph = Math.floor(h * dpr);
+  if (pw !== lastCanvasW || ph !== lastCanvasH || dpr !== lastCanvasDpr) {
+    canvas.width = pw;
+    canvas.height = ph;
+    canvas.style.height = `${h}px`;
+    lastCanvasW = pw;
+    lastCanvasH = ph;
+    lastCanvasDpr = dpr;
+  }
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const fields = uniquePollFields();
+  if (fields.length === 0) {
+    ctx.clearRect(0, 0, w, h);
+    return;
+  }
+
+  if (!canPlotTimeline()) {
+    ctx.clearRect(0, 0, w, h);
+    return;
+  }
+
+  // Быстрый кадр: прошлый query_view + свежий хвост из snapshot (без IPC).
+  if (lastView.value && timelineStatus.value.followLive) {
+    paintFromView(ctx, w, h, lastView.value);
+  }
+
+  const gen = ++redrawGeneration;
+  let view: OutputTimelineView;
+  try {
+    view = await fetchTimelineView(fields, w);
+  } catch (err) {
+    console.warn("[Log] timeline query failed:", err);
+    const span = timelineStatus.value.spanSec || windowSeconds.value;
+    const live = timelineLiveSec();
+    view = {
+      tMin: Math.max(0, live - span),
+      tMax: Math.max(span, live),
+      liveSec: live,
+      followLive: timelineStatus.value.followLive,
+      series: [],
+    };
+  }
+  if (gen !== redrawGeneration) return;
+
+  lastView.value = view;
+  paintFromView(ctx, w, h, view);
+}
+
+async function redrawNow(): Promise<void> {
+  cachedView = null;
+  redrawGeneration += 1;
+  if (redrawInflight) {
+    await redrawInflight;
+  }
+  redrawInflight = redraw().finally(() => {
+    redrawInflight = null;
+  });
+  await redrawInflight;
+}
 
 onMounted(async () => {
   loadSettingsExpanded();
   await initOutputChannels();
+  await initOutputTimeline();
   await refreshFieldCatalog();
+  await controlView({ spanSec: windowSeconds.value, followLive: true });
 
   unlistenEcu = await listen("ecu-connection", () => {
+    cachedView = null;
+    lastView.value = null;
     void refreshFieldCatalog();
+    void refreshTimelineStatus().then(() => scheduleRedraw());
   });
 
-  if (containerRef.value) {
+  if (canvasWrapRef.value) {
     resizeObserver = new ResizeObserver((entries) => {
       const entry = entries[0];
       if (entry) {
-        canvasWidth.value = Math.max(200, entry.contentRect.width);
-        redraw();
+        const next = Math.max(200, Math.floor(entry.contentRect.width));
+        if (next !== canvasWidth.value) {
+          canvasWidth.value = next;
+          scheduleRedraw();
+        }
       }
     });
-    resizeObserver.observe(containerRef.value);
+    resizeObserver.observe(canvasWrapRef.value);
+    canvasWidth.value = measureCanvasWidth();
   }
-  redraw();
+  scheduleRedraw();
 });
 
 onUnmounted(() => {
@@ -466,28 +732,31 @@ watch(showSuggest, (open) => {
 
 watch(
   () => snapshot.value.values,
-  (values) => {
-    if (!snapshot.value.connected) return;
-    for (const f of uniquePollFields()) {
-      const v = values[f];
-      if (v !== undefined) store.value.addSample(f, v);
-    }
-    redraw();
+  () => {
+    if (uniquePollFields().length === 0) return;
+    if (!canPlotTimeline()) return;
+    scheduleRedraw();
   },
 );
 
-watch(activeSeries, () => redraw(), { deep: true });
-watch(canvasHeight, () => redraw());
-watch(rangeInputs, () => redraw(), { deep: true });
-watch(graphGroups, () => redraw(), { deep: true });
-watch(chartHeight, () => redraw());
+watch(
+  () => timelineStatus.value.followLive,
+  () => {
+    cachedView = null;
+    scheduleRedraw();
+  },
+);
+
+watch(canvasHeight, () => scheduleRedraw());
+watch(rangeInputs, () => scheduleRedraw(), { deep: true });
+watch(graphGroups, () => scheduleRedraw(), { deep: true });
+watch(chartHeight, () => scheduleRedraw());
 </script>
 
 <template>
   <div
     class="output-chart log-chart"
     :class="{ 'log-chart--compact': !settingsExpanded }"
-    ref="containerRef"
   >
     <div class="log-chrome">
       <button
@@ -520,7 +789,22 @@ watch(chartHeight, () => redraw());
             <span v-if="g.fieldNames.length" class="graph-tab-count">{{ g.fieldNames.length }}</span>
           </button>
         </div>
-        <button type="button" class="btn-clear btn-clear--mini" title="Сброс истории" @click="clearHistory">
+        <div class="timeline-nav" aria-label="Навигация по времени">
+          <button type="button" class="btn-clear btn-clear--mini" title="Назад" @click="panTimeline(-timelineStatus.spanSec * 0.25)">◀</button>
+          <button
+            type="button"
+            class="btn-clear btn-clear--mini"
+            :class="{ active: timelineStatus.followLive }"
+            title="Следовать за live"
+            @click="followLive"
+          >
+            ●
+          </button>
+          <button type="button" class="btn-clear btn-clear--mini" title="Вперёд" @click="panTimeline(timelineStatus.spanSec * 0.25)">▶</button>
+          <button type="button" class="btn-clear btn-clear--mini" title="Уменьшить окно" @click="zoomTimeline(1.25)">−</button>
+          <button type="button" class="btn-clear btn-clear--mini" title="Увеличить окно" @click="zoomTimeline(0.8)">+</button>
+        </div>
+        <button type="button" class="btn-clear btn-clear--mini" title="К live" @click="followLive">
           ↻
         </button>
       </div>
@@ -683,11 +967,13 @@ watch(chartHeight, () => redraw());
     </div>
     </div>
 
-    <div class="canvas-wrap">
+    <div class="canvas-wrap" ref="canvasWrapRef">
       <canvas ref="canvasRef" class="chart-canvas" />
-      <p v-if="!snapshot.connected" class="overlay-hint">Подключите ECU для записи log</p>
-      <p v-else-if="!hasAnyChannel" class="overlay-hint">
+      <p v-if="!hasAnyChannel" class="overlay-hint">
         Выберите параметры через поиск — они попадут на активный граф
+      </p>
+      <p v-else-if="!canPlotTimeline()" class="overlay-hint">
+        Подключите ECU или откройте CSV-лог сессии
       </p>
     </div>
 
@@ -743,6 +1029,17 @@ watch(chartHeight, () => redraw());
 
 .log-setup-chevron.open {
   transform: rotate(90deg);
+}
+
+.timeline-nav {
+  display: inline-flex;
+  gap: 0.15rem;
+  align-items: center;
+}
+
+.btn-clear--mini.active {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
 }
 
 .log-compact-meta {

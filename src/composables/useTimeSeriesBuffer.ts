@@ -31,8 +31,9 @@ function padValueRange(vMin: number, vMax: number): { vMin: number; vMax: number
   return { vMin: vMin - pad, vMax: vMax + pad };
 }
 
-export function createTimeSeriesStore(windowSeconds: number) {
+export function createTimeSeriesStore(initialWindowSeconds: number) {
   const seriesMap = reactive(new Map<string, TimeSeries>());
+  let windowSeconds = initialWindowSeconds;
   let tOrigin: number | null = null;
   let colorIdx = 0;
 
@@ -76,11 +77,18 @@ export function createTimeSeriesStore(windowSeconds: number) {
     while (s.points.length > 0 && s.points[0]!.t < minT) {
       s.points.shift();
     }
-    // Запас под ~200 Hz опроса O; старый лимит 15 Hz оставлял ~2 с данных в окне 30 с.
     const maxPoints = Math.ceil(windowSeconds * 250);
     while (s.points.length > maxPoints) {
       s.points.shift();
     }
+  }
+
+  function setWindowSeconds(sec: number): void {
+    if (sec > 0) windowSeconds = sec;
+  }
+
+  function getSeries(field: string): TimeSeries | undefined {
+    return seriesMap.get(field);
   }
 
   function removeSeries(field: string): void {
@@ -100,8 +108,11 @@ export function createTimeSeriesStore(windowSeconds: number) {
       const last = s.points[s.points.length - 1];
       if (last && last.t > tMax) tMax = last.t;
     }
-    if (tMax <= 0) return { tMin: 0, tMax: windowSeconds };
-    return { tMin: Math.max(0, tMax - windowSeconds), tMax };
+    const span = windowSeconds;
+    if (tMax <= 0) return { tMin: 0, tMax: span };
+    // Пока данных меньше окна — ось 0..span, иначе кривая прилипает к правому краю.
+    if (tMax < span) return { tMin: 0, tMax: span };
+    return { tMin: tMax - span, tMax };
   }
 
   function valueRangeForSeries(
@@ -168,6 +179,8 @@ export function createTimeSeriesStore(windowSeconds: number) {
     visibleRange,
     valueRange,
     valueRangeForSeries,
+    setWindowSeconds,
+    getSeries,
   };
 }
 

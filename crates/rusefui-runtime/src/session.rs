@@ -13,6 +13,10 @@ use crate::protocol_log::ProtocolLogStore;
 use crate::sources::config::ConfigSource;
 use crate::sources::output_channels::{IniContext, OutputChannelsSource};
 use crate::sources::output_data_log::OutputDataLogWriter;
+use crate::sources::output_timeline::{
+    OutputTimeline, OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl,
+    OutputTimelineViewQuery,
+};
 
 const STIMULATOR_CMD: &str = "self_stimulation";
 const TRIGGER_RPM_FIELD: &str = "triggerSimulatorRpm";
@@ -32,6 +36,7 @@ pub struct EcuSession {
     /// Пока true — не запускать poll `O` (конфликт с консольными `E` на том же порту).
     stimulation_active: AtomicBool,
     output_data_log: Mutex<Option<OutputDataLogWriter>>,
+    output_timeline: Mutex<OutputTimeline>,
 }
 
 impl EcuSession {
@@ -46,23 +51,46 @@ impl EcuSession {
             protocol_log,
             stimulation_active: AtomicBool::new(false),
             output_data_log: Mutex::new(None),
+            output_timeline: Mutex::new(OutputTimeline::default()),
         })
     }
 
-    pub fn output_session_log_path(&self) -> Option<String> {
-        self.output_data_log
-            .lock()
-            .ok()
-            .and_then(|g| g.as_ref().map(|w| w.path().display().to_string()))
+    pub fn output_timeline_live_sec(&self) -> f64 {
+        self.output_timeline.lock().unwrap().live_sec()
+    }
+
+    pub fn output_timeline_status(&self) -> OutputTimelineStatus {
+        self.output_timeline.lock().unwrap().status()
+    }
+
+    pub fn output_timeline_query(&self, query: OutputTimelineViewQuery) -> OutputTimelineView {
+        self.output_timeline.lock().unwrap().query_view(&query)
+    }
+
+    pub fn output_timeline_control(
+        &self,
+        ctrl: OutputTimelineViewControl,
+    ) -> OutputTimelineStatus {
+        self.output_timeline.lock().unwrap().apply_view_control(ctrl)
+    }
+
+    pub fn output_timeline_load_file(&self, path: PathBuf) -> OutputTimelineStatus {
+        let mut tl = self.output_timeline.lock().unwrap();
+        tl.load_file(path);
+        tl.status()
     }
 
     pub fn record_output_sample(&self, timestamp_ms: u64, values: &HashMap<String, f64>) {
-        let Ok(mut guard) = self.output_data_log.try_lock() else {
-            return;
-        };
-        if let Some(log) = guard.as_mut() {
-            log.write_sample(timestamp_ms, values);
+        if let Ok(mut log_guard) = self.output_data_log.try_lock() {
+            if let Some(log) = log_guard.as_mut() {
+                log.write_sample(timestamp_ms, values);
+            }
         }
+        // Блокирующий lock: try_lock терял сэмплы, пока UI держит mutex на query_view.
+        self.output_timeline
+            .lock()
+            .unwrap()
+            .ingest_from_wall_ms(timestamp_ms, values);
     }
 
     fn start_output_data_log(
@@ -71,7 +99,23 @@ impl EcuSession {
         ini: &IniContext,
         ini_path: &PathBuf,
     ) {
-        match OutputDataLogWriter::open(info, ini, Some(ini_path)) {
+        let field_names: Vec<String> = ini
+            .channels
+            .fields
+            .iter()
+            .map(|f| f.name.clone())
+            .collect();
+        let started_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0);
+        {
+            let mut tl = self.output_timeline.lock().unwrap();
+            tl.reset_session_with_start(&field_names, 30.0, started_ms);
+            tl.set_connected(true);
+        }
+
+        match OutputDataLogWriter::open_at(info, ini, Some(ini_path), started_ms) {
             Ok(writer) => {
                 let path = writer.path().display().to_string();
                 self.protocol_log
@@ -85,25 +129,46 @@ impl EcuSession {
         }
     }
 
-    fn stop_output_data_log(&self) {
+    fn stop_output_data_log(&self) -> Option<PathBuf> {
         let mut guard = match self.output_data_log.lock() {
             Ok(g) => g,
-            Err(_) => return,
+            Err(_) => return None,
         };
-        if let Some(writer) = guard.take() {
+        let closed = if let Some(writer) = guard.take() {
             match writer.close() {
                 Ok((path, rows)) => {
                     self.protocol_log.log_info(&format!(
                         "Output log закрыт: {} ({rows} строк)",
                         path.display()
                     ));
+                    Some(path)
                 }
                 Err(e) => {
                     self.protocol_log
                         .log_info(&format!("Output log: ошибка закрытия: {e}"));
+                    None
                 }
             }
+        } else {
+            None
+        };
+        if let Some(path) = &closed {
+            let mut tl = self.output_timeline.lock().unwrap();
+            tl.set_session_file(Some(path.clone()));
+            tl.set_connected(false);
+        } else {
+            self.output_timeline.lock().unwrap().set_connected(false);
         }
+        closed
+    }
+
+    pub fn output_session_log_path(&self) -> Option<String> {
+        self.output_timeline.lock().ok()?.session_log_path().or_else(|| {
+            self.output_data_log
+                .lock()
+                .ok()
+                .and_then(|g| g.as_ref().map(|w| w.path().display().to_string()))
+        })
     }
 
     pub fn is_stimulation_active(&self) -> bool {

@@ -35,11 +35,9 @@ export function createDataContext(): DataContextState {
 export function resolveBinding(bind: DataBinding | undefined): unknown {
   if (!bind) return undefined;
 
-  const ctx = useDataContext();
-
   switch (bind.source as DataSourceId) {
     case "connection":
-      return ctx.connection.value;
+      return useDataContext().connection.value;
     case "config":
     case "outputChannels":
     case "textLog":

@@ -70,10 +70,18 @@ impl OutputDataLogWriter {
         ini: &IniContext,
         ini_path: Option<&Path>,
     ) -> Result<Self, String> {
+        Self::open_at(info, ini, ini_path, now_ms())
+    }
+
+    pub fn open_at(
+        info: &ConnectionInfo,
+        ini: &IniContext,
+        ini_path: Option<&Path>,
+        started_ms: u64,
+    ) -> Result<Self, String> {
         let dir = output_logs_dir();
         fs::create_dir_all(&dir).map_err(|e| format!("output_logs dir: {e}"))?;
 
-        let started_ms = now_ms();
         let port = slug_part(&info.port_name, 32);
         let sig = slug_part(&info.signature, 40);
         let path = dir.join(format!("output_{started_ms}_{port}_{sig}.csv"));

@@ -11,6 +11,8 @@ export interface OutputSnapshot {
   lastError?: string | null;
   /** CSV-лог output channels для текущей сессии ECU. */
   sessionLogPath?: string | null;
+  /** elapsed_sec головы timeline (та же ось, что CSV и query_view). */
+  timelineLiveSec?: number;
 }
 
 const snapshot = shallowRef<OutputSnapshot>({
