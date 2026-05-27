@@ -23,7 +23,10 @@ export interface ChartView {
   cssH: number;
   laneH: number;
   visible: readonly CompositeEvent[];
+  /** TDC в видимом окне (вертикальные линии). */
   tdcMarkers: readonly TdcMarker[];
+  /** Все TDC в буфере — для угла под курсором (нужен TDC слева от окна). */
+  tdcMarkersAll: readonly TdcMarker[];
 }
 
 export interface ChartTimeRange {
@@ -74,8 +77,15 @@ export function latestTdcAtOrBefore(
   events: readonly CompositeEvent[],
   beforeUs: number,
 ): number | null {
+  return latestTdcTimeAtOrBefore(findTdcMarkers(events), beforeUs);
+}
+
+function latestTdcTimeAtOrBefore(
+  markers: readonly TdcMarker[],
+  beforeUs: number,
+): number | null {
   let last: number | null = null;
-  for (const m of findTdcMarkers(events)) {
+  for (const m of markers) {
     if (m.tUs <= beforeUs) {
       last = m.tUs;
     } else {
@@ -153,7 +163,8 @@ export function buildChartView(
     events.length > 0 ? sliceEventsForRange(events, t0, tEnd) : [];
   if (visible.length < 1 && !allowEmpty) return null;
 
-  const tdcMarkers = findTdcMarkers(events).filter((m) => m.tUs >= t0 && m.tUs <= tEnd);
+  const tdcMarkersAll = findTdcMarkers(events);
+  const tdcMarkers = tdcMarkersAll.filter((m) => m.tUs >= t0 && m.tUs <= tEnd);
 
   return {
     t0,
@@ -166,6 +177,7 @@ export function buildChartView(
     laneH: (cssH - 8) / channelCount,
     visible,
     tdcMarkers,
+    tdcMarkersAll,
   };
 }
 
@@ -209,40 +221,80 @@ function cyclePeriodUs(tdcTimes: number[], tUs: number): number | null {
   return null;
 }
 
+function normalizeCrankDeg(deg: number): number {
+  return ((deg % CRANK_CYCLE_DEG) + CRANK_CYCLE_DEG) % CRANK_CYCLE_DEG;
+}
+
+/** Имя поля INI: Trigger Angle Advance (deg от sync/TDC в прошивке). */
+export const GLOBAL_TRIGGER_ANGLE_OFFSET_FIELD = "globalTriggerAngleOffset";
+
+const OFFSET_MIN = -720;
+const OFFSET_MAX = 720;
+
 /**
- * Угол коленвала [0, 720) внутри цикла между соседними TDC.
- * Без TDC — оценка по RPM (об/мин → °/µs).
+ * Кратчайший угол [−360, 360] от последнего TDC ECU (вертикаль «0°») до точки.
+ * Положительный — реальный TDC позже текущего TDC ECU в направлении вращения.
+ */
+export function signedDegFromFirmwareTdc(degFromFirmwareTdc: number): number {
+  const n = normalizeCrankDeg(degFromFirmwareTdc);
+  return n > 180 ? n - CRANK_CYCLE_DEG : n;
+}
+
+/** Угол [0, 720) от последнего TDC ECU; без маркеров TDC — null. */
+export function crankDegFromFirmwareTdc(
+  tUs: number,
+  view: ChartView,
+  rpm: number | null | undefined,
+): number | null {
+  if (view.tdcMarkersAll.length === 0) return null;
+  return crankAngleDeg(tUs, view, rpm);
+}
+
+export function clampGlobalTriggerAngleOffset(deg: number): number {
+  return Math.min(OFFSET_MAX, Math.max(OFFSET_MIN, deg));
+}
+
+export function computeNextGlobalTriggerAngleOffset(
+  currentOffset: number,
+  degFromFirmwareTdc: number,
+): number {
+  const delta = signedDegFromFirmwareTdc(degFromFirmwareTdc);
+  return clampGlobalTriggerAngleOffset(currentOffset + delta);
+}
+
+/**
+ * Угол коленвала [0, 720) между соседними TDC.
+ * Использует все TDC буфера (`tdcMarkersAll`), не только видимые линии — иначе при зуме угол «плывёт».
+ * Без TDC — оценка по RPM от ближайшего якоря (последний TDC или t0 окна).
  */
 export function crankAngleDeg(
   tUs: number,
   view: ChartView,
   rpm: number | null | undefined,
 ): number {
-  const tdcTimes = view.tdcMarkers.map((m) => m.tUs);
+  const tdcTimes = view.tdcMarkersAll.map((m) => m.tUs);
   if (tdcTimes.length > 0) {
     let i = 0;
     while (i < tdcTimes.length && tdcTimes[i]! <= tUs) i++;
     const tNext = i < tdcTimes.length ? tdcTimes[i]! : null;
+    const periodEst = cyclePeriodUs(tdcTimes, tUs) ?? estimatePeriodFromRpm(rpm);
     const tPrev =
-      i > 0
-        ? tdcTimes[i - 1]!
-        : tdcTimes[0]! - (cyclePeriodUs(tdcTimes, tUs) ?? estimatePeriodFromRpm(rpm));
+      i > 0 ? tdcTimes[i - 1]! : tdcTimes[0]! - periodEst;
 
-    const tHi = tNext ?? tPrev + (cyclePeriodUs(tdcTimes, tUs) ?? estimatePeriodFromRpm(rpm));
+    const tHi = tNext ?? tPrev + periodEst;
     const period = Math.max(1, tHi - tPrev);
-    let deg = ((tUs - tPrev) / period) * CRANK_CYCLE_DEG;
-    deg = ((deg % CRANK_CYCLE_DEG) + CRANK_CYCLE_DEG) % CRANK_CYCLE_DEG;
-    return deg;
+    return normalizeCrankDeg(((tUs - tPrev) / period) * CRANK_CYCLE_DEG);
   }
 
   if (rpm != null && rpm > 0) {
-    const degPerUs = (rpm * 360) / 60 / 1_000_000;
-    const tRel = tUs - view.t0;
-    return (tRel * degPerUs) % CRANK_CYCLE_DEG;
+    const period = estimatePeriodFromRpm(rpm);
+    const degPerUs = CRANK_CYCLE_DEG / period;
+    const anchor =
+      latestTdcTimeAtOrBefore(view.tdcMarkersAll, tUs) ?? view.t0;
+    return normalizeCrankDeg((tUs - anchor) * degPerUs);
   }
 
-  const frac = (tUs - view.t0) / view.span;
-  return frac * CRANK_CYCLE_DEG;
+  return 0;
 }
 
 function estimatePeriodFromRpm(rpm: number | null | undefined): number {

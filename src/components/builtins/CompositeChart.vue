@@ -15,6 +15,7 @@ import {
 import { useLogViewportLink } from "../../composables/useLogViewportLink";
 import { initOutputTimeline, useOutputTimeline } from "../../composables/useOutputTimeline";
 import { useOutputChannels } from "../../composables/useOutputChannels";
+import { initConfig, useConfig } from "../../composables/useConfig";
 import { listen } from "@tauri-apps/api/event";
 import {
   PERSIST_KEY_COMPOSITE_CHART,
@@ -27,8 +28,12 @@ import {
   buildChartView,
   channelValue,
   crankAngleDeg,
+  crankDegFromFirmwareTdc,
+  computeNextGlobalTriggerAngleOffset,
   CRANK_CYCLE_DEG,
+  GLOBAL_TRIGGER_ANGLE_OFFSET_FIELD,
   laneY,
+  signedDegFromFirmwareTdc,
   maxViewSpanMs,
   snapT0ToTdc,
   timeAtX,
@@ -74,6 +79,26 @@ const { status: outputTimelineStatus, controlView: controlOutputView } =
   useOutputTimeline();
 const { snapshot: outputChannelsSnapshot } = useOutputChannels();
 const { getProjectUi, setProjectUi } = useProject();
+const {
+  snapshot: configSnapshot,
+  configCanEdit,
+  getField: getConfigField,
+  setField: setConfigField,
+  burn: burnConfig,
+} = useConfig();
+
+const realTdcTUs = ref<number | null>(null);
+/** Режим: клик по графику ставит реальный TDC (перетаскивание — панорама). */
+const tdcPlaceMode = ref(false);
+const burnOffsetAfterWrite = ref(false);
+const offsetWriteBusy = ref(false);
+const offsetWriteError = ref<string | null>(null);
+
+const PLACE_CLICK_MAX_PX = 6;
+let placePointerPending = false;
+let placeDownClientX = 0;
+let placeDownClientY = 0;
+let placeDownInsidePlot = false;
 
 const reviewEvents = ref<CompositeEvent[]>([]);
 const dataCtx = useDataContext();
@@ -249,8 +274,9 @@ function fitGrowingCapture(events: readonly CompositeEvent[]) {
 }
 
 function currentTimeRange(events: readonly CompositeEvent[]): ChartTimeRange | null {
-  // Привязка к output-логу работает и в live-режиме, и в review
-  if (viewportLinked.value && (reviewMode.value || loggingEnabled.value)) {
+  // Общая ось elapsed_sec только в review + привязка: события там уже в µs(elapsed).
+  // Во время live snapshot — сырые t_us ECU; output-ось дала бы неверный X и угол.
+  if (viewportLinked.value && reviewMode.value) {
     return currentTimeRangeFromOutput();
   }
   if (reviewMode.value) {
@@ -398,6 +424,55 @@ function drawWaveforms(
     ctx.lineTo(xEnd, prevVal ? yHigh : yLow);
     ctx.stroke();
   });
+}
+
+function getCurrentChartView(): ChartView | null {
+  const canvas = canvasRef.value;
+  if (!canvas) return null;
+  const cssW = canvas.clientWidth;
+  const cssH = chartHeight.value;
+  if (cssW <= 0 || cssH <= 0) return null;
+  const events = chartEvents();
+  const timeRange = currentTimeRange(events);
+  const sharedAxis = reviewMode.value && viewportLinked.value;
+  return buildChartView(
+    events,
+    viewSpanMs.value,
+    cssW,
+    cssH,
+    LABEL_W,
+    CHANNELS.length,
+    timeRange,
+    { allowEmptyWindow: sharedAxis },
+  );
+}
+
+function drawRealTdcMarker(
+  ctx: CanvasRenderingContext2D,
+  view: ChartView,
+  canvas: HTMLCanvasElement,
+  tUs: number,
+) {
+  const x = xAtTime(tUs, view);
+  if (x < view.plotLeft - 2 || x > view.plotLeft + view.plotW + 2) return;
+  const color = cssColor(canvas, "--color-accent", "#3b82f6");
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([3, 3]);
+  ctx.globalAlpha = 0.95;
+  ctx.beginPath();
+  ctx.moveTo(x, 0);
+  ctx.lineTo(x, view.cssH);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = color;
+  ctx.font = "bold 10px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  ctx.fillText("реал. TDC", x, view.cssH - 4);
+  ctx.restore();
 }
 
 function drawCycleMarkers(
@@ -584,9 +659,16 @@ function draw() {
 
   drawWaveforms(ctx, view, canvas, crankEdgeMode.value);
   drawCycleMarkers(ctx, view, canvas);
+  if (realTdcTUs.value != null) {
+    drawRealTdcMarker(ctx, view, canvas, realTdcTUs.value);
+  }
 
-  if (hoverInside.value && hoverX.value != null) {
-    drawCrosshair(ctx, view, canvas, hoverX.value, snapshot.value.rpm);
+  const showCrosshair =
+    hoverInside.value &&
+    hoverX.value != null &&
+    (tdcPlaceMode.value || panPointerId == null);
+  if (showCrosshair) {
+    drawCrosshair(ctx, view, canvas, hoverX.value!, snapshot.value.rpm);
   }
 
   ctx.fillStyle = cssColor(canvas, "--color-gray", "#6b7280");
@@ -643,13 +725,19 @@ async function panByClientDelta(currentClientX: number) {
   scheduleDraw();
 }
 
-function onPointerDown(e: PointerEvent) {
+function canvasPlotX(clientX: number): { x: number; inside: boolean } | null {
+  const canvas = canvasRef.value;
+  if (!canvas) return null;
+  const rect = canvas.getBoundingClientRect();
+  const x = clientX - rect.left;
+  return { x, inside: x >= LABEL_W && x <= rect.width - 4 };
+}
+
+function beginPan(e: PointerEvent) {
   const events = chartEvents();
-  if (e.button !== 0) return;
   if (!viewportLinked.value && events.length < 2) return;
   const range = currentTimeRange(events);
   if (!range) return;
-
   const canvas = canvasRef.value;
   if (!canvas) return;
 
@@ -662,9 +750,36 @@ function onPointerDown(e: PointerEvent) {
   canvas.setPointerCapture(e.pointerId);
 }
 
+function onPointerDown(e: PointerEvent) {
+  if (e.button !== 0) return;
+
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+
+  if (tdcPlaceMode.value) {
+    const plot = canvasPlotX(e.clientX);
+    placePointerPending = true;
+    placeDownClientX = e.clientX;
+    placeDownClientY = e.clientY;
+    placeDownInsidePlot = plot?.inside ?? false;
+    return;
+  }
+
+  beginPan(e);
+}
+
 function onPointerMove(e: PointerEvent) {
   const canvas = canvasRef.value;
   if (!canvas) return;
+
+  if (placePointerPending && tdcPlaceMode.value) {
+    const dx = e.clientX - placeDownClientX;
+    const dy = e.clientY - placeDownClientY;
+    if (Math.hypot(dx, dy) > PLACE_CLICK_MAX_PX) {
+      placePointerPending = false;
+      beginPan(e);
+    }
+  }
 
   if (panPointerId === e.pointerId) {
     void panByClientDelta(e.clientX);
@@ -684,7 +799,32 @@ function endPan(e: PointerEvent) {
   canvasRef.value?.releasePointerCapture(e.pointerId);
 }
 
+function placeRealTdcAtClientX(clientX: number): boolean {
+  const plot = canvasPlotX(clientX);
+  if (!plot?.inside) return false;
+  const view = getCurrentChartView();
+  if (!view) return false;
+  const tUs = timeAtX(plot.x, view);
+  const deg = crankDegFromFirmwareTdc(tUs, view, snapshot.value.rpm);
+  if (deg == null) {
+    offsetWriteError.value =
+      "Нет TDC ECU в буфере — нужна запись со стимом или синхронизацией.";
+    return false;
+  }
+  realTdcTUs.value = tUs;
+  offsetWriteError.value = null;
+  tdcPlaceMode.value = false;
+  scheduleDraw();
+  return true;
+}
+
 function onPointerUp(e: PointerEvent) {
+  if (placePointerPending && tdcPlaceMode.value && placeDownInsidePlot) {
+    placePointerPending = false;
+    placeRealTdcAtClientX(placeDownClientX);
+    return;
+  }
+  placePointerPending = false;
   endPan(e);
 }
 
@@ -996,6 +1136,7 @@ onMounted(async () => {
   await initCompositeLogger();
   await initCompositeTimeline();
   await initOutputTimeline();
+  await initConfig();
   const refreshIfLinked = () => {
     if (viewportLinked.value && reviewMode.value) {
       void refreshReviewEvents();
@@ -1024,6 +1165,7 @@ onMounted(async () => {
   scheduleDraw();
   if (loggingEnabled.value) startLiveDraw();
   document.addEventListener("click", onDocClick);
+  document.addEventListener("keydown", onTdcPlaceKeyDown);
 });
 
 function onDocClick() {
@@ -1034,6 +1176,7 @@ onUnmounted(() => {
   clearAutoStopTimer();
   stopLiveDraw();
   document.removeEventListener("click", onDocClick);
+  document.removeEventListener("keydown", onTdcPlaceKeyDown);
   if (loggingEnabled.value) {
     void setLoggingEnabled(false);
   }
@@ -1056,6 +1199,124 @@ watch(
 );
 watch([maxWindowMs, viewSpanMs, chartHeight, connected, alignTdc], scheduleDraw);
 watch([hoverX, hoverInside], scheduleDraw);
+watch([realTdcTUs, tdcPlaceMode], scheduleDraw);
+
+const currentTriggerOffset = computed(
+  () => getConfigField(GLOBAL_TRIGGER_ANGLE_OFFSET_FIELD),
+);
+
+function chartViewDeps(): void {
+  void viewSpanMs.value;
+  void viewAnchorT0Us.value;
+  void alignTdc.value;
+  void viewportLinked.value;
+  void reviewMode.value;
+  const ev = chartEvents();
+  if (ev.length > 0) void ev[ev.length - 1]!.tUs;
+}
+
+const calibrationPreview = computed(() => {
+  chartViewDeps();
+  if (!tdcPlaceMode.value || !hoverInside.value || hoverX.value == null) {
+    return null;
+  }
+  const view = getCurrentChartView();
+  if (!view) return null;
+  const tUs = timeAtX(hoverX.value, view);
+  const deg = crankDegFromFirmwareTdc(tUs, view, snapshot.value.rpm);
+  if (deg == null) return null;
+  const delta = signedDegFromFirmwareTdc(deg);
+  const cur = currentTriggerOffset.value;
+  const next =
+    cur != null ? computeNextGlobalTriggerAngleOffset(cur, deg) : null;
+  return { deg, delta, next };
+});
+
+const calibrationAtMarker = computed(() => {
+  chartViewDeps();
+  if (realTdcTUs.value == null) return null;
+  const view = getCurrentChartView();
+  if (!view) return null;
+  const deg = crankDegFromFirmwareTdc(realTdcTUs.value, view, snapshot.value.rpm);
+  if (deg == null) return null;
+  const delta = signedDegFromFirmwareTdc(deg);
+  const cur = currentTriggerOffset.value;
+  const next =
+    cur != null ? computeNextGlobalTriggerAngleOffset(cur, deg) : null;
+  return { deg, delta, next };
+});
+
+const canCalibrateTdc = computed(() => {
+  chartViewDeps();
+  const events = chartEvents();
+  if (events.length < 2) return false;
+  const view = getCurrentChartView();
+  return view != null && view.tdcMarkersAll.length > 0;
+});
+
+const canWriteTriggerOffset = computed(
+  () =>
+    configCanEdit(configSnapshot.value) &&
+    calibrationAtMarker.value?.next != null &&
+    !offsetWriteBusy.value,
+);
+
+function toggleTdcPlaceMode() {
+  if (tdcPlaceMode.value) {
+    tdcPlaceMode.value = false;
+    placePointerPending = false;
+    offsetWriteError.value = null;
+    scheduleDraw();
+    return;
+  }
+  if (!canCalibrateTdc.value) {
+    offsetWriteError.value =
+      "Нет TDC ECU в буфере — сначала запись со стимом или синхронизацией.";
+    return;
+  }
+  offsetWriteError.value = null;
+  tdcPlaceMode.value = true;
+  scheduleDraw();
+}
+
+async function applyTriggerAngleAdvance() {
+  const cal = calibrationAtMarker.value;
+  if (cal?.next == null) return;
+  if (!configCanEdit(configSnapshot.value)) {
+    offsetWriteError.value = "Конфиг недоступен для записи.";
+    return;
+  }
+  offsetWriteBusy.value = true;
+  offsetWriteError.value = null;
+  try {
+    await setConfigField(GLOBAL_TRIGGER_ANGLE_OFFSET_FIELD, cal.next);
+    if (burnOffsetAfterWrite.value) {
+      await burnConfig();
+    }
+    realTdcTUs.value = null;
+  } catch (e) {
+    offsetWriteError.value =
+      e instanceof Error ? e.message : "Не удалось записать offset";
+  } finally {
+    offsetWriteBusy.value = false;
+  }
+}
+
+function clearRealTdcMarker() {
+  realTdcTUs.value = null;
+  tdcPlaceMode.value = false;
+  placePointerPending = false;
+  offsetWriteError.value = null;
+  scheduleDraw();
+}
+
+function onTdcPlaceKeyDown(e: KeyboardEvent) {
+  if (e.key === "Escape" && tdcPlaceMode.value) {
+    tdcPlaceMode.value = false;
+    placePointerPending = false;
+    scheduleDraw();
+  }
+}
 
 const statusLine = computed(() => {
   const s = snapshot.value;
@@ -1091,6 +1352,7 @@ const statusLine = computed(() => {
     parts.push(`запись ${s.recordedSpanMs.toFixed(0)} ms`);
   }
   parts.push(`${s.events.length} pts`);
+  if (tdcPlaceMode.value) parts.push("установка TDC");
   if (s.tdcCyclesTotal > 0) parts.push(`TDC #${s.tdcCyclesTotal}`);
   if (s.chunksReceived > 0) parts.push(`${s.chunksReceived} chunk`);
   if (s.lastBatch > 0) parts.push(`+${s.lastBatch}`);
@@ -1172,7 +1434,63 @@ const statusLine = computed(() => {
           @click="crankEdgeMode = m"
         >{{ m === 'both' ? '↕' : m === 'rise' ? '↑' : '↓' }}</button>
       </div>
+      <div
+        class="cc-tdc-cal"
+        title="Режим установки: клик по графику — реальный TDC; перетаскивание — сдвиг; Esc — отмена"
+      >
+        <button
+          type="button"
+          class="btn"
+          :class="tdcPlaceMode ? 'stop' : 'secondary'"
+          :disabled="(!tdcPlaceMode && !canCalibrateTdc) || offsetWriteBusy"
+          @click="toggleTdcPlaceMode"
+        >
+          {{ tdcPlaceMode ? "Отмена установки" : "Установить TDC" }}
+        </button>
+        <button
+          v-if="realTdcTUs != null && !tdcPlaceMode"
+          type="button"
+          class="btn secondary"
+          :disabled="offsetWriteBusy"
+          @click="clearRealTdcMarker"
+        >
+          Сброс
+        </button>
+        <button
+          type="button"
+          class="btn primary"
+          :disabled="!canWriteTriggerOffset"
+          @click="applyTriggerAngleAdvance"
+        >
+          {{ offsetWriteBusy ? "Запись…" : "В конфиг ECU" }}
+        </button>
+        <label v-if="canWriteTriggerOffset" class="cc-tdc-burn">
+          <input v-model="burnOffsetAfterWrite" type="checkbox" />
+          Burn
+        </label>
+      </div>
     </div>
+    <p v-if="tdcPlaceMode" class="cc-tdc-hint">
+      Клик по графику — реальный TDC (стробоскоп). Перетаскивание — сдвиг. Esc или «Отмена» — выход.
+      <template v-if="calibrationPreview">
+        <span class="cc-tdc-hint-preview">
+          · превью Δ {{ calibrationPreview.delta >= 0 ? "+" : "" }}{{ calibrationPreview.delta.toFixed(1) }}°
+          <template v-if="calibrationPreview.next != null">
+            → {{ calibrationPreview.next.toFixed(1) }}°
+          </template>
+        </span>
+      </template>
+    </p>
+    <p v-else-if="calibrationAtMarker" class="cc-tdc-preview">
+      <template v-if="currentTriggerOffset != null">
+        Сейчас {{ currentTriggerOffset.toFixed(1) }}°
+      </template>
+      · реал. TDC: Δ {{ calibrationAtMarker.delta >= 0 ? "+" : "" }}{{ calibrationAtMarker.delta.toFixed(1) }}°
+      <template v-if="calibrationAtMarker.next != null">
+        → запись {{ calibrationAtMarker.next.toFixed(1) }}°
+      </template>
+    </p>
+    <p v-if="offsetWriteError" class="cc-error">{{ offsetWriteError }}</p>
     <p v-if="loggerError" class="cc-error">{{ loggerError }}</p>
     <p v-if="openLogError" class="cc-error">{{ openLogError }}</p>
     <div
@@ -1180,9 +1498,11 @@ const statusLine = computed(() => {
       class="cc-plot-wrap"
       :class="{ 'cc-plot-wrap--linked': viewportLinked && reviewMode }"
       :title="
-        viewportLinked && reviewMode
-          ? 'Связано с Log: ◀▶, колёсико и перетаскивание на графике Log'
-          : 'Колёсико — масштаб, перетаскивание — перемотка, двойной щелчок — весь захват'
+        tdcPlaceMode
+          ? 'Клик — реальный TDC; перетаскивание — сдвиг; Esc — отмена'
+          : viewportLinked && reviewMode
+            ? 'Связано с Log: ◀▶, колёсико и перетаскивание на графике Log'
+            : 'Колёсико — масштаб, перетаскивание — перемотка, двойной щелчок — весь захват'
       "
       @wheel.prevent="onCanvasWheel"
       @dblclick="onPlotDblClick"
@@ -1190,6 +1510,7 @@ const statusLine = computed(() => {
       <canvas
         ref="canvasRef"
         class="cc-canvas"
+        :class="{ 'cc-canvas--place-tdc': tdcPlaceMode }"
         :style="{ height: `${chartHeight}px` }"
         aria-label="Composite trigger logger"
       />
@@ -1216,7 +1537,7 @@ const statusLine = computed(() => {
     </p>
     <p v-else class="cc-hint">
       Идёт запись: куски ECU склеиваются в одну сессию. «Стоп» — остановить приём и просмотреть
-      всё накопленное. TDC = 0°, цикл {{ CRANK_CYCLE_DEG }}°.
+      всё накопленное. «Установить TDC» → клик по графику → «В конфиг ECU» (Trigger Angle Advance).
     </p>
   </div>
 </template>
@@ -1388,6 +1709,52 @@ const statusLine = computed(() => {
 .cc-edge-btn.active {
   background: var(--color-accent, #3b82f6);
   color: #fff;
+}
+
+.cc-tdc-cal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  padding-left: 0.35rem;
+  border-left: 1px solid var(--color-border, #374151);
+}
+
+.cc-tdc-burn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  color: var(--color-gray);
+  cursor: pointer;
+}
+
+.cc-tdc-burn input {
+  margin: 0;
+}
+
+.cc-tdc-preview {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--color-fg-muted, #9ca3af);
+  font-variant-numeric: tabular-nums;
+}
+
+.cc-tdc-hint {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--color-warning, #d97706);
+}
+
+.cc-tdc-hint-preview {
+  color: var(--color-fg-muted, #9ca3af);
+  font-variant-numeric: tabular-nums;
+}
+
+.cc-canvas--place-tdc {
+  cursor: cell;
+  outline: 2px solid color-mix(in srgb, var(--color-accent, #3b82f6) 55%, transparent);
+  outline-offset: -2px;
 }
 
 .cc-title {
