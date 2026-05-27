@@ -7,13 +7,21 @@ import { requiresRustLogic } from "../core/rust-logic";
 export type ComponentViewState = Record<string, unknown>;
 
 function resolveInstanceId(instance: ComponentInstance, path: string): string {
+  // config-table: id в YAML повторяется между панелями — уникальность по path.
+  if (instance.type === "config-table") {
+    return path.replace(/\//g, "-");
+  }
   return instance.id ?? path.replace(/\//g, "-");
 }
 
 /**
  * Подписка на состояние компонента из Rust. Vue только рисует `state` и шлёт `dispatch`.
  */
-export function useRustComponent(instance: ComponentInstance, path: string) {
+export function useRustComponent(
+  instance: ComponentInstance,
+  path: string,
+  mountPayload?: () => Record<string, unknown> | undefined,
+) {
   const instanceId = resolveInstanceId(instance, path);
   const state = shallowRef<ComponentViewState>({});
   const ready = ref(false);
@@ -54,10 +62,12 @@ export function useRustComponent(instance: ComponentInstance, path: string) {
     );
 
     try {
+      const payload = mountPayload?.();
       const snapshot = await invoke<ComponentViewState>("component_mount", {
         params: {
           instance_id: instanceId,
           component_type: instance.type,
+          payload: payload ?? {},
         },
       });
       state.value = snapshot;

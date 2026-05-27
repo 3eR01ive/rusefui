@@ -352,6 +352,18 @@ impl ConfigSource {
         Ok(decode_array(array, &raw))
     }
 
+    /// Размер 2D-таблицы из INI `[cols x rows]` → `(rows, cols)` для UI (строка = Y/load).
+    pub fn get_array_matrix_size(&self, name: &str) -> Option<(usize, usize)> {
+        let ini = self.ini.lock().unwrap();
+        let ConfigFieldKind::Array(a) = ini.config_fields.get(name)? else {
+            return None;
+        };
+        match a.shape {
+            ArrayShape::Matrix { cols, rows } => Some((rows, cols)),
+            _ => None,
+        }
+    }
+
     pub fn write_array_value(
         &self,
         session: &EcuSession,
@@ -393,6 +405,62 @@ impl ConfigSource {
             raw[off..off + encoded.len()].copy_from_slice(&encoded);
         }
 
+        Ok(())
+    }
+
+    /// Пакетная запись элементов массива в RAM (один пересчёт снимка).
+    pub fn set_array_values_local(
+        &self,
+        name: &str,
+        updates: &[(usize, f64)],
+    ) -> Result<(), String> {
+        if updates.is_empty() {
+            return Ok(());
+        }
+        let ini = self.ini.lock().unwrap().clone();
+        let field = ini
+            .config_fields
+            .get(name)
+            .ok_or_else(|| format!("unknown config field: {name}"))?;
+        let ConfigFieldKind::Array(array) = field else {
+            return Err(format!("{name} is not an array field"));
+        };
+
+        let mut raw = self.raw.lock().unwrap();
+        self.ensure_page_raw(&ini, &mut raw);
+        for &(index, value) in updates {
+            let (offset, encoded) = encode_array_element(array, index, value)
+                .ok_or_else(|| format!("cannot encode array value for {name}[{index}]"))?;
+            let off = offset as usize;
+            if off + encoded.len() > raw.len() {
+                raw.resize(off + encoded.len(), 0);
+            }
+            raw[off..off + encoded.len()].copy_from_slice(&encoded);
+        }
+        let raw_copy = raw.clone();
+        drop(raw);
+        self.refresh_snapshot_from_raw(&ini, &raw_copy, true);
+        Ok(())
+    }
+
+    /// Пакетная запись в ECU (по элементу, с verify).
+    pub fn write_array_values(
+        &self,
+        session: &EcuSession,
+        name: &str,
+        updates: &[(usize, f64)],
+    ) -> Result<(), String> {
+        for &(index, value) in updates {
+            self.write_array_value(session, name, index, value)?;
+            sleep(Duration::from_millis(INTER_WRITE_DELAY_MS));
+        }
+        let ini = self.ini.lock().unwrap().clone();
+        let raw = self.raw.lock().unwrap().clone();
+        let mut snap = self.snapshot.write().unwrap();
+        let values = decode_config_fields(&ini.config_fields, &raw);
+        let string_values = decode_config_strings(&ini.config_fields, &raw);
+        apply_decoded_values(&mut snap, &ini, values, string_values);
+        snap.last_error = None;
         Ok(())
     }
 

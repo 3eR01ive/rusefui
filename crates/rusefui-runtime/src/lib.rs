@@ -4,6 +4,7 @@
 
 mod autoconnect;
 mod component;
+pub mod config_table_grid;
 mod config_diff;
 mod dyno;
 mod ini;
@@ -20,6 +21,10 @@ pub mod sources;
 pub use autoconnect::{AutoConnectManager, AutoConnectSnapshot, AutoConnectTick};
 pub use component::{
     ComponentAction, ComponentLogic, ComponentMeta, EcuSyncOnMount, LogicComponentType,
+};
+pub use config_table_grid::{
+    build_grid_view, format_cell_value, interpolate_rect, nudge_rect_values, CellPos,
+    GridRect, NavDir, TableGridState, TableGridView,
 };
 pub use config_diff::{
     compute_config_diff, ConfigDiffEntry, ConfigDiffSnapshot, ConfigDiffStore, DiffSide,

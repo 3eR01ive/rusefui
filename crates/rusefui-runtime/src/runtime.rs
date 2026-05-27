@@ -4,6 +4,7 @@ use std::sync::Arc;
 use serde_json::Value;
 
 use crate::component::{requires_rust_logic, ComponentLogic, EcuSyncOnMount, LogicComponentType};
+use crate::components::config_table::ConfigTableLogic;
 use crate::components::connection::ConnectionLogic;
 use crate::components::dyno::DynoLogic;
 use crate::components::simulation::SimulationLogic;
@@ -31,6 +32,7 @@ impl ComponentRuntime {
         &mut self,
         instance_id: &str,
         component_type: &str,
+        payload: Value,
     ) -> Result<Value, String> {
         if !requires_rust_logic(component_type) {
             return Err(format!(
@@ -39,6 +41,11 @@ impl ComponentRuntime {
         }
 
         if self.instances.contains_key(instance_id) {
+            if component_type == LogicComponentType::ConfigTable.as_str()
+                && !payload.is_null()
+            {
+                return self.dispatch(instance_id, "set_bind", payload);
+            }
             return Ok(self.state(instance_id)?);
         }
 
@@ -52,13 +59,23 @@ impl ComponentRuntime {
             Some(LogicComponentType::Dyno) => {
                 Box::new(DynoLogic::new(Arc::clone(&self.session)))
             }
+            Some(LogicComponentType::ConfigTable) => {
+                Box::new(ConfigTableLogic::new(Arc::clone(&self.session)))
+            }
             None => {
                 return Err(format!("unknown logic component: {component_type}"));
             }
         };
 
         self.instances.insert(instance_id.to_string(), logic);
-        self.dispatch(instance_id, "mount", Value::Null)
+        let mount_payload = if component_type == LogicComponentType::ConfigTable.as_str()
+            && !payload.is_null()
+        {
+            payload
+        } else {
+            Value::Null
+        };
+        self.dispatch(instance_id, "mount", mount_payload)
     }
 
     pub fn unmount(&mut self, instance_id: &str) {
@@ -93,6 +110,7 @@ impl ComponentRuntime {
             LogicComponentType::Connection.as_str(),
             LogicComponentType::Simulation.as_str(),
             LogicComponentType::Dyno.as_str(),
+            LogicComponentType::ConfigTable.as_str(),
         ]
     }
 

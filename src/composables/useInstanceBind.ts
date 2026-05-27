@@ -1,5 +1,13 @@
 import { computed, type ComputedRef, type MaybeRefOrGetter, toValue } from "vue";
-import type { ComponentInstance, DataBinding } from "../core/types";
+import type { ComponentInstance, DataBinding, DataSourceId } from "../core/types";
+
+/** Объект из `resolveBinding()` (проп `binding` в ComponentHost). */
+type ResolvedBinding = {
+  source?: string;
+  field?: string;
+  fields?: string[];
+  params?: Record<string, unknown>;
+};
 
 function asStringArray(v: unknown): string[] {
   if (!Array.isArray(v)) return [];
@@ -7,12 +15,27 @@ function asStringArray(v: unknown): string[] {
 }
 
 /**
- * Чтение `bind` из инстанса YAML: имена полей/каналов только отсюда, не из SFC.
+ * Чтение `bind` из инстанса YAML (+ опционально `binding` из ComponentHost).
  */
 export function useInstanceBind(
   instance: MaybeRefOrGetter<ComponentInstance>,
+  resolvedBinding?: MaybeRefOrGetter<unknown>,
 ) {
-  const bind = computed(() => toValue(instance).bind);
+  const bind = computed((): DataBinding | undefined => {
+    const inst = toValue(instance).bind;
+    const res = resolvedBinding
+      ? (toValue(resolvedBinding) as ResolvedBinding | undefined)
+      : undefined;
+    if (!inst && !res) return undefined;
+    const source = (inst?.source ?? res?.source) as DataSourceId | string | undefined;
+    if (!source) return undefined;
+    return {
+      source,
+      field: inst?.field ?? res?.field,
+      fields: inst?.fields ?? res?.fields,
+      params: { ...res?.params, ...inst?.params },
+    };
+  });
 
   const source = computed(() => bind.value?.source);
 

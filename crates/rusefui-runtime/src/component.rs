@@ -7,6 +7,7 @@ pub enum LogicComponentType {
     Connection,
     Simulation,
     Dyno,
+    ConfigTable,
 }
 
 impl LogicComponentType {
@@ -15,6 +16,7 @@ impl LogicComponentType {
             "connection" => Some(Self::Connection),
             "simulation" => Some(Self::Simulation),
             "dyno" => Some(Self::Dyno),
+            "config-table" => Some(Self::ConfigTable),
             _ => None,
         }
     }
@@ -24,6 +26,7 @@ impl LogicComponentType {
             Self::Connection => "connection",
             Self::Simulation => "simulation",
             Self::Dyno => "dyno",
+            Self::ConfigTable => "config-table",
         }
     }
 }

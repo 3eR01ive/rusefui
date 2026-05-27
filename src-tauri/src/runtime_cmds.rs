@@ -214,6 +214,8 @@ struct ComponentStateEvent {
 pub struct MountParams {
     pub instance_id: String,
     pub component_type: String,
+    #[serde(default)]
+    pub payload: Value,
 }
 
 #[derive(Debug, Deserialize)]
@@ -594,7 +596,11 @@ pub fn component_mount(
     app: AppHandle,
 ) -> Result<Value, String> {
     let mut rt = state.runtime.lock().map_err(|e| e.to_string())?;
-    let snapshot = rt.mount(&params.instance_id, &params.component_type)?;
+    let snapshot = rt.mount(
+        &params.instance_id,
+        &params.component_type,
+        params.payload,
+    )?;
     let sync = rt.ecu_sync_on_mount(&params.instance_id);
     emit_state(&app, &params.instance_id, &snapshot);
     apply_ecu_sync_on_mount(sync, &state, &app);
@@ -722,6 +728,8 @@ fn component_dispatch_inner(
         None
     };
 
+    let may_write_config = config_table_action_may_write(action, &params.payload);
+
     let snapshot = {
         let mut rt = state.runtime.lock().map_err(|e| e.to_string())?;
         let snapshot = rt.dispatch(&params.instance_id, action, params.payload)?;
@@ -739,11 +747,47 @@ fn component_dispatch_inner(
 
     emit_state(&app, &params.instance_id, &snapshot);
 
+    if may_write_config {
+        persist_config_after_table_edit(&state, &app);
+    }
+
     if matches!(action, "connect" | "disconnect") {
         schedule_ecu_notify(&app, action == "connect");
     }
 
     Ok(snapshot)
+}
+
+fn config_table_action_may_write(action: &str, payload: &Value) -> bool {
+    match action {
+        "interpolate" | "commit_cell" => true,
+        "keydown" => {
+            let ctrl = payload.get("ctrl").and_then(|v| v.as_bool()).unwrap_or(false);
+            let key = payload.get("key").and_then(|v| v.as_str()).unwrap_or("");
+            ctrl && matches!(key, "ArrowUp" | "ArrowDown")
+        }
+        _ => false,
+    }
+}
+
+fn persist_config_after_table_edit(state: &RuntimeState, app: &AppHandle) {
+    let snap = state.session.config().snapshot();
+    let wrote_live = state.session.is_connected() && snap.loaded && !snap.read_only;
+    if snap.loaded && snap.read_only {
+        if state
+            .project
+            .lock()
+            .unwrap()
+            .sync_ecu_config_from_session(&state.session)
+            .is_ok()
+            && state.project.lock().unwrap().info().dirty
+        {
+            emit_project(app, state);
+        }
+    }
+    if wrote_live {
+        set_burn_pending(state, app, true);
+    }
 }
 
 #[tauri::command]
