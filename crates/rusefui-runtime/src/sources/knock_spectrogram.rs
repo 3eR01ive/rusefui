@@ -8,7 +8,7 @@ use rustfft::num_complex::Complex;
 use rustfft::Fft;
 use serde::Serialize;
 
-use super::knock_scope::KNOCK_ADC_HZ;
+pub const KNOCK_ADC_SAMPLE_RATE_HZ: f32 = 218_750.0;
 
 pub const FFT_SIZE: usize = 1024;
 pub const HOP: usize = 256;
@@ -201,7 +201,7 @@ mod tests {
 
     #[test]
     fn bin_layout_near_4khz() {
-        let (start, f0, step) = spectrogram_bin_layout(KNOCK_ADC_HZ as f32);
+        let (start, f0, step) = spectrogram_bin_layout(KNOCK_ADC_SAMPLE_RATE_HZ);
         assert!(start > 0);
         assert!((f0 - START_FREQ_HZ).abs() < 500.0);
         assert!(step > 0.0);
@@ -209,8 +209,8 @@ mod tests {
 
     #[test]
     fn engine_produces_columns_from_sine() {
-        let mut eng = KnockSpectrogramEngine::new(KNOCK_ADC_HZ as f32, 500);
-        let sr = KNOCK_ADC_HZ as f32;
+        let mut eng = KnockSpectrogramEngine::new(KNOCK_ADC_SAMPLE_RATE_HZ, 500);
+        let sr = KNOCK_ADC_SAMPLE_RATE_HZ;
         let mut buf = Vec::new();
         for i in 0..FFT_SIZE * 3 {
             let t = i as f32 / sr;

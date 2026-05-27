@@ -227,6 +227,9 @@ impl KnockScopeSource {
 
         let window_ms = window_ms.clamp(50, 15_000);
 
+        session.composite().disable_on_ecu(&session);
+        session.composite().stop();
+
         self.running.store(false, Ordering::SeqCst);
         if let Some(handle) = self.thread.lock().unwrap().take() {
             let _ = handle.join();

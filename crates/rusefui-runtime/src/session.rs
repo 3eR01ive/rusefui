@@ -790,11 +790,9 @@ impl EcuSession {
     where
         F: FnOnce(&Self) -> Result<R, String>,
     {
+        // Только `O`: `l`+composite/knock scope не трогаем — иначе запись триггера обрывается
+        // после burn/config/stim и не возобновляется.
         self.output().stop();
-        self.composite().disable_on_ecu(self);
-        self.composite().stop();
-        self.knock_scope().disable_on_ecu(self);
-        self.knock_scope().stop();
         f(self)
     }
 

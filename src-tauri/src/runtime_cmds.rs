@@ -517,8 +517,8 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
             clear_config_diff(state, app);
         }
         WorkspacePhase::EcuConnectedIdle => {
-            state.session.output().stop();
-            state.session.composite().stop();
+            // Не дергать composite.stop() здесь: sync_config_load остановит перед load,
+            // а частые sync_ecu_data иначе глушили бы запись триггера без перезапуска.
             sync_config_load(state, app);
         }
         WorkspacePhase::ConfigFromProject => {
@@ -531,8 +531,12 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
         }
         WorkspacePhase::ConfigLoadingFromEcu => {
             state.session.output().stop();
+            state.session.composite().disable_on_ecu(&state.session);
             state.session.composite().stop();
+            state.session.knock_scope().disable_on_ecu(&state.session);
             state.session.knock_scope().stop();
+            emit_composite(app, &state.session.composite().snapshot());
+            emit_knock_scope(app, &state.session.knock_scope_snapshot());
         }
         WorkspacePhase::ConfigFromEcu => {
             sync_output_poll_session(&state.session, app);
@@ -801,6 +805,7 @@ pub fn composite_set_enabled(
             emit_composite(&app_emit, &snap);
         })?;
         emit_composite_timeline(&app, &state.session.composite_timeline_status());
+        emit_knock_scope(&app, &state.session.knock_scope_snapshot());
     } else {
         state.session.composite().disable_on_ecu(&state.session);
         state.session.composite().stop();
@@ -855,6 +860,8 @@ pub fn knock_scope_set_enabled(
         state.session.knock_scope().start(session, window_ms, move |snap| {
             emit_knock_scope(&app_emit, &snap);
         })?;
+        emit_composite(&app, &state.session.composite().snapshot());
+        emit_composite_timeline(&app, &state.session.composite_timeline_status());
     } else {
         state.session.knock_scope().disable_on_ecu(&state.session);
         state.session.knock_scope().stop();

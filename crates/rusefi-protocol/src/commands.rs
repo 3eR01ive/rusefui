@@ -27,8 +27,8 @@ pub const TS_KNOCK_SCOPE_READ: u8 = 10;
 /// `BigBuffer` on MCU (12-bit samples stored as `uint16_t`).
 pub const KNOCK_SCOPE_BUFFER_BYTES: usize = 8192;
 
-/// Размер одной записи tooth/composite logger (firmware `composite_logger_s`).
-pub const COMPOSITE_PACKET_SIZE: usize = 5;
+/// Размер одной записи tooth/composite logger (INI `compositeLogger` → `recordDef …, 8`, `composite_logger_s`).
+pub const COMPOSITE_PACKET_SIZE: usize = 8;
 
 /// Страница настроек (`TS_PAGE_SETTINGS`).
 pub const TS_PAGE_SETTINGS: u16 = 0;

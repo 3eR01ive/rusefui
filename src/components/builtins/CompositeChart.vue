@@ -93,6 +93,7 @@ const openLogError = ref<string | null>(null);
 
 let autoStopTimer: ReturnType<typeof setInterval> | null = null;
 let autoStopDeadlineMs = 0;
+let autoStopArmed = false;
 
 function formatDuration(ms: number): string {
   return ms < 1000 ? `${ms} мс` : `${ms / 1000} сек`;
@@ -117,6 +118,28 @@ let panStartT0Us = 0;
 let pendingWheelFactor = 1;
 let pendingWheelX = 0;
 let wheelRafId = 0;
+let liveDrawRaf = 0;
+
+function startLiveDraw() {
+  const tick = () => {
+    if (!loggingEnabled.value) {
+      liveDrawRaf = 0;
+      return;
+    }
+    scheduleDraw();
+    liveDrawRaf = requestAnimationFrame(tick);
+  };
+  if (liveDrawRaf === 0) {
+    liveDrawRaf = requestAnimationFrame(tick);
+  }
+}
+
+function stopLiveDraw() {
+  if (liveDrawRaf !== 0) {
+    cancelAnimationFrame(liveDrawRaf);
+    liveDrawRaf = 0;
+  }
+}
 
 const CHANNELS: { key: ChannelKey; label: string; color: string }[] = [
   { key: "pri", label: "Pri", color: "#3b82f6" },
@@ -788,6 +811,7 @@ async function onOpenCompositeLog() {
 }
 
 function clearAutoStopTimer() {
+  autoStopArmed = false;
   if (autoStopTimer != null) {
     clearInterval(autoStopTimer);
     autoStopTimer = null;
@@ -801,20 +825,10 @@ function startAutoStopTimer() {
   const ms = captureDurationMs.value;
   if (ms <= 0) return;
 
-  autoStopDeadlineMs = Date.now() + ms;
-  autoStopRemainingSec.value = Math.ceil(ms / 1000);
-
-  autoStopTimer = setInterval(() => {
-    const left = autoStopDeadlineMs - Date.now();
-    if (left <= 0) {
-      clearAutoStopTimer();
-      if (loggingEnabled.value && !loggerBusy.value) {
-        void applyLoggingEnabled(false);
-      }
-      return;
-    }
-    autoStopRemainingSec.value = Math.ceil(left / 1000);
-  }, 100);
+  // Для коротких сессий (500мс) не тратим окно на период 0x84:
+  // таймер запускается после первого полученного чанка.
+  autoStopArmed = true;
+  autoStopRemainingSec.value = null;
 }
 
 async function applyLoggingEnabled(on: boolean) {
@@ -943,10 +957,40 @@ watch(
 );
 
 watch(loggingEnabled, (on, wasOn) => {
+  if (on) {
+    startLiveDraw();
+  } else {
+    stopLiveDraw();
+  }
   if (wasOn && !on) {
     void refreshTimelineStatus().then(() => refreshReviewEvents());
   }
 });
+
+watch(
+  () => snapshot.value.chunksReceived,
+  (chunks) => {
+    if (!loggingEnabled.value || !autoStopArmed || autoStopTimer != null) return;
+    // Старт отсчета только после первого реального чанка, чтобы 500мс не сгорали в 0x84.
+    if (chunks > 0) {
+      const ms = captureDurationMs.value;
+      autoStopDeadlineMs = Date.now() + ms;
+      autoStopRemainingSec.value = Math.ceil(ms / 1000);
+      autoStopTimer = setInterval(() => {
+        const left = autoStopDeadlineMs - Date.now();
+        if (left <= 0) {
+          clearAutoStopTimer();
+          if (loggingEnabled.value && !loggerBusy.value) {
+            void applyLoggingEnabled(false);
+          }
+          return;
+        }
+        autoStopRemainingSec.value = Math.ceil(left / 1000);
+      }, 100);
+      autoStopArmed = false;
+    }
+  },
+);
 
 onMounted(async () => {
   await initCompositeLogger();
@@ -961,9 +1005,15 @@ onMounted(async () => {
   await listen("composite-timeline-status", refreshIfLinked);
   await loadUiFromProject();
   const canvas = canvasRef.value;
-  if (canvas) {
+  const wrap = plotWrapRef.value;
+  if (wrap) {
+    ro = new ResizeObserver(scheduleDraw);
+    ro.observe(wrap);
+  } else if (canvas) {
     ro = new ResizeObserver(scheduleDraw);
     ro.observe(canvas);
+  }
+  if (canvas) {
     canvas.addEventListener("pointerdown", onPointerDown);
     canvas.addEventListener("pointermove", onPointerMove);
     canvas.addEventListener("pointerup", onPointerUp);
@@ -972,6 +1022,7 @@ onMounted(async () => {
   }
   resetViewWindow();
   scheduleDraw();
+  if (loggingEnabled.value) startLiveDraw();
   document.addEventListener("click", onDocClick);
 });
 
@@ -981,6 +1032,7 @@ function onDocClick() {
 
 onUnmounted(() => {
   clearAutoStopTimer();
+  stopLiveDraw();
   document.removeEventListener("click", onDocClick);
   if (loggingEnabled.value) {
     void setLoggingEnabled(false);

@@ -19,6 +19,8 @@ const POLL_AFTER_CHUNK: Duration = Duration::from_millis(1);
 /// Пауза, если опрос временно запрещён (config load и т.д.).
 const POLL_IDLE: Duration = Duration::from_millis(40);
 const STATUS_EMIT_INTERVAL: Duration = Duration::from_secs(1);
+/// Ожидание serial (knock scope с `with_link_wait` иначе забирает порт).
+const SERIAL_MUTEX_WAIT: Duration = Duration::from_millis(200);
 
 /// Вся сессия записи (до «Стоп») — без обрезки по windowMs.
 const RING_CAP: usize = 8_000;
@@ -44,7 +46,8 @@ impl From<CompositeRecord> for CompositeEventJson {
             t_us: r.time_us,
             pri: r.pri_level,
             sec: r.sec_level,
-            trg: r.trigger,
+            // Канал «TDC» на графике — бит `tdc` из ECU, не «trigger» камеры.
+            trg: r.tdc,
             sync: r.sync,
             coil: r.coil,
             inj: r.injector,
@@ -262,6 +265,9 @@ impl CompositeLoggerSource {
             return Ok(());
         }
 
+        session.knock_scope().disable_on_ecu(&session);
+        session.knock_scope().stop();
+
         self.running.store(false, Ordering::SeqCst);
         if let Some(handle) = self.thread.lock().unwrap().take() {
             let _ = handle.join();
@@ -274,7 +280,7 @@ impl CompositeLoggerSource {
             let mut snap = self.snapshot.write().unwrap();
             snap.logging_enabled = true;
             snap.connected = session.is_connected();
-            snap.polling = false;
+            snap.polling = true;
             snap.events.clear();
             snap.total_events = 0;
             snap.last_batch = 0;
@@ -375,8 +381,8 @@ fn poll_loop(
         };
 
         if allow_poll {
-            if let Some(result) = session.try_with_link(|link| link.read_composite_buffer()) {
-                match result {
+            match session.with_link_wait(SERIAL_MUTEX_WAIT, |link| link.read_composite_buffer())
+            {
                 Ok(payload) if !payload.is_empty() => {
                     let parsed = {
                         let mut st = parse_state.lock().unwrap();
@@ -416,7 +422,6 @@ fn poll_loop(
                 }
                 Err(e) => {
                     last_error = Some(e);
-                }
                 }
             }
         }
