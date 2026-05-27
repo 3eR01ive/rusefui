@@ -15,6 +15,7 @@ import OutputChart from "./builtins/OutputChart.vue";
 import CompositeChart from "./builtins/CompositeChart.vue";
 import OutputValue from "./builtins/OutputValue.vue";
 import Dyno from "./builtins/Dyno.vue";
+import Spectrogram from "./builtins/Spectrogram.vue";
 
 let registered = false;
 
@@ -199,5 +200,16 @@ export function registerBuiltinComponents(): void {
       description: "Virtual dyno: HP/Torque vs RPM (расчёт в Rust, отрисовка canvas)",
     },
     Dyno,
+  );
+
+  registerComponent(
+    {
+      type: "spectrogram",
+      label: "Knock spectrogram",
+      mode: "display",
+      isContainer: false,
+      description: "Сырой knock scope с ECU (12-bit ADC), preview waveform",
+    },
+    Spectrogram,
   );
 }

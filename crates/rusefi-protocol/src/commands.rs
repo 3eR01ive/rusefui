@@ -19,6 +19,14 @@ pub const TS_COMPOSITE_ENABLE: u8 = 1;
 pub const TS_COMPOSITE_DISABLE: u8 = 2;
 pub const TS_COMPOSITE_READ: u8 = 3;
 
+/// Knock scope raw ADC (`knock_scope.cpp`, sub-commands of `TS_SET_LOGGER_SWITCH`).
+pub const TS_KNOCK_SCOPE_ENABLE: u8 = 8;
+pub const TS_KNOCK_SCOPE_DISABLE: u8 = 9;
+pub const TS_KNOCK_SCOPE_READ: u8 = 10;
+
+/// `BigBuffer` on MCU (12-bit samples stored as `uint16_t`).
+pub const KNOCK_SCOPE_BUFFER_BYTES: usize = 8192;
+
 /// Размер одной записи tooth/composite logger (firmware `composite_logger_s`).
 pub const COMPOSITE_PACKET_SIZE: usize = 5;
 

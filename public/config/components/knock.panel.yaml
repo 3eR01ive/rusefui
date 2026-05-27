@@ -1,0 +1,18 @@
+# Сырой knock scope (FFT на хосте — позже).
+id: knock.panel
+description: Knock spectrogram / raw ADC scope
+
+children:
+  - type: text
+    props:
+      text: "Сырой поток KNOCK_ADC с ECU (knock_scope). В tune: enableKnockScope. INI с полем knockScopeReady."
+      variant: hint
+
+  - type: section
+    props:
+      title: Spectrogram (preview)
+    children:
+      - type: spectrogram
+        id: knock-spectrogram
+        props:
+          height: 320

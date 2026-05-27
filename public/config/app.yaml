@@ -4,5 +4,6 @@ app:
 tabs:
   - $tab: monitor
   - $tab: run
+  - $tab: knock
   - $tab: simulation
   - $tab: ini-preview

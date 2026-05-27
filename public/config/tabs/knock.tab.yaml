@@ -1,0 +1,6 @@
+tab:
+  id: knock
+  title: Knock
+
+root:
+  $component: knock.panel

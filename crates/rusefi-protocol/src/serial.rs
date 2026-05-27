@@ -388,6 +388,34 @@ impl SerialLink {
         Ok(())
     }
 
+    /// `l` + `TS_KNOCK_SCOPE_ENABLE` — непрерывный захват сырого KNOCK_ADC (`knock_scope.cpp`).
+    pub fn set_knock_scope_enabled(&mut self, enabled: bool) -> Result<(), ProtocolError> {
+        let sub = if enabled {
+            crate::commands::TS_KNOCK_SCOPE_ENABLE
+        } else {
+            crate::commands::TS_KNOCK_SCOPE_DISABLE
+        };
+        let payload = [TS_SET_LOGGER_SWITCH, sub];
+        let response = self.send_request(&payload)?;
+        if response.code != TS_RESPONSE_OK {
+            return Err(ProtocolError::ErrorResponse(response.code));
+        }
+        Ok(())
+    }
+
+    /// `l` + `TS_KNOCK_SCOPE_READ` — сырой буфер (до [`KNOCK_SCOPE_BUFFER_BYTES`] байт, u16 LE).
+    pub fn read_knock_scope_buffer(&mut self) -> Result<Vec<u8>, ProtocolError> {
+        let payload = [
+            TS_SET_LOGGER_SWITCH,
+            crate::commands::TS_KNOCK_SCOPE_READ,
+        ];
+        let response = self.send_request(&payload)?;
+        if response.code != TS_RESPONSE_OK {
+            return Err(ProtocolError::ErrorResponse(response.code));
+        }
+        Ok(response.payload)
+    }
+
     /// `E` + текст — консольная команда (как Java `sendTextCommand` / rusefi_console CommandQueue).
     pub fn execute_console_command(&mut self, text: &str) -> Result<(), ProtocolError> {
         let mut payload = Vec::with_capacity(1 + text.len());
