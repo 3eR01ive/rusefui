@@ -15,7 +15,7 @@ use crate::ini::{
 };
 use crate::protocol_log::ProtocolLogStore;
 use crate::sources::composite_data_log::CompositeDataLogWriter;
-use crate::sources::composite_logger::CompositeLoggerSource;
+use crate::sources::composite_logger::{CompositeEventJson, CompositeLoggerSource};
 use crate::sources::knock_scope::KnockScopeSource;
 use crate::sources::composite_timeline::{
     CompositeTimeline, CompositeTimelineStatus, CompositeTimelineView,
@@ -134,6 +134,10 @@ impl EcuSession {
         query: CompositeTimelineViewQuery,
     ) -> CompositeTimelineView {
         self.composite_timeline.lock().unwrap().query_view(&query)
+    }
+
+    pub fn composite_timeline_session_events(&self) -> Vec<CompositeEventJson> {
+        self.composite_timeline.lock().unwrap().session_events()
     }
 
     pub fn composite_timeline_control(

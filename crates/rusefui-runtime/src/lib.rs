@@ -55,6 +55,9 @@ pub use sources::composite_timeline::{
     CompositeTimeline, CompositeTimelineStatus, CompositeTimelineView,
     CompositeTimelineViewQuery,
 };
+pub use sources::composite_trigger_wheels::{
+    compute_trigger_wheels, ComputeTriggerWheelsParams, TriggerWheelsView, WheelEdgeMode,
+};
 pub use sources::config::{ConfigFieldInfo, ConfigSnapshot};
 pub use sources::output_channels::{
     IniContext, OutputFieldInfo, OutputSnapshot, DEFAULT_OUTPUT_BLOCK_SIZE,

@@ -183,6 +183,11 @@ impl CompositeTimeline {
         }
     }
 
+    /// Все события сессии (вся запись), без децимации по окну просмотра.
+    pub fn session_events(&self) -> Vec<CompositeEventJson> {
+        self.events.iter().map(|e| e.event.clone()).collect()
+    }
+
     pub fn query_view(&self, q: &CompositeTimelineViewQuery) -> CompositeTimelineView {
         let (t_min, t_max) = if let (Some(end), Some(span)) = (q.view_end_sec, q.span_sec) {
             let span = span.clamp(0.005, 3600.0);

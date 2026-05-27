@@ -7,7 +7,7 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use rusefi_protocol::{parse_composite_records, CompositeParseState, CompositeRecord};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::composite_data_log::CompositeDataLogWriter;
 use crate::session::EcuSession;
@@ -25,7 +25,7 @@ const SERIAL_MUTEX_WAIT: Duration = Duration::from_millis(200);
 /// Вся сессия записи (до «Стоп») — без обрезки по windowMs.
 const RING_CAP: usize = 8_000;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CompositeEventJson {
     pub t_us: u64,

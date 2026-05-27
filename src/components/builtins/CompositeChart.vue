@@ -23,6 +23,10 @@ import {
   type CompositeChartUiSettings,
   type CrankEdgeMode,
 } from "../../composables/useProject";
+import { invoke } from "@tauri-apps/api/core";
+import CompositeTriggerWheels, {
+  type TriggerWheelsView,
+} from "./CompositeTriggerWheels.vue";
 import {
   bufferSpanMs,
   buildChartView,
@@ -73,6 +77,7 @@ const {
   controlView: controlTimelineView,
   pickAndLoadFile,
   refreshStatus: refreshTimelineStatus,
+  sessionEvents: fetchCompositeSessionEvents,
 } = useCompositeTimeline();
 const { linked: viewportLinked, setLinked: setViewportLinked } = useLogViewportLink();
 const { status: outputTimelineStatus, controlView: controlOutputView } =
@@ -110,6 +115,9 @@ const CAPTURE_DURATIONS_MS = [500, 1000, 3000] as const;
 const captureDurationMs = ref(1000);
 const durationDropdownOpen = ref(false);
 const crankEdgeMode = ref<CrankEdgeMode>("both");
+const showTriggerWheels = ref(true);
+const triggerWheelsView = ref<TriggerWheelsView | null>(null);
+let wheelComputeTimer: ReturnType<typeof setTimeout> | null = null;
 const autoStopRemainingSec = ref<number | null>(null);
 const loggerBusy = ref(false);
 const loggerError = ref<string | null>(null);
@@ -1163,6 +1171,7 @@ onMounted(async () => {
   }
   resetViewWindow();
   scheduleDraw();
+  scheduleWheelCompute();
   if (loggingEnabled.value) startLiveDraw();
   document.addEventListener("click", onDocClick);
   document.addEventListener("keydown", onTdcPlaceKeyDown);
@@ -1173,6 +1182,10 @@ function onDocClick() {
 }
 
 onUnmounted(() => {
+  if (wheelComputeTimer != null) {
+    clearTimeout(wheelComputeTimer);
+    wheelComputeTimer = null;
+  }
   clearAutoStopTimer();
   stopLiveDraw();
   document.removeEventListener("click", onDocClick);
@@ -1200,6 +1213,22 @@ watch(
 watch([maxWindowMs, viewSpanMs, chartHeight, connected, alignTdc], scheduleDraw);
 watch([hoverX, hoverInside], scheduleDraw);
 watch([realTdcTUs, tdcPlaceMode], scheduleDraw);
+watch(
+  () => {
+    const snap = snapshot.value.events;
+    const n = reviewMode.value
+      ? timelineStatus.value.eventCount
+      : snap.length;
+    const tail = snap.length > 0 ? snap[snap.length - 1]!.tUs : 0;
+    return `${reviewMode.value}:${n}:${tail}:${compositeTimelineLoadEpoch.value}`;
+  },
+  () => scheduleWheelCompute(),
+);
+watch([crankEdgeMode, showTriggerWheels], () => scheduleWheelCompute());
+watch(
+  () => getConfigField(GLOBAL_TRIGGER_ANGLE_OFFSET_FIELD),
+  () => scheduleWheelCompute(),
+);
 
 const currentTriggerOffset = computed(
   () => getConfigField(GLOBAL_TRIGGER_ANGLE_OFFSET_FIELD),
@@ -1308,6 +1337,66 @@ function clearRealTdcMarker() {
   placePointerPending = false;
   offsetWriteError.value = null;
   scheduleDraw();
+  scheduleWheelCompute();
+}
+
+function physicalTdcDegForWheels(): number | null {
+  if (realTdcTUs.value == null) return null;
+  const view = getCurrentChartView();
+  if (!view) return null;
+  const deg = crankDegFromFirmwareTdc(realTdcTUs.value, view, snapshot.value.rpm);
+  if (deg == null) return null;
+  return signedDegFromFirmwareTdc(deg);
+}
+
+function scheduleWheelCompute() {
+  if (!showTriggerWheels.value) {
+    triggerWheelsView.value = null;
+    return;
+  }
+  if (wheelComputeTimer != null) {
+    clearTimeout(wheelComputeTimer);
+    wheelComputeTimer = null;
+  }
+  wheelComputeTimer = setTimeout(() => {
+    wheelComputeTimer = null;
+    void computeTriggerWheels();
+  }, 280);
+}
+
+/** Вся запись сессии, не видимое окно графика. */
+async function allSessionEventsForWheels(): Promise<CompositeEvent[]> {
+  if (reviewMode.value && timelineStatus.value.eventCount >= 4) {
+    try {
+      return await fetchCompositeSessionEvents();
+    } catch {
+      /* fallback */
+    }
+  }
+  return snapshot.value.events as CompositeEvent[];
+}
+
+async function computeTriggerWheels() {
+  const events = await allSessionEventsForWheels();
+  if (events.length < 4) {
+    triggerWheelsView.value = null;
+    return;
+  }
+  try {
+    triggerWheelsView.value = await invoke<TriggerWheelsView>(
+      "composite_compute_trigger_wheels",
+      {
+        params: {
+          events,
+          edgeMode: crankEdgeMode.value,
+          triggerAngleAdvanceDeg: getConfigField(GLOBAL_TRIGGER_ANGLE_OFFSET_FIELD),
+          physicalTdcDeg: physicalTdcDegForWheels(),
+        },
+      },
+    );
+  } catch {
+    triggerWheelsView.value = null;
+  }
 }
 
 function onTdcPlaceKeyDown(e: KeyboardEvent) {
@@ -1424,16 +1513,20 @@ const statusLine = computed(() => {
       >
         Лог триггера…
       </button>
-      <div class="cc-edge-seg" title="Crank: режим отображения фронтов">
+      <div class="cc-edge-seg" title="Фронты на графике и на дисках (↑ / ↓ / ↕)">
         <button
           v-for="m in (['both', 'rise', 'fall'] as CrankEdgeMode[])"
           :key="m"
           type="button"
           class="cc-edge-btn"
           :class="{ active: crankEdgeMode === m }"
-          @click="crankEdgeMode = m"
+          @click="crankEdgeMode = m; scheduleWheelCompute()"
         >{{ m === 'both' ? '↕' : m === 'rise' ? '↑' : '↓' }}</button>
       </div>
+      <label class="cc-wheels-toggle" title="Диски коленвала и распредвала (усреднение по циклам TDC)">
+        <input v-model="showTriggerWheels" type="checkbox" @change="scheduleWheelCompute()" />
+        Диски
+      </label>
       <div
         class="cc-tdc-cal"
         title="Режим установки: клик по графику — реальный TDC; перетаскивание — сдвиг; Esc — отмена"
@@ -1515,6 +1608,11 @@ const statusLine = computed(() => {
         aria-label="Composite trigger logger"
       />
     </div>
+    <CompositeTriggerWheels
+      v-if="showTriggerWheels"
+      :view="triggerWheelsView"
+      :edge-mode="crankEdgeMode"
+    />
     <p v-if="snapshot.lastError" class="cc-error">{{ snapshot.lastError }}</p>
     <p v-else-if="connected && !loggingEnabled && !reviewMode" class="cc-hint">
       Запись: «Старт» → «Стоп» в этой панели (Trigger logger). Файл trigger_*.csv появится здесь
@@ -1749,6 +1847,19 @@ const statusLine = computed(() => {
 .cc-tdc-hint-preview {
   color: var(--color-fg-muted, #9ca3af);
   font-variant-numeric: tabular-nums;
+}
+
+.cc-wheels-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--color-gray);
+  cursor: pointer;
+}
+
+.cc-wheels-toggle input {
+  margin: 0;
 }
 
 .cc-canvas--place-tdc {

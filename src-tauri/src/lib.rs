@@ -24,6 +24,8 @@ pub fn run() {
             runtime_cmds::composite_get_snapshot,
             runtime_cmds::composite_set_enabled,
             runtime_cmds::composite_set_max_window_ms,
+            runtime_cmds::composite_compute_trigger_wheels,
+            runtime_cmds::composite_timeline_session_events,
             runtime_cmds::knock_scope_get_snapshot,
             runtime_cmds::knock_scope_set_enabled,
             runtime_cmds::composite_timeline_status,

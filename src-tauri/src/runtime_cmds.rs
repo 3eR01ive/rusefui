@@ -1,7 +1,8 @@
 use rusefui_runtime::{
     compute_config_diff, default_log_path, enumerate_local_candidates, parse_rusefi_signature,
-    AutoConnectManager, AutoConnectSnapshot, ComponentRuntime, CompositeSnapshot, KnockScopeSnapshot,
-    CompositeTimelineStatus, CompositeTimelineView, CompositeTimelineViewQuery,
+    AutoConnectManager, AutoConnectSnapshot, ComponentRuntime, CompositeEventJson, CompositeSnapshot,
+    ComputeTriggerWheelsParams, KnockScopeSnapshot, CompositeTimelineStatus, CompositeTimelineView,
+    CompositeTimelineViewQuery, TriggerWheelsView, compute_trigger_wheels,
     ConfigDiffSnapshot, ConfigDiffStore, ConfigFieldInfo, ConfigSnapshot, ConfigSource, DiffSide,
     EcuSession, EcuSyncOnMount, IniCandidate, OnlineDownloadStatus, OutputFieldInfo,
     OutputSnapshot, OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl,
@@ -828,6 +829,16 @@ pub fn composite_set_enabled(
         emit_composite_timeline(&app, &state.session.composite_timeline_status());
     }
     Ok(state.session.composite().snapshot())
+}
+
+#[tauri::command]
+pub fn composite_compute_trigger_wheels(params: ComputeTriggerWheelsParams) -> TriggerWheelsView {
+    compute_trigger_wheels(&params)
+}
+
+#[tauri::command]
+pub fn composite_timeline_session_events(state: State<RuntimeState>) -> Vec<CompositeEventJson> {
+    state.session.composite_timeline_session_events()
 }
 
 #[tauri::command]

@@ -75,6 +75,11 @@ export type CompositeTimelineViewport = {
   spanSec: number;
 };
 
+/** Все события записи (не окно просмотра) — для усреднения дисков. */
+export async function fetchCompositeSessionEvents(): Promise<CompositeEvent[]> {
+  return invoke<CompositeEvent[]>("composite_timeline_session_events");
+}
+
 export async function queryCompositeTimelineView(
   pixelWidth: number,
   viewport?: CompositeTimelineViewport,
@@ -127,6 +132,7 @@ export function useCompositeTimeline() {
     hasFile,
     refreshStatus: refreshCompositeTimelineStatus,
     queryView: queryCompositeTimelineView,
+    sessionEvents: fetchCompositeSessionEvents,
     controlView: controlCompositeTimelineView,
     loadFile: loadCompositeTimelineFile,
     pickAndLoadFile: pickAndLoadCompositeLogFile,
