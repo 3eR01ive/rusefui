@@ -220,6 +220,7 @@ struct ParsedIniField {
     name: String,
     kind: FieldKind,
     enum_options: Vec<crate::model::EnumOption>,
+    enum_define: Option<String>,
 }
 
 impl ParsedIniField {
@@ -235,6 +236,7 @@ impl ParsedIniField {
                         ConfigFieldKind::Enum(EnumField {
                             bits,
                             options: self.enum_options,
+                            enum_define: self.enum_define,
                         }),
                     ))
                 }
@@ -286,6 +288,7 @@ fn parse_config_or_output_line(
     }
 
     let mut enum_options = Vec::new();
+    let mut enum_define: Option<String> = None;
 
     let kind = match parts[0].as_str() {
         "scalar" => {
@@ -318,6 +321,10 @@ fn parse_config_or_output_line(
             let ty = ScalarType::parse(&parts[1]).ok_or("unknown bits type")?;
             let offset: u32 = parts[2].parse().map_err(|_| "bad offset")?;
             let (low, high) = parse_bit_range(&parts[3])?;
+            enum_define = parts[4..].iter().find_map(|p| {
+                let p = p.trim();
+                p.strip_prefix('$').map(|k| k.to_string())
+            });
             enum_options = parse_enum_options(&parts[4..], defines);
             FieldKind::Bits(BitsField {
                 ty,
@@ -366,6 +373,7 @@ fn parse_config_or_output_line(
         name,
         kind,
         enum_options,
+        enum_define,
     })
 }
 
@@ -452,6 +460,10 @@ mod tests {
                 .get("vehicleName")
                 .is_some_and(|k| matches!(k, ConfigFieldKind::String(_)))
         );
+        let ConfigFieldKind::Enum(vvt) = ini.config_fields.get("vvtPins1").unwrap() else {
+            panic!("vvtPins1 should be enum");
+        };
+        assert_eq!(vvt.enum_define.as_deref(), Some("output_pin_e_list"));
     }
 
     #[test]

@@ -3,15 +3,15 @@ import { computed, ref, watch } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import type { DataBinding } from "../../core/types";
 import { configCanEdit, configCanView, initConfig, useConfig } from "../../composables/useConfig";
+import {
+  isIniPlaceholderLabel,
+  type PinOptionAllocation,
+} from "../../composables/pinAllocation";
+import { usePinAllocation } from "../../composables/usePinAllocation";
 
 interface EnumOptionProp {
   value: number;
   label: string;
-}
-
-/** Метки-заглушки в INI (`#define … "INVALID", …`) — не показываем в списке. */
-function isIniPlaceholderLabel(label: string): boolean {
-  return label.trim().toUpperCase() === "INVALID";
 }
 
 function normalizeOptions(raw: EnumOptionProp[]): EnumOptionProp[] {
@@ -29,12 +29,18 @@ const props = defineProps<{
 void initConfig();
 
 const { snapshot, getField, getFieldInfo, setField } = useConfig();
+const { describeOption, usageIndex } = usePinAllocation();
 
 const bind = computed(() => props.instance.bind as DataBinding | undefined);
 const fieldName = computed(() => bind.value?.field ?? "");
 const label = computed(
   () => String(props.props.label ?? (fieldName.value || "—")),
 );
+
+const pinPool = computed(() => {
+  const info = fieldName.value ? getFieldInfo(fieldName.value) : null;
+  return info?.pinPool ?? null;
+});
 
 const allOptions = computed((): EnumOptionProp[] => {
   const fromYaml = props.props.options;
@@ -64,7 +70,6 @@ const currentValue = computed(() => {
   return getField(fieldName.value);
 });
 
-/** Если в ECU записан «дырявый» индекс — одна строка, чтобы значение было видно. */
 const selectOptions = computed((): EnumOptionProp[] => {
   const vis = visibleOptions.value;
   const cur = currentValue.value;
@@ -72,11 +77,49 @@ const selectOptions = computed((): EnumOptionProp[] => {
     return vis;
   }
   const stored = allOptions.value.find((o) => o.value === cur);
-  const orphanLabel = stored
-    ? `${stored.label} (${cur})`
-    : `#${cur}`;
+  const orphanLabel = stored ? `${stored.label} (${cur})` : `#${cur}`;
   return [{ value: cur, label: orphanLabel }, ...vis];
 });
+
+const optionMeta = computed(() => {
+  void usageIndex.value;
+  const map = new Map<number, PinOptionAllocation>();
+  if (!pinPool.value) return map;
+  for (const opt of selectOptions.value) {
+    map.set(
+      opt.value,
+      describeOption(pinPool.value, fieldName.value, opt.value, opt.label),
+    );
+  }
+  return map;
+});
+
+const currentPinConflict = computed(() => {
+  if (currentValue.value === null || !pinPool.value) return null;
+  return optionMeta.value.get(currentValue.value) ?? null;
+});
+
+function metaFor(opt: EnumOptionProp): PinOptionAllocation {
+  return (
+    optionMeta.value.get(opt.value) ?? {
+      selectable: true,
+      suffix: "",
+      title: "",
+      cssClass: "",
+    }
+  );
+}
+
+function optionDisabled(opt: EnumOptionProp): boolean {
+  const m = metaFor(opt);
+  if (m.selectable) return false;
+  return selected.value !== opt.value;
+}
+
+function optionText(opt: EnumOptionProp): string {
+  const m = metaFor(opt);
+  return opt.label + m.suffix;
+}
 
 const selected = ref<number | "">("");
 const saving = ref(false);
@@ -92,13 +135,17 @@ watch(
 
 const statusText = computed(() => {
   if (localError.value) return localError.value;
+  const conflict = currentPinConflict.value;
+  if (conflict && !conflict.selectable) {
+    return conflict.title || "конфликт пинов";
+  }
   if (saving.value) return "сохранение…";
   if (snapshot.value.loading) return "загрузка конфига…";
   if (snapshot.value.lastError) return snapshot.value.lastError;
   if (snapshot.value.readOnly && snapshot.value.loaded) return "проект (offline)";
   if (!snapshot.value.connected && !configCanView(snapshot.value)) return "нет подключения";
   if (!snapshot.value.loaded) return "ожидание данных…";
-  return "enum";
+  return pinPool.value ? "enum · пины" : "enum";
 });
 
 const disabled = computed(
@@ -109,12 +156,27 @@ const disabled = computed(
     saving.value,
 );
 
+const selectClass = computed(() => ({
+  "field-select--error": !!localError.value,
+  "field-select--pin-conflict":
+    !!currentPinConflict.value && !currentPinConflict.value.selectable,
+}));
+
 async function commit() {
   if (disabled.value || !fieldName.value || selected.value === "") return;
   const value = Number(selected.value);
   if (!Number.isFinite(value)) {
     localError.value = "некорректное значение";
     return;
+  }
+  const opt = selectOptions.value.find((o) => o.value === value);
+  if (opt) {
+    const m = metaFor(opt);
+    if (!m.selectable && currentValue.value !== value) {
+      localError.value = m.title || "Пин уже занят другим полем";
+      selected.value = currentValue.value === null ? "" : currentValue.value;
+      return;
+    }
   }
   const current = getField(fieldName.value);
   if (current !== null && current === value) return;
@@ -138,7 +200,7 @@ async function commit() {
     <select
       v-model="selected"
       class="field-select"
-      :class="{ 'field-select--error': !!localError }"
+      :class="selectClass"
       :disabled="disabled"
       @change="commit"
     >
@@ -147,13 +209,19 @@ async function commit() {
         v-for="opt in selectOptions"
         :key="`${opt.value}-${opt.label}`"
         :value="opt.value"
+        :disabled="optionDisabled(opt)"
+        :class="metaFor(opt).cssClass"
+        :title="metaFor(opt).title"
       >
-        {{ opt.label }}
+        {{ optionText(opt) }}
       </option>
     </select>
     <span
       class="field-badge"
-      :class="{ 'field-badge--error': !!localError || !!snapshot.lastError }"
+      :class="{
+        'field-badge--error':
+          !!localError || !!snapshot.lastError || !!currentPinConflict?.title,
+      }"
     >
       {{ statusText }}
     </span>
@@ -190,8 +258,13 @@ async function commit() {
   color: var(--color-text-muted);
 }
 
-.field-select--error {
+.field-select--error,
+.field-select--pin-conflict {
   border-color: var(--color-danger, #c0392b);
+}
+
+.field-select option.pin-option--conflict {
+  color: var(--color-danger, #c0392b);
 }
 
 .field-badge {

@@ -17,6 +17,7 @@ use crate::config_diff::{encode_scalar_into_page, encode_string_into_page};
 use crate::project::ProjectEcuConfig;
 use crate::session::EcuSession;
 use crate::sources::output_channels::IniContext;
+use crate::sources::pin_allocation::build_pin_usage;
 
 /// INI `pageActivationDelay` + время async-записи flash после burn.
 const BURN_SETTLE_MS: u64 = 1500;
@@ -45,6 +46,9 @@ pub struct ConfigFieldInfo {
     pub array_rows: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub array_length: Option<usize>,
+    /// INI `$output_pin_e_list` и т.п. — поля с одним пулом пинов.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pin_pool: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -66,6 +70,9 @@ pub struct ConfigSnapshot {
     pub string_values: HashMap<String, String>,
     pub field_count: usize,
     pub last_error: Option<String>,
+    /// Занятость пинов по пулам INI (пересчитывается в Rust при каждом снимке).
+    #[serde(default)]
+    pub pin_usage: HashMap<String, HashMap<u32, Vec<String>>>,
 }
 
 impl ConfigSnapshot {
@@ -83,8 +90,20 @@ impl ConfigSnapshot {
             string_values: HashMap::new(),
             field_count: ini.config_fields.len(),
             last_error: None,
+            pin_usage: HashMap::new(),
         }
     }
+}
+
+fn apply_decoded_values(
+    snap: &mut ConfigSnapshot,
+    ini: &IniContext,
+    values: HashMap<String, f64>,
+    string_values: HashMap<String, String>,
+) {
+    snap.values = values;
+    snap.string_values = string_values;
+    snap.pin_usage = build_pin_usage(&ini.config_fields, &snap.values);
 }
 
 pub struct ConfigSource {
@@ -151,8 +170,7 @@ impl ConfigSource {
         snap.bytes_loaded = ecu.page_size;
         snap.bytes_total = ecu.page_size;
         snap.raw_len = raw.len();
-        snap.values = values;
-        snap.string_values = string_values;
+        apply_decoded_values(&mut snap, &ini, values, string_values);
         snap.field_count = ini.config_fields.len();
         snap.last_error = None;
         Ok(())
@@ -187,8 +205,7 @@ impl ConfigSource {
         snap.bytes_loaded = ini.page_size;
         snap.bytes_total = ini.page_size;
         snap.raw_len = raw.len();
-        snap.values = values;
-        snap.string_values = string_values;
+        apply_decoded_values(&mut snap, ini, values, string_values);
         snap.field_count = ini.config_fields.len();
         snap.last_error = None;
     }
@@ -268,6 +285,7 @@ impl ConfigSource {
                     array_cols: None,
                     array_rows: None,
                     array_length: None,
+                    pin_pool: None,
                 },
                 ConfigFieldKind::Enum(e) => ConfigFieldInfo {
                     name: name.clone(),
@@ -285,6 +303,7 @@ impl ConfigSource {
                     array_cols: None,
                     array_rows: None,
                     array_length: None,
+                    pin_pool: e.enum_define.clone(),
                 },
                 ConfigFieldKind::Array(a) => {
                     let (array_cols, array_rows, array_length) = match a.shape {
@@ -303,6 +322,7 @@ impl ConfigSource {
                         array_cols,
                         array_rows,
                         array_length,
+                        pin_pool: None,
                     }
                 },
                 ConfigFieldKind::String(s) => ConfigFieldInfo {
@@ -313,6 +333,7 @@ impl ConfigSource {
                     array_cols: None,
                     array_rows: None,
                     array_length: Some(s.length as usize),
+                    pin_pool: None,
                 },
             })
             .collect()
@@ -433,6 +454,7 @@ impl ConfigSource {
         let raw_store = Arc::clone(&self.raw);
         let on_update = Arc::new(on_update);
         let config_fields = ini.config_fields.clone();
+        let ini_ctx = ini.clone();
 
         let handle = thread::Builder::new()
             .name("rusefui-config-load".into())
@@ -503,7 +525,7 @@ impl ConfigSource {
                             let values = decode_config_fields(&config_fields, &bytes);
                             let string_values = decode_config_strings(&config_fields, &bytes);
                             *raw_store.lock().unwrap() = bytes.clone();
-                            snap = ConfigSnapshot {
+                            let mut loaded = ConfigSnapshot {
                                 connected: true,
                                 loaded: true,
                                 read_only: false,
@@ -512,11 +534,14 @@ impl ConfigSource {
                                 bytes_loaded: page_size,
                                 bytes_total: page_size,
                                 raw_len: bytes.len(),
-                                values,
-                                string_values,
+                                values: HashMap::new(),
+                                string_values: HashMap::new(),
                                 field_count,
                                 last_error: None,
+                                pin_usage: HashMap::new(),
                             };
+                            apply_decoded_values(&mut loaded, &ini_ctx, values, string_values);
+                            snap = loaded;
                         }
                         Some(Err(e)) => {
                             snap.loaded = false;
@@ -591,6 +616,7 @@ impl ConfigSource {
         {
             let mut snap = self.snapshot.write().unwrap();
             snap.values.insert(name.to_string(), value);
+            snap.pin_usage = build_pin_usage(&ini.config_fields, &snap.values);
             snap.last_error = None;
         }
 
@@ -733,8 +759,7 @@ impl ConfigSource {
         snap.bytes_loaded = page_size;
         snap.bytes_total = page_size;
         snap.raw_len = bytes.len();
-        snap.values = values;
-        snap.string_values = string_values;
+        apply_decoded_values(&mut snap, &ini, values, string_values);
         snap.field_count = config_fields.len();
         snap.last_error = None;
 

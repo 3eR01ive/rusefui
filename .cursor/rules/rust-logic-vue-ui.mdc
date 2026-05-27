@@ -1,0 +1,42 @@
+---
+description: Бизнес-логика и данные — Rust; Vue только отрисовка и UX.
+alwaysApply: true
+---
+
+# Rust для логики, Vue для UI
+
+**Всё, кроме отрисовки и отображения, пишем на Rust** (`crates/rusefui-runtime`, `crates/rusefi-*`, `src-tauri`).
+
+## В Rust
+
+- Декод/encode INI, config page 0, output channels
+- Протокол ECU (TunerStudio `R`/`C`/`Z`/`B`, verify, burn)
+- Индексы и производные данные из снимков (например `pin_usage`, diff, merge)
+- Валидация, конфликты, ограничения по данным ECU/INI
+- Состояние сессии, FSM workspace, источники данных (`sources/*`)
+
+Снимки отдаём во фронт уже **готовыми** (`ConfigSnapshot`, events Tauri).
+
+## Во Vue / TypeScript
+
+- Компоненты, layout, стили, анимации
+- Привязка к готовым полям снимка (`bind`, `useConfig`, composables-обёртки над invoke)
+- Локальный UX: loading, ошибки формы, disabled кнопок
+- Форматирование для экрана (подписи, единицы, `describePinOption` — только текст/CSS по уже посчитанному индексу)
+
+## Не делать во фронте
+
+- Повторный обход всех полей config для вычисления того, что зависит от `values` / raw page
+- Дублирование парсинга INI или правил rusEFI
+- «Удобные» пересчёты при каждом `config-snapshot`, если то же можно один раз в Rust при обновлении снимка
+
+## Пример (пины)
+
+- ✅ `build_pin_usage()` в `pin_allocation.rs`, поле `pinUsage` в `ConfigSnapshot`
+- ❌ `buildPinUsageIndex()` по всему `values` в TypeScript на каждое событие
+
+## Новая фича с данными
+
+1. Расширить runtime source / snapshot в Rust.
+2. Пробросить через Tauri command + event.
+3. Vue только читает и рисует.

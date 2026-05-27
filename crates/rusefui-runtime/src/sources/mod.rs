@@ -5,6 +5,7 @@ pub mod composite_trigger_wheels;
 pub mod knock_scope;
 pub mod knock_spectrogram;
 pub mod config;
+pub mod pin_allocation;
 pub mod output_channels;
 pub mod output_data_log;
 pub mod output_timeline;

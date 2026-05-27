@@ -19,7 +19,8 @@ pub use decode::{
 pub use error::IniError;
 pub use menu::{parse_menu_section, IniMenu};
 pub use model::{
-    ArrayField, ArrayShape, ConfigFieldKind, EnumField, EnumOption, FieldKind, IniCurveDef,
+    ArrayField, ArrayShape, BitsField, ConfigFieldKind, EnumField, EnumOption, FieldKind,
+    IniCurveDef,
     IniFile, IniTableDef, OutputChannelField, OutputChannels, ScalarField, ScalarType, StringField,
 };
 pub use parse::{parse_ini, split_ini_args, unescape_ini_bytes};

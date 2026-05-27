@@ -97,6 +97,9 @@ pub struct StringField {
 pub struct EnumField {
     pub bits: BitsField,
     pub options: Vec<EnumOption>,
+    /// INI `$output_pin_e_list` / `$gpio_list` — общий пул для проверки дубликатов.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enum_define: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

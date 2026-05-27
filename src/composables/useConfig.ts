@@ -18,6 +18,8 @@ export interface ConfigSnapshot {
   stringValues?: Record<string, string>;
   fieldCount: number;
   lastError?: string | null;
+  /** pool → pin value → поля config (считается в Rust). */
+  pinUsage?: Record<string, Record<string, string[]>>;
 }
 
 export interface ConfigEnumOption {
@@ -33,6 +35,8 @@ export interface ConfigFieldInfo {
   arrayCols?: number | null;
   arrayRows?: number | null;
   arrayLength?: number | null;
+  /** INI `$output_pin_e_list` / `$gpio_list` — общий пул пинов. */
+  pinPool?: string | null;
 }
 
 const snapshot = shallowRef<ConfigSnapshot>({
