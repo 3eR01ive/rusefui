@@ -322,6 +322,7 @@ children:
       - type: enum-field
         id: launchactivatepin
         props:
+          label: Launch Button
           options:
           - value: 0
             label: NONE
@@ -579,7 +580,6 @@ children:
             label: INVALID
           - value: 127
             label: INVALID
-          label: Launch Button
         bind:
           source: config
           field: launchActivatePin
@@ -1191,5 +1191,5 @@ children:
   children:
   - type: text
     props:
-      text: Панель «shift_torque_reduction_stateIndicatorPanel» — нет определения в INI
       variant: hint
+      text: Панель «shift_torque_reduction_stateIndicatorPanel» — нет определения в INI

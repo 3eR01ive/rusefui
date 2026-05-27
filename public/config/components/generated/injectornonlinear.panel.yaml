@@ -108,12 +108,12 @@ children:
   - type: enum-field
     id: injectorflowasmassflow
     props:
-      label: Set this to 'mass flow'
       options:
       - value: 0
         label: cc/min
       - value: 1
         label: grams per second
+      label: Set this to 'mass flow'
     bind:
       source: config
       field: injectorFlowAsMassFlow

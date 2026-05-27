@@ -6,5 +6,5 @@ source:
 children:
 - type: text
   props:
-    text: Панель «high_pressure_fuel_pumpIndicatorPanel» — нет определения в INI
     variant: hint
+    text: Панель «high_pressure_fuel_pumpIndicatorPanel» — нет определения в INI

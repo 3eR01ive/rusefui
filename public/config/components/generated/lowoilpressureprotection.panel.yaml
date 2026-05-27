@@ -33,8 +33,11 @@ children:
 - type: curve
   id: minimumoilpressure
   props:
-    xBins: minimumOilPressureBins
-    yBins: minimumOilPressureValues
-    title: Minimum oil pressure
     yLabel: min pressure
+    title: Minimum oil pressure
     xLabel: RPM
+  bind:
+    source: config
+    params:
+      xBins: minimumOilPressureBins
+      yBins: minimumOilPressureValues

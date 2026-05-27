@@ -18,12 +18,12 @@ children:
   - type: enum-field
     id: rotationalidlecontroller-enabled
     props:
-      label: Enable
       options:
       - value: 0
         label: disabled
       - value: 1
         label: enabled
+      label: Enable
     bind:
       source: config
       field: rotationalIdleController_enabled

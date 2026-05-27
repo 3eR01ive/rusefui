@@ -82,8 +82,8 @@ children:
     text: Here is three pairs of thermistor temperature and resistance.
 - type: text
   props:
-    variant: hint
     text: Typical temperatures is -40 deg C, 0 deg C and 100 deg C
+    variant: hint
 - type: scalar-field
   id: auxtempsensor2-tempc-1
   props:

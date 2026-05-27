@@ -9,6 +9,7 @@ import {
 } from "vue";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
+import { useInstanceBind } from "../../composables/useInstanceBind";
 import { initOutputChannels, useOutputChannels } from "../../composables/useOutputChannels";
 import { useEcuConnection } from "../../composables/useEcuConnection";
 import { useDataContext } from "../../core/data-context";
@@ -114,12 +115,16 @@ function toggleSettingsExpanded(): void {
   scheduleSaveLogUiToProject();
 }
 
+const instanceRef = computed(() => props.instance);
+const { fields: boundFields, source: bindSource } = useInstanceBind(instanceRef);
+
 const defaultFields = computed(() => {
-  const raw = props.props.fields;
-  if (Array.isArray(raw)) {
-    return raw.map(String).filter(Boolean);
+  if (bindSource.value && bindSource.value !== "outputChannels") {
+    console.warn(
+      `[output-chart] ожидался bind.source=outputChannels, получен ${bindSource.value}`,
+    );
   }
-  return ["RPMValue", "coolant"];
+  return boundFields.value;
 });
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);

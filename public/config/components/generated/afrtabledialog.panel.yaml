@@ -11,7 +11,6 @@ children:
   - type: enum-field
     id: afroverridemode
     props:
-      label: Override AFR table load axis
       options:
       - value: 0
         label: None
@@ -29,15 +28,19 @@ children:
         label: INVALID
       - value: 7
         label: INVALID
+      label: Override AFR table load axis
     bind:
       source: config
       field: afrOverrideMode
 - type: config-table
   id: afrtabletbl
   props:
-    variant: table
-    yBins: lambdaLoadBins
     title: Target AFR Table
     xLabel: RPM
-    zBins: lambdaTable
-    xBins: lambdaRpmBins
+    variant: table
+  bind:
+    source: config
+    params:
+      yBins: lambdaLoadBins
+      zBins: lambdaTable
+      xBins: lambdaRpmBins

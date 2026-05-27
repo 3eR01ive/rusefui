@@ -27,5 +27,5 @@ children:
     field: referenceVeForGenerator
 - type: text
   props:
-    text: this would adjust Torque table
     variant: hint
+    text: this would adjust Torque table

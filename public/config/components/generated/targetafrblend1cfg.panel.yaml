@@ -18,8 +18,8 @@ children:
     variant: hint
 - type: text
   props:
-    text: in +5.0 added to target AFR %.
     variant: hint
+    text: in +5.0 added to target AFR %.
 - type: text
   props:
     text: The X axis of the bias table is controlled by the selected blend
@@ -31,6 +31,7 @@ children:
 - type: enum-field
   id: targetafrblends1-blendparameter
   props:
+    label: Blend parameter
     options:
     - value: 0
       label: Zero
@@ -102,7 +103,6 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
-    label: Blend parameter
   bind:
     source: config
     field: targetAfrBlends1_blendParameter
@@ -187,7 +187,10 @@ children:
 - type: curve
   id: targetafrblend1bias
   props:
-    yBins: targetAfrBlends1_blendValues
     title: Target AFR adder 1 bias
-    xBins: targetAfrBlends1_blendBins
     yLabel: targetAfrBlends1_blendParameter)}
+  bind:
+    source: config
+    params:
+      yBins: targetAfrBlends1_blendValues
+      xBins: targetAfrBlends1_blendBins

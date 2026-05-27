@@ -7,12 +7,12 @@ children:
 - type: enum-field
   id: idlemode
   props:
+    label: Idle control mode
     options:
     - value: 0
       label: Open Loop + Closed Loop
     - value: 1
       label: Open Loop
-    label: Idle control mode
   bind:
     source: config
     field: idleMode
@@ -22,8 +22,8 @@ children:
     text: Solenoid idle control is disabled at zero RPM
 - type: text
   props:
-    variant: hint
     text: <html><a href=https://wiki.rusefi.com/Idle-Control>https://wiki.rusefi.com/Idle-Control</a></html>
+    variant: hint
 - type: section
   props:
     title: Idle Detection Thresholds
@@ -151,12 +151,12 @@ children:
   - type: enum-field
     id: useiacpidmulttable
     props:
+      label: Use IAC PID Multiplier Table
       options:
       - value: 0
         label: no
       - value: 1
         label: yes
-      label: Use IAC PID Multiplier Table
     bind:
       source: config
       field: useIacPidMultTable
@@ -167,12 +167,12 @@ children:
   - type: enum-field
     id: useseparateadvanceforidle
     props:
-      label: Separate idle ignition table
       options:
       - value: 0
         label: disabled
       - value: 1
         label: enabled
+      label: Separate idle ignition table
     bind:
       source: config
       field: useSeparateAdvanceForIdle
@@ -191,12 +191,12 @@ children:
   - type: enum-field
     id: useseparateveforidle
     props:
-      label: Separate idle VE table
       options:
       - value: 0
         label: disabled
       - value: 1
         label: enabled
+      label: Separate idle VE table
     bind:
       source: config
       field: useSeparateVeForIdle

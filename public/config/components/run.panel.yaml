@@ -16,6 +16,11 @@ children:
         id: dyno-main
         props:
           height: 360
+        bind:
+          source: outputChannels
+          params:
+            rpmField: RPMValue
+            tpsField: TPSValue
 
   - type: section
     props:

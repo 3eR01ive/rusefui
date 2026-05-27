@@ -7,8 +7,11 @@ children:
 - type: curve
   id: fan2pwmcurve
   props:
-    yBins: fan2PwmValues
-    xBins: fan2TempBins
+    xLabel: Coolant
     title: Fan 2 PWM vs Temperature
     yLabel: PWM %
-    xLabel: Coolant
+  bind:
+    source: config
+    params:
+      xBins: fan2TempBins
+      yBins: fan2PwmValues

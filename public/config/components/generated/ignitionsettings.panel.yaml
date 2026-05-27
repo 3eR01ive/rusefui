@@ -11,19 +11,18 @@ children:
   - type: enum-field
     id: isignitionenabled
     props:
+      label: Spark
       options:
       - value: 0
         label: disabled
       - value: 1
         label: enabled
-      label: Spark
     bind:
       source: config
       field: isIgnitionEnabled
   - type: enum-field
     id: ignitionmode
     props:
-      label: Mode
       options:
       - value: 0
         label: Single Coil
@@ -33,6 +32,7 @@ children:
         label: Wasted Spark
       - value: 3
         label: Two Distributors
+      label: Mode
     bind:
       source: config
       field: ignitionMode
@@ -46,19 +46,18 @@ children:
   - type: enum-field
     id: twowirebatchignition
     props:
+      label: Individually wired Wasted Spark
       options:
       - value: 0
         label: no
       - value: 1
         label: yes
-      label: Individually wired Wasted Spark
     bind:
       source: config
       field: twoWireBatchIgnition
   - type: enum-field
     id: ignoverridemode
     props:
-      label: Override ignition table load axis
       options:
       - value: 0
         label: None
@@ -76,6 +75,7 @@ children:
         label: INVALID
       - value: 7
         label: INVALID
+      label: Override ignition table load axis
     bind:
       source: config
       field: ignOverrideMode
@@ -86,12 +86,12 @@ children:
   - type: enum-field
     id: timingmode
     props:
+      label: Timing Mode
       options:
       - value: 0
         label: dynamic
       - value: 1
         label: fixed
-      label: Timing Mode
     bind:
       source: config
       field: timingMode
@@ -124,6 +124,7 @@ children:
   - type: enum-field
     id: ignitionpinmode
     props:
+      label: Ignition Output Mode
       options:
       - value: 0
         label: default
@@ -133,7 +134,6 @@ children:
         label: open collector
       - value: 3
         label: open collector inverted
-      label: Ignition Output Mode
     bind:
       source: config
       field: ignitionPinMode
@@ -668,7 +668,6 @@ children:
   - type: enum-field
     id: ignitionpins3
     props:
-      label: Ignition Output 3
       options:
       - value: 0
         label: NONE
@@ -926,13 +925,13 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: Ignition Output 3
     bind:
       source: config
       field: ignitionPins3
   - type: enum-field
     id: ignitionpins4
     props:
-      label: Ignition Output 4
       options:
       - value: 0
         label: NONE
@@ -1190,13 +1189,13 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: Ignition Output 4
     bind:
       source: config
       field: ignitionPins4
   - type: enum-field
     id: ignitionpins5
     props:
-      label: Ignition Output 5
       options:
       - value: 0
         label: NONE
@@ -1454,13 +1453,13 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: Ignition Output 5
     bind:
       source: config
       field: ignitionPins5
   - type: enum-field
     id: ignitionpins6
     props:
-      label: Ignition Output 6
       options:
       - value: 0
         label: NONE
@@ -1718,13 +1717,13 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: Ignition Output 6
     bind:
       source: config
       field: ignitionPins6
   - type: enum-field
     id: ignitionpins7
     props:
-      label: Ignition Output 7
       options:
       - value: 0
         label: NONE
@@ -1982,12 +1981,14 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: Ignition Output 7
     bind:
       source: config
       field: ignitionPins7
   - type: enum-field
     id: ignitionpins8
     props:
+      label: Ignition Output 8
       options:
       - value: 0
         label: NONE
@@ -2245,14 +2246,12 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: Ignition Output 8
     bind:
       source: config
       field: ignitionPins8
   - type: enum-field
     id: ignitionpins9
     props:
-      label: Ignition Output 9
       options:
       - value: 0
         label: NONE
@@ -2510,6 +2509,7 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: Ignition Output 9
     bind:
       source: config
       field: ignitionPins9
@@ -2780,6 +2780,7 @@ children:
   - type: enum-field
     id: ignitionpins11
     props:
+      label: Ignition Output 11
       options:
       - value: 0
         label: NONE
@@ -3037,7 +3038,6 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: Ignition Output 11
     bind:
       source: config
       field: ignitionPins11

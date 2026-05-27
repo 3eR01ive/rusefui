@@ -167,6 +167,20 @@ impl ComponentLogic for DynoLogic {
                 self.dirty = true;
                 Ok(self.to_json())
             }
+            "set_channels" => {
+                if let Some(f) = payload.get("rpmField").and_then(|v| v.as_str()) {
+                    if !f.is_empty() {
+                        self.rpm_field = f.to_string();
+                    }
+                }
+                if let Some(f) = payload.get("tpsField").and_then(|v| v.as_str()) {
+                    if !f.is_empty() {
+                        self.tps_field = f.to_string();
+                    }
+                }
+                self.dirty = true;
+                Ok(self.to_json())
+            }
             "set_options" => {
                 self.set_options_from_payload(&payload);
                 if self.recording {

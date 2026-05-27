@@ -11,12 +11,12 @@ children:
   - type: enum-field
     id: vvlcontrolenabled
     props:
+      label: VVL/Switched cam Control
       options:
       - value: 0
         label: disabled
       - value: 1
         label: enabled
-      label: VVL/Switched cam Control
     bind:
       source: config
       field: vvlControlEnabled
@@ -291,7 +291,6 @@ children:
     - type: enum-field
       id: vvlrelaypinmode
       props:
-        label: VVL Relay Mode
         options:
         - value: 0
           label: default
@@ -301,6 +300,7 @@ children:
           label: open collector
         - value: 3
           label: open collector inverted
+        label: VVL Relay Mode
       bind:
         source: config
         field: vvlRelayPinMode
@@ -373,5 +373,5 @@ children:
   children:
   - type: text
     props:
-      text: Панель «vvl_controller_stateIndicatorPanel» — нет определения в INI
       variant: hint
+      text: Панель «vvl_controller_stateIndicatorPanel» — нет определения в INI

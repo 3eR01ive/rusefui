@@ -10,12 +10,12 @@ children:
     variant: hint
 - type: text
   props:
-    text: is mixed in to the open loop boost table. For example, a value of
     variant: hint
+    text: is mixed in to the open loop boost table. For example, a value of
 - type: text
   props:
-    variant: hint
     text: +10 in the table, with 50 as the current bias will result
+    variant: hint
 - type: text
   props:
     variant: hint
@@ -191,8 +191,11 @@ children:
 - type: curve
   id: boostopenloopblend2bias
   props:
+    title: Boost open loop blend 2 bias
     xLabel: param
     yLabel: bias
-    xBins: boostOpenLoopBlends2_blendBins
-    title: Boost open loop blend 2 bias
-    yBins: boostOpenLoopBlends2_blendValues
+  bind:
+    source: config
+    params:
+      xBins: boostOpenLoopBlends2_blendBins
+      yBins: boostOpenLoopBlends2_blendValues

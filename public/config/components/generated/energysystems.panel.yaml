@@ -15,18 +15,19 @@ children:
     - type: enum-field
       id: isalternatorcontrolenabled
       props:
-        label: Enabled
         options:
         - value: 0
           label: disable
         - value: 1
           label: enable
+        label: Enabled
       bind:
         source: config
         field: isAlternatorControlEnabled
     - type: enum-field
       id: alternatorcontrolpin
       props:
+        label: Control output
         options:
         - value: 0
           label: NONE
@@ -284,14 +285,12 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: Control output
       bind:
         source: config
         field: alternatorControlPin
     - type: enum-field
       id: alternatorcontrolpinmode
       props:
-        label: Control output mode
         options:
         - value: 0
           label: default
@@ -301,6 +300,7 @@ children:
           label: open collector
         - value: 3
           label: open collector inverted
+        label: Control output mode
       bind:
         source: config
         field: alternatorControlPinMode
@@ -385,8 +385,11 @@ children:
   - type: config-table
     id: alternatorvoltagetargettabletbl
     props:
-      variant: table
-      yBins: alternatorVoltageTargetLoadBins
-      zBins: alternatorVoltageTargetTable
-      xBins: alternatorVoltageTargetRpmBins
       title: Alternator Voltage Target Table
+      variant: table
+    bind:
+      source: config
+      params:
+        xBins: alternatorVoltageTargetRpmBins
+        yBins: alternatorVoltageTargetLoadBins
+        zBins: alternatorVoltageTargetTable

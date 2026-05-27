@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
+import { useInstanceBind } from "../../composables/useInstanceBind";
 import { useDataContext } from "../../core/data-context";
 import {
   initCompositeLogger,
@@ -55,6 +56,15 @@ const props = defineProps<{
   binding: unknown;
   meta: ComponentMeta;
 }>();
+
+const instanceRef = computed(() => props.instance);
+const { source: bindSource } = useInstanceBind(instanceRef);
+
+if (bindSource.value && bindSource.value !== "compositeLogger") {
+  console.warn(
+    `[composite-chart] ожидался bind.source=compositeLogger, получен ${bindSource.value}`,
+  );
+}
 
 const maxWindowMs = computed(() => Math.max(5, Number(props.props.windowMs ?? 300)));
 const chartHeight = computed(() => Math.max(120, Number(props.props.height ?? 220)));

@@ -15,12 +15,12 @@ children:
   - type: enum-field
     id: launchcontrolenabled
     props:
-      label: Launch Control
       options:
       - value: 0
         label: disabled
       - value: 1
         label: enabled
+      label: Launch Control
     bind:
       source: config
       field: launchControlEnabled
@@ -51,7 +51,6 @@ children:
   - type: enum-field
     id: launchactivatepin
     props:
-      label: Launch Button
       options:
       - value: 0
         label: NONE
@@ -309,6 +308,7 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: Launch Button
     bind:
       source: config
       field: launchActivatePin
@@ -339,6 +339,7 @@ children:
   - type: enum-field
     id: clutchdownpin
     props:
+      label: Clutch Down
       options:
       - value: 0
         label: NONE
@@ -596,13 +597,13 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: Clutch Down
     bind:
       source: config
       field: clutchDownPin
   - type: enum-field
     id: clutchdownpinmode
     props:
+      label: Clutch Down mode
       options:
       - value: 0
         label: DEFAULT
@@ -620,7 +621,6 @@ children:
         label: INVERTED PULLDOWN
       - value: 7
         label: '"INVALID'
-      label: Clutch Down mode
     bind:
       source: config
       field: clutchDownPinMode
@@ -655,12 +655,12 @@ children:
   - type: enum-field
     id: enablelaunchretard
     props:
+      label: Use Ignition Retard
       options:
       - value: 0
         label: no
       - value: 1
         label: yes
-      label: Use Ignition Retard
     bind:
       source: config
       field: enableLaunchRetard
@@ -681,12 +681,12 @@ children:
   - type: enum-field
     id: launchsmoothretard
     props:
+      label: Smooth Retard Mode
       options:
       - value: 0
         label: disabled
       - value: 1
         label: enabled
-      label: Smooth Retard Mode
     bind:
       source: config
       field: launchSmoothRetard
@@ -707,12 +707,12 @@ children:
   - type: enum-field
     id: launchsparkcutenable
     props:
-      label: Ignition Cut
       options:
       - value: 0
         label: no
       - value: 1
         label: yes
+      label: Ignition Cut
     bind:
       source: config
       field: launchSparkCutEnable
@@ -733,12 +733,12 @@ children:
   - type: enum-field
     id: launchfuelcutenable
     props:
-      label: Fuel Cut
       options:
       - value: 0
         label: no
       - value: 1
         label: yes
+      label: Fuel Cut
     bind:
       source: config
       field: launchFuelCutEnable
@@ -748,5 +748,5 @@ children:
   children:
   - type: text
     props:
-      text: Панель «launch_control_stateIndicatorPanel» — нет определения в INI
       variant: hint
+      text: Панель «launch_control_stateIndicatorPanel» — нет определения в INI

@@ -83,6 +83,7 @@ children:
   - type: enum-field
     id: imutype
     props:
+      label: Inertia Measurement Unit
       options:
       - value: 0
         label: None
@@ -148,19 +149,18 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
-      label: Inertia Measurement Unit
     bind:
       source: config
       field: imuType
   - type: enum-field
     id: canreadenabled
     props:
+      label: CAN read enabled
       options:
       - value: 0
         label: disable
       - value: 1
         label: enable
-      label: CAN read enabled
     bind:
       source: config
       field: canReadEnabled
@@ -179,36 +179,36 @@ children:
   - type: enum-field
     id: enableverbosecantx
     props:
+      label: Enable rusEFI CAN broadcast
       options:
       - value: 0
         label: no
       - value: 1
         label: yes
-      label: Enable rusEFI CAN broadcast
     bind:
       source: config
       field: enableVerboseCanTx
   - type: enum-field
     id: enableextendedcanbroadcast
     props:
+      label: Board state broadcast
       options:
       - value: 0
         label: no
       - value: 1
         label: yes
-      label: Board state broadcast
     bind:
       source: config
       field: enableExtendedCanBroadcast
   - type: enum-field
     id: canbroadcastusechanneltwo
     props:
+      label: rusEFI CAN data bus
       options:
       - value: 0
         label: first
       - value: 1
         label: second
-      label: rusEFI CAN data bus
     bind:
       source: config
       field: canBroadcastUseChannelTwo
@@ -245,19 +245,18 @@ children:
   - type: enum-field
     id: verbosecan
     props:
+      label: Verbose Can
       options:
       - value: 0
         label: Do not print
       - value: 1
         label: Print all
-      label: Verbose Can
     bind:
       source: config
       field: verboseCan
   - type: enum-field
     id: canbaudrate
     props:
-      label: Bitrate
       options:
       - value: 0
         label: 33.33kbps
@@ -291,18 +290,19 @@ children:
         label: INVALID
       - value: 15
         label: INVALID
+      label: Bitrate
     bind:
       source: config
       field: canBaudRate
   - type: enum-field
     id: canopenblt
     props:
-      label: Allow OpenBLT
       options:
       - value: 0
         label: no
       - value: 1
         label: yes
+      label: Allow OpenBLT
     bind:
       source: config
       field: canOpenBLT
@@ -313,18 +313,19 @@ children:
   - type: enum-field
     id: verbosecan2
     props:
-      label: Verbose Can2
       options:
       - value: 0
         label: Do not print
       - value: 1
         label: Print all
+      label: Verbose Can2
     bind:
       source: config
       field: verboseCan2
   - type: enum-field
     id: can2baudrate
     props:
+      label: Bitrate
       options:
       - value: 0
         label: 33.33kbps
@@ -358,7 +359,6 @@ children:
         label: INVALID
       - value: 15
         label: INVALID
-      label: Bitrate
     bind:
       source: config
       field: can2BaudRate

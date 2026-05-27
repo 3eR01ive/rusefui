@@ -12,6 +12,8 @@ children:
         props:
           height: 240
           windowSeconds: 30
+        bind:
+          source: outputChannels
           fields:
             - RPMValue
             - coolant
@@ -25,6 +27,8 @@ children:
         props:
           height: 220
           windowMs: 500
+        bind:
+          source: compositeLogger
           # autoStopSec: 0  # авто-disable на ECU через N с (0 = только в UI)
 
   - type: section

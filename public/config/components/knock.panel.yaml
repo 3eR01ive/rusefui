@@ -17,3 +17,5 @@ children:
           height: 240
           spectrogramHeight: 220
           windowMs: 500
+        bind:
+          source: knockScope

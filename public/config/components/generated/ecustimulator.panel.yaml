@@ -17,8 +17,8 @@ children:
     variant: hint
 - type: text
   props:
-    text: 'Кнопка: Disable trigger simulation (cmd_disable_self_stim)'
     variant: hint
+    text: 'Кнопка: Disable trigger simulation (cmd_disable_self_stim)'
 - type: enum-field
   id: logicanalyzerpins1
   props:
@@ -550,6 +550,7 @@ children:
 - type: enum-field
   id: logicanalyzerpins3
   props:
+    label: Logic input channel 3
     options:
     - value: 0
       label: NONE
@@ -807,7 +808,6 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
-    label: Logic input channel 3
   bind:
     source: config
     field: logicAnalyzerPins3

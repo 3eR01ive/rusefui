@@ -6,11 +6,12 @@ source:
 children:
 - type: text
   props:
-    text: Only for advanced power management wiring
     variant: hint
+    text: Only for advanced power management wiring
 - type: enum-field
   id: ignkeyadcchannel
   props:
+    label: Ignition Key ADC input
     options:
     - value: 0
       label: NONE
@@ -76,7 +77,6 @@ children:
       label: INVALID
     - value: 31
       label: INVALID
-    label: Ignition Key ADC input
   bind:
     source: config
     field: ignKeyAdcChannel

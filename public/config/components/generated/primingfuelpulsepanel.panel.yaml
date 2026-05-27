@@ -16,6 +16,9 @@ children:
   props:
     title: Priming pulse fuel mass
     yLabel: Prime Pulse
-    xBins: primeBins
-    yBins: primeValues
     xLabel: Coolant
+  bind:
+    source: config
+    params:
+      xBins: primeBins
+      yBins: primeValues

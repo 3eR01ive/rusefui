@@ -37,7 +37,10 @@ children:
   props:
     variant: table
     xLabel: RPM
-    xBins: lambdaRpmBins
-    yBins: lambdaLoadBins
     title: Target Lambda Table
-    zBins: lambdaTable
+  bind:
+    source: config
+    params:
+      xBins: lambdaRpmBins
+      yBins: lambdaLoadBins
+      zBins: lambdaTable

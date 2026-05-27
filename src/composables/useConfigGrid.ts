@@ -1,24 +1,28 @@
 import { computed, ref, watch, type ComputedRef } from "vue";
+import type { ComponentInstance } from "../core/types";
 import { configCanEdit, initConfig, useConfig } from "./useConfig";
+import { useInstanceBind } from "./useInstanceBind";
 
 export type ConfigGridKind = "table" | "curve";
 
 export interface UseConfigGridOptions {
   kind: ConfigGridKind;
+  instance: ComputedRef<ComponentInstance>;
   props: ComputedRef<Record<string, unknown>>;
 }
 
-export function useConfigGrid({ kind, props }: UseConfigGridOptions) {
+export function useConfigGrid({ kind, instance, props }: UseConfigGridOptions) {
   void initConfig();
 
   const { snapshot, getArray, setArrayValue } = useConfig();
+  const { paramString } = useInstanceBind(instance);
 
   const isCurve = kind === "curve";
 
   const title = computed(() => String(props.value.title ?? ""));
-  const xField = computed(() => String(props.value.xBins ?? ""));
-  const yField = computed(() => String(props.value.yBins ?? ""));
-  const zField = computed(() => String(props.value.zBins ?? ""));
+  const xField = computed(() => paramString("xBins") ?? "");
+  const yField = computed(() => paramString("yBins") ?? "");
+  const zField = computed(() => paramString("zBins") ?? "");
   const xLabel = computed(() => String(props.value.xLabel ?? "X"));
   const yLabel = computed(() => String(props.value.yLabel ?? "Y"));
 

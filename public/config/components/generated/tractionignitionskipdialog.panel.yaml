@@ -19,8 +19,11 @@ children:
 - type: config-table
   id: tractionignitionskiptabletbl
   props:
-    xBins: tractionControlSpeedBins
-    yBins: tractionControlSlipBins
     title: Traction Control Skip Ignition
-    zBins: tractionControlIgnitionSkip
     variant: table
+  bind:
+    source: config
+    params:
+      zBins: tractionControlIgnitionSkip
+      xBins: tractionControlSpeedBins
+      yBins: tractionControlSlipBins

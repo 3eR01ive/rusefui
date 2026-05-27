@@ -6,8 +6,8 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: Use rusEFI console for Lua script editing
+    variant: hint
 - type: scalar-field
   id: set-number-is-not-associated-with-the-output-number
   props:
@@ -85,8 +85,8 @@ children:
 - type: string-field
   id: scriptsettingname5
   props:
-    maxLength: 16
     label: 'Name #5'
+    maxLength: 16
   bind:
     source: config
     field: scriptSettingName5

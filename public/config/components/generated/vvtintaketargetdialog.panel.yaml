@@ -7,11 +7,14 @@ children:
 - type: config-table
   id: vvttable1tbl
   props:
-    xBins: vvtTable1RpmBins
-    yBins: vvtTable1LoadBins
-    zBins: vvtTable1
     title: Intake VVT closed loop Target
     variant: table
+  bind:
+    source: config
+    params:
+      xBins: vvtTable1RpmBins
+      yBins: vvtTable1LoadBins
+      zBins: vvtTable1
 - type: section
   props:
     title: VVT status & offset

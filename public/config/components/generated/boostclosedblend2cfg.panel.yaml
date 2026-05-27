@@ -26,8 +26,8 @@ children:
     variant: hint
 - type: text
   props:
-    text: parameter below.
     variant: hint
+    text: parameter below.
 - type: enum-field
   id: boostclosedloopblends2-blendparameter
   props:
@@ -109,6 +109,7 @@ children:
 - type: enum-field
   id: boostclosedloopblends2-yaxisoverride
   props:
+    label: Y axis override (set Zero for no override)
     options:
     - value: 0
       label: Zero
@@ -180,15 +181,17 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
-    label: Y axis override (set Zero for no override)
   bind:
     source: config
     field: boostClosedLoopBlends2_yAxisOverride
 - type: curve
   id: boostclosedloopblend2bias
   props:
-    yBins: boostClosedLoopBlends2_blendValues
-    xBins: boostClosedLoopBlends2_blendBins
     xLabel: param
     title: Boost Closed loop blend 2 bias
     yLabel: bias
+  bind:
+    source: config
+    params:
+      yBins: boostClosedLoopBlends2_blendValues
+      xBins: boostClosedLoopBlends2_blendBins

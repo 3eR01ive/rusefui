@@ -90,12 +90,12 @@ children:
         field: Disables jam detection for testing until the next power cycle
     - type: text
       props:
-        text: 'Кнопка: Temporarily disable jam detection (cmd_etb_disable_jam_detect)'
         variant: hint
+        text: 'Кнопка: Temporarily disable jam detection (cmd_etb_disable_jam_detect)'
   - type: text
     props:
-      variant: hint
       text: Панель «etbIndicatorPanel» — нет определения в INI
+      variant: hint
 - type: section
   props:
     title: etbDialogRight
@@ -173,20 +173,20 @@ children:
         field: Should first OPEN, then CLOSE
     - type: text
       props:
-        variant: hint
         text: Please check with your eyes that throttle first OPENS and then CLOSES
+        variant: hint
     - type: text
       props:
+        variant: hint
         text: If order is reversed swap ETB+/ETB- wires
-        variant: hint
     - type: text
       props:
+        variant: hint
         text: 'Bench test: opens ETB 300ms, no ignition/sensors needed'
-        variant: hint
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Bench Test ETB 1 (open 300ms) (cmd_etb_bench_test)'
+        variant: hint
     - type: text
       props:
         text: 'Кнопка: Auto Calibrate ETB 1 (cmd_etb_auto_calibrate)'
@@ -211,16 +211,16 @@ children:
         field: Should first OPEN, then CLOSE
     - type: text
       props:
+        variant: hint
         text: Please check with your eyes that throttle first OPENS and then CLOSES
-        variant: hint
     - type: text
       props:
+        variant: hint
         text: If order is reversed swap ETB+/ETB- wires
-        variant: hint
     - type: text
       props:
-        text: 'Bench test: opens ETB 300ms, no ignition/sensors needed'
         variant: hint
+        text: 'Bench test: opens ETB 300ms, no ignition/sensors needed'
     - type: text
       props:
         text: 'Кнопка: Bench Test ETB 2 (open 300ms) (cmd_etb_bench_test_2)'

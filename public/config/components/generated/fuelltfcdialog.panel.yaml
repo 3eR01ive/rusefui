@@ -25,12 +25,12 @@ children:
     - type: enum-field
       id: ltft-enabled
       props:
+        label: Gathering Data
         options:
         - value: 0
           label: no
         - value: 1
           label: yes
-        label: Gathering Data
       bind:
         source: config
         field: ltft_enabled
@@ -93,12 +93,12 @@ children:
     - type: enum-field
       id: ltft-correctionenabled
       props:
-        label: Apply Correction
         options:
         - value: 0
           label: no
         - value: 1
           label: yes
+        label: Apply Correction
       bind:
         source: config
         field: ltft_correctionEnabled
@@ -108,12 +108,12 @@ children:
     children:
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Reset LTFT trims (cmd_ltft_reset)'
+        variant: hint
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Apply LTFT to VE and reset (cmd_ltft_apply_to_ve)'
+        variant: hint
   - type: section
     props:
       title: Status

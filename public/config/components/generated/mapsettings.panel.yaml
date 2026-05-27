@@ -33,12 +33,12 @@ children:
     - type: enum-field
       id: measuremaponlyinonecylinder
       props:
+        label: Measure Map Only In One Cylinder
         options:
         - value: 0
           label: no
         - value: 1
           label: yes
-        label: Measure Map Only In One Cylinder
       bind:
         source: config
         field: measureMapOnlyInOneCylinder
@@ -63,7 +63,6 @@ children:
     - type: enum-field
       id: map-sensor-hwchannel
       props:
-        label: MAP input
         options:
         - value: 0
           label: NONE
@@ -129,6 +128,7 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
+        label: MAP input
       bind:
         source: config
         field: map_sensor_hwChannel

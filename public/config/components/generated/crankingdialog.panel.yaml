@@ -34,12 +34,12 @@ children:
   - type: enum-field
     id: userunningmathforcranking
     props:
+      label: Fuel Source For Cranking
       options:
       - value: 0
         label: Fixed
       - value: 1
         label: Fuel Map
-      label: Fuel Source For Cranking
     bind:
       source: config
       field: useRunningMathForCranking
@@ -50,12 +50,12 @@ children:
   - type: enum-field
     id: useseparateadvanceforcranking
     props:
+      label: Timing Advance mode
       options:
       - value: 0
         label: Fixed (auto taper)
       - value: 1
         label: Table
-      label: Timing Advance mode
     bind:
       source: config
       field: useSeparateAdvanceForCranking
@@ -92,12 +92,12 @@ children:
   - type: enum-field
     id: isfasterenginespinupenabled
     props:
+      label: Faster engine spin-up
       options:
       - value: 0
         label: disabled
       - value: 1
         label: enabled
-      label: Faster engine spin-up
     bind:
       source: config
       field: isFasterEngineSpinUpEnabled
@@ -116,12 +116,12 @@ children:
   - type: enum-field
     id: flexcranking
     props:
+      label: Separate Flex Fuel cranking table
       options:
       - value: 0
         label: disabled
       - value: 1
         label: enabled
-      label: Separate Flex Fuel cranking table
     bind:
       source: config
       field: flexCranking

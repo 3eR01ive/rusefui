@@ -7,12 +7,12 @@ children:
 - type: enum-field
   id: useidletimingpidcontrol
   props:
-    label: Enable closed loop idle ignition timing
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
+    label: Enable closed loop idle ignition timing
   bind:
     source: config
     field: useIdleTimingPidControl
@@ -22,8 +22,8 @@ children:
     variant: hint
 - type: text
   props:
-    text: A good starting point is 0.1 = 10 deg per 100 rpm
     variant: hint
+    text: A good starting point is 0.1 = 10 deg per 100 rpm
 - type: scalar-field
   id: idletimingpid-pfactor
   props:

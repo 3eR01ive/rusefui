@@ -7,16 +7,19 @@ children:
 - type: string-field
   id: scriptcurvename4
   props:
-    label: Name
     maxLength: 16
+    label: Name
   bind:
     source: config
     field: scriptCurveName4
 - type: curve
   id: scriptcurve4
   props:
+    title: 'Script Curve #4'
     xLabel: X
     yLabel: Y
-    title: 'Script Curve #4'
-    yBins: scriptCurve4
-    xBins: scriptCurve4Bins
+  bind:
+    source: config
+    params:
+      xBins: scriptCurve4Bins
+      yBins: scriptCurve4

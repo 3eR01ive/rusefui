@@ -81,7 +81,6 @@ children:
   - type: enum-field
     id: afr-hwchannel
     props:
-      label: Input channel
       options:
       - value: 0
         label: NONE
@@ -147,12 +146,14 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
+      label: Input channel
     bind:
       source: config
       field: afr_hwChannel
   - type: enum-field
     id: o2heaterpin
     props:
+      label: Narrowband Heater output
       options:
       - value: 0
         label: NONE
@@ -410,7 +411,6 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: Narrowband Heater output
     bind:
       source: config
       field: o2heaterPin

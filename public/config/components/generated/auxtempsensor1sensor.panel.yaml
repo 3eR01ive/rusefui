@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: auxtempsensor1-adcchannel
     props:
+      label: Input channel
       options:
       - value: 0
         label: NONE
@@ -76,14 +77,13 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
-      label: Input channel
     bind:
       source: config
       field: auxTempSensor1_adcChannel
   - type: text
     props:
-      text: Here is three pairs of thermistor temperature and resistance.
       variant: hint
+      text: Here is three pairs of thermistor temperature and resistance.
   - type: text
     props:
       text: Typical temperatures is -40 deg C, 0 deg C and 100 deg C

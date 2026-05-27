@@ -7,12 +7,12 @@ children:
 - type: enum-field
   id: isphasesyncrequiredforignition
   props:
+    label: Require cam/VVT sync for ignition
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
-    label: Require cam/VVT sync for ignition
   bind:
     source: config
     field: isPhaseSyncRequiredForIgnition

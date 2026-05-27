@@ -35,13 +35,20 @@ export function createDataContext(): DataContextState {
 export function resolveBinding(bind: DataBinding | undefined): unknown {
   if (!bind) return undefined;
 
-  switch (bind.source as DataSourceId) {
+  switch (bind.source) {
     case "connection":
       return useDataContext().connection.value;
     case "config":
     case "outputChannels":
     case "textLog":
-      return { source: bind.source, field: bind.field, params: bind.params };
+    case "knockScope":
+    case "compositeLogger":
+      return {
+        source: bind.source,
+        field: bind.field,
+        fields: bind.fields,
+        params: bind.params,
+      };
     default:
       console.warn(`[data] unknown source: ${bind.source}`);
       return undefined;

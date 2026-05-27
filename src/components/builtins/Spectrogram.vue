@@ -8,6 +8,7 @@ import {
   watch,
 } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
+import { useInstanceBind } from "../../composables/useInstanceBind";
 import {
   initKnockScope,
   useKnockScope,
@@ -30,6 +31,9 @@ const yamlProps = defineProps<{
   meta: ComponentMeta;
 }>();
 
+const instanceRef = computed(() => yamlProps.instance);
+const { source: bindSource } = useInstanceBind(instanceRef);
+
 const chartHeight = computed(() => {
   const h = Number(yamlProps.props.height ?? 280);
   return h >= 180 ? h : 280;
@@ -49,6 +53,12 @@ const windowMs = computed(() => {
 const chartRef = ref<HTMLCanvasElement | null>(null);
 const spectrogramRef = ref<HTMLCanvasElement | null>(null);
 const { snapshot, setScopeEnabled } = useKnockScope();
+
+if (bindSource.value && bindSource.value !== "knockScope") {
+  console.warn(
+    `[spectrogram] ожидался bind.source=knockScope, получен ${bindSource.value}`,
+  );
+}
 
 const spectrogramView = computed((): KnockSpectrogramView => {
   const s = snapshot.value.spectrogram;

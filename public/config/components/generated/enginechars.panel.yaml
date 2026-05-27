@@ -21,7 +21,6 @@ children:
 - type: enum-field
   id: firingorder
   props:
-    label: Firing order
     options:
     - value: 0
       label: One Cylinder
@@ -279,6 +278,7 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
+    label: Firing order
   bind:
     source: config
     field: firingOrder
@@ -293,32 +293,32 @@ children:
   - type: string-field
     id: enginemake
     props:
-      maxLength: 32
       label: Engine Make
+      maxLength: 32
     bind:
       source: config
       field: engineMake
   - type: string-field
     id: enginecode
     props:
-      label: Manufacturer Engine Code
       maxLength: 32
+      label: Manufacturer Engine Code
     bind:
       source: config
       field: engineCode
   - type: string-field
     id: vehiclename
     props:
-      label: Vehicle Name
       maxLength: 32
+      label: Vehicle Name
     bind:
       source: config
       field: vehicleName
   - type: string-field
     id: vinnumber
     props:
-      maxLength: 17
       label: VIN
+      maxLength: 17
     bind:
       source: config
       field: vinNumber
@@ -328,8 +328,8 @@ children:
   children:
   - type: text
     props:
-      variant: hint
       text: https://rusefi.com/s/fuel
+      variant: hint
   - type: enum-field
     id: fuelalgorithm
     props:
@@ -365,12 +365,12 @@ children:
 - type: enum-field
   id: uselambdaoninterface
   props:
+    label: Lambda display
     options:
     - value: 0
       label: AFR
     - value: 1
       label: Lambda
-    label: Lambda display
   bind:
     source: config
     field: useLambdaOnInterface

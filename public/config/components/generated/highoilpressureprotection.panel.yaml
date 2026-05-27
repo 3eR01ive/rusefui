@@ -14,8 +14,11 @@ children:
 - type: curve
   id: maximumoilpressure
   props:
-    yBins: maximumOilPressureValues
     title: Maximum oil pressure
-    xLabel: RPM
     yLabel: max pressure
-    xBins: maximumOilPressureBins
+    xLabel: RPM
+  bind:
+    source: config
+    params:
+      yBins: maximumOilPressureValues
+      xBins: maximumOilPressureBins

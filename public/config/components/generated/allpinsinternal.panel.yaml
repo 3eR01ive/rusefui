@@ -375,6 +375,7 @@ children:
   - type: enum-field
     id: mc33816-rstb
     props:
+      label: rstb
       options:
       - value: 0
         label: NONE
@@ -732,14 +733,12 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: rstb
     bind:
       source: config
       field: mc33816_rstb
   - type: enum-field
     id: mc33816-flag0
     props:
-      label: flag0
       options:
       - value: 0
         label: NONE
@@ -1097,6 +1096,7 @@ children:
         label: PK14
       - value: 177
         label: PK15
+      label: flag0
     bind:
       source: config
       field: mc33816_flag0
@@ -1489,7 +1489,6 @@ children:
   - type: enum-field
     id: hpfpvalvepin
     props:
-      label: hpfpValvePin
       options:
       - value: 0
         label: NONE
@@ -1747,6 +1746,7 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: hpfpValvePin
     bind:
       source: config
       field: hpfpValvePin
@@ -2121,6 +2121,7 @@ children:
   - type: enum-field
     id: spi1misopin
     props:
+      label: SPI1 MISO
       options:
       - value: 0
         label: NONE
@@ -2478,7 +2479,6 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: SPI1 MISO
     bind:
       source: config
       field: spi1misoPin
@@ -3577,6 +3577,7 @@ children:
   - type: enum-field
     id: spi2sckpin
     props:
+      label: SPI2 SCK
       options:
       - value: 0
         label: NONE
@@ -3934,13 +3935,13 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: SPI2 SCK
     bind:
       source: config
       field: spi2sckPin
   - type: enum-field
     id: spi3mosipin
     props:
+      label: SPI3 MOSI
       options:
       - value: 0
         label: NONE
@@ -4298,13 +4299,13 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: SPI3 MOSI
     bind:
       source: config
       field: spi3mosiPin
   - type: enum-field
     id: spi3misopin
     props:
+      label: SPI3 MISO
       options:
       - value: 0
         label: NONE
@@ -4662,7 +4663,6 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: SPI3 MISO
     bind:
       source: config
       field: spi3misoPin
@@ -5397,6 +5397,7 @@ children:
   - type: enum-field
     id: spi4misopin
     props:
+      label: SPI4 MISO
       options:
       - value: 0
         label: NONE
@@ -5754,14 +5755,12 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: SPI4 MISO
     bind:
       source: config
       field: spi4misoPin
   - type: enum-field
     id: spi4sckpin
     props:
-      label: SPI4 SCK
       options:
       - value: 0
         label: NONE
@@ -6119,12 +6118,14 @@ children:
         label: PK14
       - value: 177
         label: PK15
+      label: SPI4 SCK
     bind:
       source: config
       field: spi4sckPin
   - type: enum-field
     id: spi5mosipin
     props:
+      label: SPI5 MOSI
       options:
       - value: 0
         label: NONE
@@ -6482,7 +6483,6 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: SPI5 MOSI
     bind:
       source: config
       field: spi5mosiPin
@@ -7581,7 +7581,6 @@ children:
   - type: enum-field
     id: spi6misopin
     props:
-      label: SPI6 MISO
       options:
       - value: 0
         label: NONE
@@ -7939,6 +7938,7 @@ children:
         label: PK14
       - value: 177
         label: PK15
+      label: SPI6 MISO
     bind:
       source: config
       field: spi6misoPin
@@ -8677,6 +8677,7 @@ children:
   - type: enum-field
     id: debugtriggerstate
     props:
+      label: Debug Trigger State
       options:
       - value: 0
         label: NONE
@@ -9034,7 +9035,6 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: Debug Trigger State
     bind:
       source: config
       field: debugTriggerState
@@ -9405,7 +9405,6 @@ children:
   - type: enum-field
     id: tle8888spidevice
     props:
-      label: TLE 8888 spi
       options:
       - value: 0
         label: Off
@@ -9421,6 +9420,7 @@ children:
         label: SPI5
       - value: 6
         label: SPI6
+      label: TLE 8888 spi
     bind:
       source: config
       field: tle8888spiDevice
@@ -10519,6 +10519,7 @@ children:
   - type: enum-field
     id: drv8860-cspinmode
     props:
+      label: DRV8860 CS Mode
       options:
       - value: 0
         label: default
@@ -10528,13 +10529,13 @@ children:
         label: open collector
       - value: 3
         label: open collector inverted
-      label: DRV8860 CS Mode
     bind:
       source: config
       field: drv8860_csPinMode
   - type: enum-field
     id: drv8860-miso
     props:
+      label: DRV8860 MISO pin
       options:
       - value: 0
         label: NONE
@@ -10892,13 +10893,13 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: DRV8860 MISO pin
     bind:
       source: config
       field: drv8860_miso
   - type: enum-field
     id: drv8860spidevice
     props:
+      label: DRV8860 SPI
       options:
       - value: 0
         label: Off
@@ -10914,13 +10915,13 @@ children:
         label: SPI5
       - value: 6
         label: SPI6
-      label: DRV8860 SPI
     bind:
       source: config
       field: drv8860spiDevice
   - type: enum-field
     id: triggersimulatorpins1
     props:
+      label: 'trigger stimulator output #1'
       options:
       - value: 0
         label: NONE
@@ -11278,7 +11279,6 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: 'trigger stimulator output #1'
     bind:
       source: config
       field: triggerSimulatorPins1
@@ -11649,6 +11649,7 @@ children:
   - type: enum-field
     id: camsimulatorpin
     props:
+      label: camSimulatorPin
       options:
       - value: 0
         label: NONE
@@ -12006,14 +12007,12 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: camSimulatorPin
     bind:
       source: config
       field: camSimulatorPin
   - type: enum-field
     id: tle6240-cs
     props:
-      label: tle6240_cs
       options:
       - value: 0
         label: NONE
@@ -12371,13 +12370,13 @@ children:
         label: PK14
       - value: 177
         label: PK15
+      label: tle6240_cs
     bind:
       source: config
       field: tle6240_cs
   - type: enum-field
     id: tle6240spidevice
     props:
-      label: tle6240 SPI
       options:
       - value: 0
         label: Off
@@ -12393,6 +12392,7 @@ children:
         label: SPI5
       - value: 6
         label: SPI6
+      label: tle6240 SPI
     bind:
       source: config
       field: tle6240spiDevice

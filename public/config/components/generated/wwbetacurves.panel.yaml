@@ -6,21 +6,27 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: Set a base impact fraction based on coolant temperature, and a multiplier based on MAP.
+    variant: hint
 - type: curve
   id: wwbetacltcurve
   props:
     xLabel: coolant
-    yBins: wwBetaCltValues
-    yLabel: fraction
     title: Impact fraction vs. CLT
-    xBins: wwCltBins
+    yLabel: fraction
+  bind:
+    source: config
+    params:
+      xBins: wwCltBins
+      yBins: wwBetaCltValues
 - type: curve
   id: wwbetamapcurve
   props:
     xLabel: MAP
-    yBins: wwBetaMapValues
-    title: Impact fraction vs. MAP
     yLabel: mult
-    xBins: wwMapBins
+    title: Impact fraction vs. MAP
+  bind:
+    source: config
+    params:
+      xBins: wwMapBins
+      yBins: wwBetaMapValues

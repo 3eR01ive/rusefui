@@ -10,12 +10,12 @@ children:
     variant: hint
 - type: text
   props:
-    variant: hint
     text: is mixed in to the VE table. For example, a value of
+    variant: hint
 - type: text
   props:
-    text: +10 in the table, with 50 as the current bias will result
     variant: hint
+    text: +10 in the table, with 50 as the current bias will result
 - type: text
   props:
     variant: hint
@@ -29,8 +29,8 @@ children:
     field: instead, it adds 5% to the current VE value, multiplying VE by 1.05.
 - type: text
   props:
-    text: The X axis of the bias table is controlled by the selected blend
     variant: hint
+    text: The X axis of the bias table is controlled by the selected blend
 - type: text
   props:
     variant: hint
@@ -116,6 +116,7 @@ children:
 - type: enum-field
   id: veblends3-yaxisoverride
   props:
+    label: Y axis override (set Zero for no override)
     options:
     - value: 0
       label: Zero
@@ -187,14 +188,16 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
-    label: Y axis override (set Zero for no override)
   bind:
     source: config
     field: veBlends3_yAxisOverride
 - type: curve
   id: veblend3bias
   props:
-    yBins: veBlends3_blendValues
     yLabel: veBlends3_blendParameter)}
     title: VE blend 3 bias
-    xBins: veBlends3_blendBins
+  bind:
+    source: config
+    params:
+      yBins: veBlends3_blendValues
+      xBins: veBlends3_blendBins

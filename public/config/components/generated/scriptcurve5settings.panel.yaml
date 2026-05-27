@@ -7,8 +7,8 @@ children:
 - type: string-field
   id: scriptcurvename5
   props:
-    maxLength: 16
     label: Name
+    maxLength: 16
   bind:
     source: config
     field: scriptCurveName5
@@ -18,5 +18,8 @@ children:
     title: 'Script Curve #5'
     xLabel: X
     yLabel: Y
-    xBins: scriptCurve5Bins
-    yBins: scriptCurve5
+  bind:
+    source: config
+    params:
+      yBins: scriptCurve5
+      xBins: scriptCurve5Bins

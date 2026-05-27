@@ -101,7 +101,6 @@ children:
     - type: enum-field
       id: tps1-2adcchannel
       props:
-        label: Secondary sensor input
         options:
         - value: 0
           label: NONE
@@ -167,6 +166,7 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
+        label: Secondary sensor input
       bind:
         source: config
         field: tps1_2AdcChannel
@@ -190,8 +190,8 @@ children:
         text: 'Кнопка: Auto Calibrate ETB 1 (cmd_etb_auto_calibrate)'
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Grab Closed Throttle voltage (cmd_calibrate_tps_closed)'
+        variant: hint
     - type: text
       props:
         variant: hint
@@ -289,6 +289,7 @@ children:
     - type: enum-field
       id: tps2-2adcchannel
       props:
+        label: Secondary sensor
         options:
         - value: 0
           label: NONE
@@ -354,7 +355,6 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
-        label: Secondary sensor
       bind:
         source: config
         field: tps2_2AdcChannel
@@ -374,8 +374,8 @@ children:
         field: tps2SecondaryMax
     - type: text
       props:
-        text: 'Кнопка: Auto Calibrate ETB 2 (cmd_etb_auto_calibrate_2)'
         variant: hint
+        text: 'Кнопка: Auto Calibrate ETB 2 (cmd_etb_auto_calibrate_2)'
   - type: section
     props:
       title: TPS/PPS Limits

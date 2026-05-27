@@ -7,16 +7,22 @@ children:
 - type: curve
   id: dwellcorrection
   props:
-    yBins: sparkDwellValues
     xLabel: RPM
     title: Dwell time base
     yLabel: Dwell
-    xBins: sparkDwellRpmBins
+  bind:
+    source: config
+    params:
+      yBins: sparkDwellValues
+      xBins: sparkDwellRpmBins
 - type: curve
   id: dwellvoltagecorrection
   props:
-    yLabel: Multiplier
     title: Dwell voltage correction
+    yLabel: Multiplier
     xLabel: Battery Volts
-    xBins: dwellVoltageCorrVoltBins
-    yBins: dwellVoltageCorrValues
+  bind:
+    source: config
+    params:
+      yBins: dwellVoltageCorrValues
+      xBins: dwellVoltageCorrVoltBins

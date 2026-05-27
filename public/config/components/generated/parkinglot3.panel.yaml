@@ -38,60 +38,60 @@ children:
 - type: enum-field
   id: devbit2
   props:
-    label: devBit2
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: devBit2
   bind:
     source: config
     field: devBit2
 - type: enum-field
   id: devbit3
   props:
+    label: devBit3
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: devBit3
   bind:
     source: config
     field: devBit3
 - type: enum-field
   id: devbit4
   props:
-    label: devBit4
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: devBit4
   bind:
     source: config
     field: devBit4
 - type: enum-field
   id: devbit5
   props:
+    label: devBit5
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: devBit5
   bind:
     source: config
     field: devBit5
 - type: enum-field
   id: devbit6
   props:
-    label: devBit6
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: devBit6
   bind:
     source: config
     field: devBit6

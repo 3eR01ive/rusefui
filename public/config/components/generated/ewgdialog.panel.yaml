@@ -32,8 +32,8 @@ children:
         field: This PID is controlling how EWG Actuator DC motor reaches desired position
     - type: text
       props:
-        variant: hint
         text: This section is for advanced users only!
+        variant: hint
     - type: scalar-field
       id: etbwastegatepid-pfactor
       props:
@@ -82,5 +82,5 @@ children:
         field: 'First step: calibrate EWG position sensor and hit ''Burn'''
     - type: text
       props:
-        text: 'Кнопка: Auto Calibrate EWG (cmd_ewg_auto_calibrate_1)'
         variant: hint
+        text: 'Кнопка: Auto Calibrate EWG (cmd_ewg_auto_calibrate_1)'

@@ -15,8 +15,11 @@ children:
 - type: config-table
   id: scripttable1tbl
   props:
-    yBins: scriptTable1LoadBins
     title: 'Script Table #1'
-    zBins: scriptTable1
     variant: table
-    xBins: scriptTable1RpmBins
+  bind:
+    source: config
+    params:
+      xBins: scriptTable1RpmBins
+      yBins: scriptTable1LoadBins
+      zBins: scriptTable1

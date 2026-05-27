@@ -116,8 +116,11 @@ children:
 - type: curve
   id: tchargecurve
   props:
+    title: Charge temperature estimation coefficient
     yLabel: coefficient
     xLabel: flow
-    xBins: tchargeBins
-    title: Charge temperature estimation coefficient
-    yBins: tchargeValues
+  bind:
+    source: config
+    params:
+      xBins: tchargeBins
+      yBins: tchargeValues

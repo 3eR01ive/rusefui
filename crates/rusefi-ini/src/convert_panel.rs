@@ -55,7 +55,54 @@ pub struct YamlNode {
 #[derive(Debug, Serialize)]
 pub struct YamlBind {
     pub source: String,
-    pub field: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub field: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fields: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub params: Option<HashMap<String, serde_yaml::Value>>,
+}
+
+fn config_table_bind(
+    x_bins: Option<&str>,
+    y_bins: Option<&str>,
+    z_bins: &str,
+) -> YamlBind {
+    let mut params = HashMap::new();
+    params.insert(
+        "zBins".into(),
+        serde_yaml::Value::String(z_bins.to_string()),
+    );
+    if let Some(x) = x_bins {
+        params.insert("xBins".into(), serde_yaml::Value::String(x.to_string()));
+    }
+    if let Some(y) = y_bins {
+        params.insert("yBins".into(), serde_yaml::Value::String(y.to_string()));
+    }
+    YamlBind {
+        source: "config".into(),
+        field: None,
+        fields: None,
+        params: Some(params),
+    }
+}
+
+fn config_curve_bind(x_bins: &str, y_bins: &str) -> YamlBind {
+    let mut params = HashMap::new();
+    params.insert(
+        "xBins".into(),
+        serde_yaml::Value::String(x_bins.to_string()),
+    );
+    params.insert(
+        "yBins".into(),
+        serde_yaml::Value::String(y_bins.to_string()),
+    );
+    YamlBind {
+        source: "config".into(),
+        field: None,
+        fields: None,
+        params: Some(params),
+    }
 }
 
 pub struct ConvertResult {
@@ -259,22 +306,15 @@ fn config_table_node(table: &IniTableDef) -> YamlNode {
     if let Some(y) = &table.y_label {
         props.insert("yLabel".into(), serde_yaml::Value::String(y.clone()));
     }
-    if let Some(x) = &table.x_bins {
-        props.insert("xBins".into(), serde_yaml::Value::String(x.clone()));
-    }
-    if let Some(y) = &table.y_bins {
-        props.insert("yBins".into(), serde_yaml::Value::String(y.clone()));
-    }
-    props.insert(
-        "zBins".into(),
-        serde_yaml::Value::String(table.z_bins.clone()),
-    );
-
     YamlNode {
         node_type: "config-table".into(),
         id: Some(slugify(&table.id)),
         props: Some(props),
-        bind: None,
+        bind: Some(config_table_bind(
+            table.x_bins.as_deref(),
+            table.y_bins.as_deref(),
+            &table.z_bins,
+        )),
         children: None,
     }
 }
@@ -291,20 +331,11 @@ fn config_curve_node(curve: &IniCurveDef) -> YamlNode {
     if let Some(y) = &curve.y_label {
         props.insert("yLabel".into(), serde_yaml::Value::String(y.clone()));
     }
-    props.insert(
-        "xBins".into(),
-        serde_yaml::Value::String(curve.x_bins.clone()),
-    );
-    props.insert(
-        "yBins".into(),
-        serde_yaml::Value::String(curve.y_bins.clone()),
-    );
-
     YamlNode {
         node_type: "curve".into(),
         id: Some(slugify(&curve.id)),
         props: Some(props),
-        bind: None,
+        bind: Some(config_curve_bind(&curve.x_bins, &curve.y_bins)),
         children: None,
     }
 }
@@ -357,7 +388,9 @@ fn enum_node(field: &str, label: &str, options: &[EnumOption]) -> YamlNode {
         }),
         bind: Some(YamlBind {
             source: "config".into(),
-            field: field.to_string(),
+            field: Some(field.to_string()),
+            fields: None,
+            params: None,
         }),
         children: None,
     }
@@ -381,7 +414,9 @@ fn string_node(field: &str, label: &str, max_length: u32) -> YamlNode {
         }),
         bind: Some(YamlBind {
             source: "config".into(),
-            field: field.to_string(),
+            field: Some(field.to_string()),
+            fields: None,
+            params: None,
         }),
         children: None,
     }
@@ -401,7 +436,9 @@ fn scalar_node(field: &str, label: &str) -> YamlNode {
         }),
         bind: Some(YamlBind {
             source: "config".into(),
-            field: field.to_string(),
+            field: Some(field.to_string()),
+            fields: None,
+            params: None,
         }),
         children: None,
     }

@@ -37,6 +37,9 @@ children:
   props:
     yLabel: Multiplier
     title: Warmup fuel manual Multiplier
-    yBins: cltFuelCorr
-    xBins: cltFuelCorrBins
     xLabel: Coolant
+  bind:
+    source: config
+    params:
+      yBins: cltFuelCorr
+      xBins: cltFuelCorrBins

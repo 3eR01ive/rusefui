@@ -47,12 +47,12 @@ children:
 - type: enum-field
   id: rethrowhardfault
   props:
+    label: rethrowHardFault
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
-    label: rethrowHardFault
   bind:
     source: config
     field: rethrowHardFault
@@ -86,65 +86,65 @@ children:
     field: verboseQuad
 - type: text
   props:
-    variant: hint
     text: System hacks
+    variant: hint
 - type: enum-field
   id: vvtbooleanforveryspecialcases
   props:
-    label: vvtBooleanForVerySpecialCases
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
+    label: vvtBooleanForVerySpecialCases
   bind:
     source: config
     field: vvtBooleanForVerySpecialCases
 - type: enum-field
   id: watchoutforlineartime
   props:
+    label: watchOutForLinearTime
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
-    label: watchOutForLinearTime
   bind:
     source: config
     field: watchOutForLinearTime
 - type: enum-field
   id: verboseisotp
   props:
+    label: TS over CAN debug
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
-    label: TS over CAN debug
   bind:
     source: config
     field: verboseIsoTp
 - type: enum-field
   id: consumeobdsensors
   props:
-    label: consumeObdSensors
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
+    label: consumeObdSensors
   bind:
     source: config
     field: consumeObdSensors
 - type: enum-field
   id: allowidenticalpps
   props:
-    label: BRZ/FRS/GT86 pedal
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
+    label: BRZ/FRS/GT86 pedal
   bind:
     source: config
     field: allowIdenticalPps
@@ -175,12 +175,12 @@ children:
 - type: enum-field
   id: modeledflowidle
   props:
+    label: Modeled flow idle
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
-    label: Modeled flow idle
   bind:
     source: config
     field: modeledFlowIdle

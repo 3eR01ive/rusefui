@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: throttlepedalpositionadcchannel
     props:
+      label: Accelerator position primary sensor
       options:
       - value: 0
         label: NONE
@@ -76,7 +77,6 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
-      label: Accelerator position primary sensor
     bind:
       source: config
       field: throttlePedalPositionAdcChannel
@@ -97,6 +97,7 @@ children:
   - type: enum-field
     id: throttlepedalpositionsecondadcchannel
     props:
+      label: Accelerator position secondary sensor
       options:
       - value: 0
         label: NONE
@@ -162,7 +163,6 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
-      label: Accelerator position secondary sensor
     bind:
       source: config
       field: throttlePedalPositionSecondAdcChannel
@@ -227,12 +227,12 @@ children:
     - type: enum-field
       id: usefordredundantpps
       props:
+        label: Ford/Toyota redundant PPS mode
         options:
         - value: 0
           label: no
         - value: 1
           label: yes
-        label: Ford/Toyota redundant PPS mode
       bind:
         source: config
         field: useFordRedundantPps

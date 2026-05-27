@@ -15,4 +15,6 @@ children:
       - type: simulation
         id: ecu-simulator
         bind:
-          source: simulation
+          source: outputChannels
+          params:
+            rpmField: RPMValue

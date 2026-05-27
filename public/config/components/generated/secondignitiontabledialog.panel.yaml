@@ -11,9 +11,12 @@ children:
 - type: config-table
   id: secondignitiontabletbl
   props:
-    variant: table
-    xBins: secondIgnitionRpmBins
-    yBins: secondIgnitionLoadBins
-    zBins: secondIgnitionTable
-    title: Second Ignition Table
     xLabel: RPM
+    variant: table
+    title: Second Ignition Table
+  bind:
+    source: config
+    params:
+      zBins: secondIgnitionTable
+      xBins: secondIgnitionRpmBins
+      yBins: secondIgnitionLoadBins

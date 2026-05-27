@@ -11,7 +11,6 @@ children:
   - type: enum-field
     id: fuellevelsensor
     props:
-      label: Input channel
       options:
       - value: 0
         label: NONE
@@ -77,6 +76,7 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
+      label: Input channel
     bind:
       source: config
       field: fuelLevelSensor
@@ -112,10 +112,13 @@ children:
     id: fuellevelcurve
     props:
       title: Fuel Level
-      xLabel: Voltage
-      xBins: fuelLevelBins
-      yBins: fuelLevelValues
       yLabel: '%'
+      xLabel: Voltage
+    bind:
+      source: config
+      params:
+        xBins: fuelLevelBins
+        yBins: fuelLevelValues
 - type: section
   props:
     title: fuelLevelGauges

@@ -29,8 +29,8 @@ children:
         field: 'Correction state:'
     - type: text
       props:
-        variant: hint
         text: Панель «fuelClosedLoopOutputIndicatorsPanel» — нет определения в INI
+        variant: hint
 - type: section
   props:
     title: fuelClosedLoopConfig
@@ -67,8 +67,8 @@ children:
         field: stft_minClt
     - type: text
       props:
-        text: "\"Startup delay\"\t\t\t\t\t\t\tstft_startupDelay"
         variant: hint
+        text: "\"Startup delay\"\t\t\t\t\t\t\tstft_startupDelay"
     - type: scalar-field
       id: nofueltrimafterdfcotime
       props:
@@ -79,12 +79,12 @@ children:
     - type: enum-field
       id: istuningdetectorenabled
       props:
-        label: Detect Tuning and Suspend
         options:
         - value: 0
           label: no
         - value: 1
           label: yes
+        label: Detect Tuning and Suspend
       bind:
         source: config
         field: isTuningDetectorEnabled
@@ -259,8 +259,8 @@ children:
     children:
     - type: text
       props:
-        variant: hint
         text: Панель «fuelClosedLoopIndicatorsPanel» — нет определения в INI
+        variant: hint
 - type: section
   props:
     title: Bank 2
@@ -271,8 +271,8 @@ children:
     children:
     - type: text
       props:
-        text: Панель «fuelClosedLoopInputIndicatorsPanelBank2» — нет определения в INI
         variant: hint
+        text: Панель «fuelClosedLoopInputIndicatorsPanelBank2» — нет определения в INI
   - type: section
     props:
       title: Output correction

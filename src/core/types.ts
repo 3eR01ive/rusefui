@@ -3,18 +3,23 @@ import type { Component } from "vue";
 /** Режим компонента: правка flash-конфига или только отображение. */
 export type ComponentMode = "edit" | "display";
 
-/** Источник данных, на который ссылается bind в YAML. */
+/** Источник данных (Rust `sources/*`) или logic-компонент (`connection`, `dyno`, …). */
 export type DataSourceId =
   | "connection"
   | "config"
   | "outputChannels"
-  | "textLog";
+  | "textLog"
+  | "knockScope"
+  | "compositeLogger";
 
 export interface DataBinding {
-  source: DataSourceId;
-  /** Поле в INI / outputChannels, путь в config и т.д. */
+  /** `config`, `outputChannels`, `knockScope`, … */
+  source: DataSourceId | string;
+  /** Одно поле INI / один канал outputChannels. */
   field?: string;
-  /** Произвольные параметры привязки (offset, channel, …). */
+  /** Несколько каналов (график, список). */
+  fields?: string[];
+  /** Доп. имена: `xBins`/`yBins`/`zBins`, `rpmField`, … */
   params?: Record<string, unknown>;
 }
 

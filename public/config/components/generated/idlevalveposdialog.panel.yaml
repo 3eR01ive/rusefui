@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: idlepositionchannel
     props:
+      label: Input
       options:
       - value: 0
         label: NONE
@@ -76,7 +77,6 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
-      label: Input
     bind:
       source: config
       field: idlePositionChannel

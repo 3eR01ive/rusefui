@@ -279,6 +279,7 @@ children:
   - type: enum-field
     id: luadigitalinputpins2
     props:
+      label: 'Digital #2'
       options:
       - value: 0
         label: NONE
@@ -536,13 +537,13 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: 'Digital #2'
     bind:
       source: config
       field: luaDigitalInputPins2
   - type: enum-field
     id: luadigitalinputpins3
     props:
+      label: 'Digital #3'
       options:
       - value: 0
         label: NONE
@@ -800,13 +801,13 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: 'Digital #3'
     bind:
       source: config
       field: luaDigitalInputPins3
   - type: enum-field
     id: luadigitalinputpins4
     props:
+      label: 'Digital #4'
       options:
       - value: 0
         label: NONE
@@ -1064,7 +1065,6 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: 'Digital #4'
     bind:
       source: config
       field: luaDigitalInputPins4
@@ -1335,6 +1335,7 @@ children:
   - type: enum-field
     id: luadigitalinputpins6
     props:
+      label: 'Digital #6'
       options:
       - value: 0
         label: NONE
@@ -1592,13 +1593,13 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: 'Digital #6'
     bind:
       source: config
       field: luaDigitalInputPins6
   - type: enum-field
     id: luadigitalinputpins7
     props:
+      label: 'Digital #7'
       options:
       - value: 0
         label: NONE
@@ -1856,7 +1857,6 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: 'Digital #7'
     bind:
       source: config
       field: luaDigitalInputPins7
@@ -2131,6 +2131,7 @@ children:
   - type: enum-field
     id: luadigitalinputpinmodes1
     props:
+      label: 'Mode #1'
       options:
       - value: 0
         label: DEFAULT
@@ -2148,7 +2149,6 @@ children:
         label: INVERTED PULLDOWN
       - value: 7
         label: '"INVALID'
-      label: 'Mode #1'
     bind:
       source: config
       field: luaDigitalInputPinModes1
@@ -2203,6 +2203,7 @@ children:
   - type: enum-field
     id: luadigitalinputpinmodes4
     props:
+      label: 'Mode #4'
       options:
       - value: 0
         label: DEFAULT
@@ -2220,13 +2221,13 @@ children:
         label: INVERTED PULLDOWN
       - value: 7
         label: '"INVALID'
-      label: 'Mode #4'
     bind:
       source: config
       field: luaDigitalInputPinModes4
   - type: enum-field
     id: luadigitalinputpinmodes5
     props:
+      label: 'Mode #5'
       options:
       - value: 0
         label: DEFAULT
@@ -2244,14 +2245,12 @@ children:
         label: INVERTED PULLDOWN
       - value: 7
         label: '"INVALID'
-      label: 'Mode #5'
     bind:
       source: config
       field: luaDigitalInputPinModes5
   - type: enum-field
     id: luadigitalinputpinmodes6
     props:
-      label: 'Mode #6'
       options:
       - value: 0
         label: DEFAULT
@@ -2269,13 +2268,13 @@ children:
         label: INVERTED PULLDOWN
       - value: 7
         label: '"INVALID'
+      label: 'Mode #6'
     bind:
       source: config
       field: luaDigitalInputPinModes6
   - type: enum-field
     id: luadigitalinputpinmodes7
     props:
-      label: 'Mode #7'
       options:
       - value: 0
         label: DEFAULT
@@ -2293,12 +2292,14 @@ children:
         label: INVERTED PULLDOWN
       - value: 7
         label: '"INVALID'
+      label: 'Mode #7'
     bind:
       source: config
       field: luaDigitalInputPinModes7
   - type: enum-field
     id: luadigitalinputpinmodes8
     props:
+      label: 'Mode #8'
       options:
       - value: 0
         label: DEFAULT
@@ -2316,7 +2317,6 @@ children:
         label: INVERTED PULLDOWN
       - value: 7
         label: '"INVALID'
-      label: 'Mode #8'
     bind:
       source: config
       field: luaDigitalInputPinModes8

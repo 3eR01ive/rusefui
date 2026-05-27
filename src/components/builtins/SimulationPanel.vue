@@ -4,6 +4,7 @@ import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useDataContext } from "../../core/data-context";
 import { useOutputChannels } from "../../composables/useOutputChannels";
 import { useRustComponent } from "../../composables/useRustComponent";
+import { useInstanceBind } from "../../composables/useInstanceBind";
 import {
   runStimulatorRamp,
   type RampCurve,
@@ -18,10 +19,12 @@ const props = defineProps<{
 }>();
 
 const { state, dispatch, error } = useRustComponent(props.instance, props.path);
+const instanceRef = computed(() => props.instance);
+const { paramStringOr } = useInstanceBind(instanceRef);
 const dataCtx = useDataContext();
 const { getField } = useOutputChannels();
 
-const ecuRpm = computed(() => getField("RPMValue"));
+const ecuRpm = computed(() => getField(paramStringOr("rpmField", "RPMValue")));
 
 const rpm = computed({
   get: () => Number(state.value.rpm ?? 1500),

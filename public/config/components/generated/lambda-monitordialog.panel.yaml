@@ -6,5 +6,5 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: Панель «lambda_monitorIndicatorPanel» — нет определения в INI
+    variant: hint

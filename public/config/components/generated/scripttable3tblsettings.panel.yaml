@@ -7,16 +7,19 @@ children:
 - type: string-field
   id: scripttablename3
   props:
-    maxLength: 16
     label: Name
+    maxLength: 16
   bind:
     source: config
     field: scriptTableName3
 - type: config-table
   id: scripttable3tbl
   props:
-    yBins: scriptTable3LoadBins
-    zBins: scriptTable3
     variant: table
-    xBins: scriptTable3RpmBins
     title: 'Script Table #3'
+  bind:
+    source: config
+    params:
+      yBins: scriptTable3LoadBins
+      zBins: scriptTable3
+      xBins: scriptTable3RpmBins

@@ -15,7 +15,6 @@ children:
     - type: enum-field
       id: canwbo1-type
       props:
-        label: UEGO type
         options:
         - value: 0
           label: RusEFI
@@ -25,13 +24,13 @@ children:
           label: Disabled/Analog
         - value: 3
           label: INVALID
+        label: UEGO type
       bind:
         source: config
         field: canWbo1_type
     - type: enum-field
       id: canwbo1-reid
       props:
-        label: RusEFI WBO ID
         options:
         - value: 0
           label: ID1 0x190/191
@@ -65,6 +64,7 @@ children:
           label: ID15 0x20C/20D
         - value: 15
           label: ID16 0x20E/20F
+        label: RusEFI WBO ID
       bind:
         source: config
         field: canWbo1_reId
@@ -121,8 +121,8 @@ children:
         variant: hint
     - type: text
       props:
-        text: Панель «uegoCan0IndicatorsExt» — нет определения в INI
         variant: hint
+        text: Панель «uegoCan0IndicatorsExt» — нет определения в INI
     - type: text
       props:
         variant: hint
@@ -171,25 +171,25 @@ children:
       field: afrExpAverageAlpha
   - type: text
     props:
-      text: Please use force heating only for testing.
       variant: hint
+      text: Please use force heating only for testing.
   - type: text
     props:
       variant: hint
       text: Never keep enabled outside workshop.
   - type: text
     props:
-      text: This can damage your sensor.
       variant: hint
+      text: This can damage your sensor.
   - type: enum-field
     id: forceo2heating
     props:
-      label: Force O2 sensor heating
       options:
       - value: 0
         label: no
       - value: 1
         label: yes
+      label: Force O2 sensor heating
     bind:
       source: config
       field: forceO2Heating
@@ -212,7 +212,6 @@ children:
     - type: enum-field
       id: canwbo2-type
       props:
-        label: UEGO type
         options:
         - value: 0
           label: RusEFI
@@ -222,13 +221,13 @@ children:
           label: Disabled/Analog
         - value: 3
           label: INVALID
+        label: UEGO type
       bind:
         source: config
         field: canWbo2_type
     - type: enum-field
       id: canwbo2-reid
       props:
-        label: RusEFI WBO ID
         options:
         - value: 0
           label: ID1 0x190/191
@@ -262,12 +261,14 @@ children:
           label: ID15 0x20C/20D
         - value: 15
           label: ID16 0x20E/20F
+        label: RusEFI WBO ID
       bind:
         source: config
         field: canWbo2_reId
     - type: enum-field
       id: canwbo2-aemid
       props:
+        label: AEM ID
         options:
         - value: 0
           label: ID1 0x0000180
@@ -301,7 +302,6 @@ children:
           label: ID15 0x000018E
         - value: 15
           label: ID16 0x000018F
-        label: AEM ID
       bind:
         source: config
         field: canWbo2_aemId
@@ -311,16 +311,16 @@ children:
     children:
     - type: text
       props:
+        variant: hint
         text: Панель «uegoCan1Indicators» — нет определения в INI
-        variant: hint
     - type: text
       props:
-        variant: hint
         text: Панель «uegoCan1IndicatorsExt» — нет определения в INI
+        variant: hint
     - type: text
       props:
-        variant: hint
         text: Панель «uegoCan1IndicatorsAem» — нет определения в INI
+        variant: hint
   - type: section
     props:
       title: uegoCan1Gauges

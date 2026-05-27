@@ -22,12 +22,12 @@ children:
     variant: hint
 - type: text
   props:
-    variant: hint
     text: The X axis of the bias table is controlled by the selected blend
+    variant: hint
 - type: text
   props:
-    variant: hint
     text: parameter below.
+    variant: hint
 - type: enum-field
   id: ignblends3-blendparameter
   props:
@@ -187,8 +187,11 @@ children:
 - type: curve
   id: ignadder3bias
   props:
-    yLabel: bias
-    title: Ignition adder 3 bias
     xLabel: param
-    xBins: ignBlends3_blendBins
-    yBins: ignBlends3_blendValues
+    title: Ignition adder 3 bias
+    yLabel: bias
+  bind:
+    source: config
+    params:
+      yBins: ignBlends3_blendValues
+      xBins: ignBlends3_blendBins

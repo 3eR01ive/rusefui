@@ -21,6 +21,7 @@ import {
   type DynoUiSettings,
 } from "../../composables/useProject";
 import { useRustComponent } from "../../composables/useRustComponent";
+import { useInstanceBind } from "../../composables/useInstanceBind";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -44,6 +45,8 @@ const { state, dispatch, error, hasLogic, ready } = useRustComponent(
   props.instance,
   props.path,
 );
+const instanceRef = computed(() => props.instance);
+const { paramStringOr, source: bindSource } = useInstanceBind(instanceRef);
 const dataCtx = useDataContext();
 const { snapshot } = useOutputChannels();
 const { snapshot: configSnapshot } = useConfig();
@@ -51,9 +54,27 @@ const { getProjectUi, setProjectUi } = useProject();
 
 let applyingProjectUi = false;
 let saveDynoUiTimer = 0;
+let channelsConfigured = false;
 
-const rpmField = computed(() => String(state.value.rpmField ?? props.props.rpmField ?? "RPMValue"));
-const tpsField = computed(() => String(state.value.tpsField ?? props.props.tpsField ?? "TPSValue"));
+const rpmField = computed(() =>
+  String(state.value.rpmField ?? paramStringOr("rpmField", "RPMValue")),
+);
+const tpsField = computed(() =>
+  String(state.value.tpsField ?? paramStringOr("tpsField", "TPSValue")),
+);
+
+watch(ready, (isReady) => {
+  if (!isReady || channelsConfigured) return;
+  if (bindSource.value && bindSource.value !== "outputChannels") {
+    console.warn(
+      `[dyno] bind.source должен быть outputChannels (каналы RPM/TPS), получен ${bindSource.value}`,
+    );
+  }
+  const rpm = paramStringOr("rpmField", "RPMValue");
+  const tps = paramStringOr("tpsField", "TPSValue");
+  channelsConfigured = true;
+  void dispatch("set_channels", { rpmField: rpm, tpsField: tps });
+});
 
 const liveRpm = computed(() => snapshot.value.values[rpmField.value] ?? null);
 const liveTps = computed(() => snapshot.value.values[tpsField.value] ?? null);

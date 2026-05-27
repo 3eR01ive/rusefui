@@ -11,7 +11,6 @@ children:
   - type: enum-field
     id: accelenrichmentmode
     props:
-      label: Mode
       options:
       - value: 0
         label: MS Adder
@@ -21,14 +20,18 @@ children:
         label: MAP Prediction
       - value: 3
         label: INVALID
+      label: Mode
     bind:
       source: config
       field: accelEnrichmentMode
 - type: config-table
   id: tpstpsacceltbl
   props:
-    xBins: tpsTpsAccelFromRpmBins
-    variant: table
     title: TPS/TPS Acceleration Extra Fuel(ms)
-    yBins: tpsTpsAccelToRpmBins
-    zBins: tpsTpsAccelTable
+    variant: table
+  bind:
+    source: config
+    params:
+      xBins: tpsTpsAccelFromRpmBins
+      zBins: tpsTpsAccelTable
+      yBins: tpsTpsAccelToRpmBins

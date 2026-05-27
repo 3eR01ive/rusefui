@@ -11,6 +11,7 @@ const props = defineProps<{
   meta: ComponentMeta;
 }>();
 
+const instanceRef = computed(() => props.instance);
 const propsRef = computed(() => props.props);
 
 const {
@@ -27,7 +28,7 @@ const {
   localError,
   xValues,
   yAxisValues,
-} = useConfigGrid({ kind: "table", props: propsRef });
+} = useConfigGrid({ kind: "table", instance: instanceRef, props: propsRef });
 </script>
 
 <template>

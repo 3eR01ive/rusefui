@@ -6,16 +6,16 @@ source:
 children:
 - type: text
   props:
+    variant: hint
     text: The bias table controls how much of the blend table
-    variant: hint
 - type: text
   props:
-    variant: hint
     text: is mixed in to the base ignition table. For example, a value of
+    variant: hint
 - type: text
   props:
-    text: +10 in the table, with 50 as the current bias will result
     variant: hint
+    text: +10 in the table, with 50 as the current bias will result
 - type: text
   props:
     variant: hint
@@ -26,12 +26,11 @@ children:
     variant: hint
 - type: text
   props:
-    text: parameter below.
     variant: hint
+    text: parameter below.
 - type: enum-field
   id: ignblends4-blendparameter
   props:
-    label: Blend parameter
     options:
     - value: 0
       label: Zero
@@ -103,6 +102,7 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
+    label: Blend parameter
   bind:
     source: config
     field: ignBlends4_blendParameter
@@ -187,8 +187,11 @@ children:
 - type: curve
   id: ignadder4bias
   props:
-    yLabel: bias
-    xBins: ignBlends4_blendBins
-    xLabel: param
-    yBins: ignBlends4_blendValues
     title: Ignition adder 4 bias
+    xLabel: param
+    yLabel: bias
+  bind:
+    source: config
+    params:
+      xBins: ignBlends4_blendBins
+      yBins: ignBlends4_blendValues

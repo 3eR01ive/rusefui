@@ -279,6 +279,7 @@ children:
     - type: enum-field
       id: o2heaterpin
       props:
+        label: Narrowband O2 heater output
         options:
         - value: 0
           label: NONE
@@ -536,13 +537,13 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: Narrowband O2 heater output
       bind:
         source: config
         field: o2heaterPin
     - type: enum-field
       id: idle-solenoidpin
       props:
+        label: Idle Solenoid Primary output
         options:
         - value: 0
           label: NONE
@@ -800,7 +801,6 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: Idle Solenoid Primary output
       bind:
         source: config
         field: idle_solenoidPin
@@ -1435,6 +1435,7 @@ children:
     - type: enum-field
       id: idle-steppersteppin
       props:
+        label: Idle Stepper Step
         options:
         - value: 0
           label: NONE
@@ -1792,13 +1793,13 @@ children:
           label: PK14
         - value: 177
           label: PK15
-        label: Idle Stepper Step
       bind:
         source: config
         field: idle_stepperStepPin
     - type: enum-field
       id: stepperenablepin
       props:
+        label: Idle Stepper Enable
         options:
         - value: 0
           label: NONE
@@ -2156,7 +2157,6 @@ children:
           label: PK14
         - value: 177
           label: PK15
-        label: Idle Stepper Enable
       bind:
         source: config
         field: stepperEnablePin
@@ -2427,6 +2427,7 @@ children:
     - type: enum-field
       id: fanpin
       props:
+        label: Fan Pin
         options:
         - value: 0
           label: NONE
@@ -2684,7 +2685,6 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: Fan Pin
       bind:
         source: config
         field: fanPin
@@ -2955,7 +2955,6 @@ children:
     - type: enum-field
       id: mainrelaypin
       props:
-        label: Main Relay Pin
         options:
         - value: 0
           label: NONE
@@ -3213,13 +3212,13 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
+        label: Main Relay Pin
       bind:
         source: config
         field: mainRelayPin
     - type: enum-field
       id: starterrelaydisablepin
       props:
-        label: Starter Relay Pin
         options:
         - value: 0
           label: NONE
@@ -3477,6 +3476,7 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
+        label: Starter Relay Pin
       bind:
         source: config
         field: starterRelayDisablePin
@@ -3747,6 +3747,7 @@ children:
     - type: enum-field
       id: vvtpins2
       props:
+        label: VVT solenoid bank 1 exhaust
         options:
         - value: 0
           label: NONE
@@ -4004,7 +4005,6 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: VVT solenoid bank 1 exhaust
       bind:
         source: config
         field: vvtPins2
@@ -5331,7 +5331,6 @@ children:
     - type: enum-field
       id: gppwm1-pin
       props:
-        label: GP PWM 1 Output
         options:
         - value: 0
           label: NONE
@@ -5589,6 +5588,7 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
+        label: GP PWM 1 Output
       bind:
         source: config
         field: gppwm1_pin
@@ -6123,6 +6123,7 @@ children:
     - type: enum-field
       id: gppwm4-pin
       props:
+        label: GP PWM 4 Output
         options:
         - value: 0
           label: NONE
@@ -6380,7 +6381,6 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: GP PWM 4 Output
       bind:
         source: config
         field: gppwm4_pin
@@ -7447,7 +7447,6 @@ children:
     - type: enum-field
       id: ignitionpins5
       props:
-        label: Ignition Output 5
         options:
         - value: 0
           label: NONE
@@ -7705,6 +7704,7 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
+        label: Ignition Output 5
       bind:
         source: config
         field: ignitionPins5
@@ -8503,6 +8503,7 @@ children:
     - type: enum-field
       id: ignitionpins9
       props:
+        label: Ignition Output 9
         options:
         - value: 0
           label: NONE
@@ -8760,13 +8761,13 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: Ignition Output 9
       bind:
         source: config
         field: ignitionPins9
     - type: enum-field
       id: ignitionpins10
       props:
+        label: Ignition Output 10
         options:
         - value: 0
           label: NONE
@@ -9024,7 +9025,6 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: Ignition Output 10
       bind:
         source: config
         field: ignitionPins10
@@ -9295,6 +9295,7 @@ children:
     - type: enum-field
       id: ignitionpins12
       props:
+        label: Ignition Output 12
         options:
         - value: 0
           label: NONE
@@ -9552,7 +9553,6 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: Ignition Output 12
       bind:
         source: config
         field: ignitionPins12
@@ -9823,6 +9823,7 @@ children:
     - type: enum-field
       id: injectionpins2
       props:
+        label: Injection Output 2
         options:
         - value: 0
           label: NONE
@@ -10080,7 +10081,6 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: Injection Output 2
       bind:
         source: config
         field: injectionPins2
@@ -10351,6 +10351,7 @@ children:
     - type: enum-field
       id: injectionpins4
       props:
+        label: Injection Output 4
         options:
         - value: 0
           label: NONE
@@ -10608,7 +10609,6 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: Injection Output 4
       bind:
         source: config
         field: injectionPins4
@@ -11671,6 +11671,7 @@ children:
     - type: enum-field
       id: injectionpins9
       props:
+        label: 'Injection Output 9 '
         options:
         - value: 0
           label: NONE
@@ -11928,13 +11929,13 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: 'Injection Output 9 '
       bind:
         source: config
         field: injectionPins9
     - type: enum-field
       id: injectionpins10
       props:
+        label: 'Injection Output 10 '
         options:
         - value: 0
           label: NONE
@@ -12192,13 +12193,13 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: 'Injection Output 10 '
       bind:
         source: config
         field: injectionPins10
     - type: enum-field
       id: injectionpins11
       props:
+        label: 'Injection Output 11 '
         options:
         - value: 0
           label: NONE
@@ -12456,13 +12457,13 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: 'Injection Output 11 '
       bind:
         source: config
         field: injectionPins11
     - type: enum-field
       id: injectionpins12
       props:
+        label: 'Injection Output 12 '
         options:
         - value: 0
           label: NONE
@@ -12720,7 +12721,6 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: 'Injection Output 12 '
       bind:
         source: config
         field: injectionPins12
@@ -13459,7 +13459,6 @@ children:
   - type: enum-field
     id: etbio1-controlpin
     props:
-      label: ETB#1 Control
       options:
       - value: 0
         label: NONE
@@ -13817,6 +13816,7 @@ children:
         label: PK14
       - value: 177
         label: PK15
+      label: ETB#1 Control
     bind:
       source: config
       field: etbIo1_controlPin
@@ -14551,6 +14551,7 @@ children:
   - type: enum-field
     id: etbio2-directionpin2
     props:
+      label: 'ETB#2 Dir #2'
       options:
       - value: 0
         label: NONE
@@ -14908,7 +14909,6 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: 'ETB#2 Dir #2'
     bind:
       source: config
       field: etbIo2_directionPin2

@@ -11,12 +11,12 @@ children:
 - type: enum-field
   id: antilagenabled
   props:
+    label: AntiLag
     options:
     - value: 0
       label: disabled
     - value: 1
       label: enabled
-    label: AntiLag
   bind:
     source: config
     field: antiLagEnabled
@@ -383,16 +383,22 @@ children:
 - type: config-table
   id: fueladdertableals
   props:
-    xBins: alsFuelAdjustmentrpmBins
     title: Fuel adjustment
-    yBins: alsFuelAdjustmentLoadBins
-    zBins: ALSFuelAdjustment
     variant: table
+  bind:
+    source: config
+    params:
+      xBins: alsFuelAdjustmentrpmBins
+      yBins: alsFuelAdjustmentLoadBins
+      zBins: ALSFuelAdjustment
 - type: config-table
   id: ignretardtableals
   props:
-    xBins: alsIgnRetardrpmBins
-    title: Ignition adjustment
-    yBins: alsIgnRetardLoadBins
-    zBins: ALSTimingRetardTable
     variant: table
+    title: Ignition adjustment
+  bind:
+    source: config
+    params:
+      zBins: ALSTimingRetardTable
+      yBins: alsIgnRetardLoadBins
+      xBins: alsIgnRetardrpmBins

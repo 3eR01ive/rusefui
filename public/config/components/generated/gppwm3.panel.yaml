@@ -466,17 +466,20 @@ children:
   - type: string-field
     id: gppwmnote3
     props:
-      label: Note
       maxLength: 16
+      label: Note
     bind:
       source: config
       field: gpPwmNote3
 - type: config-table
   id: gppwm3tbl
   props:
-    yLabel: gppwm3_rpmAxis)}
-    yBins: gppwm3_loadBins
     variant: table
     title: GP#3
-    zBins: gppwm3_table
-    xBins: gppwm3_rpmBins
+    yLabel: gppwm3_rpmAxis)}
+  bind:
+    source: config
+    params:
+      zBins: gppwm3_table
+      yBins: gppwm3_loadBins
+      xBins: gppwm3_rpmBins

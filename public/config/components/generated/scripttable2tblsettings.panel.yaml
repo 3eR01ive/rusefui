@@ -16,7 +16,10 @@ children:
   id: scripttable2tbl
   props:
     variant: table
-    xBins: scriptTable2RpmBins
-    yBins: scriptTable2LoadBins
     title: 'Script Table #2'
-    zBins: scriptTable2
+  bind:
+    source: config
+    params:
+      yBins: scriptTable2LoadBins
+      zBins: scriptTable2
+      xBins: scriptTable2RpmBins

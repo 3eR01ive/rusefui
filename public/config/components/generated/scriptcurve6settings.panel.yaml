@@ -15,8 +15,11 @@ children:
 - type: curve
   id: scriptcurve6
   props:
-    xBins: scriptCurve6Bins
-    xLabel: X
-    yBins: scriptCurve6
-    yLabel: Y
     title: 'Script Curve #6'
+    xLabel: X
+    yLabel: Y
+  bind:
+    source: config
+    params:
+      yBins: scriptCurve6
+      xBins: scriptCurve6Bins

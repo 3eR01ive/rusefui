@@ -47,6 +47,9 @@ children:
   props:
     xLabel: '% pump volume'
     title: HPFP Lobe Profile
-    xBins: hpfpLobeProfileQuantityBins
-    yBins: hpfpLobeProfileAngle
     yLabel: angle
+  bind:
+    source: config
+    params:
+      xBins: hpfpLobeProfileQuantityBins
+      yBins: hpfpLobeProfileAngle

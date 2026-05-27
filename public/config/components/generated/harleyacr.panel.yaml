@@ -271,6 +271,7 @@ children:
 - type: enum-field
   id: acrpin2
   props:
+    label: Pin 2
     options:
     - value: 0
       label: NONE
@@ -528,14 +529,13 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
-    label: Pin 2
   bind:
     source: config
     field: acrPin2
 - type: text
   props:
-    variant: hint
     text: ACR is disabled after the specified number
+    variant: hint
 - type: text
   props:
     text: of revolutions, plus degrees of engine phase
@@ -556,13 +556,13 @@ children:
     field: acrDisablePhase
 - type: text
   props:
+    variant: hint
     text: 'Кнопка: Test ACR #1 (cmd_test_acr_valve)'
-    variant: hint
 - type: text
   props:
+    variant: hint
     text: 'Кнопка: Test ACR #2 (cmd_test_acr2_valve)'
-    variant: hint
 - type: text
   props:
-    text: Панель «acrActiveDiagPanel» — нет определения в INI
     variant: hint
+    text: Панель «acrActiveDiagPanel» — нет определения в INI

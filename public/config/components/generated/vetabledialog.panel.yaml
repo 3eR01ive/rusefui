@@ -10,11 +10,12 @@ children:
   children:
   - type: text
     props:
-      text: https://rusefi.com/s/fuel
       variant: hint
+      text: https://rusefi.com/s/fuel
   - type: enum-field
     id: fuelalgorithm
     props:
+      label: Fuel strategy
       options:
       - value: 0
         label: Speed Density
@@ -24,7 +25,6 @@ children:
         label: Alpha-N
       - value: 3
         label: Lua
-      label: Fuel strategy
     bind:
       source: config
       field: fuelAlgorithm
@@ -51,9 +51,12 @@ children:
 - type: config-table
   id: vetabletbl
   props:
-    variant: table
-    xLabel: RPM
     title: VE Table
-    yBins: veLoadBins
-    zBins: veTable
-    xBins: veRpmBins
+    xLabel: RPM
+    variant: table
+  bind:
+    source: config
+    params:
+      xBins: veRpmBins
+      zBins: veTable
+      yBins: veLoadBins

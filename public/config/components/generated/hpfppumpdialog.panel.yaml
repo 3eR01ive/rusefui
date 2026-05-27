@@ -7,6 +7,7 @@ children:
 - type: enum-field
   id: hpfpvalvepin
   props:
+    label: Valve Pin
     options:
     - value: 0
       label: NONE
@@ -264,7 +265,6 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
-    label: Valve Pin
   bind:
     source: config
     field: hpfpValvePin
@@ -348,7 +348,10 @@ children:
   id: hpfpdeadtimecurve
   props:
     title: HPFP Valve Deadtime
-    yBins: hpfpDeadtimeMS
-    xBins: hpfpDeadtimeVoltsBins
     yLabel: ms
     xLabel: volts
+  bind:
+    source: config
+    params:
+      xBins: hpfpDeadtimeVoltsBins
+      yBins: hpfpDeadtimeMS

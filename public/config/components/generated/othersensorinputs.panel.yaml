@@ -7,7 +7,6 @@ children:
 - type: enum-field
   id: clutchdownpin
   props:
-    label: Clutch Down
     options:
     - value: 0
       label: NONE
@@ -265,6 +264,7 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
+    label: Clutch Down
   bind:
     source: config
     field: clutchDownPin
@@ -295,6 +295,7 @@ children:
 - type: enum-field
   id: clutchuppin
   props:
+    label: Clutch Up
     options:
     - value: 0
       label: NONE
@@ -552,13 +553,13 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
-    label: Clutch Up
   bind:
     source: config
     field: clutchUpPin
 - type: enum-field
   id: clutchuppinmode
   props:
+    label: Clutch Up mode
     options:
     - value: 0
       label: DEFAULT
@@ -576,7 +577,6 @@ children:
       label: INVERTED PULLDOWN
     - value: 7
       label: '"INVALID'
-    label: Clutch Up mode
   bind:
     source: config
     field: clutchUpPinMode
@@ -847,7 +847,6 @@ children:
 - type: enum-field
   id: brakepedalpinmode
   props:
-    label: Brake Pedal Mode
     options:
     - value: 0
       label: DEFAULT
@@ -865,6 +864,7 @@ children:
       label: INVERTED PULLDOWN
     - value: 7
       label: '"INVALID'
+    label: Brake Pedal Mode
   bind:
     source: config
     field: brakePedalPinMode

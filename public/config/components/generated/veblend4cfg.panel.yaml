@@ -18,8 +18,8 @@ children:
     variant: hint
 - type: text
   props:
-    variant: hint
     text: in +5.0% added to the VE. Note that this doesn't add 5% VE,
+    variant: hint
 - type: scalar-field
   id: instead--it-adds-5--to-the-current-ve-value--multiplying-ve-by-1-05
   props:
@@ -29,12 +29,12 @@ children:
     field: instead, it adds 5% to the current VE value, multiplying VE by 1.05.
 - type: text
   props:
-    text: The X axis of the bias table is controlled by the selected blend
     variant: hint
+    text: The X axis of the bias table is controlled by the selected blend
 - type: text
   props:
-    variant: hint
     text: parameter below.
+    variant: hint
 - type: enum-field
   id: veblends4-blendparameter
   props:
@@ -196,5 +196,8 @@ children:
   props:
     title: VE blend 4 bias
     yLabel: veBlends4_blendParameter)}
-    yBins: veBlends4_blendValues
-    xBins: veBlends4_blendBins
+  bind:
+    source: config
+    params:
+      xBins: veBlends4_blendBins
+      yBins: veBlends4_blendValues

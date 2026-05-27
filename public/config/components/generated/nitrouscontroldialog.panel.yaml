@@ -11,12 +11,12 @@ children:
   - type: enum-field
     id: nitrouscontrolenabled
     props:
+      label: Nitrous Control
       options:
       - value: 0
         label: disabled
       - value: 1
         label: enabled
-      label: Nitrous Control
     bind:
       source: config
       field: nitrousControlEnabled
@@ -646,7 +646,6 @@ children:
     - type: enum-field
       id: nitrousrelaypinmode
       props:
-        label: Nitrous Relay Mode
         options:
         - value: 0
           label: default
@@ -656,6 +655,7 @@ children:
           label: open collector
         - value: 3
           label: open collector inverted
+        label: Nitrous Relay Mode
       bind:
         source: config
         field: nitrousRelayPinMode

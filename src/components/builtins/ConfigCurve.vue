@@ -21,6 +21,7 @@ const props = defineProps<{
   meta: ComponentMeta;
 }>();
 
+const instanceRef = computed(() => props.instance);
 const propsRef = computed(() => props.props);
 
 const {
@@ -35,7 +36,7 @@ const {
   statusText,
   localError,
   xValues,
-} = useConfigGrid({ kind: "curve", props: propsRef });
+} = useConfigGrid({ kind: "curve", instance: instanceRef, props: propsRef });
 
 const chartHeight = computed(() => {
   const h = Number(props.props.height ?? 220);

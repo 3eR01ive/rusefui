@@ -6,17 +6,17 @@ source:
 children:
 - type: text
   props:
-    text: This is a pretty advanced feature for when you are debugging trigger synchronization
     variant: hint
+    text: This is a pretty advanced feature for when you are debugging trigger synchronization
 - type: enum-field
   id: overridetriggergaps
   props:
-    label: Override well known trigger gaps
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
+    label: Override well known trigger gaps
   bind:
     source: config
     field: overrideTriggerGaps
@@ -206,5 +206,5 @@ children:
     text: 'VVT gap #4 from'
 - type: text
   props:
-    variant: hint
     text: 'VVT gap #4 to'
+    variant: hint

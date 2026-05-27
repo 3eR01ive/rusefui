@@ -10,8 +10,8 @@ children:
     variant: hint
 - type: text
   props:
-    variant: hint
     text: Call startPwm to initialize, then call
+    variant: hint
 - type: text
   props:
     variant: hint
@@ -1079,6 +1079,7 @@ children:
 - type: enum-field
   id: luaoutputpins5
   props:
+    label: 'output #4'
     options:
     - value: 0
       label: NONE
@@ -1336,14 +1337,12 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
-    label: 'output #4'
   bind:
     source: config
     field: luaOutputPins5
 - type: enum-field
   id: luaoutputpins6
   props:
-    label: 'output #5'
     options:
     - value: 0
       label: NONE
@@ -1601,13 +1600,13 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
+    label: 'output #5'
   bind:
     source: config
     field: luaOutputPins6
 - type: enum-field
   id: luaoutputpins7
   props:
-    label: 'output #6'
     options:
     - value: 0
       label: NONE
@@ -1865,6 +1864,7 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
+    label: 'output #6'
   bind:
     source: config
     field: luaOutputPins7

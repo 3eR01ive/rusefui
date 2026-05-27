@@ -29,16 +29,15 @@ children:
     field: instead, it adds 5% to the current VE value, multiplying VE by 1.05.
 - type: text
   props:
-    variant: hint
     text: The X axis of the bias table is controlled by the selected blend
+    variant: hint
 - type: text
   props:
-    variant: hint
     text: parameter below.
+    variant: hint
 - type: enum-field
   id: veblends1-blendparameter
   props:
-    label: Blend parameter
     options:
     - value: 0
       label: Zero
@@ -110,6 +109,7 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
+    label: Blend parameter
   bind:
     source: config
     field: veBlends1_blendParameter
@@ -195,6 +195,9 @@ children:
   id: veblend1bias
   props:
     title: VE blend 1 bias
-    yBins: veBlends1_blendValues
     yLabel: veBlends1_blendParameter)}
-    xBins: veBlends1_blendBins
+  bind:
+    source: config
+    params:
+      xBins: veBlends1_blendBins
+      yBins: veBlends1_blendValues

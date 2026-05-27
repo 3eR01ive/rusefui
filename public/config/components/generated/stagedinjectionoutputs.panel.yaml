@@ -271,7 +271,6 @@ children:
 - type: enum-field
   id: injectionpinsstage22
   props:
-    label: Injection Stage 2 Output 2
     options:
     - value: 0
       label: NONE
@@ -529,12 +528,14 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
+    label: Injection Stage 2 Output 2
   bind:
     source: config
     field: injectionPinsStage22
 - type: enum-field
   id: injectionpinsstage23
   props:
+    label: Injection Stage 2 Output 3
     options:
     - value: 0
       label: NONE
@@ -792,13 +793,13 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
-    label: Injection Stage 2 Output 3
   bind:
     source: config
     field: injectionPinsStage23
 - type: enum-field
   id: injectionpinsstage24
   props:
+    label: Injection Stage 2 Output 4
     options:
     - value: 0
       label: NONE
@@ -1056,7 +1057,6 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
-    label: Injection Stage 2 Output 4
   bind:
     source: config
     field: injectionPinsStage24
@@ -1591,6 +1591,7 @@ children:
 - type: enum-field
   id: injectionpinsstage27
   props:
+    label: 'Injection Stage 2 Output 7 '
     options:
     - value: 0
       label: NONE
@@ -1848,7 +1849,6 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
-    label: 'Injection Stage 2 Output 7 '
   bind:
     source: config
     field: injectionPinsStage27
@@ -2119,6 +2119,7 @@ children:
 - type: enum-field
   id: injectionpinsstage29
   props:
+    label: 'Injection Stage 2 Output 9 '
     options:
     - value: 0
       label: NONE
@@ -2376,7 +2377,6 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
-    label: 'Injection Stage 2 Output 9 '
   bind:
     source: config
     field: injectionPinsStage29
@@ -2911,6 +2911,7 @@ children:
 - type: enum-field
   id: injectionpinsstage212
   props:
+    label: 'Injection Stage 2 Output 12 '
     options:
     - value: 0
       label: NONE
@@ -3168,7 +3169,6 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
-    label: 'Injection Stage 2 Output 12 '
   bind:
     source: config
     field: injectionPinsStage212

@@ -6,8 +6,8 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: Put this sensor before any turbocharger/supercharger
+    variant: hint
 - type: text
   props:
     text: near the air filter.
@@ -15,7 +15,6 @@ children:
 - type: enum-field
   id: ambienttempsensor-adcchannel
   props:
-    label: Input channel
     options:
     - value: 0
       label: NONE
@@ -81,6 +80,7 @@ children:
       label: INVALID
     - value: 31
       label: INVALID
+    label: Input channel
   bind:
     source: config
     field: ambientTempSensor_adcChannel

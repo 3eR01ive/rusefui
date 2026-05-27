@@ -32,7 +32,6 @@ children:
   - type: enum-field
     id: vvtpins1
     props:
-      label: VVT solenoid bank 1 intake
       options:
       - value: 0
         label: NONE
@@ -290,13 +289,13 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: VVT solenoid bank 1 intake
     bind:
       source: config
       field: vvtPins1
   - type: enum-field
     id: vvtpins2
     props:
-      label: VVT solenoid bank 1 exhaust
       options:
       - value: 0
         label: NONE
@@ -554,12 +553,14 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: VVT solenoid bank 1 exhaust
     bind:
       source: config
       field: vvtPins2
   - type: enum-field
     id: vvtpins3
     props:
+      label: VVT solenoid bank 2 intake
       options:
       - value: 0
         label: NONE
@@ -817,13 +818,13 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: VVT solenoid bank 2 intake
     bind:
       source: config
       field: vvtPins3
   - type: enum-field
     id: vvtpins4
     props:
+      label: VVT solenoid bank 2 exhaust
       options:
       - value: 0
         label: NONE
@@ -1081,19 +1082,18 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: VVT solenoid bank 2 exhaust
     bind:
       source: config
       field: vvtPins4
   - type: enum-field
     id: invertvvtcontrolintake
     props:
-      label: VVT solenoid intake cams control direction
       options:
       - value: 0
         label: advance
       - value: 1
         label: retard
+      label: VVT solenoid intake cams control direction
     bind:
       source: config
       field: invertVvtControlIntake

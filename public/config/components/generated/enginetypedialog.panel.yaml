@@ -10,5 +10,5 @@ children:
     text: These buttons send a command to rusEFI controller to apply preset values
 - type: text
   props:
-    text: Once you send the command, please reconnect to rusEFI controller in order to read fresh values
     variant: hint
+    text: Once you send the command, please reconnect to rusEFI controller in order to read fresh values

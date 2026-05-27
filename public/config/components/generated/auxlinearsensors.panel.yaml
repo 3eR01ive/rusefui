@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: auxlinear1-hwchannel
     props:
+      label: Input
       options:
       - value: 0
         label: NONE
@@ -76,7 +77,6 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
-      label: Input
     bind:
       source: config
       field: auxLinear1_hwChannel
@@ -115,6 +115,7 @@ children:
   - type: enum-field
     id: auxlinear2-hwchannel
     props:
+      label: Input
       options:
       - value: 0
         label: NONE
@@ -180,7 +181,6 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
-      label: Input
     bind:
       source: config
       field: auxLinear2_hwChannel
@@ -479,7 +479,6 @@ children:
 - type: enum-field
   id: auxspeedsensorinputpin2
   props:
-    label: Aux Speed Input 2
     options:
     - value: 0
       label: NONE
@@ -737,6 +736,7 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
+    label: Aux Speed Input 2
   bind:
     source: config
     field: auxSpeedSensorInputPin2
@@ -755,12 +755,12 @@ children:
 - type: enum-field
   id: usevssassecondwheelspeed
   props:
-    label: Use VSS As Second Wheel Speed
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
+    label: Use VSS As Second Wheel Speed
   bind:
     source: config
     field: useVssAsSecondWheelSpeed

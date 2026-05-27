@@ -26,16 +26,22 @@ children:
 - type: curve
   id: map-samplinganglecurve
   props:
-    yLabel: Angle
-    yBins: map_samplingAngle
-    xLabel: RPM
     title: MAP Sampling Start Angle
-    xBins: map_samplingAngleBins
+    yLabel: Angle
+    xLabel: RPM
+  bind:
+    source: config
+    params:
+      xBins: map_samplingAngleBins
+      yBins: map_samplingAngle
 - type: curve
   id: map-samplingwindowcurve
   props:
     title: MAP Sampling Duration
     xLabel: RPM
-    yBins: map_samplingWindow
     yLabel: Window
-    xBins: map_samplingWindowBins
+  bind:
+    source: config
+    params:
+      xBins: map_samplingWindowBins
+      yBins: map_samplingWindow

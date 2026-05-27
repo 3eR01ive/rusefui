@@ -11,7 +11,6 @@ children:
   - type: enum-field
     id: fanpin
     props:
-      label: Output
       options:
       - value: 0
         label: NONE
@@ -269,6 +268,7 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: Output
     bind:
       source: config
       field: fanPin
@@ -401,8 +401,8 @@ children:
   children:
   - type: text
     props:
-      variant: hint
       text: Панель «fan_control0IndicatorPanel» — нет определения в INI
+      variant: hint
   - type: text
     props:
       variant: hint
@@ -414,6 +414,7 @@ children:
   - type: enum-field
     id: fan2pin
     props:
+      label: Output
       options:
       - value: 0
         label: NONE
@@ -671,7 +672,6 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: Output
     bind:
       source: config
       field: fan2Pin
@@ -694,12 +694,12 @@ children:
   - type: enum-field
     id: enablefan2withac
     props:
+      label: Enable with AC
       options:
       - value: 0
         label: no
       - value: 1
         label: yes
-      label: Enable with AC
     bind:
       source: config
       field: enableFan2WithAc
@@ -754,12 +754,12 @@ children:
     - type: enum-field
       id: fan2pwmenabled
       props:
-        label: Enable PWM mode
         options:
         - value: 0
           label: no
         - value: 1
           label: yes
+        label: Enable PWM mode
       bind:
         source: config
         field: fan2PwmEnabled
@@ -804,13 +804,13 @@ children:
   children:
   - type: text
     props:
-      text: Панель «fanOnOffIndicators» — нет определения в INI
       variant: hint
+      text: Панель «fanOnOffIndicators» — нет определения в INI
   - type: text
     props:
       text: 'Кнопка: Test Fan 1 (cmd_test_fan_1)'
       variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Test Fan 2 (cmd_test_fan_2)'
+      variant: hint

@@ -7,7 +7,6 @@ children:
 - type: enum-field
   id: fueltempsensor-adcchannel
   props:
-    label: Input channel
     options:
     - value: 0
       label: NONE
@@ -73,6 +72,7 @@ children:
       label: INVALID
     - value: 31
       label: INVALID
+    label: Input channel
   bind:
     source: config
     field: fuelTempSensor_adcChannel
