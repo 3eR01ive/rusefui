@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use rusefi_ini::IniFile;
+use serde::Serialize;
 
 use super::signature::{ini_download_target, parse_rusefi_signature};
 
@@ -27,6 +28,53 @@ pub enum IniResolveError {
 pub struct ResolvedIni {
     pub path: PathBuf,
     pub file: IniFile,
+}
+
+/// Откуда найден INI-кандидат — для подсказки в UI.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum IniCandidateSource {
+    /// `RUSEFI_INI_PATH` / `RUSEFI_EXTRA_INI_PATH`.
+    EnvOverride,
+    /// `~/.rusEFI/ini_database/` (предыдущие загрузки c rusefi.com).
+    Cache,
+    /// Каталог, явно переданный через env (`RUSEFI_INI_DIR` / `RUSEFI_GENERATED_INI_DIR`)
+    /// либо встроенный `test_data/` / соседний `rusefi/firmware/.../generated/`.
+    LocalDir,
+}
+
+/// Описание найденного INI-кандидата для UI выбора.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IniCandidate {
+    pub path: String,
+    pub file_name: String,
+    pub source: IniCandidateSource,
+    pub signature: Option<String>,
+    pub matches_ecu: bool,
+    /// `bundle_target` из signature (e.g. `proteus_f7`) — для подсветки несовпадения железа.
+    pub bundle_target: Option<String>,
+    pub size_bytes: u64,
+}
+
+/// Статус online-загрузки c rusefi.com (для последнего отображения в UI).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum OnlineDownloadStatus {
+    /// Signature ECU не парсится в `rusEFI {branch}.{...}` — URL построить нельзя.
+    NotApplicable,
+    /// Загрузка не пробовалась (например, `RUSEFI_INI_NO_DOWNLOAD=1`).
+    NotAttempted { reason: String },
+    /// Успешно скачано в указанный кэш-файл.
+    Succeeded { path: String, url: String },
+    /// HTTP/IO ошибка или signature файла не совпала с ECU.
+    Failed { url: String, error: String },
+}
+
+impl OnlineDownloadStatus {
+    pub fn is_success(&self) -> bool {
+        matches!(self, OnlineDownloadStatus::Succeeded { .. })
+    }
 }
 
 /// Строгое совпадение signature ECU и INI.
@@ -139,32 +187,204 @@ fn load_and_verify(path: &Path, ecu_signature: &str) -> Result<ResolvedIni, IniR
 }
 
 fn try_download(ecu_signature: &str) -> Option<PathBuf> {
-    if std::env::var("RUSEFI_INI_NO_DOWNLOAD").is_ok() {
-        return None;
+    match download_ini_for_signature(ecu_signature) {
+        OnlineDownloadStatus::Succeeded { path, .. } => Some(PathBuf::from(path)),
+        _ => None,
     }
-    if let Ok(extra) = std::env::var("RUSEFI_EXTRA_INI_PATH") {
-        let path = PathBuf::from(extra);
-        if path.is_file() {
-            return Some(path);
+}
+
+/// Принудительная попытка скачать INI с rusefi.com и сохранить в `ini_cache_dir`.
+/// Возвращает детальный статус для отображения в UI; перед записью проверяет,
+/// что signature файла совпадает с `ecu_signature`.
+pub fn download_ini_for_signature(ecu_signature: &str) -> OnlineDownloadStatus {
+    if let Ok(reason) = std::env::var("RUSEFI_INI_NO_DOWNLOAD") {
+        let reason = if reason.is_empty() {
+            "RUSEFI_INI_NO_DOWNLOAD=1".to_string()
+        } else {
+            format!("RUSEFI_INI_NO_DOWNLOAD={reason}")
+        };
+        return OnlineDownloadStatus::NotAttempted { reason };
+    }
+
+    let Some((url, file_name)) = ini_download_target(ecu_signature) else {
+        return OnlineDownloadStatus::NotApplicable;
+    };
+
+    let dest = ini_cache_dir().join(&file_name);
+    if let Err(e) = std::fs::create_dir_all(ini_cache_dir()) {
+        return OnlineDownloadStatus::Failed {
+            url,
+            error: format!("не создать каталог кэша: {e}"),
+        };
+    }
+
+    let response = match ureq::get(&url).call() {
+        Ok(r) => r,
+        Err(e) => {
+            return OnlineDownloadStatus::Failed {
+                url,
+                error: format!("HTTP: {e}"),
+            }
+        }
+    };
+    if response.status() >= 300 {
+        return OnlineDownloadStatus::Failed {
+            url,
+            error: format!("HTTP {}", response.status()),
+        };
+    }
+    let mut bytes = Vec::new();
+    if let Err(e) = std::io::Read::read_to_end(&mut response.into_reader(), &mut bytes) {
+        return OnlineDownloadStatus::Failed {
+            url,
+            error: format!("read body: {e}"),
+        };
+    }
+    if (bytes.len() as u64) <= MIN_INI_BYTES {
+        return OnlineDownloadStatus::Failed {
+            url,
+            error: format!("слишком короткий ответ ({} байт)", bytes.len()),
+        };
+    }
+    if let Err(e) = std::fs::write(&dest, &bytes) {
+        return OnlineDownloadStatus::Failed {
+            url,
+            error: format!("write {dest}: {e}", dest = dest.display()),
+        };
+    }
+
+    // Дополнительно убеждаемся, что скачанный файл действительно содержит правильную signature.
+    match IniFile::load_file(&dest) {
+        Ok(file) => {
+            if file.signature.as_deref() == Some(ecu_signature) {
+                OnlineDownloadStatus::Succeeded {
+                    path: dest.display().to_string(),
+                    url,
+                }
+            } else {
+                let actual = file.signature.unwrap_or_default();
+                OnlineDownloadStatus::Failed {
+                    url,
+                    error: format!(
+                        "signature в скачанном файле не совпадает: ECU={ecu_signature}, INI={actual}"
+                    ),
+                }
+            }
+        }
+        Err(e) => OnlineDownloadStatus::Failed {
+            url,
+            error: format!("ошибка парсинга: {e}"),
+        },
+    }
+}
+
+/// Собрать список локальных INI-кандидатов с пометкой совпадения с ECU signature.
+/// Кандидаты сортируются: сначала совпадающие, затем по убыванию размера.
+/// Если `ecu_signature` не задана, `matches_ecu` всегда `false`.
+pub fn enumerate_local_candidates(ecu_signature: Option<&str>) -> Vec<IniCandidate> {
+    let mut seen: std::collections::HashSet<PathBuf> = std::collections::HashSet::new();
+    let mut out: Vec<IniCandidate> = Vec::new();
+
+    let push_candidate = |path: PathBuf, source: IniCandidateSource, out: &mut Vec<IniCandidate>, seen: &mut std::collections::HashSet<PathBuf>| {
+        let canonical = path.canonicalize().unwrap_or(path);
+        if !canonical.is_file() {
+            return;
+        }
+        if !seen.insert(canonical.clone()) {
+            return;
+        }
+        let size = canonical.metadata().map(|m| m.len()).unwrap_or(0);
+        if size < MIN_INI_BYTES {
+            return;
+        }
+        let (signature, bundle_target) = match IniFile::load_file(&canonical) {
+            Ok(file) => {
+                let bundle_target = file
+                    .signature
+                    .as_deref()
+                    .and_then(parse_rusefi_signature)
+                    .map(|s| s.bundle_target);
+                (file.signature, bundle_target)
+            }
+            Err(_) => (None, None),
+        };
+        let matches_ecu = match (ecu_signature, signature.as_deref()) {
+            (Some(ecu), Some(ini)) => ecu == ini,
+            _ => false,
+        };
+        let file_name = canonical
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("")
+            .to_string();
+        out.push(IniCandidate {
+            path: canonical.display().to_string(),
+            file_name,
+            source,
+            signature,
+            matches_ecu,
+            bundle_target,
+            size_bytes: size,
+        });
+    };
+
+    if let Ok(p) = std::env::var("RUSEFI_INI_PATH") {
+        push_candidate(PathBuf::from(p), IniCandidateSource::EnvOverride, &mut out, &mut seen);
+    }
+    if let Ok(p) = std::env::var("RUSEFI_EXTRA_INI_PATH") {
+        push_candidate(PathBuf::from(p), IniCandidateSource::EnvOverride, &mut out, &mut seen);
+    }
+
+    let cache_dir = ini_cache_dir();
+    let mut env_dirs: Vec<PathBuf> = Vec::new();
+    if let Ok(d) = std::env::var("RUSEFI_INI_DIR") {
+        env_dirs.push(PathBuf::from(d));
+    }
+    if let Ok(d) = std::env::var("RUSEFI_GENERATED_INI_DIR") {
+        env_dirs.push(PathBuf::from(d));
+    }
+
+    if let Some(entries) = std::fs::read_dir(&cache_dir).ok() {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("ini") {
+                push_candidate(path, IniCandidateSource::Cache, &mut out, &mut seen);
+            }
         }
     }
 
-    let (url, file_name) = ini_download_target(ecu_signature)?;
-    let dest = ini_cache_dir().join(&file_name);
-    std::fs::create_dir_all(ini_cache_dir()).ok()?;
+    for dir in search_directories() {
+        let src = if env_dirs.iter().any(|d| d == &dir) {
+            IniCandidateSource::EnvOverride
+        } else if dir == cache_dir {
+            IniCandidateSource::Cache
+        } else {
+            IniCandidateSource::LocalDir
+        };
+        let Some(entries) = std::fs::read_dir(&dir).ok() else { continue };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+            let name = match path.file_name().and_then(|s| s.to_str()) {
+                Some(n) => n,
+                None => continue,
+            };
+            if !name.ends_with(".ini") {
+                continue;
+            }
+            push_candidate(path, src, &mut out, &mut seen);
+        }
+    }
 
-    let response = ureq::get(&url).call().ok()?;
-    if response.status() >= 300 {
-        return None;
-    }
-    let mut reader = response.into_reader();
-    let mut bytes = Vec::new();
-    std::io::Read::read_to_end(&mut reader, &mut bytes).ok()?;
-    if bytes.len() as u64 <= MIN_INI_BYTES {
-        return None;
-    }
-    std::fs::write(&dest, bytes).ok()?;
-    Some(dest)
+    out.sort_by(|a, b| {
+        b.matches_ecu
+            .cmp(&a.matches_ecu)
+            .then_with(|| b.size_bytes.cmp(&a.size_bytes))
+            .then_with(|| a.file_name.cmp(&b.file_name))
+    });
+    out
 }
 
 fn scan_directory_for_signature(dir: &Path, ecu_signature: &str) -> Option<PathBuf> {
@@ -247,5 +467,49 @@ mod tests {
         assert!(!dirs.is_empty(), "search dirs empty: {dirs:?}");
         let resolved = resolve_ini_for_signature(sig).expect("proteus ini should be found locally");
         assert_eq!(resolved.file.signature.as_deref(), Some(sig));
+    }
+
+    #[test]
+    fn enumerate_candidates_marks_matching_proteus() {
+        std::env::set_var("RUSEFI_INI_NO_DOWNLOAD", "1");
+        std::env::remove_var("RUSEFI_INI_PATH");
+        std::env::remove_var("RUSEFI_EXTRA_INI_PATH");
+        let sig = "rusEFI master.2025.09.02.proteus_f7.4139280449";
+        let cands = enumerate_local_candidates(Some(sig));
+        assert!(!cands.is_empty(), "должен быть хотя бы один кандидат");
+        let first_match = cands.iter().find(|c| c.matches_ecu);
+        assert!(
+            first_match.is_some(),
+            "ожидаем совпадение с {sig}, найдены: {:?}",
+            cands.iter().map(|c| &c.signature).collect::<Vec<_>>()
+        );
+        // matching кандидаты должны быть в начале (сортировка по `matches_ecu desc`).
+        assert!(cands[0].matches_ecu, "первый кандидат должен быть match");
+    }
+
+    #[test]
+    fn enumerate_candidates_without_signature_returns_all() {
+        std::env::set_var("RUSEFI_INI_NO_DOWNLOAD", "1");
+        let cands = enumerate_local_candidates(None);
+        // Файлы найдены, но никто не помечен как matching.
+        assert!(!cands.is_empty());
+        assert!(!cands.iter().any(|c| c.matches_ecu));
+    }
+
+    #[test]
+    fn online_status_serializes_with_tag() {
+        let ok = OnlineDownloadStatus::Succeeded {
+            path: "/x.ini".into(),
+            url: "https://example".into(),
+        };
+        let json = serde_json::to_string(&ok).unwrap();
+        assert!(json.contains("\"kind\":\"succeeded\""), "json: {json}");
+        assert!(ok.is_success());
+
+        let fail = OnlineDownloadStatus::Failed {
+            url: "https://example".into(),
+            error: "boom".into(),
+        };
+        assert!(!fail.is_success());
     }
 }

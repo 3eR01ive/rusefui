@@ -18,6 +18,9 @@ pub enum WorkspacePhase {
     ProjectOnly,
     /// Проект открыт; autoconnect ищет порт.
     EcuScanning,
+    /// ECU подключена, но signature не совпала ни с одним известным INI —
+    /// ждём пользовательский выбор/загрузку.
+    EcuIniMismatch,
     /// ECU подключена; config ещё не готов.
     EcuConnectedIdle,
     /// Активен снимок `ecuConfig` из файла проекта (offline-редактирование).
@@ -74,6 +77,8 @@ pub struct WorkspaceSnapshot {
     pub offline_mode: bool,
     pub ecu_connected: bool,
     pub ecu_scanning: bool,
+    /// Ждём от пользователя выбора INI (signature ECU не совпала с .ini).
+    pub ini_pending_resolution: bool,
     pub config_source: ConfigSource,
     pub config_loaded: bool,
     pub config_loading: bool,
@@ -87,6 +92,7 @@ pub struct WorkspaceInputs {
     pub project: ProjectInfo,
     pub autoconnect: AutoConnectSnapshot,
     pub ecu_connected: bool,
+    pub ini_pending_resolution: bool,
     pub config: ConfigSnapshot,
 }
 
@@ -145,7 +151,29 @@ impl WorkspaceFsm {
 
 pub fn derive_workspace(inputs: &WorkspaceInputs) -> WorkspaceSnapshot {
     let project_open = inputs.project.path.is_some();
+    let ecu_live = inputs.ecu_connected && !inputs.autoconnect.offline_mode;
+    let ini_pending = inputs.ini_pending_resolution && ecu_live;
+
     if !project_open {
+        // Autoconnect может подключить ECU до открытия .json — всё равно показываем выбор INI.
+        if ini_pending {
+            return WorkspaceSnapshot {
+                phase: WorkspacePhase::EcuIniMismatch,
+                project_path: None,
+                project_name: inputs.project.name.clone(),
+                project_dirty: inputs.project.dirty,
+                has_ecu_config_in_project: false,
+                offline_mode: inputs.autoconnect.offline_mode,
+                ecu_connected: true,
+                ecu_scanning: false,
+                ini_pending_resolution: true,
+                config_source: ConfigSource::None,
+                config_loaded: false,
+                config_loading: false,
+                burn_pending: false,
+                capabilities: capabilities_for_phase(WorkspacePhase::EcuIniMismatch, inputs),
+            };
+        }
         return WorkspaceSnapshot {
             phase: WorkspacePhase::Gate,
             project_path: None,
@@ -155,6 +183,7 @@ pub fn derive_workspace(inputs: &WorkspaceInputs) -> WorkspaceSnapshot {
             offline_mode: inputs.autoconnect.offline_mode,
             ecu_connected: false,
             ecu_scanning: false,
+            ini_pending_resolution: false,
             config_source: ConfigSource::None,
             config_loaded: false,
             config_loading: false,
@@ -176,6 +205,9 @@ pub fn derive_workspace(inputs: &WorkspaceInputs) -> WorkspaceSnapshot {
         offline_mode: inputs.autoconnect.offline_mode,
         ecu_connected: inputs.ecu_connected && !inputs.autoconnect.offline_mode,
         ecu_scanning: inputs.autoconnect.scanning && !inputs.autoconnect.offline_mode,
+        ini_pending_resolution: inputs.ini_pending_resolution
+            && inputs.ecu_connected
+            && !inputs.autoconnect.offline_mode,
         config_source,
         config_loaded: inputs.config.loaded,
         config_loading: inputs.config.loading,
@@ -206,6 +238,11 @@ fn phase_from_inputs(inputs: &WorkspaceInputs, config_source: ConfigSource) -> W
         return WorkspacePhase::ProjectOnly;
     }
 
+    // ECU подключена. Если INI ещё не выбран — приоритет у Mismatch.
+    if inputs.ini_pending_resolution {
+        return WorkspacePhase::EcuIniMismatch;
+    }
+
     match config_source {
         // Снимок из проекта при live ECU — только preview, нужна загрузка page 0 с блока.
         ConfigSource::ProjectFile => WorkspacePhase::EcuConnectedIdle,
@@ -230,6 +267,15 @@ fn capabilities_for_phase(phase: WorkspacePhase, inputs: &WorkspaceInputs) -> Wo
             show_main_ui: true,
             edit_project_config: config_source_from_snapshot(&inputs.config)
                 == ConfigSource::ProjectFile,
+            write_config_to_ecu: false,
+            burn_to_flash: false,
+            poll_output_channels: false,
+            start_composite_logger: false,
+        },
+        WorkspacePhase::EcuIniMismatch => WorkspaceCapabilities {
+            // Главный UI скрыт, поверх — модалка выбора INI; редактирование/чтение запрещено.
+            show_main_ui: false,
+            edit_project_config: false,
             write_config_to_ecu: false,
             burn_to_flash: false,
             poll_output_channels: false,
@@ -303,6 +349,15 @@ fn transition_plan(
             plan.stop_output_poll = true;
             plan.stop_composite = true;
         }
+        WorkspacePhase::EcuIniMismatch => {
+            // Mismatch: link жив, но INI не применён — глушим все источники, ждём пользователя.
+            plan.stop_config = prev
+                .map(|p| p.config_source != ConfigSource::None)
+                .unwrap_or(false);
+            plan.stop_output_poll = true;
+            plan.stop_composite = true;
+            plan.clear_config_diff = true;
+        }
         WorkspacePhase::EcuConnectedIdle => {
             if next.ecu_connected {
                 plan.start_ecu_config_load = true;
@@ -353,6 +408,7 @@ mod tests {
                 busy_ports: vec![],
             },
             ecu_connected: connected,
+            ini_pending_resolution: false,
             config,
         }
     }
@@ -381,6 +437,40 @@ mod tests {
         let snap = inputs(Some("/p.json"), false, true, cfg);
         assert_eq!(snap.derive().phase, WorkspacePhase::EcuConnectedIdle);
         assert!(!snap.derive().capabilities.burn_to_flash);
+    }
+
+    #[test]
+    fn ini_pending_resolution_overrides_other_phases() {
+        // ECU подключена, config был preview — фаза должна стать EcuIniMismatch.
+        let mut cfg = disconnected_config();
+        cfg.loaded = true;
+        cfg.read_only = true;
+        let mut inp = inputs(Some("/p.json"), false, true, cfg);
+        inp.ini_pending_resolution = true;
+        let snap = inp.derive();
+        assert_eq!(snap.phase, WorkspacePhase::EcuIniMismatch);
+        assert!(!snap.capabilities.show_main_ui);
+        assert!(!snap.capabilities.poll_output_channels);
+        assert!(snap.ini_pending_resolution);
+    }
+
+    #[test]
+    fn ini_pending_ignored_when_offline_or_disconnected() {
+        let mut inp_off = inputs(Some("/p.json"), true, false, disconnected_config());
+        inp_off.ini_pending_resolution = true;
+        // Offline / disconnected — Mismatch недостижим.
+        assert_ne!(inp_off.derive().phase, WorkspacePhase::EcuIniMismatch);
+        assert!(!inp_off.derive().ini_pending_resolution);
+    }
+
+    #[test]
+    fn ini_pending_without_project_shows_mismatch_not_gate() {
+        let mut inp = inputs(None, false, true, disconnected_config());
+        inp.ini_pending_resolution = true;
+        let snap = inp.derive();
+        assert_eq!(snap.phase, WorkspacePhase::EcuIniMismatch);
+        assert!(snap.ini_pending_resolution);
+        assert!(snap.ecu_connected);
     }
 
     fn disconnected_config() -> ConfigSnapshot {

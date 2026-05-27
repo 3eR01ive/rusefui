@@ -20,6 +20,8 @@ import {
 } from "../composables/useWorkspaceState";
 import ProjectGate from "./ProjectGate.vue";
 import EcuConnectionModal from "./EcuConnectionModal.vue";
+import EcuIniMismatchScreen from "./EcuIniMismatchScreen.vue";
+import { initIniResolution } from "../composables/useIniResolution";
 import ProjectMenu from "./ProjectMenu.vue";
 import { useAppFooter, setFooterLed, footerToggleProtocol } from "../composables/useAppFooter";
 import { useTabState } from "../composables/useTabState";
@@ -46,6 +48,9 @@ const {
 } = useProject();
 const { showMainUi, canBurn: workspaceCanBurn, snapshot: workspaceSnap } =
   useWorkspaceState();
+const iniMismatchActive = computed(
+  () => workspaceSnap.value.phase === "ecuIniMismatch",
+);
 
 const { activeTabId, setTab } = useTabState();
 const tabWorkspaceRef = useTemplateRef<{ tabs: { id: string; title: string }[] }>("tabWorkspace");
@@ -140,6 +145,7 @@ function unsavedCheck(context: "quit" | "switch") {
 onMounted(async () => {
   await initProject();
   await initWorkspaceState();
+  await initIniResolution();
   await initConfig();
   void initOutputChannels();
   void initOutputTimeline();
@@ -216,6 +222,8 @@ function workspacePhaseLabel(phase: WorkspacePhase): string {
       return "проект";
     case "ecuScanning":
       return "поиск ECU";
+    case "ecuIniMismatch":
+      return "INI mismatch";
     case "ecuConnectedIdle":
       return "ECU";
     case "configFromProject":
@@ -252,7 +260,8 @@ async function onBurn() {
 </script>
 
 <template>
-  <ProjectGate v-if="!showMainUi" />
+  <ProjectGate v-if="!showMainUi && !iniMismatchActive" />
+  <EcuIniMismatchScreen v-if="iniMismatchActive" />
 
   <div v-if="showMainUi" class="app-shell">
     <header class="app-header">

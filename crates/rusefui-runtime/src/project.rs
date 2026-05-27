@@ -239,6 +239,15 @@ impl ProjectStore {
         Ok(())
     }
 
+    /// Перезаписать ссылку на INI в проекте (вызывается после ручного применения
+    /// несовпадавшего INI, чтобы при следующем `project_load` подгрузить нужный файл).
+    pub fn set_ini_ref(&self, path: Option<String>, signature: Option<String>) {
+        let mut doc = self.doc.lock().unwrap();
+        doc.ini = Some(ProjectIniRef { path, signature });
+        doc.touch();
+        *self.dirty.lock().unwrap() = true;
+    }
+
     pub fn add_log(
         &self,
         path: impl AsRef<Path>,
@@ -324,6 +333,7 @@ impl ProjectStore {
             (doc.ini.clone(), doc.ecu_config.clone())
         };
 
+        let project_ini_sig = ini_ref.as_ref().and_then(|r| r.signature.clone());
         if let Some(ini_ref) = ini_ref {
             if let Some(path) = ini_ref.path.filter(|p| !p.is_empty()) {
                 let p = Path::new(&path);
@@ -337,6 +347,7 @@ impl ProjectStore {
         if let Some(ecu) = ecu_config {
             session.config().apply_from_project(&ecu)?;
         }
+        session.set_project_ini_signature(project_ini_sig);
         Ok(())
     }
 }

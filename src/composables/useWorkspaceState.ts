@@ -7,6 +7,7 @@ export type WorkspacePhase =
   | "gate"
   | "projectOnly"
   | "ecuScanning"
+  | "ecuIniMismatch"
   | "ecuConnectedIdle"
   | "configFromProject"
   | "configLoadingFromEcu"
@@ -32,6 +33,8 @@ export interface WorkspaceSnapshot {
   offlineMode: boolean;
   ecuConnected: boolean;
   ecuScanning: boolean;
+  /** Signature ECU не совпала с известным .ini — ждём выбора пользователя. */
+  iniPendingResolution: boolean;
   configSource: ConfigSource;
   configLoaded: boolean;
   configLoading: boolean;
@@ -58,6 +61,7 @@ const snapshot = shallowRef<WorkspaceSnapshot>({
   offlineMode: false,
   ecuConnected: false,
   ecuScanning: false,
+  iniPendingResolution: false,
   configSource: "none",
   configLoaded: false,
   configLoading: false,

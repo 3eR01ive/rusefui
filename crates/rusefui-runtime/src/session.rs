@@ -5,10 +5,14 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use rusefi_ini::{encode_config_value, ConfigFieldKind};
+use rusefi_ini::{encode_config_value, ConfigFieldKind, IniFile};
 use rusefi_protocol::{ConnectionInfo, ProtocolError, SerialLink, DEFAULT_IO_TIMEOUT_MS};
+use serde::Serialize;
 
-use crate::ini::{find_any_local_ini, load_ini_path, resolve_ini_for_signature, ResolvedIni};
+use crate::ini::{
+    download_ini_for_signature, find_any_local_ini, load_ini_path, resolve_ini_for_signature,
+    IniResolveError, OnlineDownloadStatus, ResolvedIni,
+};
 use crate::protocol_log::ProtocolLogStore;
 use crate::sources::composite_data_log::CompositeDataLogWriter;
 use crate::sources::composite_logger::CompositeLoggerSource;
@@ -27,8 +31,26 @@ use crate::sources::output_timeline::{
 const STIMULATOR_CMD: &str = "self_stimulation";
 const TRIGGER_RPM_FIELD: &str = "triggerSimulatorRpm";
 
+/// Состояние ожидания выбора INI: link к ECU установлен, signature прочитана,
+/// но подходящий INI ещё не выбран (mismatch / not found / forced flow).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingIniResolution {
+    pub ecu_signature: String,
+    pub port_name: String,
+    /// Текст ошибки, который привёл к ожиданию.
+    pub last_error: String,
+    /// Что вернула попытка online-загрузки при connect.
+    pub online: OnlineDownloadStatus,
+    /// Signature из `project.json`, если отличалась от ECU при connect.
+    pub project_signature: Option<String>,
+    /// INI уже найден автоматически, но не применён до подтверждения пользователя.
+    pub suggested_ini_path: Option<String>,
+}
+
 struct EcuSessionInner {
     link: Option<SerialLink>,
+    pending: Option<PendingIniResolution>,
 }
 
 /// Общая сессия ECU: serial link + фоновый опрос output channels.
@@ -47,13 +69,18 @@ pub struct EcuSession {
     composite_data_log: Mutex<Option<Arc<Mutex<CompositeDataLogWriter>>>>,
     composite_timeline: Mutex<CompositeTimeline>,
     log_viewport_linked: AtomicBool,
+    /// Signature из открытого проекта (`project.ini`) — для сравнения при connect.
+    project_ini_signature: Mutex<Option<String>>,
 }
 
 impl EcuSession {
     pub fn new_arc(protocol_log: Arc<ProtocolLogStore>) -> Arc<Self> {
         let ini_ctx = IniContext::disconnected();
         Arc::new(Self {
-            inner: Mutex::new(EcuSessionInner { link: None }),
+            inner: Mutex::new(EcuSessionInner {
+                link: None,
+                pending: None,
+            }),
             ini: Mutex::new(ini_ctx.clone()),
             loaded_ini_path: Mutex::new(None),
             output: OutputChannelsSource::new(ini_ctx.clone()),
@@ -66,7 +93,16 @@ impl EcuSession {
             composite_data_log: Mutex::new(None),
             composite_timeline: Mutex::new(CompositeTimeline::default()),
             log_viewport_linked: AtomicBool::new(false),
+            project_ini_signature: Mutex::new(None),
         })
+    }
+
+    pub fn set_project_ini_signature(&self, signature: Option<String>) {
+        *self.project_ini_signature.lock().unwrap() = signature;
+    }
+
+    fn project_ini_signature(&self) -> Option<String> {
+        self.project_ini_signature.lock().unwrap().clone()
     }
 
     pub fn log_viewport_linked(&self) -> bool {
@@ -377,6 +413,129 @@ impl EcuSession {
         Ok(())
     }
 
+    /// Применить INI к активному ECU (или offline-проекту) с возможностью отключить
+    /// проверку signature (`force = true`). Если link жив и был в pending resolution
+    /// — завершает подключение: финализирует data-log, очищает pending.
+    pub fn apply_ini_with_options(
+        &self,
+        path: &std::path::Path,
+        force: bool,
+    ) -> Result<(), String> {
+        let file = IniFile::load_file(path).map_err(|e| {
+            IniResolveError::LoadFailed {
+                path: path.to_path_buf(),
+                message: e.to_string(),
+            }
+            .to_string()
+        })?;
+        if file.output_channels.fields.is_empty() {
+            return Err(format!("В INI нет [OutputChannels]: {}", path.display()));
+        }
+
+        let ecu_signature = self
+            .connection_info_if_available()
+            .map(|i| i.signature)
+            .or_else(|| {
+                self.inner
+                    .lock()
+                    .ok()
+                    .and_then(|g| g.pending.as_ref().map(|p| p.ecu_signature.clone()))
+            });
+
+        if let Some(ecu_sig) = ecu_signature.as_deref() {
+            match file.signature.as_deref() {
+                Some(ini_sig) if ini_sig == ecu_sig => {}
+                Some(ini_sig) => {
+                    if !force {
+                        return Err(format!(
+                            "signature не совпадает: ECU={ecu_sig}, INI={ini_sig}"
+                        ));
+                    }
+                    self.protocol_log.log_info(&format!(
+                        "INI применён принудительно (force): signature ECU={ecu_sig}, INI={ini_sig}"
+                    ));
+                }
+                None => {
+                    if !force {
+                        return Err(format!(
+                            "в INI нет поля signature: {}",
+                            path.display()
+                        ));
+                    }
+                    self.protocol_log.log_info(&format!(
+                        "INI применён принудительно (force): в файле нет signature ({})",
+                        path.display()
+                    ));
+                }
+            }
+        }
+
+        let resolved = ResolvedIni {
+            path: path.to_path_buf(),
+            file,
+        };
+        self.apply_ini(resolved);
+
+        // Если link был в pending — финализируем подключение.
+        let mut finalize = None;
+        if let Ok(mut guard) = self.inner.lock() {
+            if guard.pending.is_some() {
+                if let Some(link) = guard.link.as_ref() {
+                    finalize = Some(link.info().clone());
+                }
+                guard.pending = None;
+            }
+        }
+        if let Some(info) = finalize {
+            let ini_ctx = self.ini_context();
+            if let Some(ini_path) = self.loaded_ini_path() {
+                self.start_output_data_log(&info, &ini_ctx, &ini_path);
+            }
+        }
+        Ok(())
+    }
+
+    pub fn pending_ini_resolution(&self) -> Option<PendingIniResolution> {
+        self.inner.lock().ok().and_then(|g| g.pending.clone())
+    }
+
+    pub fn has_pending_ini_resolution(&self) -> bool {
+        self.inner
+            .lock()
+            .map(|g| g.pending.is_some())
+            .unwrap_or(false)
+    }
+
+    /// Повторная попытка online-загрузки INI с rusefi.com для signature
+    /// текущего pending. Если успешно — сразу применяет.
+    pub fn retry_online_ini_resolution(&self) -> Result<String, String> {
+        let signature = self
+            .pending_ini_resolution()
+            .map(|p| p.ecu_signature)
+            .ok_or_else(|| "Нет активного ожидания выбора INI".to_string())?;
+        let status = download_ini_for_signature(&signature);
+        if let Ok(mut guard) = self.inner.lock() {
+            if let Some(p) = guard.pending.as_mut() {
+                p.online = status.clone();
+            }
+        }
+        match status {
+            OnlineDownloadStatus::Succeeded { path, .. } => {
+                self.apply_ini_with_options(std::path::Path::new(&path), false)?;
+                Ok(path)
+            }
+            OnlineDownloadStatus::NotApplicable => Err(
+                "Signature ECU не парсится в URL — online-загрузка невозможна".into(),
+            ),
+            OnlineDownloadStatus::NotAttempted { reason } => {
+                Err(format!("Загрузка отключена: {reason}"))
+            }
+            OnlineDownloadStatus::Failed { url, error } => {
+                Err(format!("Не удалось скачать {url}: {error}"))
+            }
+        }
+    }
+
     pub fn loaded_ini_path(&self) -> Option<PathBuf> {
         self.loaded_ini_path.lock().unwrap().clone()
     }
@@ -455,18 +614,68 @@ impl EcuSession {
             .map_err(protocol_error_message)?;
         let info = link.info().clone();
 
-        let resolved = match resolve_ini_for_signature(&info.signature) {
-            Ok(resolved) => resolved,
-            Err(e) => {
-                self.protocol_log.log_info(&format!(
-                    "Подключение отклонено: {e} (signature={})",
-                    info.signature
-                ));
-                return Err(e.to_string());
-            }
-        };
+        let resolve_result = resolve_ini_for_signature(&info.signature);
+        let project_sig = self.project_ini_signature();
+        let project_sig_mismatch = project_sig
+            .as_deref()
+            .filter(|s| !s.is_empty())
+            .is_some_and(|ps| ps != info.signature);
 
+        let mut guard = self
+            .inner
+            .try_lock()
+            .map_err(|_| "ECU занята операцией интерфейса — повторите позже".to_string())?;
+        if guard.link.is_some() {
+            return Err("ECU уже подключена".into());
+        }
+
+        let needs_user_ini = resolve_result.is_err() || project_sig_mismatch;
+
+        if needs_user_ini {
+            let online = if resolve_result.is_err() {
+                download_ini_for_signature(&info.signature)
+            } else {
+                OnlineDownloadStatus::NotAttempted {
+                    reason: "INI найден, но signature проекта не совпадает с ECU — нужен выбор"
+                        .into(),
+                }
+            };
+            let last_error = match (&resolve_result, project_sig_mismatch) {
+                (Err(e), _) => e.to_string(),
+                (Ok(_), true) => format!(
+                    "signature проекта не совпадает с ECU: project={}, ecu={}",
+                    project_sig.as_deref().unwrap_or("?"),
+                    info.signature
+                ),
+                _ => "Требуется выбор INI".into(),
+            };
+            let suggested_ini_path = resolve_result
+                .ok()
+                .map(|r| r.path.display().to_string());
+            self.protocol_log.log_info(&format!(
+                "ECU подключена, ожидание выбора INI: {last_error}"
+            ));
+            self.protocol_log.log_ecu_connected(
+                automatic,
+                &info.port_name,
+                info.baud_rate,
+                &info.signature,
+            );
+            guard.link = Some(link);
+            guard.pending = Some(PendingIniResolution {
+                ecu_signature: info.signature.clone(),
+                port_name: info.port_name.clone(),
+                last_error,
+                online,
+                project_signature: project_sig,
+                suggested_ini_path,
+            });
+            return Ok(info);
+        }
+
+        let resolved = resolve_result.expect("needs_user_ini false => Ok");
         let ini_path = resolved.path.clone();
+        drop(guard);
         self.apply_ini(resolved);
         let ini_ctx = self.ini_context();
 
@@ -477,15 +686,17 @@ impl EcuSession {
         if guard.link.is_some() {
             return Err("ECU уже подключена".into());
         }
-
         self.protocol_log.log_ecu_connected(
             automatic,
             &info.port_name,
             info.baud_rate,
             &info.signature,
         );
-        self.protocol_log.log_info(&format!("INI загружен: {}", ini_path.display()));
+        self.protocol_log
+            .log_info(&format!("INI загружен: {}", ini_path.display()));
         guard.link = Some(link);
+        guard.pending = None;
+        drop(guard);
         self.start_output_data_log(&info, &ini_ctx, &ini_path);
         Ok(info)
     }
@@ -504,6 +715,7 @@ impl EcuSession {
         let Ok(mut guard) = self.inner.try_lock() else {
             return;
         };
+        guard.pending = None;
         if let Some(link) = guard.link.take() {
             let port = link.info().port_name.clone();
             self.protocol_log

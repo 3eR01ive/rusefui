@@ -25,10 +25,12 @@ pub use config_diff::{
     compute_config_diff, ConfigDiffEntry, ConfigDiffSnapshot, ConfigDiffStore, DiffSide,
 };
 pub use runtime::ComponentRuntime;
-pub use session::EcuSession;
+pub use session::{EcuSession, PendingIniResolution};
 pub use ini::{
-    explicit_ini_path, find_any_local_ini, ini_cache_dir, load_ini_path,
-    resolve_ini_for_signature, search_directories, signatures_match, IniResolveError, ResolvedIni,
+    download_ini_for_signature, enumerate_local_candidates, explicit_ini_path,
+    find_any_local_ini, ini_cache_dir, ini_download_target, load_ini_path, parse_rusefi_signature,
+    resolve_ini_for_signature, search_directories, signatures_match, IniCandidate,
+    IniCandidateSource, IniResolveError, OnlineDownloadStatus, ResolvedIni, RusEfiSignature,
 };
 pub use project::{
     ProjectEcuConfig, ProjectInfo, ProjectLogRef, ProjectStore, RusefuiProject, FORMAT_VERSION,

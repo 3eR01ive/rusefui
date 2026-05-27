@@ -1,12 +1,13 @@
 use rusefui_runtime::{
-    compute_config_diff, default_log_path, AutoConnectManager, AutoConnectSnapshot,
-    ComponentRuntime, CompositeSnapshot, CompositeTimelineStatus, CompositeTimelineView,
-    CompositeTimelineViewQuery, ConfigDiffSnapshot, ConfigDiffStore, ConfigFieldInfo,
-    ConfigSnapshot, ConfigSource, DiffSide, EcuSession, EcuSyncOnMount, OutputFieldInfo,
+    compute_config_diff, default_log_path, enumerate_local_candidates, parse_rusefi_signature,
+    AutoConnectManager, AutoConnectSnapshot, ComponentRuntime, CompositeSnapshot,
+    CompositeTimelineStatus, CompositeTimelineView, CompositeTimelineViewQuery,
+    ConfigDiffSnapshot, ConfigDiffStore, ConfigFieldInfo, ConfigSnapshot, ConfigSource, DiffSide,
+    EcuSession, EcuSyncOnMount, IniCandidate, OnlineDownloadStatus, OutputFieldInfo,
     OutputSnapshot, OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl,
-    ProjectInfo, ProjectLogRef, ProjectStore, ProtocolLogEntry, ProtocolLogFilterSettings,
-    ProtocolLogStore, RecentProjectEntry, RecentProjectsStore, RusefuiProject, WorkspaceFsm,
-    WorkspaceInputs, WorkspacePhase, WorkspaceSnapshot,
+    PendingIniResolution, ProjectInfo, ProjectLogRef, ProjectStore, ProtocolLogEntry,
+    ProtocolLogFilterSettings, ProtocolLogStore, RecentProjectEntry, RecentProjectsStore,
+    RusefuiProject, WorkspaceFsm, WorkspaceInputs, WorkspacePhase, WorkspaceSnapshot,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -57,6 +58,7 @@ fn workspace_inputs(state: &RuntimeState) -> WorkspaceInputs {
         project: state.project.lock().unwrap().info(),
         autoconnect: state.autoconnect.snapshot(),
         ecu_connected: state.session.is_connected(),
+        ini_pending_resolution: state.session.has_pending_ini_resolution(),
         config: state.session.config().snapshot(),
     }
 }
@@ -95,6 +97,7 @@ fn set_burn_pending(state: &RuntimeState, app: &AppHandle, pending: bool) {
 fn reconcile_workspace(state: &RuntimeState, app: &AppHandle) -> WorkspaceSnapshot {
     let mut fsm = state.workspace_fsm.lock().unwrap();
     let prev_phase = fsm.snapshot().map(|s| s.phase);
+    let prev_pending = fsm.snapshot().map(|s| s.ini_pending_resolution).unwrap_or(false);
     let inputs = workspace_inputs(state);
     let (snap, _plan, changed) = fsm.reconcile(&inputs);
     drop(fsm);
@@ -108,6 +111,9 @@ fn reconcile_workspace(state: &RuntimeState, app: &AppHandle) -> WorkspaceSnapsh
             set_burn_pending(state, app, false);
         }
         emit_workspace_state(app, state, &snap);
+        if prev_pending != snap.ini_pending_resolution {
+            emit_ini_resolution(app, state);
+        }
     }
     workspace_snapshot_for_ui(state, snap)
 }
@@ -126,8 +132,17 @@ fn clear_config_diff(state: &RuntimeState, app: &AppHandle) {
 }
 
 fn try_start_config_diff(state: &RuntimeState, app: &AppHandle) {
+    if state.session.has_pending_ini_resolution() {
+        clear_config_diff(state, app);
+        return;
+    }
+
     let snap = state.session.config().snapshot();
-    if !snap.connected || !snap.loaded || snap.loading {
+    if !snap.loaded || snap.loading {
+        return;
+    }
+    // Config diff имеет смысл только после применения INI и загрузки page 0 с ECU.
+    if !snap.connected || snap.read_only {
         return;
     }
 
@@ -484,6 +499,14 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
             state.session.output().stop();
             state.session.composite().disable_on_ecu(&state.session);
             state.session.composite().stop();
+        }
+        WorkspacePhase::EcuIniMismatch => {
+            // Ждём выбора INI: глушим все источники, но link не разрываем.
+            state.session.config().stop();
+            state.session.output().stop();
+            state.session.composite().disable_on_ecu(&state.session);
+            state.session.composite().stop();
+            clear_config_diff(state, app);
         }
         WorkspacePhase::EcuConnectedIdle => {
             state.session.output().stop();
@@ -1497,6 +1520,7 @@ pub fn project_close(state: State<RuntimeState>, app: AppHandle) -> Result<(), S
         .new_document("Новый проект".into());
     set_burn_pending(&state, &app, false);
     state.session.reset_workspace_for_new_project();
+    state.session.set_project_ini_signature(None);
     clear_config_diff(&state, &app);
     emit_project(&app, &state);
     emit_workspace_reset(&app, &state);
@@ -1570,4 +1594,140 @@ pub async fn pick_project_save_path(default_name: Option<String>) -> Option<Stri
     dlg.save_file()
         .await
         .map(|h| h.path().display().to_string())
+}
+
+// --- INI resolution (несовпадение signature ECU ↔ INI) ---
+
+#[derive(Clone, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct IniResolutionInfo {
+    pub pending: bool,
+    pub ecu_signature: Option<String>,
+    pub port_name: Option<String>,
+    pub project_signature: Option<String>,
+    pub bundle_target: Option<String>,
+    pub last_error: Option<String>,
+    pub online: Option<OnlineDownloadStatus>,
+    /// INI уже найден для ECU, но не применён (ожидание подтверждения).
+    pub suggested_ini_path: Option<String>,
+}
+
+fn build_ini_resolution_info(state: &RuntimeState) -> IniResolutionInfo {
+    let pending: Option<PendingIniResolution> = state.session.pending_ini_resolution();
+    let project_signature = state
+        .project
+        .lock()
+        .ok()
+        .and_then(|p| p.document().ini.and_then(|i| i.signature));
+    match pending {
+        Some(p) => {
+            let bundle_target = parse_rusefi_signature(&p.ecu_signature).map(|s| s.bundle_target);
+            IniResolutionInfo {
+                pending: true,
+                ecu_signature: Some(p.ecu_signature),
+                port_name: Some(p.port_name),
+                project_signature: p.project_signature.or(project_signature),
+                bundle_target,
+                last_error: Some(p.last_error),
+                online: Some(p.online),
+                suggested_ini_path: p.suggested_ini_path,
+            }
+        }
+        None => IniResolutionInfo {
+            pending: false,
+            ecu_signature: None,
+            port_name: None,
+            project_signature,
+            bundle_target: None,
+            last_error: None,
+            online: None,
+            suggested_ini_path: None,
+        },
+    }
+}
+
+fn emit_ini_resolution(app: &AppHandle, state: &RuntimeState) {
+    let info = build_ini_resolution_info(state);
+    let _ = app.emit("ini-resolution", info);
+}
+
+#[tauri::command]
+pub fn ini_get_resolution(state: State<RuntimeState>) -> IniResolutionInfo {
+    build_ini_resolution_info(&state)
+}
+
+#[tauri::command]
+pub fn ini_list_candidates(state: State<RuntimeState>) -> Vec<IniCandidate> {
+    let ecu_sig = state
+        .session
+        .pending_ini_resolution()
+        .map(|p| p.ecu_signature)
+        .or_else(|| {
+            state
+                .session
+                .connection_info_if_available()
+                .map(|i| i.signature)
+        });
+    enumerate_local_candidates(ecu_sig.as_deref())
+}
+
+#[tauri::command]
+pub fn ini_apply_path(
+    path: String,
+    force: bool,
+    update_project_ref: Option<bool>,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    let path_ref = std::path::Path::new(&path);
+    state.session.apply_ini_with_options(path_ref, force)?;
+    // По умолчанию синхронизируем `project.ini` с применённым файлом — иначе
+    // при следующем `project_load` снова получим mismatch.
+    if update_project_ref.unwrap_or(true) {
+        let ini = state.session.ini_context();
+        state.project.lock().unwrap().set_ini_ref(
+            state
+                .session
+                .loaded_ini_path()
+                .map(|p| p.display().to_string()),
+            ini.signature.clone(),
+        );
+        emit_project(&app, &state);
+    }
+    // INI применён — фаза должна обновиться (Mismatch → EcuConnectedIdle/ConfigLoad).
+    emit_ini_resolution(&app, &state);
+    schedule_ecu_notify(&app, true);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn ini_retry_online_download(
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<String, String> {
+    let result = state.session.retry_online_ini_resolution();
+    if result.is_ok() {
+        let ini = state.session.ini_context();
+        state.project.lock().unwrap().set_ini_ref(
+            state
+                .session
+                .loaded_ini_path()
+                .map(|p| p.display().to_string()),
+            ini.signature.clone(),
+        );
+        emit_project(&app, &state);
+        schedule_ecu_notify(&app, true);
+    }
+    emit_ini_resolution(&app, &state);
+    result
+}
+
+#[tauri::command]
+pub async fn ini_pick_file() -> Option<String> {
+    let handle = rfd::AsyncFileDialog::new()
+        .set_title("Выбрать INI для ECU")
+        .add_filter("TunerStudio INI", &["ini"])
+        .pick_file()
+        .await?;
+    Some(handle.path().display().to_string())
 }

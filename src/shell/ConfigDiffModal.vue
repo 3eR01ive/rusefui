@@ -6,10 +6,20 @@ import {
   useConfigDiff,
   type DiffSide,
 } from "../composables/useConfigDiff";
+import { useWorkspaceState } from "../composables/useWorkspaceState";
 
 void initConfigDiff();
 
 const { active, count, snapshot, choiceFor, setChoice, setAll, apply } = useConfigDiff();
+const { snapshot: workspaceSnap } = useWorkspaceState();
+
+/** Слияние config не показываем, пока не выбран INI для ECU. */
+const showMerge = computed(
+  () =>
+    active.value &&
+    workspaceSnap.value.phase !== "ecuIniMismatch" &&
+    !workspaceSnap.value.iniPendingResolution,
+);
 
 const busy = ref(false);
 const error = ref<string | null>(null);
@@ -51,7 +61,7 @@ function onApply(): void {
 }
 
 watch(
-  active,
+  showMerge,
   (on) => {
     document.body.classList.toggle("config-merge-blocking", on);
     if (on) {
@@ -72,7 +82,7 @@ onUnmounted(() => {
 <template>
   <Teleport to="body">
     <div
-      v-if="active"
+      v-if="showMerge"
       class="config-diff-modal-root"
       role="presentation"
     >
