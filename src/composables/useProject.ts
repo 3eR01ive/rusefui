@@ -5,6 +5,7 @@ import { computed, readonly, ref, shallowRef } from "vue";
 /** Ключ в реестре `ui_persist` (Rust). */
 export const PERSIST_KEY_OUTPUT_CHART = "output-chart";
 export const PERSIST_KEY_COMPOSITE_CHART = "composite-chart";
+export const PERSIST_KEY_DYNO = "dyno";
 
 export type CrankEdgeMode = "both" | "rise" | "fall";
 
@@ -44,6 +45,13 @@ export interface LogUiSettings {
   graphGroups: LogGraphGroupJson[];
   activeGraphId: string;
   rangeInputs: Record<string, LogRangeInputJson>;
+}
+
+export interface DynoUiSettings {
+  ignoreTpsMin: boolean;
+  minRpm: number;
+  smoothStrength: number;
+  chartHeight: number;
 }
 
 export interface ProjectLogRef {

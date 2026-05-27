@@ -52,6 +52,12 @@
         "rangeInputs": {
           "RPMValue": { "min": "", "max": "" }
         }
+      },
+      "dyno": {
+        "ignoreTpsMin": false,
+        "minRpm": 0,
+        "smoothStrength": 0,
+        "chartHeight": 360
       }
     }
   }

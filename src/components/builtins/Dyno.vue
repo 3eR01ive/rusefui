@@ -12,6 +12,14 @@ import { initOutputChannels, useOutputChannels } from "../../composables/useOutp
 import { initConfig, useConfig } from "../../composables/useConfig";
 import { drawDynoChart, type DynoRunPoint } from "../../composables/drawDynoChart";
 import { clampSmoothStrength, smoothDynoPoints } from "../../composables/smoothDynoCurve";
+import {
+  initProject,
+  PERSIST_KEY_DYNO,
+  projectUiEpoch,
+  useProject,
+  workspaceResetEpoch,
+  type DynoUiSettings,
+} from "../../composables/useProject";
 import { useRustComponent } from "../../composables/useRustComponent";
 
 const props = defineProps<{
@@ -22,7 +30,12 @@ const props = defineProps<{
   meta: ComponentMeta;
 }>();
 
+const chartSizeOverride = { height: null as number | null };
+
 const chartHeight = computed(() => {
+  if (chartSizeOverride.height !== null && chartSizeOverride.height > 180) {
+    return chartSizeOverride.height;
+  }
   const h = Number(props.props.height ?? 320);
   return h >= 180 ? h : 320;
 });
@@ -34,6 +47,10 @@ const { state, dispatch, error, hasLogic, ready } = useRustComponent(
 const dataCtx = useDataContext();
 const { snapshot } = useOutputChannels();
 const { snapshot: configSnapshot } = useConfig();
+const { getProjectUi, setProjectUi } = useProject();
+
+let applyingProjectUi = false;
+let saveDynoUiTimer = 0;
 
 const rpmField = computed(() => String(state.value.rpmField ?? props.props.rpmField ?? "RPMValue"));
 const tpsField = computed(() => String(state.value.tpsField ?? props.props.tpsField ?? "TPSValue"));
@@ -49,23 +66,19 @@ const currentTorque = computed(() => Number(state.value.currentTorque ?? 0));
 const currentHp = computed(() => Number(state.value.currentHp ?? 0));
 const message = computed(() => (state.value.message as string) ?? null);
 
-const ignoreTpsMin = computed({
-  get: () => Boolean(state.value.ignoreTpsMin),
-  set: (v: boolean) => void dispatch("set_options", { ignoreTpsMin: v, minRpm: minRpm.value }),
-});
-
-const minRpm = computed({
-  get: () => Number(state.value.minRpm ?? 0),
-  set: (v: number) =>
-    void dispatch("set_options", { ignoreTpsMin: ignoreTpsMin.value, minRpm: v }),
-});
+const ignoreTpsMin = ref(false);
+const minRpm = ref(0);
 
 /** Сила сглаживания отображения (0 = выкл, только Vue/canvas). */
 const smoothStrength = ref(0);
 
 watch(smoothStrength, (v) => {
   const c = clampSmoothStrength(v);
-  if (c !== v) smoothStrength.value = c;
+  if (c !== v) {
+    smoothStrength.value = c;
+    return;
+  }
+  scheduleSaveDynoUiToProject();
 });
 
 const chartPoints = computed(() =>
@@ -107,6 +120,50 @@ function clearRun() {
   return dispatch("clear");
 }
 
+function buildDynoUiSettings(): DynoUiSettings {
+  return {
+    ignoreTpsMin: ignoreTpsMin.value,
+    minRpm: Math.max(0, Math.round(minRpm.value)),
+    smoothStrength: clampSmoothStrength(smoothStrength.value),
+    chartHeight: chartHeight.value,
+  };
+}
+
+async function syncOptionsToRust(): Promise<void> {
+  if (!ready.value) return;
+  await dispatch("set_options", {
+    ignoreTpsMin: ignoreTpsMin.value,
+    minRpm: Math.max(0, Math.round(minRpm.value)),
+  });
+}
+
+async function applyDynoUiFromProject(): Promise<void> {
+  applyingProjectUi = true;
+  try {
+    const ui = await getProjectUi<DynoUiSettings>(PERSIST_KEY_DYNO);
+    ignoreTpsMin.value = ui.ignoreTpsMin;
+    minRpm.value = ui.minRpm;
+    smoothStrength.value = clampSmoothStrength(ui.smoothStrength);
+    chartSizeOverride.height = ui.chartHeight > 180 ? ui.chartHeight : null;
+  } catch {
+    ignoreTpsMin.value = Boolean(state.value.ignoreTpsMin);
+    minRpm.value = Number(state.value.minRpm ?? 0);
+  } finally {
+    applyingProjectUi = false;
+  }
+  await syncOptionsToRust();
+  scheduleRedraw();
+}
+
+function scheduleSaveDynoUiToProject(): void {
+  if (applyingProjectUi) return;
+  if (saveDynoUiTimer !== 0) window.clearTimeout(saveDynoUiTimer);
+  saveDynoUiTimer = window.setTimeout(() => {
+    saveDynoUiTimer = 0;
+    void setProjectUi(PERSIST_KEY_DYNO, buildDynoUiSettings());
+  }, 400);
+}
+
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const containerRef = ref<HTMLDivElement | null>(null);
 const canvasWidth = ref(640);
@@ -144,12 +201,33 @@ watch(
   { deep: true },
 );
 
-watch([runPoints, chartPoints, chartHeight, canvasWidth, smoothStrength], () => scheduleRedraw(), {
-  deep: true,
+watch(ready, (r) => {
+  if (r) void applyDynoUiFromProject();
 });
 
+watch(projectUiEpoch, () => {
+  void applyDynoUiFromProject();
+});
+
+watch(workspaceResetEpoch, () => {
+  void applyDynoUiFromProject();
+});
+
+watch([ignoreTpsMin, minRpm], () => {
+  if (applyingProjectUi) return;
+  void syncOptionsToRust();
+  scheduleSaveDynoUiToProject();
+});
+
+watch(chartHeight, () => {
+  scheduleSaveDynoUiToProject();
+  scheduleRedraw();
+});
+
+watch([runPoints, chartPoints, canvasWidth], () => scheduleRedraw(), { deep: true });
+
 onMounted(async () => {
-  await Promise.all([initOutputChannels(), initConfig()]);
+  await Promise.all([initOutputChannels(), initConfig(), initProject()]);
   scheduleRedraw();
 
   const el = containerRef.value;
@@ -166,6 +244,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   cancelAnimationFrame(redrawRaf);
+  if (saveDynoUiTimer !== 0) window.clearTimeout(saveDynoUiTimer);
   resizeObserver?.disconnect();
 });
 </script>
