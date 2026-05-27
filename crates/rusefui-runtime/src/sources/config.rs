@@ -143,8 +143,15 @@ impl ConfigSource {
     }
 
     /// Подставить снимок page 0 из файла проекта (offline preview).
-    pub fn apply_from_project(&self, ecu: &ProjectEcuConfig) -> Result<(), String> {
-        let raw = B64
+    ///
+    /// `expected_signature` — `project.ini.signature` при сохранении; layout page 0
+    /// декодируется только при совпадении INI в сессии.
+    pub fn apply_from_project(
+        &self,
+        ecu: &ProjectEcuConfig,
+        expected_signature: Option<&str>,
+    ) -> Result<(), String> {
+        let mut raw = B64
             .decode(&ecu.raw_page0_base64)
             .map_err(|e| format!("Некорректный base64 page0: {e}"))?;
 
@@ -154,6 +161,29 @@ impl ConfigSource {
                 "INI не загружен — сохраните проект с INI или укажите существующий ini.path"
                     .into(),
             );
+        }
+
+        if let Some(expected) = expected_signature.filter(|s| !s.is_empty()) {
+            match ini.signature.as_deref() {
+                Some(ini_sig) if ini_sig == expected => {}
+                Some(ini_sig) => {
+                    return Err(format!(
+                        "INI в сессии ({ini_sig}) не совпадает с проектом ({expected}). \
+                         Укажите ini.path из проекта или выберите INI с той же signature, что при сохранении."
+                    ));
+                }
+                None => {
+                    return Err(format!(
+                        "Загруженный INI не содержит signature; проект сохранён с {expected}"
+                    ));
+                }
+            }
+        }
+
+        // С ECU page 0 читается полный `page_size`; снимок проекта должен иметь тот же размер.
+        let page_len = ecu.page_size.max(ini.page_size) as usize;
+        if raw.len() < page_len {
+            raw.resize(page_len, 0);
         }
 
         let values = decode_config_fields(&ini.config_fields, &raw);

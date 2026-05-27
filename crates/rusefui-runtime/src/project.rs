@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::config_diff::encode_scalar_into_page;
+use crate::ini::resolve_ini_for_signature;
 use crate::session::EcuSession;
 use crate::ui_persist::{self, ProjectUi};
 
@@ -191,6 +192,17 @@ impl ProjectStore {
         Ok(())
     }
 
+    /// Перед `save_to_path`: скопировать в JSON актуальный page 0 из сессии.
+    ///
+    /// Иначе в файле остаётся старый `ecuConfig` (первый «Снимок config» или прошлое
+    /// открытие проекта), хотя на экране уже данные после чтения с ECU.
+    pub fn prepare_for_save(&self, session: &EcuSession) -> Result<(), String> {
+        if session.config().snapshot().loaded {
+            self.sync_ecu_config_from_session(session)?;
+        }
+        Ok(())
+    }
+
     pub fn save_to_path(&self, path: &Path) -> Result<(), String> {
         if let Some(parent) = path.parent() {
             if !parent.as_os_str().is_empty() {
@@ -214,13 +226,17 @@ impl ProjectStore {
 
     pub fn capture_ecu_config(&self, session: &EcuSession) -> Result<(), String> {
         let snap = session.config().snapshot();
-        let raw = session.config().page_raw();
+        let mut raw = session.config().page_raw();
         if raw.is_empty() || !snap.loaded {
             return Err(
                 "Сначала загрузите конфигурацию с ECU (страница настроек)".into(),
             );
         }
         let ini = session.ini_context();
+        let page_len = ini.page_size as usize;
+        if raw.len() < page_len {
+            raw.resize(page_len, 0);
+        }
         let mut doc = self.doc.lock().unwrap();
         doc.ecu_config = Some(ProjectEcuConfig {
             captured_at_ms: now_ms(),
@@ -229,9 +245,12 @@ impl ProjectStore {
             values: snap.values.clone(),
         });
         doc.ini = Some(ProjectIniRef {
-            path: session
-                .loaded_ini_path()
-                .map(|p| p.display().to_string()),
+            path: session.loaded_ini_path().map(|p| {
+                Self::ini_path_for_project_store(
+                    p.as_path(),
+                    self.path.lock().unwrap().as_deref(),
+                )
+            }),
             signature: ini.signature.clone(),
         });
         doc.touch();
@@ -283,11 +302,15 @@ impl ProjectStore {
         if !snap.loaded {
             return Err("Config не загружен в сессии".into());
         }
-        let raw = session.config().page_raw();
+        let mut raw = session.config().page_raw();
         if raw.is_empty() {
             return Err("Пустой образ page 0".into());
         }
         let ini = session.ini_context();
+        let page_len = ini.page_size as usize;
+        if raw.len() < page_len {
+            raw.resize(page_len, 0);
+        }
         let values = decode_config_fields(&ini.config_fields, &raw);
         let mut doc = self.doc.lock().unwrap();
         doc.ecu_config = Some(ProjectEcuConfig {
@@ -328,27 +351,102 @@ impl ProjectStore {
 
     /// После `load_from_path`: INI из проекта + снимок config в сессию.
     pub fn apply_to_session(&self, session: &EcuSession) -> Result<(), String> {
-        let (ini_ref, ecu_config) = {
+        let (ini_ref, ecu_config, project_path) = {
             let doc = self.doc.lock().unwrap();
-            (doc.ini.clone(), doc.ecu_config.clone())
+            (
+                doc.ini.clone(),
+                doc.ecu_config.clone(),
+                self.path.lock().unwrap().clone(),
+            )
         };
 
         let project_ini_sig = ini_ref.as_ref().and_then(|r| r.signature.clone());
-        if let Some(ini_ref) = ini_ref {
-            if let Some(path) = ini_ref.path.filter(|p| !p.is_empty()) {
-                let p = Path::new(&path);
-                if p.is_file() {
-                    session.load_ini_from_path(p)?;
+
+        if ecu_config.is_some() {
+            Self::load_project_ini(
+                session,
+                ini_ref.as_ref(),
+                project_path.as_deref(),
+            )?;
+        } else if let Some(ini_ref) = ini_ref.as_ref() {
+            if let Some(path) = ini_ref.path.as_deref().filter(|p| !p.is_empty()) {
+                let resolved = Self::resolve_ini_path(path, project_path.as_deref());
+                if resolved.is_file() {
+                    session.load_ini_from_path(&resolved)?;
                 }
             }
+            session.bootstrap_offline_ini_if_needed();
+        } else {
+            session.bootstrap_offline_ini_if_needed();
         }
-        session.bootstrap_offline_ini_if_needed();
 
         if let Some(ecu) = ecu_config {
-            session.config().apply_from_project(&ecu)?;
+            session
+                .config()
+                .apply_from_project(&ecu, project_ini_sig.as_deref())?;
         }
         session.set_project_ini_signature(project_ini_sig);
         Ok(())
+    }
+
+    /// Путь INI в JSON проекта: относительно файла `.rusefui`, если возможно.
+    fn ini_path_for_project_store(ini: &Path, project_file: Option<&Path>) -> String {
+        if let Some(proj) = project_file {
+            if let Some(parent) = proj.parent() {
+                if let Ok(rel) = ini.strip_prefix(parent) {
+                    return rel.display().to_string();
+                }
+            }
+        }
+        ini.display().to_string()
+    }
+
+    fn resolve_ini_path(path: &str, project_file: Option<&Path>) -> PathBuf {
+        let p = Path::new(path);
+        if p.is_absolute() {
+            return p.to_path_buf();
+        }
+        if let Some(dir) = project_file.and_then(|f| f.parent()) {
+            return dir.join(p);
+        }
+        p.to_path_buf()
+    }
+
+    /// INI с тем же layout, что при `capture_ecu_config` (path или signature из проекта).
+    fn load_project_ini(
+        session: &EcuSession,
+        ini_ref: Option<&ProjectIniRef>,
+        project_file: Option<&Path>,
+    ) -> Result<(), String> {
+        let Some(ini_ref) = ini_ref else {
+            return Err(
+                "В проекте нет секции ini — сохраните проект после загрузки config с ECU".into(),
+            );
+        };
+
+        if let Some(path) = ini_ref.path.as_deref().filter(|p| !p.is_empty()) {
+            let resolved = Self::resolve_ini_path(path, project_file);
+            if resolved.is_file() {
+                session.load_ini_from_path(&resolved)?;
+                return Ok(());
+            }
+        }
+
+        if let Some(sig) = ini_ref.signature.as_deref().filter(|s| !s.is_empty()) {
+            let resolved = resolve_ini_for_signature(sig).map_err(|e| {
+                format!(
+                    "INI для signature проекта не найден ({sig}): {e}. \
+                     Укажите корректный ini.path рядом с файлом проекта."
+                )
+            })?;
+            session.apply_ini(resolved);
+            return Ok(());
+        }
+
+        Err(
+            "В проекте нет рабочего ini.path и ini.signature — нельзя декодировать ecuConfig"
+                .into(),
+        )
     }
 }
 

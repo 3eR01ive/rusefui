@@ -114,6 +114,20 @@ impl ComponentRuntime {
         ]
     }
 
+    /// Перечитать 2D-таблицы из текущего config (после `project_load` / смены INI).
+    pub fn reload_config_tables(&mut self) -> Vec<(String, Value)> {
+        let mut updates = Vec::new();
+        for (id, logic) in &mut self.instances {
+            if logic.meta().component_type != LogicComponentType::ConfigTable.as_str() {
+                continue;
+            }
+            if let Ok(st) = logic.dispatch("reload", Value::Null) {
+                updates.push((id.clone(), st));
+            }
+        }
+        updates
+    }
+
     /// Live output → компоненты с Rust-логикой (Virtual Dyno и т.д.).
     pub fn feed_output(&mut self, snap: &OutputSnapshot) -> Vec<(String, Value)> {
         let mut updates = Vec::new();

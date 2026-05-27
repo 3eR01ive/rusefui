@@ -193,6 +193,10 @@ fn emit_workspace_reset(app: &AppHandle, state: &RuntimeState) {
     state.workspace_fsm.lock().unwrap().reset();
     let _ = reconcile_workspace(state, app);
     sync_ecu_data(state, app);
+    let table_updates = state.runtime.lock().unwrap().reload_config_tables();
+    for (instance_id, st) in table_updates {
+        emit_state(app, &instance_id, &st);
+    }
     let timeline = state.session.output_timeline_status();
     let _ = app.emit("output-timeline-status", timeline);
     let _ = app.emit("workspace-reset", ());
@@ -1652,6 +1656,7 @@ pub fn project_save(state: State<RuntimeState>, app: AppHandle) -> Result<String
     let path = store
         .saved_path()
         .ok_or_else(|| "Укажите файл: «Сохранить как…»".to_string())?;
+    store.prepare_for_save(&state.session)?;
     store.save_to_path(&path)?;
     drop(store);
     record_recent_project(&state, &path);
@@ -1666,11 +1671,10 @@ pub fn project_save_path(
     app: AppHandle,
 ) -> Result<(), String> {
     let path_ref = std::path::Path::new(&path);
-    state
-        .project
-        .lock()
-        .unwrap()
-        .save_to_path(path_ref)?;
+    let store = state.project.lock().unwrap();
+    store.prepare_for_save(&state.session)?;
+    store.save_to_path(path_ref)?;
+    drop(store);
     record_recent_project(&state, path_ref);
     emit_project(&app, &state);
     Ok(())

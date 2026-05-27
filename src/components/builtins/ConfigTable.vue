@@ -111,11 +111,21 @@ watch(
 );
 
 watch(
-  () => [configSnapshot.value.loaded, configSnapshot.value.loading] as const,
-  ([loaded], prev) => {
-    if (loaded && ready.value && prev?.[0] !== loaded) {
-      void dispatch("reload");
-    }
+  () =>
+    [
+      configSnapshot.value.loaded,
+      configSnapshot.value.loading,
+      configSnapshot.value.readOnly,
+      configSnapshot.value.rawLen,
+    ] as const,
+  ([loaded, , readOnly, rawLen], prev) => {
+    if (!loaded || !ready.value) return;
+    const changed =
+      !prev ||
+      prev[0] !== loaded ||
+      prev[2] !== readOnly ||
+      prev[3] !== rawLen;
+    if (changed) void dispatch("reload");
   },
 );
 
