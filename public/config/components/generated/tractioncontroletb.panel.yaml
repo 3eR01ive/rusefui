@@ -1,0 +1,17 @@
+id: tractionControlEtb.panel
+description: Traction Control ETB drop
+source:
+  ini_dialog: tractionControlEtb
+  menu_path: Controller › Traction Control ETB Drop
+children:
+- type: config-table
+  id: tractionetbtabletbl
+  props:
+    title: Traction Control ETB drop
+    variant: table
+    xBins: tractionControlSpeedBins
+    yBins: tractionControlSlipBins
+    zBins: tractionControlEtbDrop
+- type: section
+  props:
+    title: tractionControlGauges

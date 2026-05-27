@@ -10,56 +10,12 @@ children:
   children:
   - type: section
     props:
-      title: TPS/PPS Limits
-    children:
-    - type: scalar-field
-      id: tpserrordetectiontoolow
-      props:
-        label: TPS/PPS minimum valid value
-      bind:
-        source: config
-        field: tpsErrorDetectionTooLow
-    - type: scalar-field
-      id: tpserrordetectiontoohigh
-      props:
-        label: TPS/PPS maximum valid value
-      bind:
-        source: config
-        field: tpsErrorDetectionTooHigh
-    - type: scalar-field
-      id: etbsplit
-      props:
-        label: TPS/PPS Error Detection Threshold
-      bind:
-        source: config
-        field: etbSplit
-    - type: enum-field
-      id: usefordredundanttps
-      props:
-        label: Ford/Toyota redundant TPS mode
-        options:
-        - value: 0
-          label: 'false'
-        - value: 1
-          label: 'true'
-      bind:
-        source: config
-        field: useFordRedundantTps
-    - type: scalar-field
-      id: tpssecondarymaximum
-      props:
-        label: Secondary TPS maximum
-      bind:
-        source: config
-        field: tpsSecondaryMaximum
-  - type: section
-    props:
-      title: 'Throttle Body #1'
+      title: 'Throttle Body #1 Sensor(s)'
     children:
     - type: enum-field
       id: tps1-1adcchannel
       props:
-        label: Primary sensor
+        label: Primary sensor input
         options:
         - value: 0
           label: NONE
@@ -95,20 +51,50 @@ children:
           label: Analog Temp 1
         - value: 16
           label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
       bind:
         source: config
         field: tps1_1AdcChannel
     - type: scalar-field
       id: tpsmin
       props:
-        label: Primary min
+        label: Primary closed
       bind:
         source: config
         field: tpsMin
     - type: scalar-field
       id: tpsmax
       props:
-        label: Primary max
+        label: Primary open
       bind:
         source: config
         field: tpsMax
@@ -150,31 +136,69 @@ children:
           label: Analog Temp 1
         - value: 16
           label: Analog Temp 2
-        label: Secondary sensor
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+        label: Secondary sensor input
       bind:
         source: config
         field: tps1_2AdcChannel
     - type: scalar-field
       id: tps1secondarymin
       props:
-        label: Secondary min
+        label: Secondary closed
       bind:
         source: config
         field: tps1SecondaryMin
     - type: scalar-field
       id: tps1secondarymax
       props:
-        label: Secondary max
+        label: Secondary open
       bind:
         source: config
         field: tps1SecondaryMax
     - type: text
       props:
+        variant: hint
         text: 'Кнопка: Auto Calibrate ETB 1 (cmd_etb_auto_calibrate)'
+    - type: text
+      props:
+        text: 'Кнопка: Grab Closed Throttle voltage (cmd_calibrate_tps_closed)'
+        variant: hint
+    - type: text
+      props:
+        text: 'Кнопка: Grab Fully Opened Throttle voltage  (cmd_calibrate_tps_open)'
         variant: hint
   - type: section
     props:
-      title: 'Throttle Body #2'
+      title: 'Throttle Body #2 Sensor(s)'
     children:
     - type: enum-field
       id: tps2-1adcchannel
@@ -215,6 +239,36 @@ children:
           label: Analog Temp 1
         - value: 16
           label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
       bind:
         source: config
         field: tps2_1AdcChannel
@@ -271,6 +325,36 @@ children:
           label: Analog Temp 1
         - value: 16
           label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
       bind:
         source: config
         field: tps2_2AdcChannel
@@ -290,8 +374,56 @@ children:
         field: tps2SecondaryMax
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Auto Calibrate ETB 2 (cmd_etb_auto_calibrate_2)'
+        variant: hint
+  - type: section
+    props:
+      title: TPS/PPS Limits
+    children:
+    - type: scalar-field
+      id: tpserrordetectiontoolow
+      props:
+        label: TPS/PPS minimum valid value
+      bind:
+        source: config
+        field: tpsErrorDetectionTooLow
+    - type: scalar-field
+      id: tpserrordetectiontoohigh
+      props:
+        label: TPS/PPS maximum valid value
+      bind:
+        source: config
+        field: tpsErrorDetectionTooHigh
+    - type: scalar-field
+      id: etbsplit
+      props:
+        label: TPS/PPS Error Detection Threshold
+      bind:
+        source: config
+        field: etbSplit
+  - type: section
+    props:
+      title: ETB Position Sensors special cases
+    children:
+    - type: enum-field
+      id: usefordredundanttps
+      props:
+        options:
+        - value: 0
+          label: no
+        - value: 1
+          label: yes
+        label: Ford/Toyota redundant TPS mode
+      bind:
+        source: config
+        field: useFordRedundantTps
+    - type: scalar-field
+      id: tpssecondarymaximum
+      props:
+        label: Secondary TPS maximum
+      bind:
+        source: config
+        field: tpsSecondaryMaximum
 - type: section
   props:
     title: tpsGauges

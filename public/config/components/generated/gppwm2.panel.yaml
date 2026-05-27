@@ -2,7 +2,7 @@ id: gppwm2.panel
 description: General Purpose PWM 2
 source:
   ini_dialog: gppwm2
-  menu_path: Advanced › Boost blend tables › General Purpose PWM 2
+  menu_path: Advanced › Generic PWM › General Purpose PWM 2
 children:
 - type: section
   props:
@@ -239,6 +239,36 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: gppwm2_pin
@@ -443,9 +473,9 @@ children:
 - type: config-table
   id: gppwm2tbl
   props:
-    yLabel: gppwm2_rpmAxis)}
-    yBins: gppwm2_loadBins
     title: GP#2
-    xBins: gppwm2_rpmBins
+    yLabel: gppwm2_rpmAxis)}
     variant: table
     zBins: gppwm2_table
+    xBins: gppwm2_rpmBins
+    yBins: gppwm2_loadBins

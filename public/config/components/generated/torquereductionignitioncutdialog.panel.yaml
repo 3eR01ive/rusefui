@@ -2,11 +2,12 @@ id: torqueReductionIgnitionCutDialog.panel
 description: Torque Reduction Ignition Cut Table
 source:
   ini_dialog: torqueReductionIgnitionCutDialog
-  menu_path: Advanced › Torque Reduction Ignition Cut Table
+  menu_path: Advanced › Torque Control › Torque Reduction Ignition Cut Table
 children:
 - type: enum-field
   id: torquereductioncutxaxis
   props:
+    label: X axis
     options:
     - value: 0
       label: Zero
@@ -78,16 +79,15 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
-    label: X axis
   bind:
     source: config
     field: torqueReductionCutXaxis
 - type: config-table
   id: torquereductionignitioncuttlb
   props:
-    yLabel: torqueReductionCutXaxis)}
     variant: table
-    title: Torque reduction cut table
+    yLabel: torqueReductionCutXaxis)}
     zBins: torqueReductionIgnitionCutTable
-    yBins: torqueReductionCutGearBins
     xBins: torqueReductionCutXBins
+    title: Torque reduction cut table
+    yBins: torqueReductionCutGearBins

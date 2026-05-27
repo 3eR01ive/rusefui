@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: msiobox0-id
     props:
+      label: Base CAN identifier
       options:
       - value: 0
         label: Off
@@ -20,13 +21,13 @@ children:
         label: ID2 (0x220)
       - value: 3
         label: ID3 (0x240)
-      label: Base CAN identifier
     bind:
       source: config
       field: msIoBox0_id
   - type: enum-field
     id: msiobox0-vss
     props:
+      label: VSS settings
       options:
       - value: 0
         label: Off
@@ -36,7 +37,6 @@ children:
         label: Hall speed in (3, 4)
       - value: 3
         label: All (1, 2, 3, 4)
-      label: VSS settings
     bind:
       source: config
       field: msIoBox0_vss

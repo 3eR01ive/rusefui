@@ -11,7 +11,6 @@ children:
   - type: enum-field
     id: cannbctype
     props:
-      label: CAN dash type
       options:
       - value: 0
         label: None
@@ -42,7 +41,7 @@ children:
       - value: 13
         label: MS Simplified Broadcast
       - value: 14
-        label: type 14
+        label: INVALID
       - value: 15
         label: INVALID
       - value: 16
@@ -77,12 +76,14 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
+      label: CAN dash type
     bind:
       source: config
       field: canNbcType
   - type: enum-field
     id: imutype
     props:
+      label: Inertia Measurement Unit
       options:
       - value: 0
         label: None
@@ -91,9 +92,9 @@ children:
       - value: 2
         label: MM5.10
       - value: 3
-        label: type 3
+        label: INVALID
       - value: 4
-        label: type 4
+        label: INVALID
       - value: 5
         label: INVALID
       - value: 6
@@ -148,55 +149,66 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
-      label: Inertia Measurement Unit
     bind:
       source: config
       field: imuType
   - type: enum-field
     id: canreadenabled
     props:
+      label: CAN read enabled
       options:
       - value: 0
-        label: 'false'
+        label: disable
       - value: 1
-        label: 'true'
-      label: CAN read enabled
+        label: enable
     bind:
       source: config
       field: canReadEnabled
   - type: enum-field
     id: canwriteenabled
     props:
+      label: CAN write enabled
       options:
       - value: 0
-        label: 'false'
+        label: disable
       - value: 1
-        label: 'true'
-      label: CAN write enabled
+        label: enable
     bind:
       source: config
       field: canWriteEnabled
   - type: enum-field
     id: enableverbosecantx
     props:
+      label: Enable rusEFI CAN broadcast
       options:
       - value: 0
-        label: 'false'
+        label: no
       - value: 1
-        label: 'true'
-      label: Enable rusEFI CAN broadcast
+        label: yes
     bind:
       source: config
       field: enableVerboseCanTx
   - type: enum-field
+    id: enableextendedcanbroadcast
+    props:
+      label: Board state broadcast
+      options:
+      - value: 0
+        label: no
+      - value: 1
+        label: yes
+    bind:
+      source: config
+      field: enableExtendedCanBroadcast
+  - type: enum-field
     id: canbroadcastusechanneltwo
     props:
+      label: rusEFI CAN data bus
       options:
       - value: 0
         label: first
       - value: 1
         label: second
-      label: rusEFI CAN data bus
     bind:
       source: config
       field: canBroadcastUseChannelTwo
@@ -210,12 +222,12 @@ children:
   - type: enum-field
     id: rusefiverbose29b
     props:
+      label: rusEFI CAN data address type
       options:
       - value: 0
         label: 11 bit
       - value: 1
         label: 29 bit
-      label: rusEFI CAN data address type
     bind:
       source: config
       field: rusefiVerbose29b
@@ -226,18 +238,6 @@ children:
     bind:
       source: config
       field: canSleepPeriodMs
-  - type: enum-field
-    id: enableextendedcanbroadcast
-    props:
-      label: Enable board state broadcast
-      options:
-      - value: 0
-        label: 'false'
-      - value: 1
-        label: 'true'
-    bind:
-      source: config
-      field: enableExtendedCanBroadcast
 - type: section
   props:
     title: Primary CAN
@@ -274,19 +274,35 @@ children:
       - value: 6
         label: 500kbps
       - value: 7
+        label: 666kbps
+      - value: 8
         label: 1Mbps
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
     bind:
       source: config
       field: canBaudRate
   - type: enum-field
     id: canopenblt
     props:
+      label: Allow OpenBLT
       options:
       - value: 0
-        label: 'false'
+        label: no
       - value: 1
-        label: 'true'
-      label: Allow OpenBLT
+        label: yes
     bind:
       source: config
       field: canOpenBLT
@@ -297,12 +313,12 @@ children:
   - type: enum-field
     id: verbosecan2
     props:
+      label: Verbose Can2
       options:
       - value: 0
         label: Do not print
       - value: 1
         label: Print all
-      label: Verbose Can2
     bind:
       source: config
       field: verboseCan2
@@ -325,7 +341,23 @@ children:
       - value: 6
         label: 500kbps
       - value: 7
+        label: 666kbps
+      - value: 8
         label: 1Mbps
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
       label: Bitrate
     bind:
       source: config
@@ -333,12 +365,12 @@ children:
   - type: enum-field
     id: can2openblt
     props:
+      label: Allow OpenBLT
       options:
       - value: 0
-        label: 'false'
+        label: no
       - value: 1
-        label: 'true'
-      label: Allow OpenBLT
+        label: yes
     bind:
       source: config
       field: can2OpenBLT

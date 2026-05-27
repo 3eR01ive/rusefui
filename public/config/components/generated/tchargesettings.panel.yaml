@@ -2,7 +2,7 @@ id: tChargeSettings.panel
 description: Estimated cylinder air temperature
 source:
   ini_dialog: tChargeSettings
-  menu_path: Fuel › Target AFR adder tables › Charge temperature estimation
+  menu_path: Fuel › Fuel Corrections › Charge temperature estimation
 children:
 - type: section
   props:
@@ -26,8 +26,8 @@ children:
       field: tChargeMode
   - type: text
     props:
-      text: These two parameters limit the estimate's rate of change
       variant: hint
+      text: These two parameters limit the estimate's rate of change
   - type: scalar-field
     id: tchargeairincrlimit
     props:
@@ -116,8 +116,8 @@ children:
 - type: curve
   id: tchargecurve
   props:
+    yBins: tchargeValues
     title: Charge temperature estimation coefficient
+    xLabel: flow
     yLabel: coefficient
     xBins: tchargeBins
-    xLabel: flow
-    yBins: tchargeValues

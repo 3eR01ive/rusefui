@@ -7,12 +7,12 @@ children:
 - type: enum-field
   id: enabletrailingsparks
   props:
+    label: Enable Trailing Sparks
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
-    label: Enable Trailing Sparks
+      label: yes
   bind:
     source: config
     field: enableTrailingSparks
@@ -246,6 +246,36 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
     label: Trailing Pin 1
   bind:
     source: config
@@ -253,7 +283,6 @@ children:
 - type: enum-field
   id: trailingcoilpins2
   props:
-    label: Trailing Pin 2
     options:
     - value: 0
       label: NONE
@@ -481,12 +510,44 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
+    label: Trailing Pin 2
   bind:
     source: config
     field: trailingCoilPins2
 - type: enum-field
   id: trailingcoilpins3
   props:
+    label: Trailing Pin 3
     options:
     - value: 0
       label: NONE
@@ -714,14 +775,42 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
-    label: Trailing Pin 3
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
   bind:
     source: config
     field: trailingCoilPins3
 - type: enum-field
   id: trailingcoilpins4
   props:
-    label: Trailing Pin 4
     options:
     - value: 0
       label: NONE
@@ -949,16 +1038,47 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
+    label: Trailing Pin 4
   bind:
     source: config
     field: trailingCoilPins4
 - type: config-table
   id: trailingsparktable
   props:
-    variant: table
-    zBins: trailingSparkTable
-    title: Trailing spark
-    xLabel: RPM
     yBins: trailingSparkLoadBins
-    yLabel: Ignition Load
+    zBins: trailingSparkTable
+    xLabel: RPM
+    title: Trailing spark
     xBins: trailingSparkRpmBins
+    variant: table
+    yLabel: Ignition Load

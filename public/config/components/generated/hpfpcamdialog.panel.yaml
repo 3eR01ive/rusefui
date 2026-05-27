@@ -14,7 +14,6 @@ children:
 - type: enum-field
   id: hpfpcam
   props:
-    label: If using VVT, which cam the pump is driven from
     options:
     - value: 0
       label: NONE
@@ -32,6 +31,7 @@ children:
       label: INVALID
     - value: 7
       label: INVALID
+    label: If using VVT, which cam the pump is driven from
   bind:
     source: config
     field: hpfpCam
@@ -45,8 +45,8 @@ children:
 - type: curve
   id: hpfplobeprofilecurve
   props:
-    xBins: hpfpLobeProfileQuantityBins
-    yBins: hpfpLobeProfileAngle
     xLabel: '% pump volume'
-    title: HPFP Lobe Profile
     yLabel: angle
+    yBins: hpfpLobeProfileAngle
+    title: HPFP Lobe Profile
+    xBins: hpfpLobeProfileQuantityBins

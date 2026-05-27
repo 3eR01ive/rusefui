@@ -2,7 +2,7 @@ id: injectorConfig.panel
 description: Injection configuration
 source:
   ini_dialog: injectorConfig
-  menu_path: Fuel › Injection configuration
+  menu_path: Fuel › Injector Setup › Injection configuration
 children:
 - type: section
   props:
@@ -11,12 +11,12 @@ children:
   - type: enum-field
     id: isinjectionenabled
     props:
+      label: Injection
       options:
       - value: 0
-        label: 'false'
+        label: disabled
       - value: 1
-        label: 'true'
-      label: Enabled
+        label: enabled
     bind:
       source: config
       field: isInjectionEnabled
@@ -38,17 +38,17 @@ children:
       field: injectionMode
   - type: text
     props:
-      variant: hint
       text: Batch injection with individual wiring
+      variant: hint
   - type: enum-field
     id: alphanuseiat
     props:
-      label: Alpha-N uses IAT density correction
       options:
       - value: 0
-        label: 'false'
+        label: no
       - value: 1
-        label: 'true'
+        label: yes
+      label: Alpha-N uses IAT density correction
     bind:
       source: config
       field: alphaNUseIat
@@ -71,7 +71,6 @@ children:
   - type: enum-field
     id: afroverridemode
     props:
-      label: Override AFR table load axis
       options:
       - value: 0
         label: None
@@ -89,6 +88,7 @@ children:
         label: INVALID
       - value: 7
         label: INVALID
+      label: Override AFR table load axis
     bind:
       source: config
       field: afrOverrideMode
@@ -134,18 +134,19 @@ children:
   - type: enum-field
     id: injectorpressuretype
     props:
-      label: Fuel rail pressure sensor
       options:
       - value: 0
         label: Low
       - value: 1
         label: High
+      label: Fuel rail pressure sensor
     bind:
       source: config
       field: injectorPressureType
   - type: enum-field
     id: injectorcompensationmode
     props:
+      label: Injector flow compensation mode
       options:
       - value: 0
         label: None
@@ -155,7 +156,6 @@ children:
         label: Sensed Rail Pressure
       - value: 3
         label: HPFP fuel mass compensation
-      label: Injector flow compensation mode
     bind:
       source: config
       field: injectorCompensationMode
@@ -184,13 +184,23 @@ children:
     bind:
       source: config
       field: stoichRatioSecondary
-- type: config-table
-  id: injectorsdeadtime
+- type: section
   props:
-    zBins: injector_battLagCorrTable
-    xLabel: Battery
-    yLabel: Pressure
-    title: Injector dead time
-    yBins: injector_battLagCorrPressBins
-    variant: table
-    xBins: injector_battLagCorrBattBins
+    title: Experimental settings, do not touch
+  children:
+  - type: text
+    props:
+      text: Experimental, do not enable
+      variant: hint
+  - type: enum-field
+    id: useabsolutepressureforlagtime
+    props:
+      label: Use absolute fuel pressure for dead time calculation
+      options:
+      - value: 0
+        label: no
+      - value: 1
+        label: yes
+    bind:
+      source: config
+      field: useAbsolutePressureForLagTime

@@ -2,7 +2,7 @@ id: stagedInjection.panel
 description: Staged injection
 source:
   ini_dialog: stagedInjection
-  menu_path: Fuel › Staged injection
+  menu_path: Fuel › Cylinder fuel trims › Staged injection
 children:
 - type: enum-field
   id: enablestagedinjection
@@ -10,9 +10,9 @@ children:
     label: Enable
     options:
     - value: 0
-      label: 'false'
+      label: disabled
     - value: 1
-      label: 'true'
+      label: enabled
   bind:
     source: config
     field: enableStagedInjection
@@ -49,10 +49,10 @@ children:
 - type: config-table
   id: injectorssecondarydeadtime
   props:
-    variant: table
+    xLabel: Battery
+    xBins: injectorSecondary_battLagCorrBattBins
     zBins: injectorSecondary_battLagCorrTable
+    yLabel: Pressure
     title: Secondary injector dead time
     yBins: injectorSecondary_battLagCorrPressBins
-    xLabel: Battery
-    yLabel: Pressure
-    xBins: injectorSecondary_battLagCorrBattBins
+    variant: table

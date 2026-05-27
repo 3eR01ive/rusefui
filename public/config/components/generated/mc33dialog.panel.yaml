@@ -7,12 +7,12 @@ children:
 - type: enum-field
   id: externalrusefigdimodule
   props:
+    label: externalRusEfiGdiModule
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
-    label: externalRusEfiGdiModule
+      label: yes
   bind:
     source: config
     field: externalRusEfiGdiModule
@@ -405,7 +405,6 @@ children:
 - type: enum-field
   id: mc33816-rstb
   props:
-    label: MC33816 rstb
     options:
     - value: 0
       label: NONE
@@ -763,12 +762,14 @@ children:
       label: PK14
     - value: 177
       label: PK15
+    label: MC33816 rstb
   bind:
     source: config
     field: mc33816_rstb
 - type: enum-field
   id: mc33816-flag0
   props:
+    label: MC33816 flag0
     options:
     - value: 0
       label: NONE
@@ -1126,7 +1127,6 @@ children:
       label: PK14
     - value: 177
       label: PK15
-    label: MC33816 flag0
   bind:
     source: config
     field: mc33816_flag0

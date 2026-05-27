@@ -7,7 +7,6 @@ children:
 - type: enum-field
   id: clutchdownpin
   props:
-    label: Clutch Down
     options:
     - value: 0
       label: NONE
@@ -173,12 +172,106 @@ children:
       label: Digital 4
     - value: 81
       label: Digital 6
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: INVALID
+    - value: 101
+      label: INVALID
+    - value: 102
+      label: INVALID
+    - value: 103
+      label: INVALID
+    - value: 104
+      label: INVALID
+    - value: 105
+      label: INVALID
+    - value: 106
+      label: INVALID
+    - value: 107
+      label: INVALID
+    - value: 108
+      label: INVALID
+    - value: 109
+      label: INVALID
+    - value: 110
+      label: INVALID
+    - value: 111
+      label: INVALID
+    - value: 112
+      label: INVALID
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
+    label: Clutch Down
   bind:
     source: config
     field: clutchDownPin
 - type: enum-field
   id: clutchdownpinmode
   props:
+    label: Clutch Down mode
     options:
     - value: 0
       label: DEFAULT
@@ -194,7 +287,8 @@ children:
       label: INVERTED PULLUP
     - value: 6
       label: INVERTED PULLDOWN
-    label: Clutch Down mode
+    - value: 7
+      label: '"INVALID'
   bind:
     source: config
     field: clutchDownPinMode
@@ -367,6 +461,98 @@ children:
       label: Digital 4
     - value: 81
       label: Digital 6
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: INVALID
+    - value: 101
+      label: INVALID
+    - value: 102
+      label: INVALID
+    - value: 103
+      label: INVALID
+    - value: 104
+      label: INVALID
+    - value: 105
+      label: INVALID
+    - value: 106
+      label: INVALID
+    - value: 107
+      label: INVALID
+    - value: 108
+      label: INVALID
+    - value: 109
+      label: INVALID
+    - value: 110
+      label: INVALID
+    - value: 111
+      label: INVALID
+    - value: 112
+      label: INVALID
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
   bind:
     source: config
     field: clutchUpPin
@@ -389,12 +575,15 @@ children:
       label: INVERTED PULLUP
     - value: 6
       label: INVERTED PULLDOWN
+    - value: 7
+      label: '"INVALID'
   bind:
     source: config
     field: clutchUpPinMode
 - type: enum-field
   id: brakepedalpin
   props:
+    label: Brake Pedal
     options:
     - value: 0
       label: NONE
@@ -560,7 +749,98 @@ children:
       label: Digital 4
     - value: 81
       label: Digital 6
-    label: Brake Pedal
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: INVALID
+    - value: 101
+      label: INVALID
+    - value: 102
+      label: INVALID
+    - value: 103
+      label: INVALID
+    - value: 104
+      label: INVALID
+    - value: 105
+      label: INVALID
+    - value: 106
+      label: INVALID
+    - value: 107
+      label: INVALID
+    - value: 108
+      label: INVALID
+    - value: 109
+      label: INVALID
+    - value: 110
+      label: INVALID
+    - value: 111
+      label: INVALID
+    - value: 112
+      label: INVALID
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
   bind:
     source: config
     field: brakePedalPin
@@ -583,6 +863,8 @@ children:
       label: INVERTED PULLUP
     - value: 6
       label: INVERTED PULLDOWN
+    - value: 7
+      label: '"INVALID'
   bind:
     source: config
     field: brakePedalPinMode
@@ -754,6 +1036,98 @@ children:
       label: Digital 4
     - value: 81
       label: Digital 6
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: INVALID
+    - value: 101
+      label: INVALID
+    - value: 102
+      label: INVALID
+    - value: 103
+      label: INVALID
+    - value: 104
+      label: INVALID
+    - value: 105
+      label: INVALID
+    - value: 106
+      label: INVALID
+    - value: 107
+      label: INVALID
+    - value: 108
+      label: INVALID
+    - value: 109
+      label: INVALID
+    - value: 110
+      label: INVALID
+    - value: 111
+      label: INVALID
+    - value: 112
+      label: INVALID
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
     label: Turbo Speed Sensor
   bind:
     source: config
@@ -768,7 +1142,6 @@ children:
 - type: enum-field
   id: throttleinletpressurechannel
   props:
-    label: Throttle inlet pressure sensor
     options:
     - value: 0
       label: NONE
@@ -804,6 +1177,37 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    label: Throttle inlet pressure sensor
   bind:
     source: config
     field: throttleInletPressureChannel
@@ -846,6 +1250,36 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
   bind:
     source: config
     field: compressorDischargePressureChannel

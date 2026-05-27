@@ -14,8 +14,8 @@ children:
 - type: curve
   id: scriptcurve2
   props:
-    xLabel: X
-    title: 'Script Curve #2'
-    xBins: scriptCurve2Bins
     yLabel: Y
+    title: 'Script Curve #2'
     yBins: scriptCurve2
+    xLabel: X
+    xBins: scriptCurve2Bins

@@ -1,14 +1,14 @@
 id: afterCrankingIACtaperDurationDialog.panel
-description: Idle Valve Crank-to-Run Taper
+description: Idle After Start (Crank-to-Run) Taper vs CLT
 source:
   ini_dialog: afterCrankingIACtaperDurationDialog
-  menu_path: Idle › Idle Valve Crank-to-Run Taper
+  menu_path: Idle › Idle After Start (Crank-to-Run) Taper vs CLT
 children:
 - type: curve
   id: aftercrankingiactapercurve
   props:
-    title: Idle valve Crank-to-Run Taper
-    yLabel: cyles
     xBins: afterCrankingIACtaperDurationBins
-    yBins: afterCrankingIACtaperDuration
     xLabel: Coolant
+    yBins: afterCrankingIACtaperDuration
+    yLabel: cyles
+    title: Idle valve Crank-to-Run Taper

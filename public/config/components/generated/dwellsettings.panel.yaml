@@ -8,15 +8,15 @@ children:
   id: dwellcorrection
   props:
     title: Dwell time base
-    xLabel: RPM
-    yBins: sparkDwellValues
-    yLabel: Dwell
     xBins: sparkDwellRpmBins
+    yBins: sparkDwellValues
+    xLabel: RPM
+    yLabel: Dwell
 - type: curve
   id: dwellvoltagecorrection
   props:
-    xBins: dwellVoltageCorrVoltBins
     title: Dwell voltage correction
-    yLabel: Multiplier
     yBins: dwellVoltageCorrValues
     xLabel: Battery Volts
+    yLabel: Multiplier
+    xBins: dwellVoltageCorrVoltBins

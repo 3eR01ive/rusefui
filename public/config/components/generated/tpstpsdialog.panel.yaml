@@ -2,7 +2,7 @@ id: tpsTpsDialog.panel
 description: TPS/TPS acceleration extra fuel
 source:
   ini_dialog: tpsTpsDialog
-  menu_path: Fuel › Target AFR adder tables › TPS/TPS acceleration extra fuel
+  menu_path: Fuel › TPS Acceleration Enrichment / Wall Wetting AE › TPS/TPS acceleration extra fuel
 children:
 - type: section
   props:
@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: accelenrichmentmode
     props:
+      label: Mode
       options:
       - value: 0
         label: MS Adder
@@ -20,15 +21,14 @@ children:
         label: MAP Prediction
       - value: 3
         label: INVALID
-      label: Mode
     bind:
       source: config
       field: accelEnrichmentMode
 - type: config-table
   id: tpstpsacceltbl
   props:
+    yBins: tpsTpsAccelToRpmBins
     zBins: tpsTpsAccelTable
     xBins: tpsTpsAccelFromRpmBins
-    variant: table
     title: TPS/TPS Acceleration Extra Fuel(ms)
-    yBins: tpsTpsAccelToRpmBins
+    variant: table

@@ -6,17 +6,17 @@ source:
 children:
 - type: text
   props:
-    text: ECU reboot needed to apply these settings
     variant: hint
+    text: ECU reboot needed to apply these settings
 - type: enum-field
   id: usefixedbarocorrfrommap
   props:
     label: Grab baro value from MAP
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
+      label: yes
   bind:
     source: config
     field: useFixedBaroCorrFromMap

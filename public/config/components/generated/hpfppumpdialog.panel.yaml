@@ -7,7 +7,6 @@ children:
 - type: enum-field
   id: hpfpvalvepin
   props:
-    label: Valve Pin
     options:
     - value: 0
       label: NONE
@@ -235,6 +234,37 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
+    label: Valve Pin
   bind:
     source: config
     field: hpfpValvePin
@@ -256,8 +286,8 @@ children:
     field: hpfpValvePinMode
 - type: text
   props:
-    text: 'Кнопка: Bench Test HPFP Valve (cmd_test_hpfp_valve)'
     variant: hint
+    text: 'Кнопка: Bench Test HPFP Valve (cmd_test_hpfp_valve)'
 - type: scalar-field
   id: hpfppumpvolume
   props:
@@ -318,7 +348,7 @@ children:
   id: hpfpdeadtimecurve
   props:
     title: HPFP Valve Deadtime
+    xLabel: volts
     xBins: hpfpDeadtimeVoltsBins
     yBins: hpfpDeadtimeMS
-    xLabel: volts
     yLabel: ms

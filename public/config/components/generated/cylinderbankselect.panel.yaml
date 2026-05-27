@@ -2,7 +2,7 @@ id: cylinderBankSelect.panel
 description: Cylinder Banks
 source:
   ini_dialog: cylinderBankSelect
-  menu_path: Fuel › Cylinder bank selection
+  menu_path: Fuel › Injector Setup › Cylinder bank selection
 children:
 - type: scalar-field
   id: cylinderbankselect1

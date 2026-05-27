@@ -15,12 +15,12 @@ children:
     - type: enum-field
       id: isalternatorcontrolenabled
       props:
-        label: Enabled
         options:
         - value: 0
-          label: 'false'
+          label: disable
         - value: 1
-          label: 'true'
+          label: enable
+        label: Enabled
       bind:
         source: config
         field: isAlternatorControlEnabled
@@ -254,6 +254,36 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
         label: Control output
       bind:
         source: config
@@ -261,6 +291,7 @@ children:
     - type: enum-field
       id: alternatorcontrolpinmode
       props:
+        label: Control output mode
         options:
         - value: 0
           label: default
@@ -270,7 +301,6 @@ children:
           label: open collector
         - value: 3
           label: open collector inverted
-        label: Control output mode
       bind:
         source: config
         field: alternatorControlPinMode
@@ -350,13 +380,13 @@ children:
         field: alternatorControl_maxValue
     - type: text
       props:
-        text: '% duty = Pterm + Iterm + Dterm + offset%'
         variant: hint
+        text: '% duty = Pterm + Iterm + Dterm + offset%'
   - type: config-table
     id: alternatorvoltagetargettabletbl
     props:
-      zBins: alternatorVoltageTargetTable
       xBins: alternatorVoltageTargetRpmBins
-      variant: table
       yBins: alternatorVoltageTargetLoadBins
+      zBins: alternatorVoltageTargetTable
       title: Alternator Voltage Target Table
+      variant: table

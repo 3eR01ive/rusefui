@@ -2,7 +2,7 @@ id: targetAfrBlend1Cfg.panel
 description: Target AFR adder 1 config
 source:
   ini_dialog: targetAfrBlend1Cfg
-  menu_path: Fuel › Target AFR adder tables › Target AFR 1 bias
+  menu_path: Fuel › Target AFR adder tables › Target AFR 1 settings
 children:
 - type: text
   props:
@@ -26,8 +26,8 @@ children:
     variant: hint
 - type: text
   props:
-    variant: hint
     text: parameter below.
+    variant: hint
 - type: enum-field
   id: targetafrblends1-blendparameter
   props:
@@ -188,6 +188,6 @@ children:
   id: targetafrblend1bias
   props:
     yBins: targetAfrBlends1_blendValues
-    title: Target AFR adder 1 bias
-    yLabel: targetAfrBlends1_blendParameter)}
     xBins: targetAfrBlends1_blendBins
+    yLabel: targetAfrBlends1_blendParameter)}
+    title: Target AFR adder 1 bias

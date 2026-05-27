@@ -27,12 +27,12 @@ children:
     - type: enum-field
       id: cutsparkonhardlimit
       props:
-        label: Cut spark on RPM limit
         options:
         - value: 0
           label: no
         - value: 1
           label: yes
+        label: Cut spark on RPM limit
       bind:
         source: config
         field: cutSparkOnHardLimit
@@ -106,13 +106,6 @@ children:
       title: Soft RPM Limit
     children:
     - type: scalar-field
-      id: rpmsoftlimitwindowsize
-      props:
-        label: Window size
-      bind:
-        source: config
-        field: rpmSoftLimitWindowSize
-    - type: scalar-field
       id: rpmsoftlimittimingretard
       props:
         label: Timing retard
@@ -159,7 +152,7 @@ children:
     id: cltrevlimitcurve
     props:
       xBins: cltRevLimitRpmBins
-      yBins: cltRevLimitRpm
-      title: cltRevLimitCurve
       yLabel: RPM Limit
       xLabel: Coolant
+      title: cltRevLimitCurve
+      yBins: cltRevLimitRpm

@@ -10,19 +10,20 @@ children:
     variant: hint
 - type: text
   props:
-    variant: hint
     text: Call startPwm to initialize, then call
+    variant: hint
 - type: text
   props:
+    variant: hint
     text: setPwmDuty and setPwmFreq to vary duty/freq
-    variant: hint
 - type: text
   props:
-    variant: hint
     text: See rusefi.com/s/lua for more info
+    variant: hint
 - type: enum-field
   id: luaoutputpins1
   props:
+    label: 'output #0'
     options:
     - value: 0
       label: NONE
@@ -250,14 +251,42 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
-    label: 'output #0'
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
   bind:
     source: config
     field: luaOutputPins1
 - type: enum-field
   id: luaoutputpins2
   props:
-    label: 'output #1'
     options:
     - value: 0
       label: NONE
@@ -485,6 +514,37 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
+    label: 'output #1'
   bind:
     source: config
     field: luaOutputPins2
@@ -719,6 +779,36 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
   bind:
     source: config
     field: luaOutputPins3
@@ -952,6 +1042,36 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
     label: 'output #3'
   bind:
     source: config
@@ -959,7 +1079,6 @@ children:
 - type: enum-field
   id: luaoutputpins5
   props:
-    label: 'output #4'
     options:
     - value: 0
       label: NONE
@@ -1187,12 +1306,44 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
+    label: 'output #4'
   bind:
     source: config
     field: luaOutputPins5
 - type: enum-field
   id: luaoutputpins6
   props:
+    label: 'output #5'
     options:
     - value: 0
       label: NONE
@@ -1420,14 +1571,42 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
-    label: 'output #5'
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
   bind:
     source: config
     field: luaOutputPins6
 - type: enum-field
   id: luaoutputpins7
   props:
-    label: 'output #6'
     options:
     - value: 0
       label: NONE
@@ -1655,12 +1834,44 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
+    label: 'output #6'
   bind:
     source: config
     field: luaOutputPins7
 - type: enum-field
   id: luaoutputpins8
   props:
+    label: 'output #7'
     options:
     - value: 0
       label: NONE
@@ -1888,7 +2099,36 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
-    label: 'output #7'
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
   bind:
     source: config
     field: luaOutputPins8

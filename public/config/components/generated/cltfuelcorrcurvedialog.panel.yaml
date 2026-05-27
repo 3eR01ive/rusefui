@@ -2,7 +2,7 @@ id: cltFuelCorrCurveDialog.panel
 description: Warmup enrichment
 source:
   ini_dialog: cltFuelCorrCurveDialog
-  menu_path: Fuel › Target AFR adder tables › Warmup enrichment
+  menu_path: Fuel › VE blend tables › Warmup enrichment
 children:
 - type: scalar-field
   id: this-table-is-a-global-multiplier
@@ -35,8 +35,8 @@ children:
 - type: curve
   id: cltfuelcorrcurve
   props:
-    yBins: cltFuelCorr
     xLabel: Coolant
     xBins: cltFuelCorrBins
+    yBins: cltFuelCorr
     yLabel: Multiplier
     title: Warmup fuel manual Multiplier

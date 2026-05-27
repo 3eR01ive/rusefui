@@ -4,6 +4,18 @@ source:
   ini_dialog: lowOilPressureProtection
   menu_path: Setup › Limits and protection › Low oil pressure protection
 children:
+- type: enum-field
+  id: enableoilpressureprotect
+  props:
+    options:
+    - value: 0
+      label: no
+    - value: 1
+      label: yes
+    label: Enable low oil pressure protection
+  bind:
+    source: config
+    field: enableOilPressureProtect
 - type: scalar-field
   id: minoilpressureafterstart
   props:
@@ -11,18 +23,6 @@ children:
   bind:
     source: config
     field: minOilPressureAfterStart
-- type: enum-field
-  id: enableoilpressureprotect
-  props:
-    label: Enable low oil pressure protection
-    options:
-    - value: 0
-      label: 'false'
-    - value: 1
-      label: 'true'
-  bind:
-    source: config
-    field: enableOilPressureProtect
 - type: scalar-field
   id: minimumoilpressuretimeout
   props:
@@ -33,8 +33,8 @@ children:
 - type: curve
   id: minimumoilpressure
   props:
-    xBins: minimumOilPressureBins
-    yLabel: min pressure
-    xLabel: RPM
-    yBins: minimumOilPressureValues
     title: Minimum oil pressure
+    yLabel: min pressure
+    yBins: minimumOilPressureValues
+    xBins: minimumOilPressureBins
+    xLabel: RPM

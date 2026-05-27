@@ -11,19 +11,18 @@ children:
   - type: enum-field
     id: twostroke
     props:
-      label: Strokes
       options:
       - value: 0
         label: Four Stroke
       - value: 1
         label: Two Stroke
+      label: Strokes
     bind:
       source: config
       field: twoStroke
   - type: enum-field
     id: trigger-type
     props:
-      label: Trigger type
       options:
       - value: 0
         label: custom toothed wheel
@@ -54,7 +53,7 @@ children:
       - value: 13
         label: INVALID
       - value: 14
-        label: Dodge Neon 2003
+        label: Dodge Neon 2003 Cam
       - value: 15
         label: Mazda DOHC 1+4
       - value: 16
@@ -84,7 +83,7 @@ children:
       - value: 28
         label: Honda CBR 600 Cam
       - value: 29
-        label: INVALID
+        label: Nissan K11
       - value: 30
         label: probably broken ChryslerNGC 36-2-2
       - value: 31
@@ -104,7 +103,7 @@ children:
       - value: 38
         label: 12crank/24cam
       - value: 39
-        label: Dodge Neon 1995 crank only
+        label: Ford PIP6
       - value: 40
         label: Jeep XJ 4 cyl
       - value: 41
@@ -156,7 +155,7 @@ children:
       - value: 64
         label: Subaru SVX Cam VVT
       - value: 65
-        label: Ford PIP
+        label: Ford PIP8
       - value: 66
         label: Suzuki G13B
       - value: 67
@@ -216,9 +215,9 @@ children:
       - value: 94
         label: Subaru 6 tooth Crank
       - value: 95
-        label: INVALID
+        label: Suzuki G16B
       - value: 96
-        label: INVALID
+        label: Viper
       - value: 97
         label: INVALID
       - value: 98
@@ -281,6 +280,7 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: Trigger type
     bind:
       source: config
       field: trigger_type
@@ -301,23 +301,23 @@ children:
   - type: enum-field
     id: skippedwheeloncam
     props:
+      label: Skipped wheel location
       options:
       - value: 0
         label: On crankshaft
       - value: 1
         label: On camshaft
-      label: Skipped wheel location
     bind:
       source: config
       field: skippedWheelOnCam
   - type: text
     props:
-      text: Reminder that 4-stroke cycle is 720 degrees
       variant: hint
+      text: Reminder that 4-stroke cycle is 720 degrees
   - type: text
     props:
-      variant: hint
       text: For well-known trigger types use '0' trigger angle offset
+      variant: hint
   - type: scalar-field
     id: globaltriggerangleoffset
     props:
@@ -325,13 +325,10 @@ children:
     bind:
       source: config
       field: globalTriggerAngleOffset
-  - type: text
-    props:
-      variant: hint
-      text: Cam is primary if you have cam sensor as part of trigger shape
   - type: enum-field
     id: triggerinputpins1
     props:
+      label: Cam Sensor (Primary channel)
       options:
       - value: 0
         label: NONE
@@ -497,7 +494,98 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
-      label: Cam Sensor (Primary channel)
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: triggerInputPins1
@@ -670,6 +758,98 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: triggerInputPins1
@@ -854,6 +1034,98 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: triggerInputPins2
@@ -875,12 +1147,11 @@ children:
   children:
   - type: text
     props:
-      variant: hint
       text: <html><a href=https://rusefi.com/s/vvt>https://rusefi.com/s/vvt</a></html>
+      variant: hint
   - type: enum-field
     id: vvtmode1
     props:
-      label: Cam mode (intake)
       options:
       - value: 0
         label: Inactive
@@ -911,7 +1182,7 @@ children:
       - value: 13
         label: Sync by MAP
       - value: 14
-        label: Chrysler Phaser
+        label: not working 7736 Chrysler Phaser
       - value: 15
         label: Mazda Skyactiv
       - value: 16
@@ -945,7 +1216,7 @@ children:
       - value: 30
         label: INVALID
       - value: 31
-        label: INVALID
+        label: Mitsu 6G75
       - value: 32
         label: INVALID
       - value: 33
@@ -1010,6 +1281,7 @@ children:
         label: INVALID
       - value: 63
         label: INVALID
+      label: Cam mode (intake)
     bind:
       source: config
       field: vvtMode1
@@ -1030,6 +1302,7 @@ children:
   - type: enum-field
     id: vvtmode2
     props:
+      label: Cam mode (exhaust)
       options:
       - value: 0
         label: Inactive
@@ -1060,7 +1333,7 @@ children:
       - value: 13
         label: Sync by MAP
       - value: 14
-        label: Chrysler Phaser
+        label: not working 7736 Chrysler Phaser
       - value: 15
         label: Mazda Skyactiv
       - value: 16
@@ -1094,7 +1367,7 @@ children:
       - value: 30
         label: INVALID
       - value: 31
-        label: INVALID
+        label: Mitsu 6G75
       - value: 32
         label: INVALID
       - value: 33
@@ -1159,7 +1432,6 @@ children:
         label: INVALID
       - value: 63
         label: INVALID
-      label: Cam mode (exhaust)
     bind:
       source: config
       field: vvtMode2
@@ -1332,6 +1604,98 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: camInputs1
@@ -1503,6 +1867,98 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
       label: Cam sensor bank 1 exhaust
     bind:
       source: config
@@ -1510,7 +1966,6 @@ children:
   - type: enum-field
     id: caminputs3
     props:
-      label: Cam sensor bank 2 intake
       options:
       - value: 0
         label: NONE
@@ -1676,13 +2131,105 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+      label: Cam sensor bank 2 intake
     bind:
       source: config
       field: camInputs3
   - type: enum-field
     id: caminputs4
     props:
-      label: Cam sensor bank 2 exhaust
       options:
       - value: 0
         label: NONE
@@ -1848,6 +2395,99 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+      label: Cam sensor bank 2 exhaust
     bind:
       source: config
       field: camInputs4
@@ -1877,8 +2517,8 @@ children:
       field: invertExhaustCamVVTSignal
   - type: text
     props:
-      text: Set offset so VVT indicates 0 degrees in default position
       variant: hint
+      text: Set offset so VVT indicates 0 degrees in default position
   - type: scalar-field
     id: vvtoffsets1
     props:

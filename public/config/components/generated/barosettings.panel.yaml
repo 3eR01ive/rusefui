@@ -11,7 +11,6 @@ children:
   - type: enum-field
     id: barosensor-hwchannel
     props:
-      label: Baro input
       options:
       - value: 0
         label: NONE
@@ -47,6 +46,37 @@ children:
         label: Analog Temp 1
       - value: 16
         label: Analog Temp 2
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      label: Baro input
     bind:
       source: config
       field: baroSensor_hwChannel
@@ -143,6 +173,7 @@ children:
   - type: enum-field
     id: lps25barosensorscl
     props:
+      label: LPS2x Baro SCL
       options:
       - value: 0
         label: NONE
@@ -500,7 +531,6 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: LPS2x Baro SCL
     bind:
       source: config
       field: lps25BaroSensorScl

@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: acswitch
     props:
+      label: A/C switch
       options:
       - value: 0
         label: NONE
@@ -176,14 +177,104 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
-      label: A/C switch
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: acSwitch
   - type: enum-field
     id: acswitchmode
     props:
-      label: A/C switch mode
       options:
       - value: 0
         label: DEFAULT
@@ -199,12 +290,16 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
+      - value: 7
+        label: '"INVALID'
+      label: A/C switch mode
     bind:
       source: config
       field: acSwitchMode
   - type: enum-field
     id: acrelaypin
     props:
+      label: A/C Relay
       options:
       - value: 0
         label: NONE
@@ -432,14 +527,42 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
-      label: A/C Relay
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: acRelayPin
   - type: enum-field
     id: acrelaypinmode
     props:
-      label: A/C Relay Mode
       options:
       - value: 0
         label: default
@@ -449,6 +572,7 @@ children:
         label: open collector
       - value: 3
         label: open collector inverted
+      label: A/C Relay Mode
     bind:
       source: config
       field: acRelayPinMode

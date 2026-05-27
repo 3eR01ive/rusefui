@@ -1,0 +1,19 @@
+id: secondIgnitionTableDialog.panel
+description: Second Ignition Table
+source:
+  ini_dialog: secondIgnitionTableDialog
+  menu_path: Ignition › Second Ignition Table
+children:
+- type: text
+  props:
+    variant: hint
+    text: Таблица/кривая «secondIgnitionTableControls» — нет определения в INI
+- type: config-table
+  id: secondignitiontabletbl
+  props:
+    zBins: secondIgnitionTable
+    variant: table
+    title: Second Ignition Table
+    xBins: secondIgnitionRpmBins
+    xLabel: RPM
+    yBins: secondIgnitionLoadBins

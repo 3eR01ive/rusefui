@@ -2,13 +2,13 @@ id: boostOpenLoopGearAdderDialog.panel
 description: Boost control open loop gear adder
 source:
   ini_dialog: boostOpenLoopGearAdderDialog
-  menu_path: Advanced › Boost control open loop gear adder
+  menu_path: Advanced › Boost Control › Boost control open loop gear adder
 children:
 - type: curve
   id: boostopenloopgearaddercurve
   props:
-    xLabel: Gear
-    yBins: gearBasedOpenLoopBoostAdder
     xBins: gearCountArray
+    yBins: gearBasedOpenLoopBoostAdder
     yLabel: duty cycle
     title: Boost Open Loop gear-based modifier
+    xLabel: Gear

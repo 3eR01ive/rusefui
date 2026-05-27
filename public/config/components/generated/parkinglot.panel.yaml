@@ -7,6 +7,7 @@ children:
 - type: enum-field
   id: uimode
   props:
+    label: uiMode
     options:
     - value: 0
       label: Full
@@ -16,7 +17,6 @@ children:
       label: Tuning
     - value: 3
       label: INVALID
-    label: uiMode
   bind:
     source: config
     field: uiMode
@@ -25,9 +25,9 @@ children:
   props:
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
+      label: yes
     label: can1ListenMode
   bind:
     source: config
@@ -38,21 +38,21 @@ children:
     label: can2ListenMode
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
+      label: yes
   bind:
     source: config
     field: can2ListenMode
 - type: enum-field
   id: rethrowhardfault
   props:
-    label: rethrowHardFault
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
+      label: yes
+    label: rethrowHardFault
   bind:
     source: config
     field: rethrowHardFault
@@ -73,37 +73,14 @@ children:
     source: config
     field: canGpioType
 - type: enum-field
-  id: yesunderstandlocking
-  props:
-    label: I understand ECU Locking
-    options:
-    - value: 0
-      label: no
-    - value: 1
-      label: yes
-  bind:
-    source: config
-    field: yesUnderstandLocking
-- type: text
-  props:
-    text: Use console for unlocking
-    variant: hint
-- type: scalar-field
-  id: tunehidingkey
-  props:
-    label: Tune read/write password
-  bind:
-    source: config
-    field: tuneHidingKey
-- type: enum-field
   id: verbosequad
   props:
     label: verboseQuad
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
+      label: yes
   bind:
     source: config
     field: verboseQuad
@@ -114,24 +91,24 @@ children:
 - type: enum-field
   id: vvtbooleanforveryspecialcases
   props:
+    label: vvtBooleanForVerySpecialCases
     options:
     - value: 0
       label: 'false'
     - value: 1
       label: 'true'
-    label: vvtBooleanForVerySpecialCases
   bind:
     source: config
     field: vvtBooleanForVerySpecialCases
 - type: enum-field
   id: watchoutforlineartime
   props:
-    label: watchOutForLinearTime
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
+      label: yes
+    label: watchOutForLinearTime
   bind:
     source: config
     field: watchOutForLinearTime
@@ -141,9 +118,9 @@ children:
     label: TS over CAN debug
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
+      label: yes
   bind:
     source: config
     field: verboseIsoTp
@@ -153,9 +130,9 @@ children:
     label: consumeObdSensors
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
+      label: yes
   bind:
     source: config
     field: consumeObdSensors
@@ -164,9 +141,9 @@ children:
   props:
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
+      label: yes
     label: BRZ/FRS/GT86 pedal
   bind:
     source: config
@@ -186,24 +163,24 @@ children:
 - type: enum-field
   id: alwaysinstantrpm
   props:
+    label: Always use instant RPM
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
-    label: Always use instant RPM
+      label: yes
   bind:
     source: config
     field: alwaysInstantRpm
 - type: enum-field
   id: modeledflowidle
   props:
-    label: Modeled flow idle
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
+      label: yes
+    label: Modeled flow idle
   bind:
     source: config
     field: modeledFlowIdle
@@ -241,21 +218,21 @@ children:
     label: useBiQuadOnAuxSpeedSensors
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
+      label: yes
   bind:
     source: config
     field: useBiQuadOnAuxSpeedSensors
 - type: enum-field
   id: kickstartcranking
   props:
-    label: TODO KS mode 4569
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
+      label: yes
+    label: TODO KS mode 4569
   bind:
     source: config
     field: kickStartCranking

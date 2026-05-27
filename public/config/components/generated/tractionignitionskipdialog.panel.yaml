@@ -7,20 +7,20 @@ children:
 - type: enum-field
   id: usehardskipintraction
   props:
+    label: useHardSkipInTraction
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
-    label: useHardSkipInTraction
+      label: yes
   bind:
     source: config
     field: useHardSkipInTraction
 - type: config-table
   id: tractionignitionskiptabletbl
   props:
-    zBins: tractionControlIgnitionSkip
-    xBins: tractionControlSpeedBins
-    variant: table
-    title: Traction Control Skip Ignition
     yBins: tractionControlSlipBins
+    zBins: tractionControlIgnitionSkip
+    variant: table
+    xBins: tractionControlSpeedBins
+    title: Traction Control Skip Ignition

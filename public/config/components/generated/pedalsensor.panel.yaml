@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: throttlepedalpositionadcchannel
     props:
+      label: Accelerator position primary sensor
       options:
       - value: 0
         label: NONE
@@ -46,7 +47,36 @@ children:
         label: Analog Temp 1
       - value: 16
         label: Analog Temp 2
-      label: Accelerator position sensor
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
     bind:
       source: config
       field: throttlePedalPositionAdcChannel
@@ -57,10 +87,6 @@ children:
     bind:
       source: config
       field: throttlePedalUpVoltage
-  - type: text
-    props:
-      variant: hint
-      text: 'Кнопка: Grab Idle/Up (cmd_calibrate_pedal_up)'
   - type: scalar-field
     id: throttlepedalwotvoltage
     props:
@@ -68,10 +94,6 @@ children:
     bind:
       source: config
       field: throttlePedalWOTVoltage
-  - type: text
-    props:
-      variant: hint
-      text: 'Кнопка: Grab WOT/Down (cmd_calibrate_pedal_down)'
   - type: enum-field
     id: throttlepedalpositionsecondadcchannel
     props:
@@ -110,7 +132,37 @@ children:
         label: Analog Temp 1
       - value: 16
         label: Analog Temp 2
-      label: Accelerator position 2nd sensor
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      label: Accelerator position secondary sensor
     bind:
       source: config
       field: throttlePedalPositionSecondAdcChannel
@@ -128,6 +180,14 @@ children:
     bind:
       source: config
       field: throttlePedalSecondaryWOTVoltage
+  - type: text
+    props:
+      variant: hint
+      text: 'Кнопка: Grab Idle/Up (cmd_calibrate_pedal_up)'
+  - type: text
+    props:
+      text: 'Кнопка: Grab WOT/Down (cmd_calibrate_pedal_down)'
+      variant: hint
   - type: scalar-field
     id: ppsexpaveragealpha
     props:
@@ -135,25 +195,6 @@ children:
     bind:
       source: config
       field: ppsExpAverageAlpha
-  - type: enum-field
-    id: usefordredundantpps
-    props:
-      options:
-      - value: 0
-        label: 'false'
-      - value: 1
-        label: 'true'
-      label: Ford/Toyota redundant PPS mode
-    bind:
-      source: config
-      field: useFordRedundantPps
-  - type: scalar-field
-    id: ppssecondarymaximum
-    props:
-      label: Secondary PPS maximum
-    bind:
-      source: config
-      field: ppsSecondaryMaximum
   - type: section
     props:
       title: TPS/PPS Limits
@@ -179,25 +220,29 @@ children:
       bind:
         source: config
         field: etbSplit
+  - type: section
+    props:
+      title: Pedal Position Sensors special cases
+    children:
     - type: enum-field
-      id: usefordredundanttps
+      id: usefordredundantpps
       props:
         options:
         - value: 0
-          label: 'false'
+          label: no
         - value: 1
-          label: 'true'
-        label: Ford/Toyota redundant TPS mode
+          label: yes
+        label: Ford/Toyota redundant PPS mode
       bind:
         source: config
-        field: useFordRedundantTps
+        field: useFordRedundantPps
     - type: scalar-field
-      id: tpssecondarymaximum
+      id: ppssecondarymaximum
       props:
-        label: Secondary TPS maximum
+        label: Secondary PPS maximum
       bind:
         source: config
-        field: tpsSecondaryMaximum
+        field: ppsSecondaryMaximum
 - type: section
   props:
     title: pedalGauges

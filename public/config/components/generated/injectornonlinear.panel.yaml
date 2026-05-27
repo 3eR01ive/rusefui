@@ -2,12 +2,11 @@ id: injectorNonlinear.panel
 description: Injector small-pulse correction
 source:
   ini_dialog: injectorNonlinear
-  menu_path: Fuel › Injector small-pulse correction
+  menu_path: Fuel › Injector Setup › Injector small-pulse correction
 children:
 - type: enum-field
   id: injectornonlinearmode
   props:
-    label: Small pulse correction mode
     options:
     - value: 0
       label: None
@@ -17,6 +16,7 @@ children:
       label: Ford (dual slope)
     - value: 3
       label: INVALID
+    label: Small pulse correction mode
   bind:
     source: config
     field: injectorNonlinearMode

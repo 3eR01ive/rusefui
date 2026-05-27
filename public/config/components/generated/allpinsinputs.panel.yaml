@@ -1,0 +1,5254 @@
+id: allPinsInputs.panel
+description: All IO - Inputs
+source:
+  ini_dialog: allPinsInputs
+  menu_path: Controller › Full pinout - Input
+children:
+- type: section
+  props:
+    title: allPinsInputs_1_and_2
+  children:
+  - type: section
+    props:
+      title: Analog
+    children:
+    - type: enum-field
+      id: throttlepedalpositionadcchannel
+      props:
+        label: Throttle pedal Position Channel
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+      bind:
+        source: config
+        field: throttlePedalPositionAdcChannel
+    - type: enum-field
+      id: throttlepedalpositionsecondadcchannel
+      props:
+        label: 'Throttle pedal Position #2'
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+      bind:
+        source: config
+        field: throttlePedalPositionSecondAdcChannel
+    - type: enum-field
+      id: tps1-1adcchannel
+      props:
+        label: TPS1 ADC input
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+      bind:
+        source: config
+        field: tps1_1AdcChannel
+    - type: enum-field
+      id: tps2-1adcchannel
+      props:
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+        label: TPS2 ADC input
+      bind:
+        source: config
+        field: tps2_1AdcChannel
+    - type: enum-field
+      id: clt-adcchannel
+      props:
+        label: CLT ADC input
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+      bind:
+        source: config
+        field: clt_adcChannel
+    - type: enum-field
+      id: iat-adcchannel
+      props:
+        label: IAT ADC input
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+      bind:
+        source: config
+        field: iat_adcChannel
+    - type: enum-field
+      id: vbattadcchannel
+      props:
+        label: vBatt ADC input
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+      bind:
+        source: config
+        field: vbattAdcChannel
+    - type: enum-field
+      id: mafadcchannel
+      props:
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+        label: MAF ADC input
+      bind:
+        source: config
+        field: mafAdcChannel
+    - type: enum-field
+      id: maf2adcchannel
+      props:
+        label: MAF 2 ADC input
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+      bind:
+        source: config
+        field: maf2AdcChannel
+    - type: enum-field
+      id: afr-hwchannel
+      props:
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+        label: AFR ADC input
+      bind:
+        source: config
+        field: afr_hwChannel
+    - type: enum-field
+      id: afr-hwchannel2
+      props:
+        label: AFR 2 ADC input
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+      bind:
+        source: config
+        field: afr_hwChannel2
+    - type: enum-field
+      id: barosensor-hwchannel
+      props:
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+        label: Baro ADC input
+      bind:
+        source: config
+        field: baroSensor_hwChannel
+    - type: enum-field
+      id: map-sensor-hwchannel
+      props:
+        label: MAP ADC input
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+      bind:
+        source: config
+        field: map_sensor_hwChannel
+    - type: enum-field
+      id: fuellevelsensor
+      props:
+        label: Fuel Level input
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+      bind:
+        source: config
+        field: fuelLevelSensor
+  - type: section
+    props:
+      title: Aux Analog
+    children:
+    - type: enum-field
+      id: auxtempsensor1-adcchannel
+      props:
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+        label: 'Aux Temperature #1'
+      bind:
+        source: config
+        field: auxTempSensor1_adcChannel
+    - type: enum-field
+      id: auxtempsensor2-adcchannel
+      props:
+        label: 'Aux Temperature #2'
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+      bind:
+        source: config
+        field: auxTempSensor2_adcChannel
+    - type: enum-field
+      id: auxfastsensor1-adcchannel
+      props:
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+        label: Aux Fast Analog
+      bind:
+        source: config
+        field: auxFastSensor1_adcChannel
+    - type: enum-field
+      id: auxanaloginputs1
+      props:
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+        label: 'Aux ADC #1'
+      bind:
+        source: config
+        field: auxAnalogInputs1
+    - type: enum-field
+      id: auxanaloginputs2
+      props:
+        label: 'Aux ADC #2'
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+      bind:
+        source: config
+        field: auxAnalogInputs2
+    - type: enum-field
+      id: auxanaloginputs3
+      props:
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+        label: 'Aux ADC #3'
+      bind:
+        source: config
+        field: auxAnalogInputs3
+    - type: enum-field
+      id: auxanaloginputs4
+      props:
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+        label: 'Aux ADC #4'
+      bind:
+        source: config
+        field: auxAnalogInputs4
+    - type: enum-field
+      id: auxanaloginputs5
+      props:
+        label: 'Aux ADC #5'
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+      bind:
+        source: config
+        field: auxAnalogInputs5
+    - type: enum-field
+      id: auxanaloginputs6
+      props:
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+        label: 'Aux ADC #6'
+      bind:
+        source: config
+        field: auxAnalogInputs6
+    - type: enum-field
+      id: auxanaloginputs7
+      props:
+        label: 'Aux ADC #7'
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+      bind:
+        source: config
+        field: auxAnalogInputs7
+    - type: enum-field
+      id: auxanaloginputs8
+      props:
+        label: 'Aux ADC #8'
+        options:
+        - value: 0
+          label: NONE
+        - value: 1
+          label: Analog Volt 5
+        - value: 2
+          label: Analog Volt 6
+        - value: 3
+          label: Analog Volt 7
+        - value: 4
+          label: Analog Volt 8
+        - value: 5
+          label: Analog Volt 9
+        - value: 6
+          label: Analog Volt 10
+        - value: 7
+          label: Analog Volt 11
+        - value: 8
+          label: Battery Sense
+        - value: 9
+          label: Analog Temp 3
+        - value: 10
+          label: Analog Temp 4
+        - value: 11
+          label: Analog Volt 1
+        - value: 12
+          label: Analog Volt 2
+        - value: 13
+          label: Analog Volt 3
+        - value: 14
+          label: Analog Volt 4
+        - value: 15
+          label: Analog Temp 1
+        - value: 16
+          label: Analog Temp 2
+        - value: 17
+          label: INVALID
+        - value: 18
+          label: INVALID
+        - value: 19
+          label: INVALID
+        - value: 20
+          label: INVALID
+        - value: 21
+          label: INVALID
+        - value: 22
+          label: INVALID
+        - value: 23
+          label: INVALID
+        - value: 24
+          label: INVALID
+        - value: 25
+          label: INVALID
+        - value: 26
+          label: INVALID
+        - value: 27
+          label: INVALID
+        - value: 28
+          label: INVALID
+        - value: 29
+          label: INVALID
+        - value: 30
+          label: INVALID
+        - value: 31
+          label: INVALID
+      bind:
+        source: config
+        field: auxAnalogInputs8
+- type: section
+  props:
+    title: Digital
+  children:
+  - type: enum-field
+    id: vehiclespeedsensorinputpin
+    props:
+      label: Vehicle Speed input
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: INVALID
+      - value: 3
+        label: INVALID
+      - value: 4
+        label: INVALID
+      - value: 5
+        label: INVALID
+      - value: 6
+        label: INVALID
+      - value: 7
+        label: INVALID
+      - value: 8
+        label: INVALID
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: INVALID
+      - value: 35
+        label: INVALID
+      - value: 36
+        label: INVALID
+      - value: 37
+        label: INVALID
+      - value: 38
+        label: INVALID
+      - value: 39
+        label: INVALID
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: VR 1
+      - value: 74
+        label: VR 2
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+    bind:
+      source: config
+      field: vehicleSpeedSensorInputPin
+  - type: enum-field
+    id: clutchdownpin
+    props:
+      label: Clutch Down input
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: Analog Volt 5
+      - value: 3
+        label: Analog Volt 6
+      - value: 4
+        label: Analog Volt 7
+      - value: 5
+        label: Analog Volt 8
+      - value: 6
+        label: Analog Volt 9
+      - value: 7
+        label: Analog Volt 10
+      - value: 8
+        label: Analog Volt 11
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: Analog Temp 3
+      - value: 19
+        label: Analog Temp 4
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: Analog Volt 1
+      - value: 35
+        label: Analog Volt 2
+      - value: 36
+        label: Analog Volt 3
+      - value: 37
+        label: Analog Volt 4
+      - value: 38
+        label: Analog Temp 1
+      - value: 39
+        label: Analog Temp 2
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: INVALID
+      - value: 74
+        label: INVALID
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+    bind:
+      source: config
+      field: clutchDownPin
+  - type: enum-field
+    id: clutchuppin
+    props:
+      label: Clutch Up input
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: Analog Volt 5
+      - value: 3
+        label: Analog Volt 6
+      - value: 4
+        label: Analog Volt 7
+      - value: 5
+        label: Analog Volt 8
+      - value: 6
+        label: Analog Volt 9
+      - value: 7
+        label: Analog Volt 10
+      - value: 8
+        label: Analog Volt 11
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: Analog Temp 3
+      - value: 19
+        label: Analog Temp 4
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: Analog Volt 1
+      - value: 35
+        label: Analog Volt 2
+      - value: 36
+        label: Analog Volt 3
+      - value: 37
+        label: Analog Volt 4
+      - value: 38
+        label: Analog Temp 1
+      - value: 39
+        label: Analog Temp 2
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: INVALID
+      - value: 74
+        label: INVALID
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+    bind:
+      source: config
+      field: clutchUpPin
+  - type: enum-field
+    id: brakepedalpin
+    props:
+      label: Brake pedal input
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: Analog Volt 5
+      - value: 3
+        label: Analog Volt 6
+      - value: 4
+        label: Analog Volt 7
+      - value: 5
+        label: Analog Volt 8
+      - value: 6
+        label: Analog Volt 9
+      - value: 7
+        label: Analog Volt 10
+      - value: 8
+        label: Analog Volt 11
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: Analog Temp 3
+      - value: 19
+        label: Analog Temp 4
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: Analog Volt 1
+      - value: 35
+        label: Analog Volt 2
+      - value: 36
+        label: Analog Volt 3
+      - value: 37
+        label: Analog Volt 4
+      - value: 38
+        label: Analog Temp 1
+      - value: 39
+        label: Analog Temp 2
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: INVALID
+      - value: 74
+        label: INVALID
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+    bind:
+      source: config
+      field: brakePedalPin
+  - type: enum-field
+    id: acswitch
+    props:
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: Analog Volt 5
+      - value: 3
+        label: Analog Volt 6
+      - value: 4
+        label: Analog Volt 7
+      - value: 5
+        label: Analog Volt 8
+      - value: 6
+        label: Analog Volt 9
+      - value: 7
+        label: Analog Volt 10
+      - value: 8
+        label: Analog Volt 11
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: Analog Temp 3
+      - value: 19
+        label: Analog Temp 4
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: Analog Volt 1
+      - value: 35
+        label: Analog Volt 2
+      - value: 36
+        label: Analog Volt 3
+      - value: 37
+        label: Analog Volt 4
+      - value: 38
+        label: Analog Temp 1
+      - value: 39
+        label: Analog Temp 2
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: INVALID
+      - value: 74
+        label: INVALID
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+      label: A/C Switch
+    bind:
+      source: config
+      field: acSwitch
+  - type: enum-field
+    id: triggerinputpins1
+    props:
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: INVALID
+      - value: 3
+        label: INVALID
+      - value: 4
+        label: INVALID
+      - value: 5
+        label: INVALID
+      - value: 6
+        label: INVALID
+      - value: 7
+        label: INVALID
+      - value: 8
+        label: INVALID
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: INVALID
+      - value: 35
+        label: INVALID
+      - value: 36
+        label: INVALID
+      - value: 37
+        label: INVALID
+      - value: 38
+        label: INVALID
+      - value: 39
+        label: INVALID
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: VR 1
+      - value: 74
+        label: VR 2
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+      label: Primary input channel
+    bind:
+      source: config
+      field: triggerInputPins1
+  - type: enum-field
+    id: triggerinputpins2
+    props:
+      label: Secondary channel
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: INVALID
+      - value: 3
+        label: INVALID
+      - value: 4
+        label: INVALID
+      - value: 5
+        label: INVALID
+      - value: 6
+        label: INVALID
+      - value: 7
+        label: INVALID
+      - value: 8
+        label: INVALID
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: INVALID
+      - value: 35
+        label: INVALID
+      - value: 36
+        label: INVALID
+      - value: 37
+        label: INVALID
+      - value: 38
+        label: INVALID
+      - value: 39
+        label: INVALID
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: VR 1
+      - value: 74
+        label: VR 2
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+    bind:
+      source: config
+      field: triggerInputPins2
+  - type: enum-field
+    id: caminputs1
+    props:
+      label: Cam Sync/VVT input
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: INVALID
+      - value: 3
+        label: INVALID
+      - value: 4
+        label: INVALID
+      - value: 5
+        label: INVALID
+      - value: 6
+        label: INVALID
+      - value: 7
+        label: INVALID
+      - value: 8
+        label: INVALID
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: INVALID
+      - value: 35
+        label: INVALID
+      - value: 36
+        label: INVALID
+      - value: 37
+        label: INVALID
+      - value: 38
+        label: INVALID
+      - value: 39
+        label: INVALID
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: VR 1
+      - value: 74
+        label: VR 2
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+    bind:
+      source: config
+      field: camInputs1
+  - type: enum-field
+    id: auxspeedsensorinputpin1
+    props:
+      label: auxSpeedSensorInputPin1
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: INVALID
+      - value: 3
+        label: INVALID
+      - value: 4
+        label: INVALID
+      - value: 5
+        label: INVALID
+      - value: 6
+        label: INVALID
+      - value: 7
+        label: INVALID
+      - value: 8
+        label: INVALID
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: INVALID
+      - value: 35
+        label: INVALID
+      - value: 36
+        label: INVALID
+      - value: 37
+        label: INVALID
+      - value: 38
+        label: INVALID
+      - value: 39
+        label: INVALID
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: VR 1
+      - value: 74
+        label: VR 2
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+    bind:
+      source: config
+      field: auxSpeedSensorInputPin1
+  - type: enum-field
+    id: auxspeedsensorinputpin2
+    props:
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: INVALID
+      - value: 3
+        label: INVALID
+      - value: 4
+        label: INVALID
+      - value: 5
+        label: INVALID
+      - value: 6
+        label: INVALID
+      - value: 7
+        label: INVALID
+      - value: 8
+        label: INVALID
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: INVALID
+      - value: 35
+        label: INVALID
+      - value: 36
+        label: INVALID
+      - value: 37
+        label: INVALID
+      - value: 38
+        label: INVALID
+      - value: 39
+        label: INVALID
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: VR 1
+      - value: 74
+        label: VR 2
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+      label: auxSpeedSensorInputPin2
+    bind:
+      source: config
+      field: auxSpeedSensorInputPin2
+  - type: enum-field
+    id: startstopbuttonpin
+    props:
+      label: Start/Stop Button
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: Analog Volt 5
+      - value: 3
+        label: Analog Volt 6
+      - value: 4
+        label: Analog Volt 7
+      - value: 5
+        label: Analog Volt 8
+      - value: 6
+        label: Analog Volt 9
+      - value: 7
+        label: Analog Volt 10
+      - value: 8
+        label: Analog Volt 11
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: Analog Temp 3
+      - value: 19
+        label: Analog Temp 4
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: Analog Volt 1
+      - value: 35
+        label: Analog Volt 2
+      - value: 36
+        label: Analog Volt 3
+      - value: 37
+        label: Analog Volt 4
+      - value: 38
+        label: Analog Temp 1
+      - value: 39
+        label: Analog Temp 2
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: INVALID
+      - value: 74
+        label: INVALID
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+    bind:
+      source: config
+      field: startStopButtonPin
+  - type: enum-field
+    id: tcuupshiftbuttonpin
+    props:
+      label: Upshift Pin
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: Analog Volt 5
+      - value: 3
+        label: Analog Volt 6
+      - value: 4
+        label: Analog Volt 7
+      - value: 5
+        label: Analog Volt 8
+      - value: 6
+        label: Analog Volt 9
+      - value: 7
+        label: Analog Volt 10
+      - value: 8
+        label: Analog Volt 11
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: Analog Temp 3
+      - value: 19
+        label: Analog Temp 4
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: Analog Volt 1
+      - value: 35
+        label: Analog Volt 2
+      - value: 36
+        label: Analog Volt 3
+      - value: 37
+        label: Analog Volt 4
+      - value: 38
+        label: Analog Temp 1
+      - value: 39
+        label: Analog Temp 2
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: INVALID
+      - value: 74
+        label: INVALID
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+    bind:
+      source: config
+      field: tcuUpshiftButtonPin
+  - type: enum-field
+    id: tcudownshiftbuttonpin
+    props:
+      label: Downshift Pin
+      options:
+      - value: 0
+        label: NONE
+      - value: 1
+        label: INVALID
+      - value: 2
+        label: Analog Volt 5
+      - value: 3
+        label: Analog Volt 6
+      - value: 4
+        label: Analog Volt 7
+      - value: 5
+        label: Analog Volt 8
+      - value: 6
+        label: Analog Volt 9
+      - value: 7
+        label: Analog Volt 10
+      - value: 8
+        label: Analog Volt 11
+      - value: 9
+        label: INVALID
+      - value: 10
+        label: INVALID
+      - value: 11
+        label: INVALID
+      - value: 12
+        label: INVALID
+      - value: 13
+        label: INVALID
+      - value: 14
+        label: INVALID
+      - value: 15
+        label: INVALID
+      - value: 16
+        label: INVALID
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: Analog Temp 3
+      - value: 19
+        label: Analog Temp 4
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      - value: 32
+        label: INVALID
+      - value: 33
+        label: INVALID
+      - value: 34
+        label: Analog Volt 1
+      - value: 35
+        label: Analog Volt 2
+      - value: 36
+        label: Analog Volt 3
+      - value: 37
+        label: Analog Volt 4
+      - value: 38
+        label: Analog Temp 1
+      - value: 39
+        label: Analog Temp 2
+      - value: 40
+        label: Digital 1
+      - value: 41
+        label: INVALID
+      - value: 42
+        label: INVALID
+      - value: 43
+        label: INVALID
+      - value: 44
+        label: INVALID
+      - value: 45
+        label: INVALID
+      - value: 46
+        label: INVALID
+      - value: 47
+        label: INVALID
+      - value: 48
+        label: INVALID
+      - value: 49
+        label: INVALID
+      - value: 50
+        label: INVALID
+      - value: 51
+        label: INVALID
+      - value: 52
+        label: INVALID
+      - value: 53
+        label: INVALID
+      - value: 54
+        label: INVALID
+      - value: 55
+        label: INVALID
+      - value: 56
+        label: INVALID
+      - value: 57
+        label: INVALID
+      - value: 58
+        label: INVALID
+      - value: 59
+        label: INVALID
+      - value: 60
+        label: INVALID
+      - value: 61
+        label: INVALID
+      - value: 62
+        label: INVALID
+      - value: 63
+        label: INVALID
+      - value: 64
+        label: INVALID
+      - value: 65
+        label: INVALID
+      - value: 66
+        label: INVALID
+      - value: 67
+        label: INVALID
+      - value: 68
+        label: INVALID
+      - value: 69
+        label: INVALID
+      - value: 70
+        label: INVALID
+      - value: 71
+        label: INVALID
+      - value: 72
+        label: INVALID
+      - value: 73
+        label: INVALID
+      - value: 74
+        label: INVALID
+      - value: 75
+        label: INVALID
+      - value: 76
+        label: INVALID
+      - value: 77
+        label: Digital 2
+      - value: 78
+        label: Digital 3
+      - value: 79
+        label: Digital 5
+      - value: 80
+        label: Digital 4
+      - value: 81
+        label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+    bind:
+      source: config
+      field: tcuDownshiftButtonPin

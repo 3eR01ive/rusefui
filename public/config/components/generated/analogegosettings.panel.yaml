@@ -18,7 +18,6 @@ children:
   - type: enum-field
     id: afr-type
     props:
-      label: Type
       options:
       - value: 0
         label: BPSX
@@ -36,6 +35,7 @@ children:
         label: AEM
       - value: 7
         label: INVALID
+      label: Type
     bind:
       source: config
       field: afr_type
@@ -81,7 +81,6 @@ children:
   - type: enum-field
     id: afr-hwchannel
     props:
-      label: Input channel
       options:
       - value: 0
         label: NONE
@@ -117,6 +116,37 @@ children:
         label: Analog Temp 1
       - value: 16
         label: Analog Temp 2
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      label: Input channel
     bind:
       source: config
       field: afr_hwChannel
@@ -351,6 +381,36 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: o2heaterPin
@@ -396,6 +456,36 @@ children:
         label: Analog Temp 1
       - value: 16
         label: Analog Temp 2
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
       label: Input channel
     bind:
       source: config

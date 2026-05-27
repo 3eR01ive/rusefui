@@ -21,9 +21,9 @@ children:
       label: CAN EGT (AEM X series of RusEFI)
       options:
       - value: 0
-        label: 'false'
+        label: no
       - value: 1
-        label: 'true'
+        label: yes
     bind:
       source: config
       field: enableAemXSeriesEgt
@@ -41,7 +41,6 @@ children:
   - type: enum-field
     id: max31855spidevice
     props:
-      label: MAX31855/MAX31856 SPI
       options:
       - value: 0
         label: Off
@@ -57,12 +56,14 @@ children:
         label: SPI5
       - value: 6
         label: SPI6
+      label: MAX31855/MAX31856 SPI
     bind:
       source: config
       field: max31855spiDevice
   - type: enum-field
     id: max31855-cs1
     props:
+      label: CS for EGT1
       options:
       - value: 0
         label: NONE
@@ -420,7 +421,6 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: CS for EGT1
     bind:
       source: config
       field: max31855_cs1
@@ -791,6 +791,7 @@ children:
   - type: enum-field
     id: max31855-cs3
     props:
+      label: CS for EGT3
       options:
       - value: 0
         label: NONE
@@ -1148,7 +1149,6 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: CS for EGT3
     bind:
       source: config
       field: max31855_cs3
@@ -1519,6 +1519,7 @@ children:
   - type: enum-field
     id: max31855-cs5
     props:
+      label: CS for EGT5
       options:
       - value: 0
         label: NONE
@@ -1876,7 +1877,6 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: CS for EGT5
     bind:
       source: config
       field: max31855_cs5
@@ -2247,7 +2247,6 @@ children:
   - type: enum-field
     id: max31855-cs7
     props:
-      label: CS for EGT7
       options:
       - value: 0
         label: NONE
@@ -2605,13 +2604,13 @@ children:
         label: PK14
       - value: 177
         label: PK15
+      label: CS for EGT7
     bind:
       source: config
       field: max31855_cs7
   - type: enum-field
     id: max31855-cs8
     props:
-      label: CS for EGT8
       options:
       - value: 0
         label: NONE
@@ -2969,6 +2968,7 @@ children:
         label: PK14
       - value: 177
         label: PK15
+      label: CS for EGT8
     bind:
       source: config
       field: max31855_cs8

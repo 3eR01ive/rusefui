@@ -235,12 +235,43 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
   bind:
     source: config
     field: acrPin
 - type: enum-field
   id: acrpin2
   props:
+    label: Pin 2
     options:
     - value: 0
       label: NONE
@@ -468,7 +499,36 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
-    label: Pin 2
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
   bind:
     source: config
     field: acrPin2

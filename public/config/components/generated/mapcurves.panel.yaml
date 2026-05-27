@@ -7,12 +7,12 @@ children:
 - type: enum-field
   id: ismapaveragingenabled
   props:
+    label: Window averaging
     options:
     - value: 0
-      label: 'false'
+      label: disabled
     - value: 1
-      label: 'true'
-    label: Window averaging
+      label: enabled
   bind:
     source: config
     field: isMapAveragingEnabled
@@ -26,16 +26,16 @@ children:
 - type: curve
   id: map-samplinganglecurve
   props:
+    title: MAP Sampling Start Angle
+    yBins: map_samplingAngle
+    yLabel: Angle
     xBins: map_samplingAngleBins
     xLabel: RPM
-    yLabel: Angle
-    yBins: map_samplingAngle
-    title: MAP Sampling Start Angle
 - type: curve
   id: map-samplingwindowcurve
   props:
-    yLabel: Window
-    title: MAP Sampling Duration
-    xLabel: RPM
-    xBins: map_samplingWindowBins
     yBins: map_samplingWindow
+    title: MAP Sampling Duration
+    xBins: map_samplingWindowBins
+    xLabel: RPM
+    yLabel: Window

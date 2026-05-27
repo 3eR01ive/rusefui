@@ -1,0 +1,14 @@
+id: fan1PwmCurveDialog.panel
+description: Fan 1 PWM Curve
+source:
+  ini_dialog: fan1PwmCurveDialog
+  menu_path: Setup › Limits and protection › Fan 1 PWM Curve
+children:
+- type: curve
+  id: fan1pwmcurve
+  props:
+    xLabel: Coolant
+    title: Fan 1 PWM vs Temperature
+    yLabel: PWM %
+    xBins: fan1TempBins
+    yBins: fan1PwmValues

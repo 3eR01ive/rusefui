@@ -10,8 +10,8 @@ children:
     variant: hint
 - type: text
   props:
-    text: and cause other nasty misbehavior.  Use with care, at your own risk!
     variant: hint
+    text: and cause other nasty misbehavior.  Use with care, at your own risk!
 - type: text
   props:
     text: Not recommended for use on distributor or wasted spark ignition systems.
@@ -21,9 +21,9 @@ children:
   props:
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
+      label: yes
     label: Enable multiple sparks
   bind:
     source: config
@@ -41,8 +41,8 @@ children:
       field: multisparkMaxRpm
   - type: text
     props:
-      text: "\"Fire sparks for this angle duration\"\tmultisparkMaxSparkingAngle"
       variant: hint
+      text: "\"Fire sparks for this angle duration\"\tmultisparkMaxSparkingAngle"
   - type: text
     props:
       text: "\"Maximum extra spark count\"\t\t\t\tmultisparkMaxExtraSparkCount"

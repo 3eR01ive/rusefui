@@ -1,8 +1,8 @@
 id: boostOpenLoopDialog.panel
-description: Boost control open loop
+description: Boost control Open loop base duty cycle
 source:
   ini_dialog: boostOpenLoopDialog
-  menu_path: Advanced › Boost control open loop
+  menu_path: Advanced › Boost Control › Boost control Open loop base duty cycle
 children:
 - type: section
   props:
@@ -89,9 +89,9 @@ children:
 - type: config-table
   id: boosttabletbl
   props:
+    xLabel: RPMValue
+    zBins: boostTableOpenLoop
+    xBins: boostRpmBins
     yBins: boostOpenLoopLoadBins
     title: Boost control duty cycle (open loop)
-    xBins: boostRpmBins
-    zBins: boostTableOpenLoop
-    xLabel: RPMValue
     variant: table

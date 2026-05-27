@@ -2,7 +2,7 @@ id: gppwm3.panel
 description: General Purpose PWM 3
 source:
   ini_dialog: gppwm3
-  menu_path: Advanced › Boost blend tables › General Purpose PWM 3
+  menu_path: Advanced › Generic PWM › General Purpose PWM 3
 children:
 - type: section
   props:
@@ -238,6 +238,36 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
       label: Output
     bind:
       source: config
@@ -443,9 +473,9 @@ children:
 - type: config-table
   id: gppwm3tbl
   props:
-    variant: table
-    xBins: gppwm3_rpmBins
-    yLabel: gppwm3_rpmAxis)}
     zBins: gppwm3_table
     title: GP#3
+    yLabel: gppwm3_rpmAxis)}
     yBins: gppwm3_loadBins
+    variant: table
+    xBins: gppwm3_rpmBins

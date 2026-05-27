@@ -7,6 +7,7 @@ children:
 - type: enum-field
   id: dacoutputpins1
   props:
+    label: dacOutputPins1
     options:
     - value: 0
       label: NONE
@@ -364,7 +365,6 @@ children:
       label: PK14
     - value: 177
       label: PK15
-    label: dacOutputPins1
   bind:
     source: config
     field: dacOutputPins1
@@ -735,12 +735,12 @@ children:
 - type: enum-field
   id: luacanrxworkaround
   props:
+    label: luaCanRxWorkaround CAN performance hack
     options:
     - value: 0
-      label: 'false'
+      label: disable
     - value: 1
-      label: 'true'
-    label: luaCanRxWorkaround CAN performance hack
+      label: enable
   bind:
     source: config
     field: luaCanRxWorkaround
@@ -749,9 +749,9 @@ children:
   props:
     options:
     - value: 0
-      label: 'false'
+      label: disabled
     - value: 1
-      label: 'true'
+      label: enabled
     label: Read RPM matching VSS profile
   bind:
     source: config

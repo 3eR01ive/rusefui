@@ -2,7 +2,7 @@ id: torqueReductionTimeDialog.panel
 description: Shift Torque Reduction Time table
 source:
   ini_dialog: torqueReductionTimeDialog
-  menu_path: Advanced › Shift Torque Reduction Time table
+  menu_path: Advanced › Torque Control › Shift Torque Reduction Time table
 children:
 - type: enum-field
   id: torquereductiontimexaxis
@@ -85,9 +85,9 @@ children:
 - type: config-table
   id: torquereductiontimetlb
   props:
-    xBins: torqueReductionTimeXBins
-    yLabel: torqueReductionTimeXaxis)}
     title: Torque reduction time table
-    yBins: torqueReductionTimeGearBins
-    zBins: torqueReductionTimeTable
     variant: table
+    yLabel: torqueReductionTimeXaxis)}
+    yBins: torqueReductionTimeGearBins
+    xBins: torqueReductionTimeXBins
+    zBins: torqueReductionTimeTable

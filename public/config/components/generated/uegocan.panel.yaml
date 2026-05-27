@@ -14,12 +14,12 @@ children:
 - type: enum-field
   id: enableaemxseries
   props:
+    label: Enable CAN Wideband
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
-    label: Enable CAN Wideband
+      label: yes
   bind:
     source: config
     field: enableAemXSeries
@@ -35,6 +35,25 @@ children:
   bind:
     source: config
     field: widebandOnSecondBus
+- type: scalar-field
+  id: afrexpaveragealpha
+  props:
+    label: Smoothing Factor
+  bind:
+    source: config
+    field: afrExpAverageAlpha
+- type: text
+  props:
+    text: Please use force heating only for testing.
+    variant: hint
+- type: text
+  props:
+    variant: hint
+    text: Never keep enabled outside workshop.
+- type: text
+  props:
+    text: This can damage your sensor.
+    variant: hint
 - type: enum-field
   id: forceo2heating
   props:
@@ -49,5 +68,9 @@ children:
     field: forceO2Heating
 - type: text
   props:
+    text: 'Кнопка: Restart all WBO (cmd_restart_widebands)'
     variant: hint
-    text: 'Кнопка: Update 2023 Firmware (cmd_wideband_firmare_update)'
+- type: text
+  props:
+    text: 'Кнопка: Update 2023 Firmware from file (cmd_wideband_firmare_update_file)'
+    variant: hint

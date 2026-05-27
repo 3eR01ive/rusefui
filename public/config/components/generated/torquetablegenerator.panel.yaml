@@ -1,0 +1,31 @@
+id: torqueTableGenerator.panel
+description: Torque Table Generator
+source:
+  ini_dialog: torqueTableGenerator
+  menu_path: Controller › Torque › Torque Table Generator
+children:
+- type: scalar-field
+  id: referencetorqueforgenerator
+  props:
+    label: Reference Torque
+  bind:
+    source: config
+    field: referenceTorqueForGenerator
+- type: scalar-field
+  id: referencemapforgenerator
+  props:
+    label: Reference MAP
+  bind:
+    source: config
+    field: referenceMapForGenerator
+- type: scalar-field
+  id: referenceveforgenerator
+  props:
+    label: Reference VE
+  bind:
+    source: config
+    field: referenceVeForGenerator
+- type: text
+  props:
+    variant: hint
+    text: this would adjust Torque table

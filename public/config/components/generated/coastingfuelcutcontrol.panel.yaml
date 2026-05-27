@@ -2,16 +2,16 @@ id: coastingFuelCutControl.panel
 description: Coasting Fuel Cutoff Settings
 source:
   ini_dialog: coastingFuelCutControl
-  menu_path: Fuel › Target AFR adder tables › Deceleration fuel cutoff (DFCO)
+  menu_path: Fuel › VE blend tables › Deceleration fuel cutoff (DFCO)
 children:
 - type: enum-field
   id: coastingfuelcutenabled
   props:
     options:
     - value: 0
-      label: 'false'
+      label: disabled
     - value: 1
-      label: 'true'
+      label: enabled
     label: Enable Coasting Fuel Cutoff
   bind:
     source: config

@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: wastegatepositionsensor
     props:
+      label: Input
       options:
       - value: 0
         label: NONE
@@ -46,7 +47,36 @@ children:
         label: Analog Temp 1
       - value: 16
         label: Analog Temp 2
-      label: Input
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
     bind:
       source: config
       field: wastegatePositionSensor

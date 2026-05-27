@@ -15,7 +15,6 @@ children:
     - type: enum-field
       id: vehiclespeedsensorinputpin
       props:
-        label: Input
         options:
         - value: 0
           label: NONE
@@ -181,6 +180,99 @@ children:
           label: Digital 4
         - value: 81
           label: Digital 6
+        - value: 82
+          label: INVALID
+        - value: 83
+          label: INVALID
+        - value: 84
+          label: INVALID
+        - value: 85
+          label: INVALID
+        - value: 86
+          label: INVALID
+        - value: 87
+          label: INVALID
+        - value: 88
+          label: INVALID
+        - value: 89
+          label: INVALID
+        - value: 90
+          label: INVALID
+        - value: 91
+          label: INVALID
+        - value: 92
+          label: INVALID
+        - value: 93
+          label: INVALID
+        - value: 94
+          label: INVALID
+        - value: 95
+          label: INVALID
+        - value: 96
+          label: INVALID
+        - value: 97
+          label: INVALID
+        - value: 98
+          label: INVALID
+        - value: 99
+          label: INVALID
+        - value: 100
+          label: INVALID
+        - value: 101
+          label: INVALID
+        - value: 102
+          label: INVALID
+        - value: 103
+          label: INVALID
+        - value: 104
+          label: INVALID
+        - value: 105
+          label: INVALID
+        - value: 106
+          label: INVALID
+        - value: 107
+          label: INVALID
+        - value: 108
+          label: INVALID
+        - value: 109
+          label: INVALID
+        - value: 110
+          label: INVALID
+        - value: 111
+          label: INVALID
+        - value: 112
+          label: INVALID
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
+        label: Input
       bind:
         source: config
         field: vehicleSpeedSensorInputPin
@@ -219,19 +311,18 @@ children:
     - type: enum-field
       id: enablecanvss
       props:
-        label: Enable CAN VSS
         options:
         - value: 0
-          label: 'false'
+          label: no
         - value: 1
-          label: 'true'
+          label: yes
+        label: Enable CAN VSS
       bind:
         source: config
         field: enableCanVss
     - type: enum-field
       id: canvssnbctype
       props:
-        label: CAN VSS type
         options:
         - value: 0
           label: BMW_e46
@@ -249,6 +340,7 @@ children:
           label: INVALID
         - value: 7
           label: INVALID
+        label: CAN VSS type
       bind:
         source: config
         field: canVssNbcType

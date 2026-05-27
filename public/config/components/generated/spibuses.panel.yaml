@@ -6,8 +6,8 @@ source:
 children:
 - type: text
   props:
-    text: ECU reboot needed to apply these settings
     variant: hint
+    text: ECU reboot needed to apply these settings
 - type: section
   props:
     title: SPI1 settings
@@ -17,9 +17,9 @@ children:
     props:
       options:
       - value: 0
-        label: 'false'
+        label: no
       - value: 1
-        label: 'true'
+        label: yes
       label: Enable
     bind:
       source: config
@@ -27,6 +27,7 @@ children:
   - type: enum-field
     id: spi1mosipin
     props:
+      label: MOSI
       options:
       - value: 0
         label: NONE
@@ -384,13 +385,13 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: MOSI
     bind:
       source: config
       field: spi1mosiPin
   - type: enum-field
     id: spi1mosimode
     props:
+      label: MOSI mode
       options:
       - value: 0
         label: default
@@ -522,13 +523,13 @@ children:
         label: INVALID
       - value: 64
         label: PULLDOWN
-      label: MOSI mode
     bind:
       source: config
       field: spi1MosiMode
   - type: enum-field
     id: spi1misopin
     props:
+      label: MISO
       options:
       - value: 0
         label: NONE
@@ -886,7 +887,6 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: MISO
     bind:
       source: config
       field: spi1misoPin
@@ -1031,7 +1031,6 @@ children:
   - type: enum-field
     id: spi1sckpin
     props:
-      label: SCK
       options:
       - value: 0
         label: NONE
@@ -1389,13 +1388,13 @@ children:
         label: PK14
       - value: 177
         label: PK15
+      label: SCK
     bind:
       source: config
       field: spi1sckPin
   - type: enum-field
     id: spi1sckmode
     props:
-      label: SCK mode
       options:
       - value: 0
         label: default
@@ -1527,6 +1526,7 @@ children:
         label: INVALID
       - value: 64
         label: PULLDOWN
+      label: SCK mode
     bind:
       source: config
       field: spi1SckMode
@@ -1537,18 +1537,19 @@ children:
   - type: enum-field
     id: is-enabled-spi-2
     props:
+      label: Enable
       options:
       - value: 0
-        label: 'false'
+        label: no
       - value: 1
-        label: 'true'
-      label: Enable
+        label: yes
     bind:
       source: config
       field: is_enabled_spi_2
   - type: enum-field
     id: spi2mosipin
     props:
+      label: MOSI
       options:
       - value: 0
         label: NONE
@@ -1906,7 +1907,6 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: MOSI
     bind:
       source: config
       field: spi2mosiPin
@@ -2415,7 +2415,6 @@ children:
   - type: enum-field
     id: spi2misomode
     props:
-      label: MISO mode
       options:
       - value: 0
         label: default
@@ -2547,6 +2546,7 @@ children:
         label: INVALID
       - value: 64
         label: PULLDOWN
+      label: MISO mode
     bind:
       source: config
       field: spi2MisoMode
@@ -2917,7 +2917,6 @@ children:
   - type: enum-field
     id: spi2sckmode
     props:
-      label: SCK mode
       options:
       - value: 0
         label: default
@@ -3049,6 +3048,7 @@ children:
         label: INVALID
       - value: 64
         label: PULLDOWN
+      label: SCK mode
     bind:
       source: config
       field: spi2SckMode
@@ -3061,9 +3061,9 @@ children:
     props:
       options:
       - value: 0
-        label: 'false'
+        label: no
       - value: 1
-        label: 'true'
+        label: yes
       label: Enable
     bind:
       source: config
@@ -3937,7 +3937,6 @@ children:
   - type: enum-field
     id: spi3misomode
     props:
-      label: MISO mode
       options:
       - value: 0
         label: default
@@ -4069,13 +4068,13 @@ children:
         label: INVALID
       - value: 64
         label: PULLDOWN
+      label: MISO mode
     bind:
       source: config
       field: spi3MisoMode
   - type: enum-field
     id: spi3sckpin
     props:
-      label: SCK
       options:
       - value: 0
         label: NONE
@@ -4433,13 +4432,13 @@ children:
         label: PK14
       - value: 177
         label: PK15
+      label: SCK
     bind:
       source: config
       field: spi3sckPin
   - type: enum-field
     id: spi3sckmode
     props:
-      label: SCK mode
       options:
       - value: 0
         label: default
@@ -4571,6 +4570,7 @@ children:
         label: INVALID
       - value: 64
         label: PULLDOWN
+      label: SCK mode
     bind:
       source: config
       field: spi3SckMode
@@ -4583,9 +4583,9 @@ children:
     props:
       options:
       - value: 0
-        label: 'false'
+        label: no
       - value: 1
-        label: 'true'
+        label: yes
       label: Enable
     bind:
       source: config
@@ -4599,9 +4599,9 @@ children:
     props:
       options:
       - value: 0
-        label: 'false'
+        label: no
       - value: 1
-        label: 'true'
+        label: yes
       label: Enable
     bind:
       source: config
@@ -4613,12 +4613,12 @@ children:
   - type: enum-field
     id: is-enabled-spi-6
     props:
-      label: Enable
       options:
       - value: 0
-        label: 'false'
+        label: no
       - value: 1
-        label: 'true'
+        label: yes
+      label: Enable
     bind:
       source: config
       field: is_enabled_spi_6

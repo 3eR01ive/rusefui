@@ -14,9 +14,9 @@ children:
     label: Use Stepper
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
+      label: yes
   bind:
     source: config
     field: useStepperIdle
@@ -266,6 +266,36 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
       bind:
         source: config
         field: idle_solenoidPin
@@ -274,9 +304,9 @@ children:
       props:
         options:
         - value: 0
-          label: 'false'
+          label: no
         - value: 1
-          label: 'true'
+          label: yes
         label: Double Solenoid Mode
       bind:
         source: config
@@ -512,6 +542,36 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
       bind:
         source: config
         field: secondSolenoidPin
@@ -549,12 +609,12 @@ children:
       - type: enum-field
         id: usehbridgestodriveidlestepper
         props:
-          label: Drive stepper with dual H bridges
           options:
           - value: 0
-            label: 'false'
+            label: no
           - value: 1
-            label: 'true'
+            label: yes
+          label: Drive stepper with dual H bridges
         bind:
           source: config
           field: useHbridgesToDriveIdleStepper
@@ -564,9 +624,9 @@ children:
           label: Drive stepper with PushPull outputs
           options:
           - value: 0
-            label: 'false'
+            label: no
           - value: 1
-            label: 'true'
+            label: yes
         bind:
           source: config
           field: useRawOutputToDriveIdleStepper
@@ -594,12 +654,12 @@ children:
       - type: enum-field
         id: stepperforceparkingeveryrestart
         props:
+          label: Force parking every restart
           options:
           - value: 0
-            label: 'false'
+            label: no
           - value: 1
-            label: 'true'
-          label: Force parking every restart
+            label: yes
         bind:
           source: config
           field: stepperForceParkingEveryRestart
@@ -1744,9 +1804,9 @@ children:
           props:
             options:
             - value: 0
-              label: 'false'
+              label: no
             - value: 1
-              label: 'true'
+              label: yes
             label: Inverted driver pins
           bind:
             source: config
@@ -1758,6 +1818,7 @@ children:
           - type: enum-field
             id: stepperdcio1-directionpin1
             props:
+              label: 'No1 Direction #1'
               options:
               - value: 0
                 label: NONE
@@ -2115,14 +2176,12 @@ children:
                 label: PK14
               - value: 177
                 label: PK15
-              label: 'No1 Direction #1'
             bind:
               source: config
               field: stepperDcIo1_directionPin1
           - type: enum-field
             id: stepperdcio1-directionpin2
             props:
-              label: 'No1 Direction #2'
               options:
               - value: 0
                 label: NONE
@@ -2480,6 +2539,7 @@ children:
                 label: PK14
               - value: 177
                 label: PK15
+              label: 'No1 Direction #2'
             bind:
               source: config
               field: stepperDcIo1_directionPin2
@@ -3582,6 +3642,7 @@ children:
           - type: enum-field
             id: stepperdcio2-directionpin2
             props:
+              label: 'No2 Direction #2'
               options:
               - value: 0
                 label: NONE
@@ -3939,7 +4000,6 @@ children:
                 label: PK14
               - value: 177
                 label: PK15
-              label: 'No2 Direction #2'
             bind:
               source: config
               field: stepperDcIo2_directionPin2

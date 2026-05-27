@@ -15,7 +15,7 @@ children:
   id: maximumoilpressure
   props:
     yBins: maximumOilPressureValues
-    title: Maximum oil pressure
     yLabel: max pressure
-    xLabel: RPM
     xBins: maximumOilPressureBins
+    title: Maximum oil pressure
+    xLabel: RPM

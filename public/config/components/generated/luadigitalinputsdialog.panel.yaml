@@ -15,6 +15,7 @@ children:
   - type: enum-field
     id: luadigitalinputpins1
     props:
+      label: 'Digital #1'
       options:
       - value: 0
         label: NONE
@@ -180,14 +181,104 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
-      label: 'Digital #1'
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: luaDigitalInputPins1
   - type: enum-field
     id: luadigitalinputpins2
     props:
-      label: 'Digital #2'
       options:
       - value: 0
         label: NONE
@@ -353,12 +444,106 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+      label: 'Digital #2'
     bind:
       source: config
       field: luaDigitalInputPins2
   - type: enum-field
     id: luadigitalinputpins3
     props:
+      label: 'Digital #3'
       options:
       - value: 0
         label: NONE
@@ -524,7 +709,98 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
-      label: 'Digital #3'
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: luaDigitalInputPins3
@@ -697,6 +973,98 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: luaDigitalInputPins4
@@ -869,12 +1237,105 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: luaDigitalInputPins5
   - type: enum-field
     id: luadigitalinputpins6
     props:
+      label: 'Digital #6'
       options:
       - value: 0
         label: NONE
@@ -1040,13 +1501,105 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
-      label: 'Digital #6'
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: luaDigitalInputPins6
   - type: enum-field
     id: luadigitalinputpins7
     props:
+      label: 'Digital #7'
       options:
       - value: 0
         label: NONE
@@ -1212,7 +1765,98 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
-      label: 'Digital #7'
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: luaDigitalInputPins7
@@ -1385,6 +2029,98 @@ children:
         label: Digital 4
       - value: 81
         label: Digital 6
+      - value: 82
+        label: INVALID
+      - value: 83
+        label: INVALID
+      - value: 84
+        label: INVALID
+      - value: 85
+        label: INVALID
+      - value: 86
+        label: INVALID
+      - value: 87
+        label: INVALID
+      - value: 88
+        label: INVALID
+      - value: 89
+        label: INVALID
+      - value: 90
+        label: INVALID
+      - value: 91
+        label: INVALID
+      - value: 92
+        label: INVALID
+      - value: 93
+        label: INVALID
+      - value: 94
+        label: INVALID
+      - value: 95
+        label: INVALID
+      - value: 96
+        label: INVALID
+      - value: 97
+        label: INVALID
+      - value: 98
+        label: INVALID
+      - value: 99
+        label: INVALID
+      - value: 100
+        label: INVALID
+      - value: 101
+        label: INVALID
+      - value: 102
+        label: INVALID
+      - value: 103
+        label: INVALID
+      - value: 104
+        label: INVALID
+      - value: 105
+        label: INVALID
+      - value: 106
+        label: INVALID
+      - value: 107
+        label: INVALID
+      - value: 108
+        label: INVALID
+      - value: 109
+        label: INVALID
+      - value: 110
+        label: INVALID
+      - value: 111
+        label: INVALID
+      - value: 112
+        label: INVALID
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: luaDigitalInputPins8
@@ -1411,6 +2147,8 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
+      - value: 7
+        label: '"INVALID'
     bind:
       source: config
       field: luaDigitalInputPinModes1
@@ -1432,6 +2170,8 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
+      - value: 7
+        label: '"INVALID'
       label: 'Mode #2'
     bind:
       source: config
@@ -1439,6 +2179,7 @@ children:
   - type: enum-field
     id: luadigitalinputpinmodes3
     props:
+      label: 'Mode #3'
       options:
       - value: 0
         label: DEFAULT
@@ -1454,13 +2195,15 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
-      label: 'Mode #3'
+      - value: 7
+        label: '"INVALID'
     bind:
       source: config
       field: luaDigitalInputPinModes3
   - type: enum-field
     id: luadigitalinputpinmodes4
     props:
+      label: 'Mode #4'
       options:
       - value: 0
         label: DEFAULT
@@ -1476,14 +2219,14 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
-      label: 'Mode #4'
+      - value: 7
+        label: '"INVALID'
     bind:
       source: config
       field: luaDigitalInputPinModes4
   - type: enum-field
     id: luadigitalinputpinmodes5
     props:
-      label: 'Mode #5'
       options:
       - value: 0
         label: DEFAULT
@@ -1499,6 +2242,9 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
+      - value: 7
+        label: '"INVALID'
+      label: 'Mode #5'
     bind:
       source: config
       field: luaDigitalInputPinModes5
@@ -1520,6 +2266,8 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
+      - value: 7
+        label: '"INVALID'
       label: 'Mode #6'
     bind:
       source: config
@@ -1543,6 +2291,8 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
+      - value: 7
+        label: '"INVALID'
     bind:
       source: config
       field: luaDigitalInputPinModes7
@@ -1565,6 +2315,8 @@ children:
         label: INVERTED PULLUP
       - value: 6
         label: INVERTED PULLDOWN
+      - value: 7
+        label: '"INVALID'
     bind:
       source: config
       field: luaDigitalInputPinModes8

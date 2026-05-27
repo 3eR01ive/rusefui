@@ -6,12 +6,12 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: The bias table controls how much of the blend table
+    variant: hint
 - type: text
   props:
-    variant: hint
     text: is mixed in to the base ignition table. For example, a value of
+    variant: hint
 - type: text
   props:
     text: +10 in the table, with 50 as the current bias will result
@@ -187,8 +187,8 @@ children:
 - type: curve
   id: ignadder1bias
   props:
-    xBins: ignBlends1_blendBins
     yBins: ignBlends1_blendValues
-    title: Ignition adder 1 bias
     yLabel: bias
     xLabel: param
+    title: Ignition adder 1 bias
+    xBins: ignBlends1_blendBins

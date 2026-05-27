@@ -1,8 +1,8 @@
 id: engineTypeDialog.panel
-description: Popular vehicles
+description: Base Tunes
 source:
   ini_dialog: engineTypeDialog
-  menu_path: Controller › Popular vehicles
+  menu_path: Controller › Base Tunes
 children:
 - type: text
   props:
@@ -10,5 +10,5 @@ children:
     text: These buttons send a command to rusEFI controller to apply preset values
 - type: text
   props:
-    variant: hint
     text: Once you send the command, please reconnect to rusEFI controller in order to read fresh values
+    variant: hint

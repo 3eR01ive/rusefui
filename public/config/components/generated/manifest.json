@@ -1,6 +1,6 @@
 {
   "iniSource": "test_data/rusefi_proteus_f7.ini",
-  "panelCount": 188,
+  "panelCount": 203,
   "panels": [
     {
       "id": "engineChars",
@@ -69,6 +69,24 @@
       "menuPath": "Setup › Limits and protection › Outputs"
     },
     {
+      "id": "fanSettings",
+      "file": "fansettings.panel.yaml",
+      "title": "Cooling Fans",
+      "menuPath": "Setup › Limits and protection › Cooling Fans"
+    },
+    {
+      "id": "fan1PwmCurveDialog",
+      "file": "fan1pwmcurvedialog.panel.yaml",
+      "title": "Fan 1 PWM Curve",
+      "menuPath": "Setup › Limits and protection › Fan 1 PWM Curve"
+    },
+    {
+      "id": "fan2PwmCurveDialog",
+      "file": "fan2pwmcurvedialog.panel.yaml",
+      "title": "Fan 2 PWM Curve",
+      "menuPath": "Setup › Limits and protection › Fan 2 PWM Curve"
+    },
+    {
       "id": "acSettings",
       "file": "acsettings.panel.yaml",
       "title": "Air Conditioning",
@@ -81,124 +99,142 @@
       "menuPath": "Setup › Limits and protection › Status LEDs"
     },
     {
+      "id": "veTableDialog",
+      "file": "vetabledialog.panel.yaml",
+      "title": "VE",
+      "menuPath": "Fuel › VE"
+    },
+    {
+      "id": "secondVeTableDialog",
+      "file": "secondvetabledialog.panel.yaml",
+      "title": "Second VE Table",
+      "menuPath": "Fuel › Second VE Table"
+    },
+    {
       "id": "injectorConfig",
       "file": "injectorconfig.panel.yaml",
       "title": "Injection configuration",
-      "menuPath": "Fuel › Injection configuration"
+      "menuPath": "Fuel › Injector Setup › Injection configuration"
     },
     {
       "id": "injectionSettings",
       "file": "injectionsettings.panel.yaml",
       "title": "Injection hardware",
-      "menuPath": "Fuel › Injection hardware"
+      "menuPath": "Fuel › Injector Setup › Injection hardware"
     },
     {
       "id": "cylinderBankSelect",
       "file": "cylinderbankselect.panel.yaml",
       "title": "Cylinder bank selection",
-      "menuPath": "Fuel › Cylinder bank selection"
+      "menuPath": "Fuel › Injector Setup › Cylinder bank selection"
     },
     {
       "id": "injectorNonlinear",
       "file": "injectornonlinear.panel.yaml",
       "title": "Injector small-pulse correction",
-      "menuPath": "Fuel › Injector small-pulse correction"
+      "menuPath": "Fuel › Injector Setup › Injector small-pulse correction"
     },
     {
       "id": "stagedInjection",
       "file": "stagedinjection.panel.yaml",
       "title": "Staged injection",
-      "menuPath": "Fuel › Staged injection"
+      "menuPath": "Fuel › Cylinder fuel trims › Staged injection"
     },
     {
       "id": "stagedInjectionOutputs",
       "file": "stagedinjectionoutputs.panel.yaml",
       "title": "Staged injection outputs",
-      "menuPath": "Fuel › Staged injection outputs"
-    },
-    {
-      "id": "veTableDialog",
-      "file": "vetabledialog.panel.yaml",
-      "title": "VE",
-      "menuPath": "Fuel › Cylinder fuel trims › VE"
+      "menuPath": "Fuel › Cylinder fuel trims › Staged injection outputs"
     },
     {
       "id": "veBlend1Cfg",
       "file": "veblend1cfg.panel.yaml",
-      "title": "VE blend 1 bias",
-      "menuPath": "Fuel › VE blend tables › VE blend 1 bias"
+      "title": "VE blend 1 settings",
+      "menuPath": "Fuel › VE blend tables › VE blend 1 settings"
     },
     {
       "id": "veBlend2Cfg",
       "file": "veblend2cfg.panel.yaml",
-      "title": "VE blend 2 bias",
-      "menuPath": "Fuel › VE blend tables › VE blend 2 bias"
+      "title": "VE blend 2 settings",
+      "menuPath": "Fuel › VE blend tables › VE blend 2 settings"
     },
     {
       "id": "veBlend3Cfg",
       "file": "veblend3cfg.panel.yaml",
-      "title": "VE blend 3 bias",
-      "menuPath": "Fuel › VE blend tables › VE blend 3 bias"
+      "title": "VE blend 3 settings",
+      "menuPath": "Fuel › VE blend tables › VE blend 3 settings"
     },
     {
       "id": "veBlend4Cfg",
       "file": "veblend4cfg.panel.yaml",
-      "title": "VE blend 4 bias",
-      "menuPath": "Fuel › VE blend tables › VE blend 4 bias"
+      "title": "VE blend 4 settings",
+      "menuPath": "Fuel › VE blend tables › VE blend 4 settings"
     },
     {
-      "id": "targetAfrBlend1Cfg",
-      "file": "targetafrblend1cfg.panel.yaml",
-      "title": "Target AFR 1 bias",
-      "menuPath": "Fuel › Target AFR adder tables › Target AFR 1 bias"
+      "id": "lambdaTableDialog",
+      "file": "lambdatabledialog.panel.yaml",
+      "title": "Target lambda",
+      "menuPath": "Fuel › VE blend tables › Target lambda"
     },
     {
-      "id": "targetAfrBlend2Cfg",
-      "file": "targetafrblend2cfg.panel.yaml",
-      "title": "Target AFR 2 bias",
-      "menuPath": "Fuel › Target AFR adder tables › Target AFR 2 bias"
-    },
-    {
-      "id": "tChargeSettings",
-      "file": "tchargesettings.panel.yaml",
-      "title": "Charge temperature estimation",
-      "menuPath": "Fuel › Target AFR adder tables › Charge temperature estimation"
+      "id": "afrTableDialog",
+      "file": "afrtabledialog.panel.yaml",
+      "title": "Target AFR",
+      "menuPath": "Fuel › VE blend tables › Target AFR"
     },
     {
       "id": "cltFuelCorrCurveDialog",
       "file": "cltfuelcorrcurvedialog.panel.yaml",
       "title": "Warmup enrichment",
-      "menuPath": "Fuel › Target AFR adder tables › Warmup enrichment"
+      "menuPath": "Fuel › VE blend tables › Warmup enrichment"
     },
     {
       "id": "coastingFuelCutControl",
       "file": "coastingfuelcutcontrol.panel.yaml",
       "title": "Deceleration fuel cutoff (DFCO)",
-      "menuPath": "Fuel › Target AFR adder tables › Deceleration fuel cutoff (DFCO)"
+      "menuPath": "Fuel › VE blend tables › Deceleration fuel cutoff (DFCO)"
     },
     {
       "id": "fuelClosedLoopDialog",
       "file": "fuelclosedloopdialog.panel.yaml",
       "title": "Short term fuel trim/Closed loop",
-      "menuPath": "Fuel › Target AFR adder tables › Short term fuel trim/Closed loop"
+      "menuPath": "Fuel › VE blend tables › Short term fuel trim/Closed loop"
     },
     {
       "id": "fuelLTFCDialog",
       "file": "fuelltfcdialog.panel.yaml",
       "title": "Long term fuel trims",
-      "menuPath": "Fuel › Target AFR adder tables › Long term fuel trims"
+      "menuPath": "Fuel › VE blend tables › Long term fuel trims"
+    },
+    {
+      "id": "targetAfrBlend1Cfg",
+      "file": "targetafrblend1cfg.panel.yaml",
+      "title": "Target AFR 1 settings",
+      "menuPath": "Fuel › Target AFR adder tables › Target AFR 1 settings"
+    },
+    {
+      "id": "targetAfrBlend2Cfg",
+      "file": "targetafrblend2cfg.panel.yaml",
+      "title": "Target AFR 2 settings",
+      "menuPath": "Fuel › Target AFR adder tables › Target AFR 2 settings"
+    },
+    {
+      "id": "tChargeSettings",
+      "file": "tchargesettings.panel.yaml",
+      "title": "Charge temperature estimation",
+      "menuPath": "Fuel › Fuel Corrections › Charge temperature estimation"
     },
     {
       "id": "AccelEnrich",
       "file": "accelenrich.panel.yaml",
       "title": "Acceleration enrichment",
-      "menuPath": "Fuel › Target AFR adder tables › Acceleration enrichment"
+      "menuPath": "Fuel › TPS Acceleration Enrichment / Wall Wetting AE › Acceleration enrichment"
     },
     {
       "id": "tpsTpsDialog",
       "file": "tpstpsdialog.panel.yaml",
       "title": "TPS/TPS acceleration extra fuel",
-      "menuPath": "Fuel › Target AFR adder tables › TPS/TPS acceleration extra fuel"
+      "menuPath": "Fuel › TPS Acceleration Enrichment / Wall Wetting AE › TPS/TPS acceleration extra fuel"
     },
     {
       "id": "wwTauCurves",
@@ -213,22 +249,28 @@
       "menuPath": "Fuel › Wall wetting AE › Impact fraction"
     },
     {
-      "id": "ignitionSettings",
-      "file": "ignitionsettings.panel.yaml",
-      "title": "Ignition settings",
-      "menuPath": "Ignition › Ignition settings"
-    },
-    {
       "id": "IgnitionTableDialog",
       "file": "ignitiontabledialog.panel.yaml",
       "title": "Ignition advance",
       "menuPath": "Ignition › Ignition advance"
     },
     {
+      "id": "secondIgnitionTableDialog",
+      "file": "secondignitiontabledialog.panel.yaml",
+      "title": "Second Ignition Table",
+      "menuPath": "Ignition › Second Ignition Table"
+    },
+    {
       "id": "dwellSettings",
       "file": "dwellsettings.panel.yaml",
       "title": "Dwell",
       "menuPath": "Ignition › Dwell"
+    },
+    {
+      "id": "ignitionSettings",
+      "file": "ignitionsettings.panel.yaml",
+      "title": "Ignition hardware",
+      "menuPath": "Ignition › Ignition hardware"
     },
     {
       "id": "ignAdder1Cfg",
@@ -273,6 +315,12 @@
       "menuPath": "Cranking › Cranking settings"
     },
     {
+      "id": "cltCrankingCurveDialog",
+      "file": "cltcrankingcurvedialog.panel.yaml",
+      "title": "Cranking Air Amount vs CLT",
+      "menuPath": "Cranking › Cranking Air Amount vs CLT"
+    },
+    {
       "id": "primingFuelPulsePanel",
       "file": "primingfuelpulsepanel.panel.yaml",
       "title": "Priming pulse",
@@ -291,22 +339,16 @@
       "menuPath": "Idle › Idle hardware"
     },
     {
-      "id": "cltCrankingCurveDialog",
-      "file": "cltcrankingcurvedialog.panel.yaml",
-      "title": "Cranking Idle Valve Curve",
-      "menuPath": "Idle › Cranking Idle Valve Curve"
-    },
-    {
       "id": "afterCrankingIACtaperDurationDialog",
       "file": "aftercrankingiactaperdurationdialog.panel.yaml",
-      "title": "Idle Valve Crank-to-Run Taper",
-      "menuPath": "Idle › Idle Valve Crank-to-Run Taper"
+      "title": "Idle After Start (Crank-to-Run) Taper vs CLT",
+      "menuPath": "Idle › Idle After Start (Crank-to-Run) Taper vs CLT"
     },
     {
       "id": "idleTimingPidCorrDialog",
       "file": "idletimingpidcorrdialog.panel.yaml",
-      "title": "Closed-loop idle timing",
-      "menuPath": "Idle › Closed-loop idle timing"
+      "title": "Closed-loop Ignition idle timing",
+      "menuPath": "Idle › Closed-loop Ignition idle timing"
     },
     {
       "id": "smLaunchControl",
@@ -315,76 +357,88 @@
       "menuPath": "Advanced › Launch Control"
     },
     {
+      "id": "antiLagDialog",
+      "file": "antilagdialog.panel.yaml",
+      "title": "Anti-Lag ALS",
+      "menuPath": "Advanced › Anti-Lag ALS"
+    },
+    {
       "id": "ShiftTorqueReductionDialog",
       "file": "shifttorquereductiondialog.panel.yaml",
       "title": "Shift Torque Reduction (Flat Shift)",
-      "menuPath": "Advanced › Shift Torque Reduction (Flat Shift)"
+      "menuPath": "Advanced › Torque Control › Shift Torque Reduction (Flat Shift)"
     },
     {
       "id": "torqueReductionTimeDialog",
       "file": "torquereductiontimedialog.panel.yaml",
       "title": "Shift Torque Reduction Time table",
-      "menuPath": "Advanced › Shift Torque Reduction Time table"
+      "menuPath": "Advanced › Torque Control › Shift Torque Reduction Time table"
     },
     {
       "id": "torqueReductionIgnitionRetardDialog",
       "file": "torquereductionignitionretarddialog.panel.yaml",
       "title": "Torque Reduction Ignition Retard Table",
-      "menuPath": "Advanced › Torque Reduction Ignition Retard Table"
+      "menuPath": "Advanced › Torque Control › Torque Reduction Ignition Retard Table"
     },
     {
       "id": "torqueReductionIgnitionCutDialog",
       "file": "torquereductionignitioncutdialog.panel.yaml",
       "title": "Torque Reduction Ignition Cut Table",
-      "menuPath": "Advanced › Torque Reduction Ignition Cut Table"
+      "menuPath": "Advanced › Torque Control › Torque Reduction Ignition Cut Table"
     },
     {
       "id": "NitrousControlDialog",
       "file": "nitrouscontroldialog.panel.yaml",
       "title": "Nitrous Control",
-      "menuPath": "Advanced › Nitrous Control"
+      "menuPath": "Advanced › Torque Control › Nitrous Control"
     },
     {
       "id": "VvlControlDialog",
       "file": "vvlcontroldialog.panel.yaml",
       "title": "VVL Control",
-      "menuPath": "Advanced › VVL Control"
+      "menuPath": "Advanced › Torque Control › VVL Control"
     },
     {
       "id": "ignitionCylExtra",
       "file": "ignitioncylextra.panel.yaml",
       "title": "Cylinder offsets",
-      "menuPath": "Advanced › Cylinder offsets"
+      "menuPath": "Advanced › Torque Control › Cylinder offsets"
+    },
+    {
+      "id": "rotIdleMainDialog",
+      "file": "rotidlemaindialog.panel.yaml",
+      "title": "Rotational Idle",
+      "menuPath": "Advanced › Torque Control › Rotational Idle"
     },
     {
       "id": "boostDialog",
       "file": "boostdialog.panel.yaml",
-      "title": "Boost control",
-      "menuPath": "Advanced › Boost control"
+      "title": "Boost control options",
+      "menuPath": "Advanced › Boost Control › Boost control options"
     },
     {
       "id": "boostOpenLoopDialog",
       "file": "boostopenloopdialog.panel.yaml",
-      "title": "Boost control open loop",
-      "menuPath": "Advanced › Boost control open loop"
+      "title": "Boost control Open loop base duty cycle",
+      "menuPath": "Advanced › Boost Control › Boost control Open loop base duty cycle"
     },
     {
       "id": "boostOpenLoopGearAdderDialog",
       "file": "boostopenloopgearadderdialog.panel.yaml",
       "title": "Boost control open loop gear adder",
-      "menuPath": "Advanced › Boost control open loop gear adder"
-    },
-    {
-      "id": "boostPidDialog",
-      "file": "boostpiddialog.panel.yaml",
-      "title": "Boost control PID",
-      "menuPath": "Advanced › Boost control PID"
+      "menuPath": "Advanced › Boost Control › Boost control open loop gear adder"
     },
     {
       "id": "boostTargetDialog",
       "file": "boosttargetdialog.panel.yaml",
       "title": "Boost control target",
-      "menuPath": "Advanced › Boost control target"
+      "menuPath": "Advanced › Boost Control › Boost control target"
+    },
+    {
+      "id": "boostPidDialog",
+      "file": "boostpiddialog.panel.yaml",
+      "title": "Boost control PID",
+      "menuPath": "Advanced › Boost Control › Boost control PID"
     },
     {
       "id": "boostOpenBlend1Cfg",
@@ -414,49 +468,55 @@
       "id": "gppwm1",
       "file": "gppwm1.panel.yaml",
       "title": "General Purpose PWM 1",
-      "menuPath": "Advanced › Boost blend tables › General Purpose PWM 1"
+      "menuPath": "Advanced › Generic PWM › General Purpose PWM 1"
     },
     {
       "id": "gppwm2",
       "file": "gppwm2.panel.yaml",
       "title": "General Purpose PWM 2",
-      "menuPath": "Advanced › Boost blend tables › General Purpose PWM 2"
+      "menuPath": "Advanced › Generic PWM › General Purpose PWM 2"
     },
     {
       "id": "gppwm3",
       "file": "gppwm3.panel.yaml",
       "title": "General Purpose PWM 3",
-      "menuPath": "Advanced › Boost blend tables › General Purpose PWM 3"
+      "menuPath": "Advanced › Generic PWM › General Purpose PWM 3"
     },
     {
       "id": "gppwm4",
       "file": "gppwm4.panel.yaml",
       "title": "General Purpose PWM 4",
-      "menuPath": "Advanced › Boost blend tables › General Purpose PWM 4"
+      "menuPath": "Advanced › Generic PWM › General Purpose PWM 4"
     },
     {
       "id": "dcMotorActuatorFunction",
       "file": "dcmotoractuatorfunction.panel.yaml",
       "title": "DC motor actuator(s) function",
-      "menuPath": "Advanced › Boost blend tables › DC motor actuator(s) function"
+      "menuPath": "Advanced › Generic PWM › DC motor actuator(s) function"
     },
     {
       "id": "etbDialog",
       "file": "etbdialog.panel.yaml",
       "title": "Electronic Throttle Body actuator",
-      "menuPath": "Advanced › Boost blend tables › Electronic Throttle Body actuator"
+      "menuPath": "Advanced › Generic PWM › Electronic Throttle Body actuator"
     },
     {
       "id": "ewgDialog",
       "file": "ewgdialog.panel.yaml",
       "title": "Electronic Wastegate actuator",
-      "menuPath": "Advanced › Boost blend tables › Electronic Wastegate actuator"
+      "menuPath": "Advanced › Generic PWM › Electronic Wastegate actuator"
     },
     {
       "id": "vvtPidDialog",
       "file": "vvtpiddialog.panel.yaml",
       "title": "VVT outputs and PID",
-      "menuPath": "Advanced › Boost blend tables › VVT outputs and PID"
+      "menuPath": "Advanced › Generic PWM › VVT outputs and PID"
+    },
+    {
+      "id": "vvtIntakeTargetDialog",
+      "file": "vvtintaketargetdialog.panel.yaml",
+      "title": "VVT intake target",
+      "menuPath": "Advanced › Generic PWM › VVT intake target"
     },
     {
       "id": "auxInputsDialog",
@@ -585,8 +645,8 @@
       "menuPath": "Sensors › Chassis sensors › CLT sensor"
     },
     {
-      "id": "iatSensor",
-      "file": "iatsensor.panel.yaml",
+      "id": "iatSensorDialog",
+      "file": "iatsensordialog.panel.yaml",
       "title": "IAT sensor",
       "menuPath": "Sensors › Chassis sensors › IAT sensor"
     },
@@ -779,8 +839,8 @@
     {
       "id": "engineTypeDialog",
       "file": "enginetypedialog.panel.yaml",
-      "title": "Popular vehicles",
-      "menuPath": "Controller › Popular vehicles"
+      "title": "Base Tunes",
+      "menuPath": "Controller › Base Tunes"
     },
     {
       "id": "spiBuses",
@@ -813,6 +873,24 @@
       "menuPath": "Controller › Connection"
     },
     {
+      "id": "allPinsOutputs",
+      "file": "allpinsoutputs.panel.yaml",
+      "title": "Full pinout - Output",
+      "menuPath": "Controller › Full pinout - Output"
+    },
+    {
+      "id": "allPinsInputs",
+      "file": "allpinsinputs.panel.yaml",
+      "title": "Full pinout - Input",
+      "menuPath": "Controller › Full pinout - Input"
+    },
+    {
+      "id": "allPinsInternal",
+      "file": "allpinsinternal.panel.yaml",
+      "title": "Full pinout - Internal",
+      "menuPath": "Controller › Full pinout - Internal"
+    },
+    {
       "id": "mc33Dialog",
       "file": "mc33dialog.panel.yaml",
       "title": "GDI Injector Control",
@@ -831,10 +909,22 @@
       "menuPath": "Controller › HPFP Pump Configuration"
     },
     {
+      "id": "tractionControlEtb",
+      "file": "tractioncontroletb.panel.yaml",
+      "title": "Traction Control ETB Drop",
+      "menuPath": "Controller › Traction Control ETB Drop"
+    },
+    {
       "id": "tractionIgnitionSkipDialog",
       "file": "tractionignitionskipdialog.panel.yaml",
       "title": "Traction Control Skip Ignition",
       "menuPath": "Controller › Traction Control Skip Ignition"
+    },
+    {
+      "id": "ecuPasswordPanel",
+      "file": "ecupasswordpanel.panel.yaml",
+      "title": "Tune Lock",
+      "menuPath": "Controller › Tune Lock"
     },
     {
       "id": "parkingLot",
@@ -861,22 +951,16 @@
       "menuPath": "Controller › Harley"
     },
     {
-      "id": "antiLagDialog",
-      "file": "antilagdialog.panel.yaml",
-      "title": "Anti-Lag ALS",
-      "menuPath": "Controller › Anti-Lag ALS"
-    },
-    {
       "id": "rotaryDialog",
       "file": "rotarydialog.panel.yaml",
       "title": "Rotary",
       "menuPath": "Controller › Rotary"
     },
     {
-      "id": "dynoChars",
-      "file": "dynochars.panel.yaml",
-      "title": "Virtual Dyno engine",
-      "menuPath": "Controller › Torque › Virtual Dyno engine"
+      "id": "torqueTableGenerator",
+      "file": "torquetablegenerator.panel.yaml",
+      "title": "Torque Table Generator",
+      "menuPath": "Controller › Torque › Torque Table Generator"
     },
     {
       "id": "fuel_computerDialog",
@@ -1129,6 +1213,12 @@
       "file": "vvl-controller-statedialog.panel.yaml",
       "title": "vvl_controller_state",
       "menuPath": "View › vvl_controller_state"
+    },
+    {
+      "id": "live_data_rotational_idleDialog",
+      "file": "live-data-rotational-idledialog.panel.yaml",
+      "title": "live_data_rotational_idle",
+      "menuPath": "View › live_data_rotational_idle"
     }
   ]
 }

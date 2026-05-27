@@ -2,7 +2,7 @@ id: gppwm1.panel
 description: General Purpose PWM 1
 source:
   ini_dialog: gppwm1
-  menu_path: Advanced › Boost blend tables › General Purpose PWM 1
+  menu_path: Advanced › Generic PWM › General Purpose PWM 1
 children:
 - type: section
   props:
@@ -11,7 +11,6 @@ children:
   - type: enum-field
     id: gppwm1-pin
     props:
-      label: Output
       options:
       - value: 0
         label: NONE
@@ -239,6 +238,37 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+      label: Output
     bind:
       source: config
       field: gppwm1_pin
@@ -280,6 +310,7 @@ children:
   - type: enum-field
     id: gppwm1-rpmaxis
     props:
+      label: X Axis
       options:
       - value: 0
         label: Zero
@@ -351,7 +382,6 @@ children:
         label: Oil temp
       - value: 34
         label: Fuel Pressure
-      label: X Axis
     bind:
       source: config
       field: gppwm1_rpmAxis
@@ -443,9 +473,9 @@ children:
 - type: config-table
   id: gppwm1tbl
   props:
-    zBins: gppwm1_table
-    xBins: gppwm1_rpmBins
-    title: GP#1
-    variant: table
     yLabel: gppwm1_rpmAxis)}
     yBins: gppwm1_loadBins
+    zBins: gppwm1_table
+    xBins: gppwm1_rpmBins
+    variant: table
+    title: GP#1

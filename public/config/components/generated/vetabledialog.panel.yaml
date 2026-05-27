@@ -2,11 +2,35 @@ id: veTableDialog.panel
 description: VE
 source:
   ini_dialog: veTableDialog
-  menu_path: Fuel › Cylinder fuel trims › VE
+  menu_path: Fuel › VE
 children:
 - type: section
   props:
-    title: veOverrideModeSelector
+    title: Fuel
+  children:
+  - type: text
+    props:
+      text: https://rusefi.com/s/fuel
+      variant: hint
+  - type: enum-field
+    id: fuelalgorithm
+    props:
+      label: Fuel strategy
+      options:
+      - value: 0
+        label: Speed Density
+      - value: 1
+        label: MAF Air Charge
+      - value: 2
+        label: Alpha-N
+      - value: 3
+        label: Lua
+    bind:
+      source: config
+      field: fuelAlgorithm
+- type: section
+  props:
+    title: Load override
   children:
   - type: enum-field
     id: veoverridemode
@@ -24,28 +48,12 @@ children:
     bind:
       source: config
       field: veOverrideMode
-  - type: enum-field
-    id: fuelalgorithm
-    props:
-      options:
-      - value: 0
-        label: Speed Density
-      - value: 1
-        label: MAF Air Charge
-      - value: 2
-        label: Alpha-N
-      - value: 3
-        label: Lua
-      label: Fuel strategy
-    bind:
-      source: config
-      field: fuelAlgorithm
 - type: config-table
   id: vetabletbl
   props:
-    xBins: veRpmBins
-    title: VE Table
-    zBins: veTable
-    yBins: veLoadBins
     variant: table
+    xBins: veRpmBins
     xLabel: RPM
+    zBins: veTable
+    title: VE Table
+    yBins: veLoadBins

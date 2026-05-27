@@ -2,7 +2,7 @@ id: VvlControlDialog.panel
 description: VVL Control
 source:
   ini_dialog: VvlControlDialog
-  menu_path: Advanced › VVL Control
+  menu_path: Advanced › Torque Control › VVL Control
 children:
 - type: section
   props:
@@ -11,12 +11,12 @@ children:
   - type: enum-field
     id: vvlcontrolenabled
     props:
-      label: Enable VVL/Switched cam Control
       options:
       - value: 0
-        label: 'false'
+        label: disabled
       - value: 1
-        label: 'true'
+        label: enabled
+      label: VVL/Switched cam Control
     bind:
       source: config
       field: vvlControlEnabled
@@ -254,6 +254,36 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
         label: VVL Relay
       bind:
         source: config
@@ -261,6 +291,7 @@ children:
     - type: enum-field
       id: vvlrelaypinmode
       props:
+        label: VVL Relay Mode
         options:
         - value: 0
           label: default
@@ -270,7 +301,6 @@ children:
           label: open collector
         - value: 3
           label: open collector inverted
-        label: VVL Relay Mode
       bind:
         source: config
         field: vvlRelayPinMode

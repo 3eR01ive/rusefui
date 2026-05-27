@@ -2,7 +2,7 @@ id: NitrousControlDialog.panel
 description: Nitrous Control
 source:
   ini_dialog: NitrousControlDialog
-  menu_path: Advanced › Nitrous Control
+  menu_path: Advanced › Torque Control › Nitrous Control
 children:
 - type: section
   props:
@@ -11,12 +11,12 @@ children:
   - type: enum-field
     id: nitrouscontrolenabled
     props:
-      label: Enable Nitrous Control
+      label: Nitrous Control
       options:
       - value: 0
-        label: 'false'
+        label: disabled
       - value: 1
-        label: 'true'
+        label: enabled
     bind:
       source: config
       field: nitrousControlEnabled
@@ -27,12 +27,12 @@ children:
     - type: enum-field
       id: nitrouscontrolarmingmethod
       props:
+        label: Arming Method
         options:
         - value: 0
           label: Digital Switch Input
         - value: 1
           label: Lua Gauge
-        label: Arming Method
       bind:
         source: config
         field: nitrousControlArmingMethod
@@ -208,6 +208,98 @@ children:
             label: Digital 4
           - value: 81
             label: Digital 6
+          - value: 82
+            label: INVALID
+          - value: 83
+            label: INVALID
+          - value: 84
+            label: INVALID
+          - value: 85
+            label: INVALID
+          - value: 86
+            label: INVALID
+          - value: 87
+            label: INVALID
+          - value: 88
+            label: INVALID
+          - value: 89
+            label: INVALID
+          - value: 90
+            label: INVALID
+          - value: 91
+            label: INVALID
+          - value: 92
+            label: INVALID
+          - value: 93
+            label: INVALID
+          - value: 94
+            label: INVALID
+          - value: 95
+            label: INVALID
+          - value: 96
+            label: INVALID
+          - value: 97
+            label: INVALID
+          - value: 98
+            label: INVALID
+          - value: 99
+            label: INVALID
+          - value: 100
+            label: INVALID
+          - value: 101
+            label: INVALID
+          - value: 102
+            label: INVALID
+          - value: 103
+            label: INVALID
+          - value: 104
+            label: INVALID
+          - value: 105
+            label: INVALID
+          - value: 106
+            label: INVALID
+          - value: 107
+            label: INVALID
+          - value: 108
+            label: INVALID
+          - value: 109
+            label: INVALID
+          - value: 110
+            label: INVALID
+          - value: 111
+            label: INVALID
+          - value: 112
+            label: INVALID
+          - value: 113
+            label: INVALID
+          - value: 114
+            label: INVALID
+          - value: 115
+            label: INVALID
+          - value: 116
+            label: INVALID
+          - value: 117
+            label: INVALID
+          - value: 118
+            label: INVALID
+          - value: 119
+            label: INVALID
+          - value: 120
+            label: INVALID
+          - value: 121
+            label: INVALID
+          - value: 122
+            label: INVALID
+          - value: 123
+            label: INVALID
+          - value: 124
+            label: INVALID
+          - value: 125
+            label: INVALID
+          - value: 126
+            label: INVALID
+          - value: 127
+            label: INVALID
           label: Nitrous Control Button
         bind:
           source: config
@@ -230,6 +322,8 @@ children:
             label: INVERTED PULLUP
           - value: 6
             label: INVERTED PULLDOWN
+          - value: 7
+            label: '"INVALID'
           label: Nitrous Control Mode
         bind:
           source: config
@@ -241,7 +335,6 @@ children:
       - type: enum-field
         id: nitrousluagauge
         props:
-          label: Lua Gauge
           options:
           - value: 0
             label: Lua Gauge 1
@@ -259,6 +352,7 @@ children:
             label: Lua Gauge 7
           - value: 7
             label: Lua Gauge 8
+          label: Lua Gauge
         bind:
           source: config
           field: nitrousLuaGauge
@@ -268,9 +362,9 @@ children:
           label: Value Meaning
           options:
           - value: 0
-            label: Lower Bound
+            label: greater than
           - value: 1
-            label: Upper Bound
+            label: less than
         bind:
           source: config
           field: nitrousLuaGaugeMeaning
@@ -516,6 +610,36 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
       bind:
         source: config
         field: nitrousRelayPin
@@ -611,5 +735,5 @@ children:
   children:
   - type: text
     props:
-      text: Панель «nitrous_control_stateIndicatorPanel» — нет определения в INI
       variant: hint
+      text: Панель «nitrous_control_stateIndicatorPanel» — нет определения в INI

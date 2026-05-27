@@ -8,13 +8,40 @@ children:
   props:
     variant: hint
     text: Таблица/кривая «ignitionTableIndicators» — нет определения в INI
+- type: section
+  props:
+    title: Load override
+  children:
+  - type: enum-field
+    id: ignoverridemode
+    props:
+      options:
+      - value: 0
+        label: None
+      - value: 1
+        label: MAP
+      - value: 2
+        label: TPS
+      - value: 3
+        label: Acc Pedal
+      - value: 4
+        label: Cyl Filling %
+      - value: 5
+        label: INVALID
+      - value: 6
+        label: INVALID
+      - value: 7
+        label: INVALID
+      label: Override ignition table load axis
+    bind:
+      source: config
+      field: ignOverrideMode
 - type: config-table
   id: ignitiontabletbl
   props:
-    yLabel: Ignition Load
-    yBins: ignitionLoadBins
-    variant: table
     zBins: ignitionTable
-    xLabel: RPM
+    variant: table
     title: Ignition Table
+    xLabel: RPM
     xBins: ignitionRpmBins
+    yBins: ignitionLoadBins

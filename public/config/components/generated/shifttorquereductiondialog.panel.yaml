@@ -2,7 +2,7 @@ id: ShiftTorqueReductionDialog.panel
 description: Shift Torque Reduction (Flat Shift)
 source:
   ini_dialog: ShiftTorqueReductionDialog
-  menu_path: Advanced › Shift Torque Reduction (Flat Shift)
+  menu_path: Advanced › Torque Control › Shift Torque Reduction (Flat Shift)
 children:
 - type: section
   props:
@@ -13,9 +13,9 @@ children:
     props:
       options:
       - value: 0
-        label: 'false'
+        label: disabled
       - value: 1
-        label: 'true'
+        label: enabled
       label: Enable Shift Torque Reduction
     bind:
       source: config
@@ -54,7 +54,6 @@ children:
       - type: enum-field
         id: torquereductiontriggerpin
         props:
-          label: Torque Reduction Button
           options:
           - value: 0
             label: NONE
@@ -220,6 +219,99 @@ children:
             label: Digital 4
           - value: 81
             label: Digital 6
+          - value: 82
+            label: INVALID
+          - value: 83
+            label: INVALID
+          - value: 84
+            label: INVALID
+          - value: 85
+            label: INVALID
+          - value: 86
+            label: INVALID
+          - value: 87
+            label: INVALID
+          - value: 88
+            label: INVALID
+          - value: 89
+            label: INVALID
+          - value: 90
+            label: INVALID
+          - value: 91
+            label: INVALID
+          - value: 92
+            label: INVALID
+          - value: 93
+            label: INVALID
+          - value: 94
+            label: INVALID
+          - value: 95
+            label: INVALID
+          - value: 96
+            label: INVALID
+          - value: 97
+            label: INVALID
+          - value: 98
+            label: INVALID
+          - value: 99
+            label: INVALID
+          - value: 100
+            label: INVALID
+          - value: 101
+            label: INVALID
+          - value: 102
+            label: INVALID
+          - value: 103
+            label: INVALID
+          - value: 104
+            label: INVALID
+          - value: 105
+            label: INVALID
+          - value: 106
+            label: INVALID
+          - value: 107
+            label: INVALID
+          - value: 108
+            label: INVALID
+          - value: 109
+            label: INVALID
+          - value: 110
+            label: INVALID
+          - value: 111
+            label: INVALID
+          - value: 112
+            label: INVALID
+          - value: 113
+            label: INVALID
+          - value: 114
+            label: INVALID
+          - value: 115
+            label: INVALID
+          - value: 116
+            label: INVALID
+          - value: 117
+            label: INVALID
+          - value: 118
+            label: INVALID
+          - value: 119
+            label: INVALID
+          - value: 120
+            label: INVALID
+          - value: 121
+            label: INVALID
+          - value: 122
+            label: INVALID
+          - value: 123
+            label: INVALID
+          - value: 124
+            label: INVALID
+          - value: 125
+            label: INVALID
+          - value: 126
+            label: INVALID
+          - value: 127
+            label: INVALID
+          label: Torque Reduction Button
         bind:
           source: config
           field: torqueReductionTriggerPin
@@ -395,6 +487,98 @@ children:
             label: Digital 4
           - value: 81
             label: Digital 6
+          - value: 82
+            label: INVALID
+          - value: 83
+            label: INVALID
+          - value: 84
+            label: INVALID
+          - value: 85
+            label: INVALID
+          - value: 86
+            label: INVALID
+          - value: 87
+            label: INVALID
+          - value: 88
+            label: INVALID
+          - value: 89
+            label: INVALID
+          - value: 90
+            label: INVALID
+          - value: 91
+            label: INVALID
+          - value: 92
+            label: INVALID
+          - value: 93
+            label: INVALID
+          - value: 94
+            label: INVALID
+          - value: 95
+            label: INVALID
+          - value: 96
+            label: INVALID
+          - value: 97
+            label: INVALID
+          - value: 98
+            label: INVALID
+          - value: 99
+            label: INVALID
+          - value: 100
+            label: INVALID
+          - value: 101
+            label: INVALID
+          - value: 102
+            label: INVALID
+          - value: 103
+            label: INVALID
+          - value: 104
+            label: INVALID
+          - value: 105
+            label: INVALID
+          - value: 106
+            label: INVALID
+          - value: 107
+            label: INVALID
+          - value: 108
+            label: INVALID
+          - value: 109
+            label: INVALID
+          - value: 110
+            label: INVALID
+          - value: 111
+            label: INVALID
+          - value: 112
+            label: INVALID
+          - value: 113
+            label: INVALID
+          - value: 114
+            label: INVALID
+          - value: 115
+            label: INVALID
+          - value: 116
+            label: INVALID
+          - value: 117
+            label: INVALID
+          - value: 118
+            label: INVALID
+          - value: 119
+            label: INVALID
+          - value: 120
+            label: INVALID
+          - value: 121
+            label: INVALID
+          - value: 122
+            label: INVALID
+          - value: 123
+            label: INVALID
+          - value: 124
+            label: INVALID
+          - value: 125
+            label: INVALID
+          - value: 126
+            label: INVALID
+          - value: 127
+            label: INVALID
           label: Launch Button
         bind:
           source: config
@@ -406,6 +590,7 @@ children:
       - type: enum-field
         id: clutchdownpin
         props:
+          label: Clutch Down
           options:
           - value: 0
             label: NONE
@@ -571,7 +756,98 @@ children:
             label: Digital 4
           - value: 81
             label: Digital 6
-          label: Clutch Down
+          - value: 82
+            label: INVALID
+          - value: 83
+            label: INVALID
+          - value: 84
+            label: INVALID
+          - value: 85
+            label: INVALID
+          - value: 86
+            label: INVALID
+          - value: 87
+            label: INVALID
+          - value: 88
+            label: INVALID
+          - value: 89
+            label: INVALID
+          - value: 90
+            label: INVALID
+          - value: 91
+            label: INVALID
+          - value: 92
+            label: INVALID
+          - value: 93
+            label: INVALID
+          - value: 94
+            label: INVALID
+          - value: 95
+            label: INVALID
+          - value: 96
+            label: INVALID
+          - value: 97
+            label: INVALID
+          - value: 98
+            label: INVALID
+          - value: 99
+            label: INVALID
+          - value: 100
+            label: INVALID
+          - value: 101
+            label: INVALID
+          - value: 102
+            label: INVALID
+          - value: 103
+            label: INVALID
+          - value: 104
+            label: INVALID
+          - value: 105
+            label: INVALID
+          - value: 106
+            label: INVALID
+          - value: 107
+            label: INVALID
+          - value: 108
+            label: INVALID
+          - value: 109
+            label: INVALID
+          - value: 110
+            label: INVALID
+          - value: 111
+            label: INVALID
+          - value: 112
+            label: INVALID
+          - value: 113
+            label: INVALID
+          - value: 114
+            label: INVALID
+          - value: 115
+            label: INVALID
+          - value: 116
+            label: INVALID
+          - value: 117
+            label: INVALID
+          - value: 118
+            label: INVALID
+          - value: 119
+            label: INVALID
+          - value: 120
+            label: INVALID
+          - value: 121
+            label: INVALID
+          - value: 122
+            label: INVALID
+          - value: 123
+            label: INVALID
+          - value: 124
+            label: INVALID
+          - value: 125
+            label: INVALID
+          - value: 126
+            label: INVALID
+          - value: 127
+            label: INVALID
         bind:
           source: config
           field: clutchDownPin
@@ -594,6 +870,8 @@ children:
             label: INVERTED PULLUP
           - value: 6
             label: INVERTED PULLDOWN
+          - value: 7
+            label: '"INVALID'
         bind:
           source: config
           field: clutchDownPinMode
@@ -604,7 +882,6 @@ children:
       - type: enum-field
         id: clutchuppin
         props:
-          label: Clutch Up
           options:
           - value: 0
             label: NONE
@@ -770,12 +1047,106 @@ children:
             label: Digital 4
           - value: 81
             label: Digital 6
+          - value: 82
+            label: INVALID
+          - value: 83
+            label: INVALID
+          - value: 84
+            label: INVALID
+          - value: 85
+            label: INVALID
+          - value: 86
+            label: INVALID
+          - value: 87
+            label: INVALID
+          - value: 88
+            label: INVALID
+          - value: 89
+            label: INVALID
+          - value: 90
+            label: INVALID
+          - value: 91
+            label: INVALID
+          - value: 92
+            label: INVALID
+          - value: 93
+            label: INVALID
+          - value: 94
+            label: INVALID
+          - value: 95
+            label: INVALID
+          - value: 96
+            label: INVALID
+          - value: 97
+            label: INVALID
+          - value: 98
+            label: INVALID
+          - value: 99
+            label: INVALID
+          - value: 100
+            label: INVALID
+          - value: 101
+            label: INVALID
+          - value: 102
+            label: INVALID
+          - value: 103
+            label: INVALID
+          - value: 104
+            label: INVALID
+          - value: 105
+            label: INVALID
+          - value: 106
+            label: INVALID
+          - value: 107
+            label: INVALID
+          - value: 108
+            label: INVALID
+          - value: 109
+            label: INVALID
+          - value: 110
+            label: INVALID
+          - value: 111
+            label: INVALID
+          - value: 112
+            label: INVALID
+          - value: 113
+            label: INVALID
+          - value: 114
+            label: INVALID
+          - value: 115
+            label: INVALID
+          - value: 116
+            label: INVALID
+          - value: 117
+            label: INVALID
+          - value: 118
+            label: INVALID
+          - value: 119
+            label: INVALID
+          - value: 120
+            label: INVALID
+          - value: 121
+            label: INVALID
+          - value: 122
+            label: INVALID
+          - value: 123
+            label: INVALID
+          - value: 124
+            label: INVALID
+          - value: 125
+            label: INVALID
+          - value: 126
+            label: INVALID
+          - value: 127
+            label: INVALID
+          label: Clutch Up
         bind:
           source: config
           field: clutchUpPin
       - type: enum-field
         id: clutchuppinmode
         props:
+          label: Clutch Up Mode
           options:
           - value: 0
             label: DEFAULT
@@ -791,7 +1162,8 @@ children:
             label: INVERTED PULLUP
           - value: 6
             label: INVERTED PULLDOWN
-          label: Clutch Up Mode
+          - value: 7
+            label: '"INVALID'
         bind:
           source: config
           field: clutchUpPinMode
@@ -819,5 +1191,5 @@ children:
   children:
   - type: text
     props:
-      variant: hint
       text: Панель «shift_torque_reduction_stateIndicatorPanel» — нет определения в INI
+      variant: hint

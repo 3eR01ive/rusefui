@@ -2,7 +2,7 @@ id: ignitionCylExtra.panel
 description: Cylinder offsets
 source:
   ini_dialog: ignitionCylExtra
-  menu_path: Advanced › Cylinder offsets
+  menu_path: Advanced › Torque Control › Cylinder offsets
 children:
 - type: scalar-field
   id: offset-angle-for-each-cylinder-if-you-have-an-odd-fire
@@ -20,8 +20,8 @@ children:
     field: engine, like a v-twin or some V6/V10 engines
 - type: text
   props:
-    text: Positive numbers retard, negative numbers advance
     variant: hint
+    text: Positive numbers retard, negative numbers advance
 - type: scalar-field
   id: timing-offset-cylinder1
   props:

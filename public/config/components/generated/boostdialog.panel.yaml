@@ -1,37 +1,36 @@
 id: boostDialog.panel
-description: Boost control
+description: Boost control options
 source:
   ini_dialog: boostDialog
-  menu_path: Advanced › Boost control
+  menu_path: Advanced › Boost Control › Boost control options
 children:
 - type: enum-field
   id: isboostcontrolenabled
   props:
-    label: Enable
     options:
     - value: 0
-      label: 'false'
+      label: disabled
     - value: 1
-      label: 'true'
+      label: enabled
+    label: Boost Control
   bind:
     source: config
     field: isBoostControlEnabled
 - type: enum-field
   id: boosttype
   props:
-    label: Control Mode
     options:
     - value: 0
       label: Open Loop
     - value: 1
       label: Open + Closed Loop
+    label: Control Mode
   bind:
     source: config
     field: boostType
 - type: enum-field
   id: boostcontrolpin
   props:
-    label: Output
     options:
     - value: 0
       label: NONE
@@ -259,6 +258,37 @@ children:
       label: Lowside 6
     - value: 112
       label: Lowside 7
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
+    label: Output
   bind:
     source: config
     field: boostControlPin

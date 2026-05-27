@@ -1,8 +1,8 @@
 id: ignitionSettings.panel
-description: Ignition settings
+description: Ignition hardware
 source:
   ini_dialog: ignitionSettings
-  menu_path: Ignition › Ignition settings
+  menu_path: Ignition › Ignition hardware
 children:
 - type: section
   props:
@@ -11,12 +11,12 @@ children:
   - type: enum-field
     id: isignitionenabled
     props:
-      label: Enabled
+      label: Spark
       options:
       - value: 0
-        label: 'false'
+        label: disabled
       - value: 1
-        label: 'true'
+        label: enabled
     bind:
       source: config
       field: isIgnitionEnabled
@@ -46,19 +46,18 @@ children:
   - type: enum-field
     id: twowirebatchignition
     props:
+      label: Individually wired Wasted Spark
       options:
       - value: 0
-        label: 'false'
+        label: no
       - value: 1
-        label: 'true'
-      label: Individually wired Wasted Spark
+        label: yes
     bind:
       source: config
       field: twoWireBatchIgnition
   - type: enum-field
     id: ignoverridemode
     props:
-      label: Override ignition table load axis
       options:
       - value: 0
         label: None
@@ -76,22 +75,23 @@ children:
         label: INVALID
       - value: 7
         label: INVALID
+      label: Override ignition table load axis
     bind:
       source: config
       field: ignOverrideMode
   - type: text
     props:
-      variant: hint
       text: Use fixed timing while validating with a timing gun
+      variant: hint
   - type: enum-field
     id: timingmode
     props:
-      label: Timing Mode
       options:
       - value: 0
         label: dynamic
       - value: 1
         label: fixed
+      label: Timing Mode
     bind:
       source: config
       field: timingMode
@@ -108,15 +108,23 @@ children:
   children:
   - type: text
     props:
-      text: wire each output to the corresponding cylinder number
       variant: hint
+      text: wire each output to the corresponding cylinder number
   - type: text
     props:
       variant: hint
       text: rusEFI handles firing order
+  - type: scalar-field
+    id: output-mode-is-dangerous-and-can-burn-out-your-coils--99--installs-is-default---some-hondas-are-default-inverted
+    props:
+      label: Output Mode is dangerous and can burn out your coils, 99% installs is default,  some Hondas are default inverted
+    bind:
+      source: config
+      field: Output Mode is dangerous and can burn out your coils, 99% installs is default,  some Hondas are default inverted
   - type: enum-field
     id: ignitionpinmode
     props:
+      label: Ignition Output Mode
       options:
       - value: 0
         label: default
@@ -126,14 +134,12 @@ children:
         label: open collector
       - value: 3
         label: open collector inverted
-      label: Ignition Output Mode
     bind:
       source: config
       field: ignitionPinMode
   - type: enum-field
     id: ignitionpins1
     props:
-      label: Ignition Output 1
       options:
       - value: 0
         label: NONE
@@ -361,6 +367,37 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+      label: Ignition Output 1
     bind:
       source: config
       field: ignitionPins1
@@ -595,6 +632,36 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: ignitionPins2
@@ -829,12 +896,43 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: ignitionPins3
   - type: enum-field
     id: ignitionpins4
     props:
+      label: Ignition Output 4
       options:
       - value: 0
         label: NONE
@@ -1062,14 +1160,42 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
-      label: Ignition Output 4
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: ignitionPins4
   - type: enum-field
     id: ignitionpins5
     props:
-      label: Ignition Output 5
       options:
       - value: 0
         label: NONE
@@ -1297,6 +1423,37 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+      label: Ignition Output 5
     bind:
       source: config
       field: ignitionPins5
@@ -1531,13 +1688,42 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: ignitionPins6
   - type: enum-field
     id: ignitionpins7
     props:
-      label: Ignition Output 7
       options:
       - value: 0
         label: NONE
@@ -1765,13 +1951,43 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+      label: Ignition Output 7
     bind:
       source: config
       field: ignitionPins7
   - type: enum-field
     id: ignitionpins8
     props:
-      label: Ignition Output 8
       options:
       - value: 0
         label: NONE
@@ -1999,6 +2215,37 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+      label: Ignition Output 8
     bind:
       source: config
       field: ignitionPins8
@@ -2232,6 +2479,36 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
       label: Ignition Output 9
     bind:
       source: config
@@ -2239,6 +2516,7 @@ children:
   - type: enum-field
     id: ignitionpins10
     props:
+      label: Ignition Output 10
       options:
       - value: 0
         label: NONE
@@ -2466,14 +2744,42 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
-      label: Ignition Output 10
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: ignitionPins10
   - type: enum-field
     id: ignitionpins11
     props:
-      label: Ignition Output 11
       options:
       - value: 0
         label: NONE
@@ -2701,6 +3007,37 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
+      label: Ignition Output 11
     bind:
       source: config
       field: ignitionPins11
@@ -2935,6 +3272,36 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: ignitionPins12

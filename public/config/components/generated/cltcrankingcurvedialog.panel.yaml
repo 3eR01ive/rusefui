@@ -1,8 +1,8 @@
 id: cltCrankingCurveDialog.panel
-description: Cranking Idle Valve Curve
+description: Cranking Air Amount vs CLT
 source:
   ini_dialog: cltCrankingCurveDialog
-  menu_path: Idle › Cranking Idle Valve Curve
+  menu_path: Cranking › Cranking Air Amount vs CLT
 children:
 - type: scalar-field
   id: etbidlethrottlerange
@@ -14,8 +14,8 @@ children:
 - type: curve
   id: cltcrankingcurve
   props:
-    yBins: cltCrankingCorr
-    yLabel: Percent
-    xBins: cltCrankingCorrBins
     xLabel: Coolant
     title: Cranking Idle Valve Curve
+    yLabel: Percent
+    xBins: cltCrankingCorrBins
+    yBins: cltCrankingCorr

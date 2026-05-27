@@ -18,6 +18,7 @@ children:
   - type: enum-field
     id: crankinginjectionmode
     props:
+      label: Injection mode
       options:
       - value: 0
         label: Simultaneous
@@ -27,19 +28,18 @@ children:
         label: Batch
       - value: 3
         label: Single Point
-      label: Injection mode
     bind:
       source: config
       field: crankingInjectionMode
   - type: enum-field
     id: userunningmathforcranking
     props:
-      label: Fuel Source For Cranking
       options:
       - value: 0
         label: Fixed
       - value: 1
         label: Fuel Map
+      label: Fuel Source For Cranking
     bind:
       source: config
       field: useRunningMathForCranking
@@ -50,12 +50,12 @@ children:
   - type: enum-field
     id: useseparateadvanceforcranking
     props:
-      label: Timing Advance mode
       options:
       - value: 0
         label: Fixed (auto taper)
       - value: 1
         label: Table
+      label: Timing Advance mode
     bind:
       source: config
       field: useSeparateAdvanceForCranking
@@ -82,22 +82,22 @@ children:
     props:
       options:
       - value: 0
-        label: 'false'
+        label: disabled
       - value: 1
-        label: 'true'
-      label: Enable flood clear
+        label: enabled
+      label: Flood clear
     bind:
       source: config
       field: isCylinderCleanupEnabled
   - type: enum-field
     id: isfasterenginespinupenabled
     props:
-      label: Enable faster engine spin-up
+      label: Faster engine spin-up
       options:
       - value: 0
-        label: 'false'
+        label: disabled
       - value: 1
-        label: 'true'
+        label: enabled
     bind:
       source: config
       field: isFasterEngineSpinUpEnabled
@@ -107,21 +107,21 @@ children:
       label: Use Advance Corrections for cranking
       options:
       - value: 0
-        label: 'false'
+        label: no
       - value: 1
-        label: 'true'
+        label: yes
     bind:
       source: config
       field: useAdvanceCorrectionsForCranking
   - type: enum-field
     id: flexcranking
     props:
+      label: Separate Flex Fuel cranking table
       options:
       - value: 0
-        label: 'false'
+        label: disabled
       - value: 1
-        label: 'true'
-      label: Use Flex Fuel cranking table
+        label: enabled
     bind:
       source: config
       field: flexCranking

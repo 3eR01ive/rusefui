@@ -1,0 +1,43 @@
+id: afrTableDialog.panel
+description: Target AFR
+source:
+  ini_dialog: afrTableDialog
+  menu_path: Fuel › VE blend tables › Target AFR
+children:
+- type: section
+  props:
+    title: Load override
+  children:
+  - type: enum-field
+    id: afroverridemode
+    props:
+      label: Override AFR table load axis
+      options:
+      - value: 0
+        label: None
+      - value: 1
+        label: MAP
+      - value: 2
+        label: TPS
+      - value: 3
+        label: Acc Pedal
+      - value: 4
+        label: Cyl Filling %
+      - value: 5
+        label: INVALID
+      - value: 6
+        label: INVALID
+      - value: 7
+        label: INVALID
+    bind:
+      source: config
+      field: afrOverrideMode
+- type: config-table
+  id: afrtabletbl
+  props:
+    xLabel: RPM
+    title: Target AFR Table
+    variant: table
+    xBins: lambdaRpmBins
+    yBins: lambdaLoadBins
+    zBins: lambdaTable

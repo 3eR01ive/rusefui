@@ -13,21 +13,21 @@ children:
     props:
       options:
       - value: 0
-        label: 'false'
+        label: disabled
       - value: 1
-        label: 'true'
-      label: Enable SD Card
+        label: enabled
+      label: SD Card Logging
     bind:
       source: config
       field: isSdCardEnabled
 - type: text
   props:
-    variant: hint
     text: Панель «sdPresentIndicators» — нет определения в INI
+    variant: hint
 - type: text
   props:
-    text: Панель «sdCardActivityIndicators» — нет определения в INI
     variant: hint
+    text: Панель «sdCardActivityIndicators» — нет определения в INI
 - type: section
   props:
     title: SD Card Logging
@@ -46,47 +46,59 @@ children:
       variant: hint
   - type: text
     props:
-      text: rusEFI connects SD to your PC when powered by USB
       variant: hint
+      text: rusEFI connects SD to your PC when powered by USB
   - type: enum-field
     id: alwayswritesdcard
     props:
       label: Always start in Logging mode
       options:
       - value: 0
-        label: 'false'
+        label: no
       - value: 1
-        label: 'true'
+        label: yes
     bind:
       source: config
       field: alwaysWriteSdCard
+  - type: enum-field
+    id: sdtriggerlog
+    props:
+      label: SD logger mode
+      options:
+      - value: 0
+        label: Full MLG
+      - value: 1
+        label: Trigger
+    bind:
+      source: config
+      field: sdTriggerLog
   - type: scalar-field
     id: sdcardlogfrequency
     props:
-      label: SD logger rate
+      label: MLG logger rate
     bind:
       source: config
       field: sdCardLogFrequency
   - type: enum-field
-    id: sdtriggerlog
+    id: sdtriggerlogcsv
     props:
       options:
       - value: 0
-        label: normal
+        label: Binary
       - value: 1
-        label: trigger
-      label: SD logger mode
+        label: CSV
+      label: Trigger logger foramt
     bind:
       source: config
-      field: sdTriggerLog
+      field: sdTriggerLogCsv
 - type: text
   props:
     variant: hint
     text: Панель «sdCardStateIndicators» — нет определения в INI
 - type: text
   props:
-    variant: hint
     text: Панель «sdCardErrorPanel» — нет определения в INI
+    variant: hint
 - type: section
   props:
     title: SD commands
@@ -105,8 +117,8 @@ children:
       variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Format (cmd_format)'
+      variant: hint
 - type: section
   props:
     title: Fail reports
@@ -124,5 +136,5 @@ children:
       text: 'Кнопка: Remove all fail reports (cmd_delete_reports)'
   - type: text
     props:
-      variant: hint
       text: Панель «sdCardErrorReportIndicators» — нет определения в INI
+      variant: hint

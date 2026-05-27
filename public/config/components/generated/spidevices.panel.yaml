@@ -7,12 +7,12 @@ children:
 - type: enum-field
   id: usespiimu
   props:
+    label: Use SPI accelerometer
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
-    label: Use SPI accelerometer
+      label: yes
   bind:
     source: config
     field: useSpiImu
@@ -41,7 +41,6 @@ children:
 - type: enum-field
   id: accelerometercspin
   props:
-    label: Accelerometer CS pin
     options:
     - value: 0
       label: NONE
@@ -399,6 +398,7 @@ children:
       label: PK14
     - value: 177
       label: PK15
+    label: Accelerometer CS pin
   bind:
     source: config
     field: accelerometerCsPin

@@ -2,7 +2,7 @@ id: injectionSettings.panel
 description: Injection hardware
 source:
   ini_dialog: injectionSettings
-  menu_path: Fuel › Injection hardware
+  menu_path: Fuel › Injector Setup › Injection hardware
 children:
 - type: section
   props:
@@ -13,12 +13,12 @@ children:
       title: Injector Outputs
     children:
     - type: scalar-field
-      id: use-only-first-half-of-outputs-for-batch-mode
+      id: use-only-first-half-of-outputs-for-batch-mode-if-your-board-supports-two-injectors-per-channel
       props:
-        label: Use only first half of outputs for batch mode
+        label: Use only first half of outputs for batch mode if your board supports two injectors per channel
       bind:
         source: config
-        field: Use only first half of outputs for batch mode
+        field: Use only first half of outputs for batch mode if your board supports two injectors per channel
     - type: text
       props:
         text: wire each output to the corresponding cylinder number
@@ -257,6 +257,36 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
         label: Injection Output 1
       bind:
         source: config
@@ -492,6 +522,36 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
       bind:
         source: config
         field: injectionPins2
@@ -725,6 +785,36 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
         label: Injection Output 3
       bind:
         source: config
@@ -960,6 +1050,36 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
       bind:
         source: config
         field: injectionPins4
@@ -1194,13 +1314,42 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
       bind:
         source: config
         field: injectionPins5
     - type: enum-field
       id: injectionpins6
       props:
-        label: 'Injection Output 6 '
         options:
         - value: 0
           label: NONE
@@ -1428,13 +1577,43 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
+        label: 'Injection Output 6 '
       bind:
         source: config
         field: injectionPins6
     - type: enum-field
       id: injectionpins7
       props:
-        label: 'Injection Output 7 '
         options:
         - value: 0
           label: NONE
@@ -1662,12 +1841,44 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
+        label: 'Injection Output 7 '
       bind:
         source: config
         field: injectionPins7
     - type: enum-field
       id: injectionpins8
       props:
+        label: 'Injection Output 8 '
         options:
         - value: 0
           label: NONE
@@ -1895,13 +2106,43 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
-        label: 'Injection Output 8 '
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
       bind:
         source: config
         field: injectionPins8
     - type: enum-field
       id: injectionpins9
       props:
+        label: 'Injection Output 9 '
         options:
         - value: 0
           label: NONE
@@ -2129,7 +2370,36 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
-        label: 'Injection Output 9 '
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
       bind:
         source: config
         field: injectionPins9
@@ -2364,13 +2634,42 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
       bind:
         source: config
         field: injectionPins10
     - type: enum-field
       id: injectionpins11
       props:
-        label: 'Injection Output 11 '
         options:
         - value: 0
           label: NONE
@@ -2598,13 +2897,43 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
+        label: 'Injection Output 11 '
       bind:
         source: config
         field: injectionPins11
     - type: enum-field
       id: injectionpins12
       props:
-        label: 'Injection Output 12 '
         options:
         - value: 0
           label: NONE
@@ -2832,6 +3161,37 @@ children:
           label: Lowside 6
         - value: 112
           label: Lowside 7
+        - value: 113
+          label: INVALID
+        - value: 114
+          label: INVALID
+        - value: 115
+          label: INVALID
+        - value: 116
+          label: INVALID
+        - value: 117
+          label: INVALID
+        - value: 118
+          label: INVALID
+        - value: 119
+          label: INVALID
+        - value: 120
+          label: INVALID
+        - value: 121
+          label: INVALID
+        - value: 122
+          label: INVALID
+        - value: 123
+          label: INVALID
+        - value: 124
+          label: INVALID
+        - value: 125
+          label: INVALID
+        - value: 126
+          label: INVALID
+        - value: 127
+          label: INVALID
+        label: 'Injection Output 12 '
       bind:
         source: config
         field: injectionPins12
@@ -2873,24 +3233,24 @@ children:
         text: 'Кнопка: Injector #7 (cmd_test_inj7)'
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Injector #8 (cmd_test_inj8)'
+        variant: hint
     - type: text
       props:
         text: 'Кнопка: Injector #9 (cmd_test_inj9)'
         variant: hint
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Injector #10 (cmd_test_inj10)'
+        variant: hint
     - type: text
       props:
         variant: hint
         text: 'Кнопка: Injector #11 (cmd_test_inj11)'
     - type: text
       props:
-        text: 'Кнопка: Injector #12 (cmd_test_inj12)'
         variant: hint
+        text: 'Кнопка: Injector #12 (cmd_test_inj12)'
     - type: text
       props:
         text: 'Кнопка: Abort test (cmd_test_cancel)'

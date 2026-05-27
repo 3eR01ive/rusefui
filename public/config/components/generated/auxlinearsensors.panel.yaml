@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: auxlinear1-hwchannel
     props:
+      label: Input
       options:
       - value: 0
         label: NONE
@@ -46,7 +47,36 @@ children:
         label: Analog Temp 1
       - value: 16
         label: Analog Temp 2
-      label: Input
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
     bind:
       source: config
       field: auxLinear1_hwChannel
@@ -85,7 +115,6 @@ children:
   - type: enum-field
     id: auxlinear2-hwchannel
     props:
-      label: Input
       options:
       - value: 0
         label: NONE
@@ -121,6 +150,37 @@ children:
         label: Analog Temp 1
       - value: 16
         label: Analog Temp 2
+      - value: 17
+        label: INVALID
+      - value: 18
+        label: INVALID
+      - value: 19
+        label: INVALID
+      - value: 20
+        label: INVALID
+      - value: 21
+        label: INVALID
+      - value: 22
+        label: INVALID
+      - value: 23
+        label: INVALID
+      - value: 24
+        label: INVALID
+      - value: 25
+        label: INVALID
+      - value: 26
+        label: INVALID
+      - value: 27
+        label: INVALID
+      - value: 28
+        label: INVALID
+      - value: 29
+        label: INVALID
+      - value: 30
+        label: INVALID
+      - value: 31
+        label: INVALID
+      label: Input
     bind:
       source: config
       field: auxLinear2_hwChannel
@@ -155,6 +215,7 @@ children:
 - type: enum-field
   id: auxspeedsensorinputpin1
   props:
+    label: Aux Speed Input 1
     options:
     - value: 0
       label: NONE
@@ -320,13 +381,105 @@ children:
       label: Digital 4
     - value: 81
       label: Digital 6
-    label: Aux Speed Input 1
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: INVALID
+    - value: 101
+      label: INVALID
+    - value: 102
+      label: INVALID
+    - value: 103
+      label: INVALID
+    - value: 104
+      label: INVALID
+    - value: 105
+      label: INVALID
+    - value: 106
+      label: INVALID
+    - value: 107
+      label: INVALID
+    - value: 108
+      label: INVALID
+    - value: 109
+      label: INVALID
+    - value: 110
+      label: INVALID
+    - value: 111
+      label: INVALID
+    - value: 112
+      label: INVALID
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
   bind:
     source: config
     field: auxSpeedSensorInputPin1
 - type: enum-field
   id: auxspeedsensorinputpin2
   props:
+    label: Aux Speed Input 2
     options:
     - value: 0
       label: NONE
@@ -492,7 +645,98 @@ children:
       label: Digital 4
     - value: 81
       label: Digital 6
-    label: Aux Speed Input 2
+    - value: 82
+      label: INVALID
+    - value: 83
+      label: INVALID
+    - value: 84
+      label: INVALID
+    - value: 85
+      label: INVALID
+    - value: 86
+      label: INVALID
+    - value: 87
+      label: INVALID
+    - value: 88
+      label: INVALID
+    - value: 89
+      label: INVALID
+    - value: 90
+      label: INVALID
+    - value: 91
+      label: INVALID
+    - value: 92
+      label: INVALID
+    - value: 93
+      label: INVALID
+    - value: 94
+      label: INVALID
+    - value: 95
+      label: INVALID
+    - value: 96
+      label: INVALID
+    - value: 97
+      label: INVALID
+    - value: 98
+      label: INVALID
+    - value: 99
+      label: INVALID
+    - value: 100
+      label: INVALID
+    - value: 101
+      label: INVALID
+    - value: 102
+      label: INVALID
+    - value: 103
+      label: INVALID
+    - value: 104
+      label: INVALID
+    - value: 105
+      label: INVALID
+    - value: 106
+      label: INVALID
+    - value: 107
+      label: INVALID
+    - value: 108
+      label: INVALID
+    - value: 109
+      label: INVALID
+    - value: 110
+      label: INVALID
+    - value: 111
+      label: INVALID
+    - value: 112
+      label: INVALID
+    - value: 113
+      label: INVALID
+    - value: 114
+      label: INVALID
+    - value: 115
+      label: INVALID
+    - value: 116
+      label: INVALID
+    - value: 117
+      label: INVALID
+    - value: 118
+      label: INVALID
+    - value: 119
+      label: INVALID
+    - value: 120
+      label: INVALID
+    - value: 121
+      label: INVALID
+    - value: 122
+      label: INVALID
+    - value: 123
+      label: INVALID
+    - value: 124
+      label: INVALID
+    - value: 125
+      label: INVALID
+    - value: 126
+      label: INVALID
+    - value: 127
+      label: INVALID
   bind:
     source: config
     field: auxSpeedSensorInputPin2
@@ -501,9 +745,9 @@ children:
   props:
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
+      label: yes
     label: Use Aux Speed Sensors for slip ratio
   bind:
     source: config
@@ -511,12 +755,12 @@ children:
 - type: enum-field
   id: usevssassecondwheelspeed
   props:
-    label: Use VSS As Second Wheel Speed
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
+      label: yes
+    label: Use VSS As Second Wheel Speed
   bind:
     source: config
     field: useVssAsSecondWheelSpeed

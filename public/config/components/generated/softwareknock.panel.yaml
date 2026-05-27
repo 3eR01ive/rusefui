@@ -15,12 +15,12 @@ children:
     - type: enum-field
       id: enablesoftwareknock
       props:
-        label: Enable
+        label: Knock sensing
         options:
         - value: 0
-          label: 'false'
+          label: disabled
         - value: 1
-          label: 'true'
+          label: enabled
       bind:
         source: config
         field: enableSoftwareKnock
@@ -82,9 +82,9 @@ children:
         label: Enable Knock Spectrogram Filter
         options:
         - value: 0
-          label: 'false'
+          label: no
         - value: 1
-          label: 'true'
+          label: yes
       bind:
         source: config
         field: enableKnockSpectrogramFilter
@@ -105,42 +105,42 @@ children:
     - type: scalar-field
       id: knockretardaggression
       props:
-        label: knockRetardAggression
+        label: Retard Aggression
       bind:
         source: config
         field: knockRetardAggression
     - type: scalar-field
       id: knockretardreapplyrate
       props:
-        label: knockRetardReapplyRate
+        label: Retard Reapply Rate
       bind:
         source: config
         field: knockRetardReapplyRate
     - type: scalar-field
       id: knockfueltrimaggression
       props:
-        label: knockFuelTrimAggression
+        label: Fuel Trim Aggression
       bind:
         source: config
         field: knockFuelTrimAggression
     - type: scalar-field
       id: knockfueltrimreapplyrate
       props:
-        label: knockFuelTrimReapplyRate
+        label: Fuel Trim Reapply Rate
       bind:
         source: config
         field: knockFuelTrimReapplyRate
     - type: scalar-field
       id: knockfueltrim
       props:
-        label: knockFuelTrim
+        label: Fuel Trim
       bind:
         source: config
         field: knockFuelTrim
     - type: scalar-field
       id: knocksuppressmintps
       props:
-        label: knockSuppressMinTps
+        label: Suppress Min Tps
       bind:
         source: config
         field: knockSuppressMinTps
@@ -148,7 +148,7 @@ children:
   id: knockthresholdcurve
   props:
     xBins: knockNoiseRpmBins
-    title: Engine Knock Threshold RPM Based
-    yLabel: Threshold
     yBins: knockBaseNoise
+    title: Engine Knock Threshold RPM Based
     xLabel: RPM
+    yLabel: Threshold

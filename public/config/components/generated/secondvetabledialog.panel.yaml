@@ -1,0 +1,19 @@
+id: secondVeTableDialog.panel
+description: Second VE Table
+source:
+  ini_dialog: secondVeTableDialog
+  menu_path: Fuel › Second VE Table
+children:
+- type: text
+  props:
+    text: Таблица/кривая «secondVeTableControls» — нет определения в INI
+    variant: hint
+- type: config-table
+  id: secondvetabletbl
+  props:
+    xBins: secondVeRpmBins
+    variant: table
+    xLabel: RPM
+    yBins: secondVeLoadBins
+    title: Second VE Table
+    zBins: secondVeTable

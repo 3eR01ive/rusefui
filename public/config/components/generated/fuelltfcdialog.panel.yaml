@@ -2,7 +2,7 @@ id: fuelLTFCDialog.panel
 description: Long term fuel trims
 source:
   ini_dialog: fuelLTFCDialog
-  menu_path: Fuel › Target AFR adder tables › Long term fuel trims
+  menu_path: Fuel › VE blend tables › Long term fuel trims
 children:
 - type: section
   props:
@@ -25,22 +25,50 @@ children:
     - type: enum-field
       id: ltft-enabled
       props:
-        label: Enable learning
+        label: Gathering Data
         options:
         - value: 0
-          label: 'false'
+          label: no
         - value: 1
-          label: 'true'
+          label: yes
       bind:
         source: config
         field: ltft_enabled
     - type: scalar-field
-      id: ltft-timeconstant
+      id: see-short-term-fuel-trim-closed-loop-for-region-definitions
       props:
-        label: Time const
+        label: See Short term fuel trim/Closed loop for region definitions
       bind:
         source: config
-        field: ltft_timeConstant
+        field: See Short term fuel trim/Closed loop for region definitions
+    - type: scalar-field
+      id: ltft-timeconstant1
+      props:
+        label: Time const for Idle region
+      bind:
+        source: config
+        field: ltft_timeConstant1
+    - type: scalar-field
+      id: ltft-timeconstant2
+      props:
+        label: Time const for Overrun region
+      bind:
+        source: config
+        field: ltft_timeConstant2
+    - type: scalar-field
+      id: ltft-timeconstant3
+      props:
+        label: Time const for Power region
+      bind:
+        source: config
+        field: ltft_timeConstant3
+    - type: scalar-field
+      id: ltft-timeconstant4
+      props:
+        label: Time const for Cruise region
+      bind:
+        source: config
+        field: ltft_timeConstant4
     - type: scalar-field
       id: ltft-maxadd
       props:
@@ -65,12 +93,12 @@ children:
     - type: enum-field
       id: ltft-correctionenabled
       props:
-        label: Enable correction
+        label: Apply Correction
         options:
         - value: 0
-          label: 'false'
+          label: no
         - value: 1
-          label: 'true'
+          label: yes
       bind:
         source: config
         field: ltft_correctionEnabled
@@ -92,8 +120,8 @@ children:
     children:
     - type: text
       props:
-        text: Панель «ltftIndicatorsPanel» — нет определения в INI
         variant: hint
+        text: Панель «ltftIndicatorsPanel» — нет определения в INI
     - type: text
       props:
         variant: hint

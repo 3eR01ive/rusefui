@@ -2,7 +2,7 @@ id: boostPidDialog.panel
 description: Boost control PID
 source:
   ini_dialog: boostPidDialog
-  menu_path: Advanced › Boost control PID
+  menu_path: Advanced › Boost Control › Boost control PID
 children:
 - type: scalar-field
   id: minimumboostclosedloopmap

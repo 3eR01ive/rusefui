@@ -2,7 +2,7 @@ id: gppwm4.panel
 description: General Purpose PWM 4
 source:
   ini_dialog: gppwm4
-  menu_path: Advanced › Boost blend tables › General Purpose PWM 4
+  menu_path: Advanced › Generic PWM › General Purpose PWM 4
 children:
 - type: section
   props:
@@ -239,6 +239,36 @@ children:
         label: Lowside 6
       - value: 112
         label: Lowside 7
+      - value: 113
+        label: INVALID
+      - value: 114
+        label: INVALID
+      - value: 115
+        label: INVALID
+      - value: 116
+        label: INVALID
+      - value: 117
+        label: INVALID
+      - value: 118
+        label: INVALID
+      - value: 119
+        label: INVALID
+      - value: 120
+        label: INVALID
+      - value: 121
+        label: INVALID
+      - value: 122
+        label: INVALID
+      - value: 123
+        label: INVALID
+      - value: 124
+        label: INVALID
+      - value: 125
+        label: INVALID
+      - value: 126
+        label: INVALID
+      - value: 127
+        label: INVALID
     bind:
       source: config
       field: gppwm4_pin
@@ -280,6 +310,7 @@ children:
   - type: enum-field
     id: gppwm4-rpmaxis
     props:
+      label: X Axis
       options:
       - value: 0
         label: Zero
@@ -351,13 +382,13 @@ children:
         label: Oil temp
       - value: 34
         label: Fuel Pressure
-      label: X Axis
     bind:
       source: config
       field: gppwm4_rpmAxis
   - type: enum-field
     id: gppwm4-loadaxis
     props:
+      label: Y Axis
       options:
       - value: 0
         label: Zero
@@ -429,7 +460,6 @@ children:
         label: Oil temp
       - value: 34
         label: Fuel Pressure
-      label: Y Axis
     bind:
       source: config
       field: gppwm4_loadAxis
@@ -443,9 +473,9 @@ children:
 - type: config-table
   id: gppwm4tbl
   props:
+    zBins: gppwm4_table
+    variant: table
     yLabel: gppwm4_rpmAxis)}
     yBins: gppwm4_loadBins
-    variant: table
-    zBins: gppwm4_table
     xBins: gppwm4_rpmBins
     title: GP#4

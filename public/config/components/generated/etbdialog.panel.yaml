@@ -2,7 +2,7 @@ id: etbDialog.panel
 description: Electronic Throttle Body
 source:
   ini_dialog: etbDialog
-  menu_path: Advanced › Boost blend tables › Electronic Throttle Body actuator
+  menu_path: Advanced › Generic PWM › Electronic Throttle Body actuator
 children:
 - type: section
   props:
@@ -22,12 +22,12 @@ children:
     - type: enum-field
       id: disableetbwhenenginestopped
       props:
-        label: Disable ETB if engine is stopped
         options:
         - value: 0
-          label: 'false'
+          label: no
         - value: 1
-          label: 'true'
+          label: yes
+        label: Disable ETB if engine is stopped
       bind:
         source: config
         field: disableEtbWhenEngineStopped
@@ -90,8 +90,8 @@ children:
         field: Disables jam detection for testing until the next power cycle
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Temporarily disable jam detection (cmd_etb_disable_jam_detect)'
+        variant: hint
   - type: text
     props:
       text: Панель «etbIndicatorPanel» — нет определения в INI
@@ -181,8 +181,16 @@ children:
         text: If order is reversed swap ETB+/ETB- wires
     - type: text
       props:
+        text: 'Bench test: opens ETB 300ms, no ignition/sensors needed'
         variant: hint
+    - type: text
+      props:
+        variant: hint
+        text: 'Кнопка: Bench Test ETB 1 (open 300ms) (cmd_etb_bench_test)'
+    - type: text
+      props:
         text: 'Кнопка: Auto Calibrate ETB 1 (cmd_etb_auto_calibrate)'
+        variant: hint
   - type: section
     props:
       title: ETB 2 TPS sensor calibration
@@ -211,8 +219,16 @@ children:
         variant: hint
     - type: text
       props:
-        text: 'Кнопка: Auto Calibrate ETB 2 (cmd_etb_auto_calibrate_2)'
+        text: 'Bench test: opens ETB 300ms, no ignition/sensors needed'
         variant: hint
+    - type: text
+      props:
+        text: 'Кнопка: Bench Test ETB 2 (open 300ms) (cmd_etb_bench_test_2)'
+        variant: hint
+    - type: text
+      props:
+        variant: hint
+        text: 'Кнопка: Auto Calibrate ETB 2 (cmd_etb_auto_calibrate_2)'
   - type: section
     props:
       title: Sensor/PID autotune
@@ -240,9 +256,9 @@ children:
         field: Autotune executed for ETB 1 only, values applied for all ETBs
     - type: text
       props:
-        text: 'Кнопка: Start ETB PID Autotune (cmd_etb_autotune)'
         variant: hint
+        text: 'Кнопка: Start ETB PID Autotune (cmd_etb_autotune)'
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Stop ETB PID Autotune (cmd_etb_autotune_stop)'
+        variant: hint

@@ -17,9 +17,9 @@ children:
     label: CAN EGT (AEM X series of RusEFI)
     options:
     - value: 0
-      label: 'false'
+      label: no
     - value: 1
-      label: 'true'
+      label: yes
   bind:
     source: config
     field: enableAemXSeriesEgt

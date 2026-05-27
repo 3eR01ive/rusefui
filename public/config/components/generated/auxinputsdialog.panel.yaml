@@ -7,7 +7,6 @@ children:
 - type: enum-field
   id: auxanaloginputs1
   props:
-    label: 'ADC #1'
     options:
     - value: 0
       label: NONE
@@ -43,6 +42,37 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    label: 'ADC #1'
   bind:
     source: config
     field: auxAnalogInputs1
@@ -85,6 +115,36 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
   bind:
     source: config
     field: auxAnalogInputs2
@@ -127,13 +187,42 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
   bind:
     source: config
     field: auxAnalogInputs3
 - type: enum-field
   id: auxanaloginputs4
   props:
-    label: 'ADC #4'
     options:
     - value: 0
       label: NONE
@@ -169,6 +258,37 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
+    label: 'ADC #4'
   bind:
     source: config
     field: auxAnalogInputs4
@@ -211,6 +331,36 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
   bind:
     source: config
     field: auxAnalogInputs5
@@ -253,6 +403,36 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
   bind:
     source: config
     field: auxAnalogInputs6
@@ -294,6 +474,36 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
     label: 'ADC #7'
   bind:
     source: config
@@ -337,6 +547,36 @@ children:
       label: Analog Temp 1
     - value: 16
       label: Analog Temp 2
+    - value: 17
+      label: INVALID
+    - value: 18
+      label: INVALID
+    - value: 19
+      label: INVALID
+    - value: 20
+      label: INVALID
+    - value: 21
+      label: INVALID
+    - value: 22
+      label: INVALID
+    - value: 23
+      label: INVALID
+    - value: 24
+      label: INVALID
+    - value: 25
+      label: INVALID
+    - value: 26
+      label: INVALID
+    - value: 27
+      label: INVALID
+    - value: 28
+      label: INVALID
+    - value: 29
+      label: INVALID
+    - value: 30
+      label: INVALID
+    - value: 31
+      label: INVALID
   bind:
     source: config
     field: auxAnalogInputs8

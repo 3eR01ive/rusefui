@@ -2,7 +2,7 @@ id: torqueReductionIgnitionRetardDialog.panel
 description: Torque Reduction Ignition Retard Table
 source:
   ini_dialog: torqueReductionIgnitionRetardDialog
-  menu_path: Advanced › Torque Reduction Ignition Retard Table
+  menu_path: Advanced › Torque Control › Torque Reduction Ignition Retard Table
 children:
 - type: enum-field
   id: torquereductionignitionretardxaxis
@@ -85,9 +85,9 @@ children:
 - type: config-table
   id: torquereductionignitionretardtlb
   props:
-    variant: table
     yLabel: torqueReductionIgnitionRetardXaxis)}
     yBins: torqueReductionIgnitionRetardGearBins
-    xBins: torqueReductionIgnitionRetardXBins
     zBins: torqueReductionIgnitionRetardTable
     title: Torque reduction ignition retard table
+    xBins: torqueReductionIgnitionRetardXBins
+    variant: table
