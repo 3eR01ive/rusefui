@@ -17,6 +17,10 @@ import {
   downsampleMinMax,
   drawKnockWaveform,
 } from "../../composables/drawKnockWaveform";
+import {
+  drawKnockSpectrogram,
+  type KnockSpectrogramView,
+} from "../../composables/drawKnockSpectrogram";
 
 const yamlProps = defineProps<{
   instance: ComponentInstance;
@@ -31,6 +35,11 @@ const chartHeight = computed(() => {
   return h >= 180 ? h : 280;
 });
 
+const spectrogramHeight = computed(() => {
+  const h = Number(yamlProps.props.spectrogramHeight ?? 200);
+  return h >= 120 ? h : 200;
+});
+
 /** Длина скользящего окна на графике (мс). */
 const windowMs = computed(() => {
   const w = Number(yamlProps.props.windowMs ?? 500);
@@ -38,7 +47,26 @@ const windowMs = computed(() => {
 });
 
 const chartRef = ref<HTMLCanvasElement | null>(null);
+const spectrogramRef = ref<HTMLCanvasElement | null>(null);
 const { snapshot, setScopeEnabled } = useKnockScope();
+
+const spectrogramView = computed((): KnockSpectrogramView => {
+  const s = snapshot.value.spectrogram;
+  return {
+    width: s?.width ?? 0,
+    height: s?.height ?? 0,
+    freqStartHz: s?.freqStartHz ?? 4000,
+    freqStepHz: s?.freqStepHz ?? 0,
+    pixels: s?.pixels ?? [],
+  };
+});
+
+const spectrogramTitle = computed(() => {
+  const v = spectrogramView.value;
+  if (v.width < 1) return "Спектрограмма (FFT, Rust)";
+  const fEnd = v.freqStartHz + v.freqStepHz * Math.max(0, v.height - 1);
+  return `Спектрограмма · ${v.width} cols · ${Math.round(v.freqStartHz)}–${Math.round(fEnd)} Hz`;
+});
 
 /** Непрерывная лента сэмплов (склеенные захваты). */
 const waveformRing = shallowRef<number[]>([]);
@@ -98,6 +126,9 @@ const statusLine = computed(() => {
     if (enableInConfig.value === false) parts.push("enableKnockScope=no");
   }
   parts.push(`захватов: ${captureCount.value}`);
+  if (spectrogramView.value.width > 0) {
+    parts.push(`FFT cols: ${spectrogramView.value.width}`);
+  }
   if (waveformRing.value.length > 0) {
     parts.push(
       `окно ~${ringDurationMs.value.toFixed(0)} ms (${waveformRing.value.length} pts)`,
@@ -160,7 +191,7 @@ function scheduleRedraw() {
   });
 }
 
-function redraw() {
+function redrawWaveform() {
   const canvas = chartRef.value;
   if (!canvas) return;
   drawKnockWaveform(canvas, displaySamples.value, {
@@ -170,8 +201,22 @@ function redraw() {
   });
 }
 
+function redrawSpectrogram() {
+  const canvas = spectrogramRef.value;
+  if (!canvas) return;
+  drawKnockSpectrogram(canvas, spectrogramView.value, {
+    title: spectrogramTitle.value,
+  });
+}
+
+function redraw() {
+  redrawWaveform();
+  redrawSpectrogram();
+}
+
 watch([displaySamples, displayMin, displayMax], () => scheduleRedraw());
 watch(waveformRing, () => scheduleRedraw());
+watch(spectrogramView, () => scheduleRedraw(), { deep: true });
 
 let resizeObs: ResizeObserver | null = null;
 let liveRedrawRaf = 0;
@@ -218,6 +263,9 @@ onMounted(async () => {
     resizeObs = new ResizeObserver(() => scheduleRedraw());
     resizeObs.observe(observeTarget);
   }
+  if (spectrogramRef.value) {
+    resizeObs?.observe(spectrogramRef.value);
+  }
 });
 
 onUnmounted(() => {
@@ -233,7 +281,7 @@ async function toggleScope() {
   if (scopeEnabled.value) {
     clearRing();
   }
-  await setScopeEnabled(!scopeEnabled.value);
+  await setScopeEnabled(!scopeEnabled.value, windowMs.value);
 }
 </script>
 
@@ -255,6 +303,11 @@ async function toggleScope() {
       ref="chartRef"
       class="spectrogram-canvas"
       :style="{ height: `${chartHeight}px` }"
+    />
+    <canvas
+      ref="spectrogramRef"
+      class="spectrogram-canvas spectrogram-heatmap"
+      :style="{ height: `${spectrogramHeight}px` }"
     />
   </div>
 </template>

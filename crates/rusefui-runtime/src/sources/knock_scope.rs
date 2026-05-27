@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 
+use super::knock_spectrogram::{KnockSpectrogramEngine, KnockSpectrogramView};
 use crate::session::EcuSession;
 
 const POLL_WAIT_READY: Duration = Duration::from_millis(10);
@@ -47,6 +48,8 @@ pub struct KnockScopeSnapshot {
     pub buffer_duration_ms: f64,
     pub status_message: Option<String>,
     pub last_error: Option<String>,
+    /// FFT-спектрограмма (расчёт на хосте).
+    pub spectrogram: KnockSpectrogramView,
 }
 
 impl KnockScopeSnapshot {
@@ -67,12 +70,14 @@ impl KnockScopeSnapshot {
             buffer_duration_ms: 0.0,
             status_message: None,
             last_error: None,
+            spectrogram: KnockSpectrogramView::default(),
         }
     }
 }
 
 pub struct KnockScopeSource {
     snapshot: Arc<RwLock<KnockScopeSnapshot>>,
+    spectrogram: Arc<Mutex<Option<KnockSpectrogramEngine>>>,
     running: Arc<AtomicBool>,
     scope_enabled_on_ecu: Arc<AtomicBool>,
     scope_started_at: Mutex<Option<Instant>>,
@@ -165,6 +170,7 @@ impl KnockScopeSource {
     pub fn new() -> Self {
         Self {
             snapshot: Arc::new(RwLock::new(KnockScopeSnapshot::disconnected())),
+            spectrogram: Arc::new(Mutex::new(None)),
             running: Arc::new(AtomicBool::new(false)),
             scope_enabled_on_ecu: Arc::new(AtomicBool::new(false)),
             scope_started_at: Mutex::new(None),
@@ -191,6 +197,8 @@ impl KnockScopeSource {
         snap.polling = false;
         snap.knock_scope_ready = false;
         snap.status_message = None;
+        snap.spectrogram = KnockSpectrogramView::default();
+        *self.spectrogram.lock().unwrap() = None;
         self.scope_enabled_on_ecu.store(false, Ordering::SeqCst);
     }
 
@@ -204,13 +212,20 @@ impl KnockScopeSource {
         self.scope_enabled_on_ecu.store(false, Ordering::SeqCst);
     }
 
-    pub fn start<F>(&self, session: Arc<EcuSession>, on_tick: F) -> Result<(), String>
+    pub fn start<F>(
+        &self,
+        session: Arc<EcuSession>,
+        window_ms: u32,
+        on_tick: F,
+    ) -> Result<(), String>
     where
         F: Fn(KnockScopeSnapshot) + Send + Sync + 'static,
     {
         if self.is_polling() {
             return Ok(());
         }
+
+        let window_ms = window_ms.clamp(50, 15_000);
 
         self.running.store(false, Ordering::SeqCst);
         if let Some(handle) = self.thread.lock().unwrap().take() {
@@ -238,12 +253,19 @@ impl KnockScopeSource {
             snap.knock_scope_ready = false;
             snap.last_error = None;
             snap.status_message = status_hint(0, false, config_enable, Duration::ZERO);
+            snap.spectrogram = KnockSpectrogramView::default();
         }
+
+        *self.spectrogram.lock().unwrap() = Some(KnockSpectrogramEngine::new(
+            KNOCK_ADC_HZ as f32,
+            window_ms,
+        ));
 
         self.running.store(true, Ordering::SeqCst);
 
         let running = Arc::clone(&self.running);
         let snapshot = Arc::clone(&self.snapshot);
+        let spectrogram = Arc::clone(&self.spectrogram);
         let scope_started_at = Arc::new(Mutex::new(Some(Instant::now())));
         let on_tick = Arc::new(on_tick);
 
@@ -254,6 +276,7 @@ impl KnockScopeSource {
                     session,
                     running,
                     snapshot,
+                    spectrogram,
                     scope_started_at,
                     on_tick,
                 )
@@ -269,6 +292,7 @@ fn poll_loop(
     session: Arc<EcuSession>,
     running: Arc<AtomicBool>,
     snapshot: Arc<RwLock<KnockScopeSnapshot>>,
+    spectrogram: Arc<Mutex<Option<KnockSpectrogramEngine>>>,
     scope_started_at: Arc<Mutex<Option<Instant>>>,
     on_tick: Arc<dyn Fn(KnockScopeSnapshot) + Send + Sync>,
 ) {
@@ -307,6 +331,15 @@ fn poll_loop(
             {
                 Ok(bytes) if !bytes.is_empty() => {
                     let (samples, min_v, max_v) = parse_samples(&bytes);
+                    let spec_view = {
+                        let mut guard = spectrogram.lock().unwrap();
+                        if let Some(eng) = guard.as_mut() {
+                            eng.push_samples(&samples);
+                            eng.view()
+                        } else {
+                            KnockSpectrogramView::default()
+                        }
+                    };
                     let mut snap = snapshot.write().unwrap();
                     snap.connected = connected;
                     snap.scope_enabled = true;
@@ -315,6 +348,7 @@ fn poll_loop(
                     snap.enable_knock_scope_in_config = config_enable;
                     snap.last_byte_len = bytes.len();
                     snap.samples = samples;
+                    snap.spectrogram = spec_view;
                     snap.sample_count = snap.samples.len();
                     snap.sample_min = min_v;
                     snap.sample_max = max_v;

@@ -1,4 +1,3 @@
-# Сырой knock scope (FFT на хосте — позже).
 id: knock.panel
 description: Knock spectrogram / raw ADC scope
 
@@ -15,5 +14,6 @@ children:
       - type: spectrogram
         id: knock-spectrogram
         props:
-          height: 320
+          height: 240
+          spectrogramHeight: 220
           windowMs: 500

@@ -838,6 +838,7 @@ pub fn knock_scope_get_snapshot(state: State<RuntimeState>) -> KnockScopeSnapsho
 #[tauri::command]
 pub fn knock_scope_set_enabled(
     enabled: bool,
+    window_ms: Option<u32>,
     state: State<RuntimeState>,
     app: AppHandle,
 ) -> Result<KnockScopeSnapshot, String> {
@@ -850,7 +851,8 @@ pub fn knock_scope_set_enabled(
         }
         let app_emit = app.clone();
         let session = Arc::clone(&state.session);
-        state.session.knock_scope().start(session, move |snap| {
+        let window_ms = window_ms.unwrap_or(500);
+        state.session.knock_scope().start(session, window_ms, move |snap| {
             emit_knock_scope(&app_emit, &snap);
         })?;
     } else {

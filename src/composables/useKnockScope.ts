@@ -2,6 +2,14 @@ import { shallowRef, readonly } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
+export interface KnockSpectrogramView {
+  width: number;
+  height: number;
+  freqStartHz: number;
+  freqStepHz: number;
+  pixels: number[];
+}
+
 export interface KnockScopeSnapshot {
   connected: boolean;
   scopeEnabled: boolean;
@@ -16,6 +24,7 @@ export interface KnockScopeSnapshot {
   lastByteLen: number;
   sampleRateHz: number;
   bufferDurationMs: number;
+  spectrogram?: KnockSpectrogramView;
   statusMessage?: string | null;
   lastError?: string | null;
 }
@@ -62,9 +71,11 @@ export async function initKnockScope(): Promise<void> {
 
 export async function setKnockScopeEnabled(
   enabled: boolean,
+  windowMs?: number,
 ): Promise<KnockScopeSnapshot> {
   const snap = await invoke<KnockScopeSnapshot>("knock_scope_set_enabled", {
     enabled,
+    windowMs: windowMs ?? 500,
   });
   snapshot.value = snap;
   return snap;

@@ -50,6 +50,7 @@ pub use sources::composite_logger::{
     CompositeEventJson, CompositeLoggerSource, CompositeSnapshot,
 };
 pub use sources::knock_scope::{KnockScopeSnapshot, KnockScopeSource, KNOCK_ADC_HZ};
+pub use sources::knock_spectrogram::KnockSpectrogramView;
 pub use sources::composite_timeline::{
     CompositeTimeline, CompositeTimelineStatus, CompositeTimelineView,
     CompositeTimelineViewQuery,
