@@ -24,6 +24,18 @@ children:
       bind:
         source: config
         field: enableSoftwareKnock
+    - type: enum-field
+      id: enableknockscope
+      props:
+        label: Knock scope (host / rusefui)
+        options:
+        - value: 0
+          label: no
+        - value: 1
+          label: yes
+      bind:
+        source: config
+        field: enableKnockScope
     - type: scalar-field
       id: cylinderbore
       props:

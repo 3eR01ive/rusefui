@@ -38,6 +38,9 @@ const bufferDurationMs = computed(() => snapshot.value.bufferDurationMs ?? 0);
 const sampleMin = computed(() => snapshot.value.sampleMin ?? 0);
 const sampleMax = computed(() => snapshot.value.sampleMax ?? 0);
 const lastByteLen = computed(() => snapshot.value.lastByteLen ?? 0);
+const knockScopeReady = computed(() => Boolean(snapshot.value.knockScopeReady));
+const enableInConfig = computed(() => snapshot.value.enableKnockScopeInConfig);
+const statusMessage = computed(() => snapshot.value.statusMessage ?? null);
 const lastError = computed(() => snapshot.value.lastError ?? null);
 const polling = computed(() => snapshot.value.polling);
 
@@ -46,6 +49,12 @@ const statusLine = computed(() => {
   parts.push(connected.value ? "ECU: подключена" : "ECU: нет связи");
   if (scopeEnabled.value) {
     parts.push(polling.value ? "опрос knock scope" : "scope вкл");
+    if (knockScopeReady.value) {
+      parts.push("ready");
+    }
+    if (enableInConfig.value === false) {
+      parts.push("enableKnockScope=no");
+    }
   }
   parts.push(`захватов: ${captureCount.value}`);
   if (lastByteLen.value > 0) {
@@ -62,14 +71,12 @@ const statusLine = computed(() => {
 
 const hint = computed(() => {
   if (lastError.value) return lastError.value;
+  if (statusMessage.value) return statusMessage.value;
   if (!connected.value) {
     return "Подключите ECU. В tune: enableKnockScope = yes, прошивка с KNOCK_SCOPE.";
   }
   if (!scopeEnabled.value) {
-    return "Старт scope — отдельный поток `l`+8/10 (как composite logger), без опроса O.";
-  }
-  if (captureCount.value === 0) {
-    return "Ждём буфер с ECU (ответ 0x84 = ещё не готов)…";
+    return "Старт scope: `l`+8 на ECU, затем чтение по knockScopeReady (`l`+10).";
   }
   return null;
 });

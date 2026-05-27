@@ -6,6 +6,8 @@ export interface KnockScopeSnapshot {
   connected: boolean;
   scopeEnabled: boolean;
   polling: boolean;
+  knockScopeReady?: boolean;
+  enableKnockScopeInConfig?: boolean | null;
   captureCount: number;
   sampleCount: number;
   samples: number[];
@@ -14,6 +16,7 @@ export interface KnockScopeSnapshot {
   lastByteLen: number;
   sampleRateHz: number;
   bufferDurationMs: number;
+  statusMessage?: string | null;
   lastError?: string | null;
 }
 
