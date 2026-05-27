@@ -9,6 +9,15 @@ interface EnumOptionProp {
   label: string;
 }
 
+/** Метки-заглушки в INI (`#define … "INVALID", …`) — не показываем в списке. */
+function isIniPlaceholderLabel(label: string): boolean {
+  return label.trim().toUpperCase() === "INVALID";
+}
+
+function normalizeOptions(raw: EnumOptionProp[]): EnumOptionProp[] {
+  return raw.filter((o) => !isIniPlaceholderLabel(o.label));
+}
+
 const props = defineProps<{
   instance: ComponentInstance;
   path: string;
@@ -27,7 +36,7 @@ const label = computed(
   () => String(props.props.label ?? (fieldName.value || "—")),
 );
 
-const options = computed((): EnumOptionProp[] => {
+const allOptions = computed((): EnumOptionProp[] => {
   const fromYaml = props.props.options;
   if (Array.isArray(fromYaml) && fromYaml.length > 0) {
     return fromYaml.map((o) => {
@@ -48,9 +57,25 @@ const options = computed((): EnumOptionProp[] => {
   return [];
 });
 
+const visibleOptions = computed(() => normalizeOptions(allOptions.value));
+
 const currentValue = computed(() => {
   if (!fieldName.value) return null;
   return getField(fieldName.value);
+});
+
+/** Если в ECU записан «дырявый» индекс — одна строка, чтобы значение было видно. */
+const selectOptions = computed((): EnumOptionProp[] => {
+  const vis = visibleOptions.value;
+  const cur = currentValue.value;
+  if (cur === null || vis.some((o) => o.value === cur)) {
+    return vis;
+  }
+  const stored = allOptions.value.find((o) => o.value === cur);
+  const orphanLabel = stored
+    ? `${stored.label} (${cur})`
+    : `#${cur}`;
+  return [{ value: cur, label: orphanLabel }, ...vis];
 });
 
 const selected = ref<number | "">("");
@@ -79,7 +104,7 @@ const statusText = computed(() => {
 const disabled = computed(
   () =>
     !fieldName.value ||
-    options.value.length === 0 ||
+    selectOptions.value.length === 0 ||
     !configCanEdit(snapshot.value) ||
     saving.value,
 );
@@ -119,7 +144,7 @@ async function commit() {
     >
       <option v-if="selected === ''" disabled value="">—</option>
       <option
-        v-for="opt in options"
+        v-for="opt in selectOptions"
         :key="`${opt.value}-${opt.label}`"
         :value="opt.value"
       >
