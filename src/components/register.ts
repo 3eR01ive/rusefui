@@ -208,7 +208,7 @@ export function registerBuiltinComponents(): void {
       label: "Knock spectrogram",
       mode: "display",
       isContainer: false,
-      description: "Сырой knock scope с ECU (12-bit ADC), preview waveform",
+      description: "Сырой knock scope с ECU (отдельный источник l+8/10, как composite)",
     },
     Spectrogram,
   );

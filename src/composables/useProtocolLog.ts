@@ -4,18 +4,31 @@ import { onMounted, onUnmounted, ref } from "vue";
 
 export type LogLevel = "error" | "warn" | "info" | "debug" | "trace";
 
+export type ProtocolLogSource =
+  | "command"
+  | "output"
+  | "trigger"
+  | "spectrogram"
+  | "config";
+
 export interface ProtocolLogFilterSettings {
   error: boolean;
   warn: boolean;
   info: boolean;
   debug: boolean;
   trace: boolean;
+  commands: boolean;
+  output: boolean;
+  trigger: boolean;
+  spectrogram: boolean;
+  config: boolean;
 }
 
 export interface ProtocolLogEntry {
   id: number;
   timestampMs: number;
   level: LogLevel;
+  source: ProtocolLogSource;
   direction: "tx" | "rx" | "err" | "info" | "link";
   command: string | null;
   summary: string;
@@ -36,7 +49,53 @@ export const DEFAULT_LOG_FILTERS: ProtocolLogFilterSettings = {
   info: true,
   debug: false,
   trace: false,
+  commands: true,
+  output: false,
+  trigger: false,
+  spectrogram: false,
+  config: false,
 };
+
+const DATA_STREAM_SOURCES = new Set<ProtocolLogSource>([
+  "output",
+  "trigger",
+  "spectrogram",
+  "config",
+]);
+
+function isDataStreamSource(source: ProtocolLogSource): boolean {
+  return DATA_STREAM_SOURCES.has(source);
+}
+
+function allowsSource(
+  source: ProtocolLogSource,
+  f: ProtocolLogFilterSettings,
+): boolean {
+  switch (source) {
+    case "command":
+      return f.commands;
+    case "output":
+      return f.output;
+    case "trigger":
+      return f.trigger;
+    case "spectrogram":
+      return f.spectrogram;
+    case "config":
+      return f.config;
+    default:
+      return false;
+  }
+}
+
+function allowsUi(entry: ProtocolLogEntry, f: ProtocolLogFilterSettings): boolean {
+  if (!allowsSource(entry.source, f)) {
+    return false;
+  }
+  if (isDataStreamSource(entry.source)) {
+    return true;
+  }
+  return f[entry.level];
+}
 
 const entries = ref<ProtocolLogEntry[]>([]);
 const logPath = ref("");
@@ -45,16 +104,28 @@ const open = ref(false);
 let unlisten: UnlistenFn | null = null;
 let loaded = false;
 
-function allowsUi(entry: ProtocolLogEntry, f: ProtocolLogFilterSettings): boolean {
-  if (entry.level === "trace") return false;
-  return f[entry.level];
+export function sourceLabel(source: ProtocolLogSource): string {
+  switch (source) {
+    case "command":
+      return "CMD";
+    case "output":
+      return "OUT";
+    case "trigger":
+      return "TRG";
+    case "spectrogram":
+      return "SPG";
+    case "config":
+      return "CFG";
+    default:
+      return source;
+  }
 }
 
 export function useProtocolLog() {
   async function load(limit = 200) {
     const info = await invoke<ProtocolLogInfo>("protocol_log_get", { limit });
     logPath.value = info.path;
-    filters.value = info.filters;
+    filters.value = { ...DEFAULT_LOG_FILTERS, ...info.filters };
     entries.value = info.entries;
     loaded = true;
   }

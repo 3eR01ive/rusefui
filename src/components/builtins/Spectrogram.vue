@@ -7,10 +7,13 @@ import {
   watch,
 } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
-import { useRustComponent } from "../../composables/useRustComponent";
+import {
+  initKnockScope,
+  useKnockScope,
+} from "../../composables/useKnockScope";
 import { drawKnockWaveform } from "../../composables/drawKnockWaveform";
 
-const props = defineProps<{
+const yamlProps = defineProps<{
   instance: ComponentInstance;
   path: string;
   props: Record<string, unknown>;
@@ -18,38 +21,31 @@ const props = defineProps<{
   meta: ComponentMeta;
 }>();
 
-const chartRef = ref<HTMLCanvasElement | null>(null);
-
-const { state, dispatch, error, ready } = useRustComponent(
-  props.instance,
-  props.path,
-);
-
-const samples = computed(() => {
-  const raw = state.value.samples;
-  if (!Array.isArray(raw)) return [] as number[];
-  return raw.map((v) => Number(v)).filter((v) => Number.isFinite(v));
+const chartHeight = computed(() => {
+  const h = Number(yamlProps.props.height ?? 280);
+  return h >= 180 ? h : 280;
 });
 
-const connected = computed(() => Boolean(state.value.connected));
-const captureCount = computed(() => Number(state.value.captureCount ?? 0));
-const scopeEnabled = computed(() => Boolean(state.value.scopeEnabled));
-const readyFieldPresent = computed(() => Boolean(state.value.readyFieldPresent));
-const knockScopeReady = computed(() => Boolean(state.value.knockScopeReady));
-const message = computed(() => (state.value.message as string) ?? null);
-const sampleRateHz = computed(() => Number(state.value.sampleRateHz ?? 218750));
-const bufferDurationMs = computed(() => Number(state.value.bufferDurationMs ?? 0));
-const sampleMin = computed(() => Number(state.value.sampleMin ?? 0));
-const sampleMax = computed(() => Number(state.value.sampleMax ?? 0));
-const lastByteLen = computed(() => Number(state.value.lastByteLen ?? 0));
+const chartRef = ref<HTMLCanvasElement | null>(null);
+const { snapshot, setScopeEnabled } = useKnockScope();
+
+const samples = computed(() => snapshot.value.samples ?? []);
+const connected = computed(() => snapshot.value.connected);
+const scopeEnabled = computed(() => snapshot.value.scopeEnabled);
+const captureCount = computed(() => snapshot.value.captureCount ?? 0);
+const sampleRateHz = computed(() => snapshot.value.sampleRateHz ?? 218_750);
+const bufferDurationMs = computed(() => snapshot.value.bufferDurationMs ?? 0);
+const sampleMin = computed(() => snapshot.value.sampleMin ?? 0);
+const sampleMax = computed(() => snapshot.value.sampleMax ?? 0);
+const lastByteLen = computed(() => snapshot.value.lastByteLen ?? 0);
+const lastError = computed(() => snapshot.value.lastError ?? null);
+const polling = computed(() => snapshot.value.polling);
 
 const statusLine = computed(() => {
   const parts: string[] = [];
   parts.push(connected.value ? "ECU: подключена" : "ECU: нет связи");
-  if (!readyFieldPresent.value) {
-    parts.push("поле knockScopeReady нет в INI");
-  } else if (knockScopeReady.value) {
-    parts.push("буфер готов");
+  if (scopeEnabled.value) {
+    parts.push(polling.value ? "опрос knock scope" : "scope вкл");
   }
   parts.push(`захватов: ${captureCount.value}`);
   if (lastByteLen.value > 0) {
@@ -62,6 +58,20 @@ const statusLine = computed(() => {
     parts.push(`ADC ${sampleMin.value.toFixed(0)}…${sampleMax.value.toFixed(0)}`);
   }
   return parts.join(" · ");
+});
+
+const hint = computed(() => {
+  if (lastError.value) return lastError.value;
+  if (!connected.value) {
+    return "Подключите ECU. В tune: enableKnockScope = yes, прошивка с KNOCK_SCOPE.";
+  }
+  if (!scopeEnabled.value) {
+    return "Старт scope — отдельный поток `l`+8/10 (как composite logger), без опроса O.";
+  }
+  if (captureCount.value === 0) {
+    return "Ждём буфер с ECU (ответ 0x84 = ещё не готов)…";
+  }
+  return null;
 });
 
 function redraw() {
@@ -78,7 +88,8 @@ watch([samples, sampleMin, sampleMax], () => redraw(), { deep: true });
 
 let resizeObs: ResizeObserver | null = null;
 
-onMounted(() => {
+onMounted(async () => {
+  await initKnockScope();
   redraw();
   if (chartRef.value) {
     resizeObs = new ResizeObserver(() => redraw());
@@ -88,10 +99,13 @@ onMounted(() => {
 
 onUnmounted(() => {
   resizeObs?.disconnect();
+  if (scopeEnabled.value) {
+    void setScopeEnabled(false);
+  }
 });
 
 async function toggleScope() {
-  await dispatch(scopeEnabled.value ? "disable_scope" : "enable_scope");
+  await setScopeEnabled(!scopeEnabled.value);
 }
 </script>
 
@@ -101,19 +115,18 @@ async function toggleScope() {
       <button
         type="button"
         class="btn"
-        :disabled="!ready"
+        :disabled="!connected"
         @click="toggleScope"
       >
         {{ scopeEnabled ? "Стоп scope" : "Старт scope" }}
       </button>
       <span class="spectrogram-status">{{ statusLine }}</span>
     </div>
-    <p v-if="message" class="spectrogram-hint">{{ message }}</p>
-    <p v-if="error" class="spectrogram-error">{{ error }}</p>
+    <p v-if="hint" class="spectrogram-hint">{{ hint }}</p>
     <canvas
       ref="chartRef"
       class="spectrogram-canvas"
-      :style="{ height: `${Number(props.props.height ?? 280)}px` }"
+      :style="{ height: `${chartHeight}px` }"
     />
   </div>
 </template>
@@ -142,12 +155,6 @@ async function toggleScope() {
   margin: 0;
   font-size: 12px;
   color: var(--color-text-muted);
-}
-
-.spectrogram-error {
-  margin: 0;
-  font-size: 12px;
-  color: var(--color-danger, #e57373);
 }
 
 .spectrogram-canvas {

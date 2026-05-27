@@ -16,6 +16,7 @@ use crate::ini::{
 use crate::protocol_log::ProtocolLogStore;
 use crate::sources::composite_data_log::CompositeDataLogWriter;
 use crate::sources::composite_logger::CompositeLoggerSource;
+use crate::sources::knock_scope::KnockScopeSource;
 use crate::sources::composite_timeline::{
     CompositeTimeline, CompositeTimelineStatus, CompositeTimelineView,
     CompositeTimelineViewQuery,
@@ -60,6 +61,7 @@ pub struct EcuSession {
     loaded_ini_path: Mutex<Option<PathBuf>>,
     output: OutputChannelsSource,
     composite: CompositeLoggerSource,
+    knock_scope: KnockScopeSource,
     config: ConfigSource,
     protocol_log: Arc<ProtocolLogStore>,
     /// Пока true — не запускать poll `O` (конфликт с консольными `E` на том же порту).
@@ -85,6 +87,7 @@ impl EcuSession {
             loaded_ini_path: Mutex::new(None),
             output: OutputChannelsSource::new(ini_ctx.clone()),
             composite: CompositeLoggerSource::new(),
+            knock_scope: KnockScopeSource::new(),
             config: ConfigSource::new(ini_ctx),
             protocol_log,
             stimulation_active: AtomicBool::new(false),
@@ -239,6 +242,7 @@ impl EcuSession {
     pub fn reset_workspace_for_new_project(&self) {
         self.config().stop();
         self.composite().stop();
+        self.knock_scope().stop();
         let _ = self.stop_output_data_log();
         *self.composite_data_log.lock().unwrap() = None;
         self.composite_timeline.lock().unwrap().clear();
@@ -548,6 +552,17 @@ impl EcuSession {
         &self.composite
     }
 
+    pub fn knock_scope(&self) -> &KnockScopeSource {
+        &self.knock_scope
+    }
+
+    /// Снимок knock scope; `connected` всегда из живой сессии (как футер / autoconnect).
+    pub fn knock_scope_snapshot(&self) -> crate::sources::knock_scope::KnockScopeSnapshot {
+        let mut snap = self.knock_scope.snapshot();
+        snap.connected = self.is_connected();
+        snap
+    }
+
     pub fn config(&self) -> &ConfigSource {
         &self.config
     }
@@ -596,6 +611,8 @@ impl EcuSession {
         self.output.stop();
         self.composite().disable_on_ecu(self);
         self.composite().stop();
+        self.knock_scope().disable_on_ecu(self);
+        self.knock_scope().stop();
         self.config.stop();
 
         {
@@ -708,6 +725,8 @@ impl EcuSession {
     pub fn disconnect_reason(&self, reason: &str, automatic: bool) {
         self.set_stimulation_active(false);
         self.composite().disable_on_ecu(self);
+        self.knock_scope().disable_on_ecu(self);
+        self.knock_scope().stop();
         self.output().stop();
         self.composite().stop();
         self.config().stop();
@@ -753,6 +772,8 @@ impl EcuSession {
         self.output().stop();
         self.composite().disable_on_ecu(self);
         self.composite().stop();
+        self.knock_scope().disable_on_ecu(self);
+        self.knock_scope().stop();
         f(self)
     }
 

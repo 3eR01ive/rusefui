@@ -62,6 +62,9 @@ pub fn describe_payload(payload: &[u8]) -> String {
                 4 => "trigger scope enable",
                 5 => "trigger scope disable",
                 6 => "trigger scope read",
+                8 => "knock scope enable",
+                9 => "knock scope disable",
+                10 => "knock scope read",
                 _ => "logger sub",
             };
             format!("logger {name}")
@@ -116,16 +119,90 @@ pub fn is_output_poll(payload: &[u8]) -> bool {
     payload.first() == Some(&b'O')
 }
 
-/// Опрос tooth/composite logger (`8`, `l`+read/enable/disable) — в UI как trace.
-pub fn is_composite_logger_io(payload: &[u8]) -> bool {
+/// Knock spectrogram / raw ADC (`l` + 8/9/10, `knock_scope.cpp`).
+pub fn is_knock_scope_io(payload: &[u8]) -> bool {
+    matches!(payload, [b'l', 8] | [b'l', 9] | [b'l', 10])
+}
+
+/// Trigger scope (`l` + 4/5/6, `trigger_scope.cpp`).
+pub fn is_trigger_scope_io(payload: &[u8]) -> bool {
+    matches!(payload, [b'l', 4] | [b'l', 5] | [b'l', 6])
+}
+
+/// Tooth / composite logger (`8`, `l` + 1/2/3).
+pub fn is_composite_tooth_io(payload: &[u8]) -> bool {
     match payload.first() {
         Some(b'8') => true,
-        Some(b'l') => true,
+        Some(b'l') => matches!(payload.get(1), Some(1) | Some(2) | Some(3)),
         _ => false,
     }
 }
 
-/// Чтение page 0 (`R`) — сотни чанков при загрузке; в UI не показываем.
+/// Tooth + trigger scope (без knock spectrogram).
+pub fn is_composite_logger_io(payload: &[u8]) -> bool {
+    is_composite_tooth_io(payload) || is_trigger_scope_io(payload)
+}
+
+/// Чтение page 0 (`R`) — сотни чанков при загрузке config.
 pub fn is_config_page_read(payload: &[u8]) -> bool {
     payload.first() == Some(&b'R')
+}
+
+/// Источник записи в протокольном логе (фильтр UI / файла).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ProtocolLogSource {
+    /// Обычные команды: S/Q/R/C/B/Z/E, link, info, …
+    Command,
+    /// Опрос `O` (output channels).
+    Output,
+    /// Composite + trigger scope.
+    Trigger,
+    /// Knock scope (сырой ADC для спектрограммы).
+    Spectrogram,
+    /// Массовое чтение config (`R` page 0).
+    Config,
+}
+
+impl ProtocolLogSource {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Command => "command",
+            Self::Output => "output",
+            Self::Trigger => "trigger",
+            Self::Spectrogram => "spectrogram",
+            Self::Config => "config",
+        }
+    }
+
+    /// Высокочастотный поток — в UI в основном по галочке источника, не по level trace.
+    pub fn is_data_stream(self) -> bool {
+        matches!(
+            self,
+            Self::Output | Self::Trigger | Self::Spectrogram | Self::Config
+        )
+    }
+}
+
+pub fn protocol_log_source(payload: &[u8], direction: &str) -> ProtocolLogSource {
+    if matches!(direction, "link" | "info") {
+        return ProtocolLogSource::Command;
+    }
+    if is_output_poll(payload) {
+        return ProtocolLogSource::Output;
+    }
+    if is_knock_scope_io(payload) {
+        return ProtocolLogSource::Spectrogram;
+    }
+    if is_trigger_scope_io(payload) || is_composite_tooth_io(payload) {
+        return ProtocolLogSource::Trigger;
+    }
+    if is_config_page_read(payload) {
+        return ProtocolLogSource::Config;
+    }
+    ProtocolLogSource::Command
+}
+
+pub fn is_high_volume_log_io(payload: &[u8]) -> bool {
+    protocol_log_source(payload, "tx").is_data_stream()
 }

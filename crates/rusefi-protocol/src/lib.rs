@@ -28,5 +28,6 @@ pub use serial::{pack_config_read_request, pack_config_write_request, Connection
 pub use tracer::ProtocolTracer;
 pub use log_format::{
     command_char, describe_payload, describe_response, hex_preview, is_composite_logger_io,
-    is_config_page_read, is_output_poll,
+    is_composite_tooth_io, is_config_page_read, is_high_volume_log_io, is_knock_scope_io,
+    is_output_poll, is_trigger_scope_io, protocol_log_source, ProtocolLogSource,
 };

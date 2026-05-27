@@ -1,6 +1,6 @@
 use rusefui_runtime::{
     compute_config_diff, default_log_path, enumerate_local_candidates, parse_rusefi_signature,
-    AutoConnectManager, AutoConnectSnapshot, ComponentRuntime, CompositeSnapshot,
+    AutoConnectManager, AutoConnectSnapshot, ComponentRuntime, CompositeSnapshot, KnockScopeSnapshot,
     CompositeTimelineStatus, CompositeTimelineView, CompositeTimelineViewQuery,
     ConfigDiffSnapshot, ConfigDiffStore, ConfigFieldInfo, ConfigSnapshot, ConfigSource, DiffSide,
     EcuSession, EcuSyncOnMount, IniCandidate, OnlineDownloadStatus, OutputFieldInfo,
@@ -246,6 +246,14 @@ fn emit_composite(app: &AppHandle, snapshot: &CompositeSnapshot) {
     let snapshot = snapshot.clone();
     tauri::async_runtime::spawn(async move {
         let _ = app.emit("composite-logger", snapshot);
+    });
+}
+
+fn emit_knock_scope(app: &AppHandle, snapshot: &KnockScopeSnapshot) {
+    let app = app.clone();
+    let snapshot = snapshot.clone();
+    tauri::async_runtime::spawn(async move {
+        let _ = app.emit("knock-scope", snapshot);
     });
 }
 
@@ -524,6 +532,7 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
         WorkspacePhase::ConfigLoadingFromEcu => {
             state.session.output().stop();
             state.session.composite().stop();
+            state.session.knock_scope().stop();
         }
         WorkspacePhase::ConfigFromEcu => {
             sync_output_poll_session(&state.session, app);
@@ -533,6 +542,7 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
     emit_config_update(app, &state.session.config().snapshot());
     emit_output(app, &state.session.output().snapshot());
     emit_composite(app, &state.session.composite().snapshot());
+    emit_knock_scope(app, &state.session.knock_scope_snapshot());
 }
 
 fn protocol_log_emit_now_ms() -> u64 {
@@ -818,6 +828,37 @@ pub fn composite_set_enabled(
 #[tauri::command]
 pub fn composite_set_max_window_ms(max_window_ms: f64, state: State<RuntimeState>) {
     state.session.composite().set_max_window_ms(max_window_ms);
+}
+
+#[tauri::command]
+pub fn knock_scope_get_snapshot(state: State<RuntimeState>) -> KnockScopeSnapshot {
+    state.session.knock_scope_snapshot()
+}
+
+#[tauri::command]
+pub fn knock_scope_set_enabled(
+    enabled: bool,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<KnockScopeSnapshot, String> {
+    if enabled {
+        if !state.session.is_connected() {
+            return Err("ECU не подключена".into());
+        }
+        if state.session.config().snapshot().loading {
+            return Err("Дождитесь окончания загрузки config".into());
+        }
+        let app_emit = app.clone();
+        let session = Arc::clone(&state.session);
+        state.session.knock_scope().start(session, move |snap| {
+            emit_knock_scope(&app_emit, &snap);
+        })?;
+    } else {
+        state.session.knock_scope().disable_on_ecu(&state.session);
+        state.session.knock_scope().stop();
+        emit_knock_scope(&app, &state.session.knock_scope_snapshot());
+    }
+    Ok(state.session.knock_scope_snapshot())
 }
 
 #[tauri::command]

@@ -554,6 +554,9 @@ mod tests {
         assert!(crate::is_output_poll(&[b'O', 0, 0, 0, 0]));
         assert!(crate::is_composite_logger_io(&[b'8']));
         assert!(crate::is_composite_logger_io(&[b'l', 3]));
+        assert!(crate::is_trigger_scope_io(&[b'l', 4]));
+        assert!(!crate::is_composite_logger_io(&[b'l', 8]));
+        assert!(crate::is_knock_scope_io(&[b'l', 8]));
     }
 
     /// Совпадает с `OchGetCommandTest` в rusEFI Java console.

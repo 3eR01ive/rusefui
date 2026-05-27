@@ -7,7 +7,6 @@ pub enum LogicComponentType {
     Connection,
     Simulation,
     Dyno,
-    Spectrogram,
 }
 
 impl LogicComponentType {
@@ -16,7 +15,6 @@ impl LogicComponentType {
             "connection" => Some(Self::Connection),
             "simulation" => Some(Self::Simulation),
             "dyno" => Some(Self::Dyno),
-            "spectrogram" => Some(Self::Spectrogram),
             _ => None,
         }
     }
@@ -26,7 +24,6 @@ impl LogicComponentType {
             Self::Connection => "connection",
             Self::Simulation => "simulation",
             Self::Dyno => "dyno",
-            Self::Spectrogram => "spectrogram",
         }
     }
 }

@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from "vue";
-import {
-  useProtocolLog,
-  type ProtocolLogFilterSettings,
-} from "../composables/useProtocolLog";
+import { sourceLabel, useProtocolLog } from "../composables/useProtocolLog";
 
 const { entries, logPath, filters, open, clear, formatTime, setFilters } =
   useProtocolLog();
@@ -39,21 +36,40 @@ function dirLabel(direction: string): string {
   }
 }
 
-type FilterKey = keyof ProtocolLogFilterSettings;
+type LevelFilterKey = "error" | "warn" | "info" | "debug" | "trace";
 
-const filterOptions: {
-  key: FilterKey;
-  label: string;
-  hint?: string;
-}[] = [
+type SourceFilterKey =
+  | "commands"
+  | "output"
+  | "trigger"
+  | "spectrogram"
+  | "config";
+
+const levelFilterOptions: { key: LevelFilterKey; label: string }[] = [
   { key: "error", label: "Error" },
   { key: "warn", label: "Warn" },
   { key: "info", label: "Info" },
   { key: "debug", label: "Debug" },
-  { key: "trace", label: "Trace", hint: "только файл" },
+  { key: "trace", label: "Trace" },
 ];
 
-function onFilterToggle(key: FilterKey, checked: boolean) {
+const sourceFilterOptions: {
+  key: SourceFilterKey;
+  label: string;
+  hint?: string;
+}[] = [
+  { key: "commands", label: "Команды", hint: "по умолчанию" },
+  { key: "output", label: "Output (O)" },
+  { key: "trigger", label: "Trigger / composite" },
+  { key: "spectrogram", label: "Spectrogram (knock)" },
+  { key: "config", label: "Config (R)" },
+];
+
+function onLevelToggle(key: LevelFilterKey, checked: boolean) {
+  void setFilters({ ...filters.value, [key]: checked });
+}
+
+function onSourceToggle(key: SourceFilterKey, checked: boolean) {
   void setFilters({ ...filters.value, [key]: checked });
 }
 </script>
@@ -75,38 +91,62 @@ function onFilterToggle(key: FilterKey, checked: boolean) {
           </header>
 
           <div class="sheet-filters" aria-label="Фильтры лога">
-            <label
-              v-for="opt in filterOptions"
-              :key="opt.key"
-              class="filter-chip"
-              :title="opt.hint"
-            >
-              <input
-                type="checkbox"
-                :checked="filters[opt.key]"
-                @change="
-                  onFilterToggle(
-                    opt.key,
-                    ($event.target as HTMLInputElement).checked,
-                  )
-                "
-              />
-              <span>{{ opt.label }}</span>
-              <span v-if="opt.hint" class="filter-hint">{{ opt.hint }}</span>
-            </label>
+            <div class="filter-group">
+              <span class="filter-group-label">Уровни</span>
+              <label
+                v-for="opt in levelFilterOptions"
+                :key="opt.key"
+                class="filter-chip"
+              >
+                <input
+                  type="checkbox"
+                  :checked="filters[opt.key]"
+                  @change="
+                    onLevelToggle(
+                      opt.key,
+                      ($event.target as HTMLInputElement).checked,
+                    )
+                  "
+                />
+                <span>{{ opt.label }}</span>
+              </label>
+            </div>
+            <div class="filter-group">
+              <span class="filter-group-label">Источники</span>
+              <label
+                v-for="opt in sourceFilterOptions"
+                :key="opt.key"
+                class="filter-chip"
+                :title="opt.hint"
+              >
+                <input
+                  type="checkbox"
+                  :checked="filters[opt.key]"
+                  @change="
+                    onSourceToggle(
+                      opt.key,
+                      ($event.target as HTMLInputElement).checked,
+                    )
+                  "
+                />
+                <span>{{ opt.label }}</span>
+                <span v-if="opt.hint" class="filter-hint">{{ opt.hint }}</span>
+              </label>
+            </div>
           </div>
 
           <div ref="listEl" class="sheet-list">
             <p v-if="!entries.length" class="empty">
-              Пока нет записей. Подключите ECU и выполните команды.
+              Пока нет записей. Включите источники (Spectrogram, Output, …) или выполните команды.
             </p>
             <article
               v-for="entry in entries"
               :key="entry.id"
               class="log-row"
-              :class="[entry.direction, entry.level]"
+              :class="[entry.direction, entry.level, `src-${entry.source}`]"
             >
               <div class="log-meta">
+                <span class="log-source">{{ sourceLabel(entry.source) }}</span>
                 <span class="log-level">{{ entry.level }}</span>
                 <span class="log-dir">{{ dirLabel(entry.direction) }}</span>
                 <span class="log-time">{{ formatTime(entry.timestampMs) }}</span>
@@ -181,11 +221,27 @@ function onFilterToggle(key: FilterKey, checked: boolean) {
 
 .sheet-filters {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem 0.75rem;
+  flex-direction: column;
+  gap: 0.55rem;
   padding: 0.65rem 1.25rem;
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
+}
+
+.filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.75rem;
+}
+
+.filter-group-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-subtle);
+  min-width: 4.5rem;
 }
 
 .filter-chip {
@@ -260,12 +316,31 @@ function onFilterToggle(key: FilterKey, checked: boolean) {
   background: var(--color-bg-accent-soft);
 }
 
+.log-row.src-spectrogram {
+  border-left-color: #9b6bb8;
+}
+
+.log-row.src-trigger {
+  border-left-color: #b89a4a;
+}
+
+.log-row.src-output {
+  border-left-color: #6b8cae;
+}
+
 .log-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem 0.75rem;
   align-items: center;
   margin-bottom: 0.25rem;
+}
+
+.log-source {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-accent);
 }
 
 .log-level {

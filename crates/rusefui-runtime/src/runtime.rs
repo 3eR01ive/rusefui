@@ -7,7 +7,6 @@ use crate::component::{requires_rust_logic, ComponentLogic, EcuSyncOnMount, Logi
 use crate::components::connection::ConnectionLogic;
 use crate::components::dyno::DynoLogic;
 use crate::components::simulation::SimulationLogic;
-use crate::components::spectrogram::SpectrogramLogic;
 use crate::sources::output_channels::OutputSnapshot;
 use crate::session::EcuSession;
 
@@ -53,9 +52,6 @@ impl ComponentRuntime {
             Some(LogicComponentType::Dyno) => {
                 Box::new(DynoLogic::new(Arc::clone(&self.session)))
             }
-            Some(LogicComponentType::Spectrogram) => {
-                Box::new(SpectrogramLogic::new(Arc::clone(&self.session)))
-            }
             None => {
                 return Err(format!("unknown logic component: {component_type}"));
             }
@@ -97,7 +93,6 @@ impl ComponentRuntime {
             LogicComponentType::Connection.as_str(),
             LogicComponentType::Simulation.as_str(),
             LogicComponentType::Dyno.as_str(),
-            LogicComponentType::Spectrogram.as_str(),
         ]
     }
 

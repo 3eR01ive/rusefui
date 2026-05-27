@@ -7,8 +7,8 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusefi_protocol::{
-    command_char, describe_payload, describe_response, hex_preview, is_composite_logger_io,
-    is_config_page_read, is_output_poll, CrcResponse, ProtocolError, ProtocolTracer,
+    command_char, describe_payload, describe_response, hex_preview, is_high_volume_log_io,
+    protocol_log_source, CrcResponse, ProtocolError, ProtocolLogSource, ProtocolTracer,
 };
 use serde::{Deserialize, Serialize};
 
@@ -45,6 +45,10 @@ fn default_log_level() -> LogLevel {
     LogLevel::Info
 }
 
+fn default_log_source() -> ProtocolLogSource {
+    ProtocolLogSource::Command
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProtocolLogFilterSettings {
@@ -52,8 +56,26 @@ pub struct ProtocolLogFilterSettings {
     pub warn: bool,
     pub info: bool,
     pub debug: bool,
-    /// Запись O-poll в файл. В UI trace не показывается никогда.
     pub trace: bool,
+    /// S/Q/C/B/Z/E, подключение, ошибки протокола, …
+    #[serde(default = "default_true")]
+    pub commands: bool,
+    /// Опрос `O` (output channels).
+    #[serde(default)]
+    pub output: bool,
+    /// Composite tooth logger + trigger scope (`8`, `l`+1…6).
+    #[serde(default)]
+    pub trigger: bool,
+    /// Knock scope / спектрограмма (`l`+8…10).
+    #[serde(default)]
+    pub spectrogram: bool,
+    /// Массовое чтение config (`R`).
+    #[serde(default)]
+    pub config: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Default for ProtocolLogFilterSettings {
@@ -64,12 +86,17 @@ impl Default for ProtocolLogFilterSettings {
             info: true,
             debug: false,
             trace: false,
+            commands: true,
+            output: false,
+            trigger: false,
+            spectrogram: false,
+            config: false,
         }
     }
 }
 
 impl ProtocolLogFilterSettings {
-    pub fn allows_file(&self, level: LogLevel) -> bool {
+    pub fn allows_level(&self, level: LogLevel) -> bool {
         match level {
             LogLevel::Error => self.error,
             LogLevel::Warn => self.warn,
@@ -79,14 +106,34 @@ impl ProtocolLogFilterSettings {
         }
     }
 
-    pub fn allows_ui(&self, level: LogLevel) -> bool {
-        match level {
-            LogLevel::Trace => false,
-            LogLevel::Error => self.error,
-            LogLevel::Warn => self.warn,
-            LogLevel::Info => self.info,
-            LogLevel::Debug => self.debug,
+    pub fn allows_source(&self, source: ProtocolLogSource) -> bool {
+        match source {
+            ProtocolLogSource::Command => self.commands,
+            ProtocolLogSource::Output => self.output,
+            ProtocolLogSource::Trigger => self.trigger,
+            ProtocolLogSource::Spectrogram => self.spectrogram,
+            ProtocolLogSource::Config => self.config,
         }
+    }
+
+    pub fn allows_file(&self, entry: &ProtocolLogEntry) -> bool {
+        if !self.allows_source(entry.source) {
+            return false;
+        }
+        if entry.source.is_data_stream() {
+            return true;
+        }
+        self.allows_level(entry.level)
+    }
+
+    pub fn allows_ui(&self, entry: &ProtocolLogEntry) -> bool {
+        if !self.allows_source(entry.source) {
+            return false;
+        }
+        if entry.source.is_data_stream() {
+            return true;
+        }
+        self.allows_level(entry.level)
     }
 }
 
@@ -97,6 +144,8 @@ pub struct ProtocolLogEntry {
     pub timestamp_ms: u64,
     #[serde(default = "default_log_level")]
     pub level: LogLevel,
+    #[serde(default = "default_log_source")]
+    pub source: ProtocolLogSource,
     pub direction: String,
     pub command: Option<String>,
     pub summary: String,
@@ -134,11 +183,9 @@ impl ProtocolLogStore {
         let Ok(text) = fs::read_to_string(&self.path) else {
             return;
         };
-        let filters = self.filters.read().unwrap();
         let mut parsed: Vec<ProtocolLogEntry> = text
             .lines()
             .filter_map(|line| serde_json::from_str::<ProtocolLogEntry>(line).ok())
-            .filter(|e| filters.allows_ui(e.level))
             .collect();
         if parsed.is_empty() {
             return;
@@ -172,7 +219,7 @@ impl ProtocolLogStore {
         let entries = self.entries.lock().unwrap();
         let filtered: Vec<ProtocolLogEntry> = entries
             .iter()
-            .filter(|e| filters.allows_ui(e.level))
+            .filter(|e| filters.allows_ui(e))
             .cloned()
             .collect();
         let keep = limit.min(filtered.len());
@@ -186,7 +233,15 @@ impl ProtocolLogStore {
     fn push(&self, entry: ProtocolLogEntry) {
         let filters = self.filters.read().unwrap();
 
-        if filters.allows_file(entry.level) {
+        {
+            let mut entries = self.entries.lock().unwrap();
+            entries.push_back(entry.clone());
+            while entries.len() > MAX_MEMORY_ENTRIES {
+                entries.pop_front();
+            }
+        }
+
+        if filters.allows_file(&entry) {
             if let Ok(mut file) = OpenOptions::new()
                 .create(true)
                 .append(true)
@@ -198,15 +253,7 @@ impl ProtocolLogStore {
             }
         }
 
-        if filters.allows_ui(entry.level) {
-            {
-                let mut entries = self.entries.lock().unwrap();
-                entries.push_back(entry.clone());
-                while entries.len() > MAX_MEMORY_ENTRIES {
-                    entries.pop_front();
-                }
-            }
-
+        if filters.allows_ui(&entry) {
             for listener in self.listeners.lock().unwrap().iter() {
                 listener(&entry);
             }
@@ -217,9 +264,7 @@ impl ProtocolLogStore {
         match direction {
             "err" => LogLevel::Error,
             "info" => LogLevel::Info,
-            _ if is_output_poll(payload) || is_config_page_read(payload) || is_composite_logger_io(payload) => {
-                LogLevel::Trace
-            }
+            _ if protocol_log_source(payload, direction).is_data_stream() => LogLevel::Trace,
             _ => LogLevel::Info,
         }
     }
@@ -229,13 +274,14 @@ impl ProtocolLogStore {
         direction: &str,
         command: Option<char>,
         summary: String,
-        payload: &[u8],
+        classify_payload: &[u8],
+        display_payload: &[u8],
         frame: &[u8],
         response_code: Option<u8>,
         level: Option<LogLevel>,
     ) -> ProtocolLogEntry {
-        let compact =
-            is_output_poll(payload) || is_composite_logger_io(payload);
+        let source = protocol_log_source(classify_payload, direction);
+        let compact = is_high_volume_log_io(classify_payload);
         let payload_max = if compact {
             OUTPUT_POLL_PAYLOAD_HEX_MAX
         } else {
@@ -244,11 +290,12 @@ impl ProtocolLogStore {
         ProtocolLogEntry {
             id: self.next_id.fetch_add(1, Ordering::SeqCst),
             timestamp_ms: now_ms(),
-            level: level.unwrap_or_else(|| Self::level_for(direction, payload)),
+            level: level.unwrap_or_else(|| Self::level_for(direction, classify_payload)),
+            source,
             direction: direction.into(),
             command: command.map(|c| c.to_string()),
             summary,
-            payload_hex: hex_preview(payload, payload_max),
+            payload_hex: hex_preview(display_payload, payload_max),
             frame_hex: hex_preview(frame, FRAME_HEX_MAX),
             response_code,
         }
@@ -264,6 +311,7 @@ impl ProtocolLogStore {
             "link",
             None,
             summary.into(),
+            &[],
             &[],
             &[],
             None,
@@ -308,6 +356,7 @@ impl ProtocolTracer for ProtocolLogStore {
             command_char(payload),
             describe_payload(payload),
             payload,
+            payload,
             frame,
             None,
             None,
@@ -321,6 +370,7 @@ impl ProtocolTracer for ProtocolLogStore {
             "rx",
             command_char(request_payload),
             describe_response(request_payload, response),
+            request_payload,
             &response.payload,
             frame,
             Some(response.code),
@@ -335,6 +385,7 @@ impl ProtocolTracer for ProtocolLogStore {
             command_char(request_payload),
             error.to_string(),
             request_payload,
+            request_payload,
             &[],
             None,
             None,
@@ -343,7 +394,7 @@ impl ProtocolTracer for ProtocolLogStore {
     }
 
     fn on_info(&self, message: &str) {
-        let entry = self.make_entry("info", None, message.into(), &[], &[], None, None);
+        let entry = self.make_entry("info", None, message.into(), &[], &[], &[], None, None);
         self.push(entry);
     }
 }
@@ -368,6 +419,7 @@ fn now_ms() -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rusefi_protocol::is_knock_scope_io;
 
     #[test]
     fn append_and_list() {
@@ -379,27 +431,68 @@ mod tests {
     }
 
     #[test]
-    fn trace_not_in_ui() {
-        let dir = std::env::temp_dir().join(format!("rusefui-log-trace-{}", now_ms()));
+    fn output_hidden_by_default() {
+        let dir = std::env::temp_dir().join(format!("rusefui-log-output-{}", now_ms()));
         let path = dir.join("protocol.log");
         let store = ProtocolLogStore::new(&path);
-        let mut filters = ProtocolLogFilterSettings::default();
-        filters.trace = true;
-        store.set_filters(filters);
 
         let entry = store.make_entry(
             "tx",
             Some('O'),
             "output offset=0 count=1024".into(),
             &[b'O', 0, 0, 0, 4],
+            &[b'O', 0, 0, 0, 4],
             &[],
             None,
             None,
         );
+        assert_eq!(entry.source, ProtocolLogSource::Output);
         assert_eq!(entry.level, LogLevel::Trace);
         store.push(entry);
 
         assert_eq!(store.list(10).len(), 0);
-        assert!(fs::read_to_string(&path).unwrap().contains("trace"));
+
+        let mut filters = ProtocolLogFilterSettings::default();
+        filters.output = true;
+        store.set_filters(filters);
+        assert_eq!(store.list(10).len(), 1);
+    }
+
+    #[test]
+    fn knock_scope_is_spectrogram_source() {
+        assert!(is_knock_scope_io(&[b'l', 8]));
+        let src = protocol_log_source(&[b'l', 10], "tx");
+        assert_eq!(src, ProtocolLogSource::Spectrogram);
+
+        let dir = std::env::temp_dir().join(format!("rusefui-log-knock-{}", now_ms()));
+        let store = ProtocolLogStore::new(dir.join("protocol.log"));
+        let entry = store.make_entry(
+            "tx",
+            Some('l'),
+            "knock".into(),
+            &[b'l', 8],
+            &[b'l', 8],
+            &[],
+            None,
+            None,
+        );
+        assert_eq!(entry.source, ProtocolLogSource::Spectrogram);
+        store.push(entry);
+        assert_eq!(store.list(10).len(), 0);
+
+        let mut filters = ProtocolLogFilterSettings::default();
+        filters.spectrogram = true;
+        store.set_filters(filters);
+        assert_eq!(store.list(10).len(), 1);
+    }
+
+    #[test]
+    fn trigger_separate_from_spectrogram() {
+        let tooth = protocol_log_source(&[b'8'], "tx");
+        let trig = protocol_log_source(&[b'l', 4], "tx");
+        let knock = protocol_log_source(&[b'l', 8], "tx");
+        assert_eq!(tooth, ProtocolLogSource::Trigger);
+        assert_eq!(trig, ProtocolLogSource::Trigger);
+        assert_eq!(knock, ProtocolLogSource::Spectrogram);
     }
 }
