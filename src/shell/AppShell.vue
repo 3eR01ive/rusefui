@@ -39,6 +39,7 @@ const {
   info: projectInfo,
   createNewProject,
   openProject,
+  closeProject,
   saveProject,
   saveProjectAs,
   captureEcuConfig,
@@ -183,6 +184,14 @@ function onOpenProject(): void {
   });
 }
 
+function onCloseProject(): void {
+  void runProjectAction(async () => {
+    const proceed = await confirmUnsavedChanges(unsavedCheck("switch"));
+    if (!proceed) return;
+    await closeProject();
+  });
+}
+
 function onSaveProject(): void {
   void runProjectAction(async () => {
     await saveProject();
@@ -255,6 +264,7 @@ async function onBurn() {
         :can-capture-config="dataCtx.connection.value.connected"
         @new-project="onNewProject"
         @open-project="onOpenProject"
+        @close-project="onCloseProject"
         @save-project="onSaveProject"
         @save-project-as="onSaveProjectAs"
         @capture-config="onCaptureConfigToProject"

@@ -12,6 +12,7 @@ defineProps<{
 const emit = defineEmits<{
   newProject: [];
   openProject: [];
+  closeProject: [];
   saveProject: [];
   saveProjectAs: [];
   captureConfig: [];
@@ -125,6 +126,19 @@ onUnmounted(() => {
           <svg viewBox="0 0 16 16" fill="none"><path d="M2 5.5C2 4.67 2.67 4 3.5 4H6.88l1.25 1.25H12.5C13.33 5.25 14 5.92 14 6.75v5.25C14 12.83 13.33 13.5 12.5 13.5h-9C2.67 13.5 2 12.83 2 12V5.5Z" fill="currentColor" opacity=".18"/><path d="M2 7C2 6.17 2.67 5.5 3.5 5.5H12.5c.83 0 1.5.67 1.5 1.5V12c0 .83-.67 1.5-1.5 1.5h-9C2.67 13.5 2 12.83 2 12V7Z" fill="currentColor"/><path d="M2 5.5C2 4.67 2.67 4 3.5 4H6.88l1.25 1.5H2V5.5Z" fill="currentColor" opacity=".65"/></svg>
         </span>
         Открыть проект…
+      </button>
+
+      <button
+        type="button"
+        role="menuitem"
+        class="menu-item"
+        :disabled="projectBusy"
+        @click="action(() => emit('closeProject'))"
+      >
+        <span class="menu-item-icon">
+          <svg viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4L4 12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+        </span>
+        Закрыть проект
       </button>
 
       <div class="project-dropdown-sep" />

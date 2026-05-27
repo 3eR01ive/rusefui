@@ -61,6 +61,12 @@ export interface ProjectLogRef {
   kind: string;
 }
 
+export interface RecentProjectEntry {
+  path: string;
+  label: string;
+  exists: boolean;
+}
+
 /** Сигнал для компонентов: перечитать UI из проекта. */
 export const projectUiEpoch = ref(0);
 
@@ -130,6 +136,20 @@ export function useProject() {
     return true;
   }
 
+  async function openProjectAtPath(path: string): Promise<boolean> {
+    await invoke("project_load", { path });
+    return true;
+  }
+
+  /** Закрыть проект и вернуть экран Gate. */
+  async function closeProject(): Promise<void> {
+    await invoke("project_close");
+  }
+
+  async function listRecentProjects(): Promise<RecentProjectEntry[]> {
+    return invoke<RecentProjectEntry[]>("recent_projects_list");
+  }
+
   async function saveProject(): Promise<string | null> {
     try {
       return await invoke<string>("project_save");
@@ -191,6 +211,9 @@ export function useProject() {
     refreshInfo,
     createNewProject,
     openProject,
+    openProjectAtPath,
+    listRecentProjects,
+    closeProject,
     saveProject,
     saveProjectAs,
     captureEcuConfig,

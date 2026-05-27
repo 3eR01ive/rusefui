@@ -8,6 +8,7 @@ mod config_diff;
 mod dyno;
 mod ini;
 mod project;
+mod recent_projects;
 mod ui_persist;
 mod protocol_log;
 mod runtime;
@@ -32,6 +33,7 @@ pub use ini::{
 pub use project::{
     ProjectEcuConfig, ProjectInfo, ProjectLogRef, ProjectStore, RusefuiProject, FORMAT_VERSION,
 };
+pub use recent_projects::{RecentProjectEntry, RecentProjectsStore};
 pub use ui_persist::{
     CompositeChartUiSettings, DynoUiSettings, LogGraphGroupJson, LogRangeInputJson, LogUiSettings,
     ProjectUi, PERSIST_KEY_COMPOSITE_CHART, PERSIST_KEY_DYNO, PERSIST_KEY_OUTPUT_CHART,

@@ -5,8 +5,8 @@ use rusefui_runtime::{
     ConfigSnapshot, ConfigSource, DiffSide, EcuSession, EcuSyncOnMount, OutputFieldInfo,
     OutputSnapshot, OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl,
     ProjectInfo, ProjectLogRef, ProjectStore, ProtocolLogEntry, ProtocolLogFilterSettings,
-    ProtocolLogStore, RusefuiProject, WorkspaceFsm, WorkspaceInputs, WorkspacePhase,
-    WorkspaceSnapshot,
+    ProtocolLogStore, RecentProjectEntry, RecentProjectsStore, RusefuiProject, WorkspaceFsm,
+    WorkspaceInputs, WorkspacePhase, WorkspaceSnapshot,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -26,6 +26,7 @@ pub struct RuntimeState {
     pub project: Mutex<ProjectStore>,
     pub config_diff: Mutex<ConfigDiffStore>,
     pub workspace_fsm: Mutex<WorkspaceFsm>,
+    pub recent_projects: Mutex<RecentProjectsStore>,
     /// Последнее отправленное в UI `ecu-connection` (без дублей на каждый dispatch).
     last_ecu_connection_emit: Mutex<Option<EcuConnectionEvent>>,
     /// RAM ECU изменена, но ещё не записана во flash (B-команда).
@@ -44,6 +45,7 @@ impl RuntimeState {
             project: Mutex::new(ProjectStore::new()),
             config_diff: Mutex::new(ConfigDiffStore::default()),
             workspace_fsm: Mutex::new(WorkspaceFsm::new()),
+            recent_projects: Mutex::new(RecentProjectsStore::new()),
             last_ecu_connection_emit: Mutex::new(None),
             ram_dirty: Arc::new(AtomicBool::new(false)),
         }
@@ -160,6 +162,14 @@ fn try_start_config_diff(state: &RuntimeState, app: &AppHandle) {
 fn emit_project(app: &AppHandle, state: &RuntimeState) {
     let info = state.project.lock().unwrap().info();
     let _ = app.emit("project-changed", &info);
+}
+
+fn record_recent_project(state: &RuntimeState, path: &std::path::Path) {
+    let _ = state
+        .recent_projects
+        .lock()
+        .unwrap()
+        .record(path);
 }
 
 /// Сброс config/timeline в UI после смены проекта.
@@ -1411,10 +1421,12 @@ pub fn project_create_new(
     app: AppHandle,
 ) -> Result<(), String> {
     let label = name.unwrap_or_else(|| "Новый проект".into());
+    let path_ref = std::path::Path::new(&path);
     let store = state.project.lock().unwrap();
     store.new_document(label);
-    store.save_to_path(std::path::Path::new(&path))?;
+    store.save_to_path(path_ref)?;
     drop(store);
+    record_recent_project(&state, path_ref);
     state.session.reset_workspace_for_new_project();
     clear_config_diff(&state, &app);
     emit_project(&app, &state);
@@ -1424,11 +1436,13 @@ pub fn project_create_new(
 
 #[tauri::command]
 pub fn project_load(path: String, state: State<RuntimeState>, app: AppHandle) -> Result<(), String> {
+    let path_ref = std::path::Path::new(&path);
     let store = state.project.lock().unwrap();
-    store.load_from_path(std::path::Path::new(&path))?;
+    store.load_from_path(path_ref)?;
     state.session.reset_workspace_for_new_project();
     store.apply_to_session(&state.session)?;
     drop(store);
+    record_recent_project(&state, path_ref);
     clear_config_diff(&state, &app);
     emit_project(&app, &state);
     emit_workspace_reset(&app, &state);
@@ -1446,6 +1460,7 @@ pub fn project_save(state: State<RuntimeState>, app: AppHandle) -> Result<String
         .ok_or_else(|| "Укажите файл: «Сохранить как…»".to_string())?;
     store.save_to_path(&path)?;
     drop(store);
+    record_recent_project(&state, &path);
     emit_project(&app, &state);
     Ok(path.display().to_string())
 }
@@ -1456,12 +1471,35 @@ pub fn project_save_path(
     state: State<RuntimeState>,
     app: AppHandle,
 ) -> Result<(), String> {
+    let path_ref = std::path::Path::new(&path);
     state
         .project
         .lock()
         .unwrap()
-        .save_to_path(std::path::Path::new(&path))?;
+        .save_to_path(path_ref)?;
+    record_recent_project(&state, path_ref);
     emit_project(&app, &state);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn recent_projects_list(state: State<RuntimeState>) -> Vec<RecentProjectEntry> {
+    state.recent_projects.lock().unwrap().list_entries()
+}
+
+/// Закрыть проект и вернуть UI в фазу Gate (экран создания/открытия).
+#[tauri::command]
+pub fn project_close(state: State<RuntimeState>, app: AppHandle) -> Result<(), String> {
+    state
+        .project
+        .lock()
+        .unwrap()
+        .new_document("Новый проект".into());
+    set_burn_pending(&state, &app, false);
+    state.session.reset_workspace_for_new_project();
+    clear_config_diff(&state, &app);
+    emit_project(&app, &state);
+    emit_workspace_reset(&app, &state);
     Ok(())
 }
 

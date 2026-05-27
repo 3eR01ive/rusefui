@@ -65,6 +65,7 @@ pub fn run() {
             runtime_cmds::project_ui_persist_keys,
             runtime_cmds::project_create_new,
             runtime_cmds::project_load,
+            runtime_cmds::project_close,
             runtime_cmds::project_save,
             runtime_cmds::project_save_path,
             runtime_cmds::project_capture_ecu_config,
@@ -73,6 +74,7 @@ pub fn run() {
             runtime_cmds::project_list_logs,
             runtime_cmds::pick_project_open_path,
             runtime_cmds::pick_project_save_path,
+            runtime_cmds::recent_projects_list,
             runtime_cmds::app_force_quit,
         ])
         .on_window_event(|window, event| {
