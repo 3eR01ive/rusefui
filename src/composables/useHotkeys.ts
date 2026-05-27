@@ -9,6 +9,27 @@ export const saveProjectCallback = { value: null as (() => void) | null };
 export const openProjectCallback = { value: null as (() => void) | null };
 export const burnCallback = { value: null as (() => void) | null };
 
+/** Enter без модификаторов на активной вкладке — по tab id. */
+const tabEnterHandlers = new Map<string, () => void>();
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
+  const tag = el.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  return el.isContentEditable;
+}
+
+/** Регистрирует обработчик Enter для вкладки (снимается при unmount). */
+export function useTabEnterHandler(tabId: string, handler: () => void): void {
+  onMounted(() => {
+    tabEnterHandlers.set(tabId, handler);
+  });
+  onUnmounted(() => {
+    tabEnterHandlers.delete(tabId);
+  });
+}
+
 export function useGlobalHotkeys() {
   function onKeydown(e: KeyboardEvent) {
     if (e.ctrlKey || e.metaKey) {
@@ -26,6 +47,15 @@ export function useGlobalHotkeys() {
       if (e.code === "Enter") {
         e.preventDefault();
         burnCallback.value?.();
+        return;
+      }
+    }
+
+    if (e.key === "Enter" && !e.altKey && !e.shiftKey) {
+      const handler = tabEnterHandlers.get(activeTabId.value);
+      if (handler && !isEditableTarget(e.target)) {
+        e.preventDefault();
+        handler();
         return;
       }
     }

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, onMounted, ref, shallowRef, watch } from "vue";
 import { parse as parseYaml } from "yaml";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import ComponentHost from "../ComponentHost.vue";
+import { useTabEnterHandler } from "../../composables/useHotkeys";
 
 interface ManifestEntry {
   id: string;
@@ -32,6 +33,9 @@ const manifestPath = computed(
 const manifest = shallowRef<Manifest | null>(null);
 const loadError = ref<string | null>(null);
 const filter = ref("");
+const filterInputRef = ref<HTMLInputElement | null>(null);
+const panelListRef = ref<HTMLElement | null>(null);
+const panelBtnRefs = new Map<string, HTMLButtonElement>();
 const selectedId = ref<string>("");
 const panelRoot = shallowRef<ComponentInstance | null>(null);
 const panelLoading = ref(false);
@@ -58,6 +62,90 @@ const groupedPanels = computed(() => {
   return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
 });
 
+/** Плоский список панелей с учётом фильтра (для ↑↓). */
+const filteredPanels = computed((): ManifestEntry[] => {
+  const list = manifest.value?.panels ?? [];
+  const q = filter.value.trim().toLowerCase();
+  if (!q) return list;
+  return list.filter(
+    (p) =>
+      p.title.toLowerCase().includes(q) ||
+      p.id.toLowerCase().includes(q) ||
+      p.menuPath.toLowerCase().includes(q),
+  );
+});
+
+function setPanelBtnRef(id: string, el: unknown): void {
+  if (el instanceof HTMLButtonElement) panelBtnRefs.set(id, el);
+  else panelBtnRefs.delete(id);
+}
+
+function ensureGroupExpandedForEntry(entry: ManifestEntry): void {
+  if (filter.value.trim()) return;
+  const group = entry.menuPath.split(" › ")[0] ?? "Other";
+  if (expandedGroups.value.has(group)) return;
+  expandedGroups.value = new Set([...expandedGroups.value, group]);
+}
+
+function scrollSelectedIntoView(): void {
+  void nextTick(() => {
+    panelBtnRefs.get(selectedId.value)?.scrollIntoView({ block: "nearest" });
+  });
+}
+
+function focusSelectedPanelBtn(): void {
+  void nextTick(() => {
+    panelBtnRefs.get(selectedId.value)?.focus();
+    scrollSelectedIntoView();
+  });
+}
+
+function moveSelection(delta: -1 | 1): void {
+  const panels = filteredPanels.value;
+  if (!panels.length) return;
+
+  const idx = panels.findIndex((p) => p.id === selectedId.value);
+  const nextIdx =
+    idx < 0
+      ? delta > 0
+        ? 0
+        : panels.length - 1
+      : Math.max(0, Math.min(idx + delta, panels.length - 1));
+
+  const entry = panels[nextIdx]!;
+  ensureGroupExpandedForEntry(entry);
+  selectedId.value = entry.id;
+  focusSelectedPanelBtn();
+}
+
+function onSidebarKeydown(e: KeyboardEvent): void {
+  const target = e.target as HTMLElement;
+  const inFilter = target === filterInputRef.value;
+  const inList = target.closest(".panel-list") !== null;
+  if (!inFilter && !inList) return;
+
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    if (inFilter) {
+      if (!filteredPanels.value.length) return;
+      if (!filteredPanels.value.some((p) => p.id === selectedId.value)) {
+        selectedId.value = filteredPanels.value[0]!.id;
+        ensureGroupExpandedForEntry(filteredPanels.value[0]!);
+      }
+      focusSelectedPanelBtn();
+      return;
+    }
+    moveSelection(1);
+    return;
+  }
+
+  if (e.key === "ArrowUp") {
+    if (inFilter) return;
+    e.preventDefault();
+    moveSelection(-1);
+  }
+}
+
 async function loadManifest(): Promise<void> {
   loadError.value = null;
   try {
@@ -65,7 +153,9 @@ async function loadManifest(): Promise<void> {
     if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
     manifest.value = (await res.json()) as Manifest;
     if (manifest.value.panels.length && !selectedId.value) {
-      selectedId.value = manifest.value.panels[0]!.id;
+      const first = manifest.value.panels[0]!;
+      selectedId.value = first.id;
+      ensureGroupExpandedForEntry(first);
     }
   } catch (e) {
     loadError.value = String(e);
@@ -101,12 +191,23 @@ async function loadPanel(id: string): Promise<void> {
   }
 }
 
+useTabEnterHandler("ini-preview", () => {
+  const el = filterInputRef.value;
+  if (!el) return;
+  el.focus();
+  el.select();
+});
+
 onMounted(() => {
   void loadManifest();
 });
 
 watch(selectedId, (id) => {
-  if (id) void loadPanel(id);
+  if (id) {
+    const entry = manifest.value?.panels.find((p) => p.id === id);
+    if (entry) ensureGroupExpandedForEntry(entry);
+    void loadPanel(id);
+  }
 });
 
 watch(manifest, (m) => {
@@ -137,7 +238,7 @@ function toggleGroup(group: string): void {
 
 <template>
   <div class="ini-panels-browser">
-    <aside class="sidebar">
+    <aside class="sidebar" @keydown="onSidebarKeydown">
       <div class="sidebar-head">
         <h3 class="sidebar-title">INI панели</h3>
         <p v-if="manifest" class="sidebar-meta">
@@ -145,6 +246,7 @@ function toggleGroup(group: string): void {
         </p>
       </div>
       <input
+        ref="filterInputRef"
         v-model="filter"
         type="search"
         class="filter"
@@ -152,7 +254,7 @@ function toggleGroup(group: string): void {
         autocomplete="off"
       />
       <p v-if="loadError" class="err">{{ loadError }}</p>
-      <div v-else class="panel-list">
+      <div v-else ref="panelListRef" class="panel-list" tabindex="-1" role="listbox" aria-label="INI панели">
         <div v-for="[group, items] in groupedPanels" :key="group" class="group">
           <button
             type="button"
@@ -168,9 +270,12 @@ function toggleGroup(group: string): void {
             <button
               v-for="p in items"
               :key="p.id"
+              :ref="(el) => setPanelBtnRef(p.id, el)"
               type="button"
               class="panel-btn"
               :class="{ active: p.id === selectedId }"
+              role="option"
+              :aria-selected="p.id === selectedId"
               @click="selectedId = p.id"
             >
               <span class="panel-btn-title">{{ p.title }}</span>
@@ -250,6 +355,18 @@ function toggleGroup(group: string): void {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  outline: none;
+}
+
+.panel-list:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.panel-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
 }
 
 .group-title {

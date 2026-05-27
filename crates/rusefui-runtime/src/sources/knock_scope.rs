@@ -1,7 +1,8 @@
 //! Knock scope — сырой KNOCK_ADC (`l`+8/9/10), отдельный poll-поток как composite logger.
 //!
-//! Читать буфер только когда в output channels `knockScopeReady` (см. `knock_scope.cpp`).
-//! Ответ `0x84` на `l`+10 без буфера на ECU — scope не запущен (часто `enableKnockScope = no`).
+//! Читать буфер циклически (`l`+10), как composite `l`+3: готовность по ответу
+//! (данные или 0x84 «ещё не готов»). Опора только на `knockScopeReady` из `O` даёт
+//! пропуски (флаг обнуляется сразу после READ, DMA ~18 ms, poll O 5 ms).
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
@@ -12,11 +13,15 @@ use serde::Serialize;
 
 use crate::session::EcuSession;
 
-const POLL_WAIT_READY: Duration = Duration::from_millis(5);
-const POLL_AFTER_CHUNK: Duration = Duration::from_millis(2);
+const POLL_WAIT_READY: Duration = Duration::from_millis(10);
+/// После READ на ECU DMA ~19 ms; затем снова `l`+8 (иначе scope гаснет → сплошной 0x84).
+const REARM_AFTER_CAPTURE: Duration = Duration::from_millis(22);
 const POLL_IDLE: Duration = Duration::from_millis(40);
 const STATUS_EMIT_INTERVAL: Duration = Duration::from_millis(400);
 const STALL_HINT_AFTER: Duration = Duration::from_secs(4);
+const SERIAL_MUTEX_WAIT: Duration = Duration::from_millis(800);
+/// Повторный `l`+8, если долго только 0x84 без успешного захвата.
+const REARM_STALL: Duration = Duration::from_millis(400);
 
 const READY_FIELD: &str = "knockScopeReady";
 const CONFIG_ENABLE_FIELD: &str = "enableKnockScope";
@@ -193,7 +198,9 @@ impl KnockScopeSource {
         if !self.scope_enabled_on_ecu.load(Ordering::SeqCst) {
             return;
         }
-        let _ = session.try_with_link(|link| link.set_knock_scope_enabled(false));
+        let _ = session.with_link_wait(SERIAL_MUTEX_WAIT, |link| {
+            link.set_knock_scope_enabled(false)
+        });
         self.scope_enabled_on_ecu.store(false, Ordering::SeqCst);
     }
 
@@ -266,6 +273,7 @@ fn poll_loop(
     on_tick: Arc<dyn Fn(KnockScopeSnapshot) + Send + Sync>,
 ) {
     let mut last_status_emit = Instant::now();
+    let mut not_ready_since: Option<Instant> = None;
 
     while running.load(Ordering::SeqCst) {
         let connected = session.is_connected();
@@ -282,59 +290,82 @@ fn poll_loop(
         let mut did_work = false;
 
         if allow_poll {
-            if knock_ready {
-                if let Some(result) = session.try_with_link(|link| link.read_knock_scope_buffer()) {
-                    match result {
-                        Ok(bytes) if !bytes.is_empty() => {
-                            let (samples, min_v, max_v) = parse_samples(&bytes);
-                            let mut snap = snapshot.write().unwrap();
-                            snap.connected = connected;
-                            snap.scope_enabled = true;
-                            snap.polling = true;
-                            snap.knock_scope_ready = true;
-                            snap.enable_knock_scope_in_config = config_enable;
-                            snap.last_byte_len = bytes.len();
-                            snap.samples = samples;
-                            snap.sample_count = snap.samples.len();
-                            snap.sample_min = min_v;
-                            snap.sample_max = max_v;
-                            snap.buffer_duration_ms = buffer_duration_ms(snap.sample_count);
-                            snap.capture_count = snap.capture_count.saturating_add(1);
-                            snap.last_error = None;
-                            snap.status_message =
-                                status_hint(snap.capture_count, true, config_enable, waiting_for);
-                            let out = snap.clone();
-                            drop(snap);
-                            on_tick(out);
-                            did_work = true;
-                            thread::sleep(POLL_AFTER_CHUNK);
-                        }
-                        Ok(_) => {}
-                        Err(e) if is_buffer_not_ready(&e) => {
-                            last_error = Some(format!(
-                                "0x84 после knockScopeReady — буфер на ECU пуст \
-                                 (scope выключен?): {e}"
-                            ));
-                        }
-                        Err(e) => last_error = Some(e),
-                    }
+            if let Some(since) = not_ready_since {
+                if since.elapsed() >= REARM_STALL
+                    && snapshot.read().unwrap().capture_count > 0
+                {
+                    let _ = session.with_link_wait(SERIAL_MUTEX_WAIT, |link| {
+                        link.set_knock_scope_enabled(true)
+                    });
+                    not_ready_since = None;
+                    did_work = true;
+                    thread::sleep(REARM_AFTER_CAPTURE);
                 }
-            } else if last_status_emit.elapsed() >= STATUS_EMIT_INTERVAL {
-                let mut snap = snapshot.write().unwrap();
-                snap.connected = connected;
-                snap.scope_enabled = true;
-                snap.polling = true;
-                snap.knock_scope_ready = false;
-                snap.enable_knock_scope_in_config = config_enable;
-                snap.status_message =
-                    status_hint(snap.capture_count, false, config_enable, waiting_for);
-                snap.last_error = last_error.clone();
-                let out = snap.clone();
-                drop(snap);
-                on_tick(out);
-                last_status_emit = Instant::now();
-                did_work = true;
             }
+
+            match session.with_link_wait(SERIAL_MUTEX_WAIT, |link| link.read_knock_scope_buffer())
+            {
+                Ok(bytes) if !bytes.is_empty() => {
+                    let (samples, min_v, max_v) = parse_samples(&bytes);
+                    let mut snap = snapshot.write().unwrap();
+                    snap.connected = connected;
+                    snap.scope_enabled = true;
+                    snap.polling = true;
+                    snap.knock_scope_ready = output_knock_scope_ready(&session);
+                    snap.enable_knock_scope_in_config = config_enable;
+                    snap.last_byte_len = bytes.len();
+                    snap.samples = samples;
+                    snap.sample_count = snap.samples.len();
+                    snap.sample_min = min_v;
+                    snap.sample_max = max_v;
+                    snap.buffer_duration_ms = buffer_duration_ms(snap.sample_count);
+                    snap.capture_count = snap.capture_count.saturating_add(1);
+                    snap.last_error = None;
+                    snap.status_message =
+                        status_hint(snap.capture_count, true, config_enable, waiting_for);
+                    let out = snap.clone();
+                    drop(snap);
+                    on_tick(out);
+                    not_ready_since = None;
+                    did_work = true;
+                    thread::sleep(REARM_AFTER_CAPTURE);
+                    let _ = session.with_link_wait(SERIAL_MUTEX_WAIT, |link| {
+                        link.set_knock_scope_enabled(true)
+                    });
+                }
+                Ok(_) => {
+                    not_ready_since.get_or_insert_with(Instant::now);
+                    thread::sleep(POLL_WAIT_READY);
+                    did_work = true;
+                }
+                Err(e) if is_buffer_not_ready(&e) => {
+                    not_ready_since.get_or_insert_with(Instant::now);
+                    thread::sleep(POLL_WAIT_READY);
+                    did_work = true;
+                }
+                Err(e) => {
+                    last_error = Some(e);
+                }
+            }
+        }
+
+        if allow_poll && !did_work && {
+            snapshot.read().unwrap().capture_count == 0
+        } && last_status_emit.elapsed() >= STATUS_EMIT_INTERVAL
+        {
+            let mut snap = snapshot.write().unwrap();
+            snap.connected = connected;
+            snap.scope_enabled = true;
+            snap.polling = true;
+            snap.knock_scope_ready = knock_ready;
+            snap.enable_knock_scope_in_config = config_enable;
+            snap.status_message =
+                status_hint(0, knock_ready, config_enable, waiting_for);
+            let out = snap.clone();
+            drop(snap);
+            on_tick(out);
+            last_status_emit = Instant::now();
+            did_work = true;
         }
 
         if last_error.is_some() && last_status_emit.elapsed() >= STATUS_EMIT_INTERVAL {

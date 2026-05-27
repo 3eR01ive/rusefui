@@ -16,3 +16,4 @@ children:
         id: knock-spectrogram
         props:
           height: 320
+          windowMs: 500

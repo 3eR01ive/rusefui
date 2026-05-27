@@ -1,3 +1,29 @@
+/** Min/max по столбцам — для длинного буфера на узком canvas. */
+export function downsampleMinMax(samples: number[], targetPoints: number): number[] {
+  if (samples.length <= targetPoints || targetPoints < 2) {
+    return samples;
+  }
+  const out: number[] = [];
+  const bucket = samples.length / targetPoints;
+  for (let i = 0; i < targetPoints; i++) {
+    const start = Math.floor(i * bucket);
+    const end = Math.min(samples.length, Math.floor((i + 1) * bucket));
+    if (end <= start) {
+      out.push(samples[start] ?? 0);
+      continue;
+    }
+    let min = samples[start]!;
+    let max = min;
+    for (let j = start + 1; j < end; j++) {
+      const v = samples[j]!;
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+    out.push(min, max);
+  }
+  return out;
+}
+
 /** Простой график сырых knock ADC (индекс сэмпла по X). */
 export function drawKnockWaveform(
   canvas: HTMLCanvasElement,
@@ -81,4 +107,18 @@ export function drawKnockWaveform(
     ctx.font = "11px system-ui, sans-serif";
     ctx.fillText(opts.title, margin.left, 12);
   }
+}
+
+/** Скользящее окно сэмплов (для непрерывной волны на UI). */
+export function appendKnockWaveformRing(
+  ring: number[],
+  chunk: number[],
+  maxSamples: number,
+): number[] {
+  if (chunk.length === 0) return ring;
+  let next = ring.length === 0 ? chunk.slice() : ring.concat(chunk);
+  if (next.length > maxSamples) {
+    next = next.slice(next.length - maxSamples);
+  }
+  return next;
 }

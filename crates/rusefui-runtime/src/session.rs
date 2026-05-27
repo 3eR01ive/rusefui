@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use rusefi_ini::{encode_config_value, ConfigFieldKind, IniFile};
 use rusefi_protocol::{ConnectionInfo, ProtocolError, SerialLink, DEFAULT_IO_TIMEOUT_MS};
@@ -762,6 +762,27 @@ impl EcuSession {
         let mut guard = self.inner.try_lock().ok()?;
         let link = guard.link.as_mut()?;
         Some(f(link).map_err(|e| e.to_string()))
+    }
+
+    /// Ждёт mutex порта до `timeout`, затем один раз выполняет `f` (для knock scope и др.).
+    pub fn with_link_wait<F, R>(&self, timeout: Duration, f: F) -> Result<R, String>
+    where
+        F: FnOnce(&mut SerialLink) -> Result<R, ProtocolError>,
+    {
+        let deadline = Instant::now() + timeout;
+        loop {
+            if let Ok(mut guard) = self.inner.try_lock() {
+                let link = guard
+                    .link
+                    .as_mut()
+                    .ok_or_else(|| "ECU не подключена".to_string())?;
+                return f(link).map_err(|e| e.to_string());
+            }
+            if Instant::now() >= deadline {
+                return Err("таймаут ожидания serial (порт занят)".into());
+            }
+            thread::sleep(Duration::from_millis(1));
+        }
     }
 
     /// Останавливает poll `O`, выполняет `f`, не перезапускает poll (вызовите `output().start` снаружи).
