@@ -1164,6 +1164,12 @@ pub struct ConfigSetScalarParams {
     pub value: f64,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ConfigSetStringParams {
+    pub field: String,
+    pub value: String,
+}
+
 /// Сессия потеряла project-preview (например, после гонки с загрузкой ECU) — восстановить из файла.
 fn try_apply_project_config_for_edit(state: &RuntimeState) -> Result<bool, String> {
     let ws = workspace_inputs(state).derive();
@@ -1220,6 +1226,46 @@ fn write_config_scalar(
     Ok((state.session.config().snapshot(), wrote_live))
 }
 
+fn write_config_string(
+    state: &RuntimeState,
+    field: &str,
+    value: &str,
+) -> Result<(ConfigSnapshot, bool), String> {
+    let snap = state.session.config().snapshot();
+    let wrote_live = state.session.is_connected() && snap.loaded && !snap.read_only;
+    if wrote_live {
+        state.session.output().stop();
+        let session = Arc::clone(&state.session);
+        session.config().write_string(&session, field, value)?;
+    } else if snap.loaded && snap.read_only {
+        state
+            .session
+            .config()
+            .set_string_local(field, value)?;
+        state
+            .project
+            .lock()
+            .unwrap()
+            .sync_ecu_config_from_session(&state.session)?;
+    } else if try_apply_project_config_for_edit(state)? {
+        state
+            .session
+            .config()
+            .set_string_local(field, value)?;
+        state
+            .project
+            .lock()
+            .unwrap()
+            .sync_ecu_config_from_session(&state.session)?;
+    } else {
+        return Err(
+            "Нет config для редактирования — откройте проект с ecuConfig или подключите ECU"
+                .into(),
+        );
+    }
+    Ok((state.session.config().snapshot(), wrote_live))
+}
+
 #[tauri::command]
 pub fn config_set_scalar(
     params: ConfigSetScalarParams,
@@ -1227,6 +1273,26 @@ pub fn config_set_scalar(
     app: AppHandle,
 ) -> Result<ConfigSnapshot, String> {
     let (snap, wrote_live) = write_config_scalar(&state, &params.field, params.value)?;
+    emit_config_update(&app, &snap);
+    if state.project.lock().unwrap().info().dirty {
+        emit_project(&app, &state);
+    }
+    if state.session.should_poll_output_channels() {
+        sync_output_poll_session(&state.session, &app);
+    }
+    if wrote_live {
+        set_burn_pending(&state, &app, true);
+    }
+    Ok(snap)
+}
+
+#[tauri::command]
+pub fn config_set_string(
+    params: ConfigSetStringParams,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<ConfigSnapshot, String> {
+    let (snap, wrote_live) = write_config_string(&state, &params.field, &params.value)?;
     emit_config_update(&app, &snap);
     if state.project.lock().unwrap().info().dirty {
         emit_project(&app, &state);

@@ -15,7 +15,6 @@ children:
   - type: enum-field
     id: fuelalgorithm
     props:
-      label: Fuel strategy
       options:
       - value: 0
         label: Speed Density
@@ -25,6 +24,7 @@ children:
         label: Alpha-N
       - value: 3
         label: Lua
+      label: Fuel strategy
     bind:
       source: config
       field: fuelAlgorithm
@@ -35,7 +35,6 @@ children:
   - type: enum-field
     id: veoverridemode
     props:
-      label: Override VE table load axis
       options:
       - value: 0
         label: None
@@ -45,6 +44,7 @@ children:
         label: TPS
       - value: 3
         label: INVALID
+      label: Override VE table load axis
     bind:
       source: config
       field: veOverrideMode
@@ -52,8 +52,8 @@ children:
   id: vetabletbl
   props:
     variant: table
-    xBins: veRpmBins
     xLabel: RPM
-    zBins: veTable
     title: VE Table
     yBins: veLoadBins
+    zBins: veTable
+    xBins: veRpmBins

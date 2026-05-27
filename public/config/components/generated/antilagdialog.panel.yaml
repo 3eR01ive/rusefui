@@ -6,17 +6,17 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: Also known as Rotational Idle
+    variant: hint
 - type: enum-field
   id: antilagenabled
   props:
-    label: AntiLag
     options:
     - value: 0
       label: disabled
     - value: 1
       label: enabled
+    label: AntiLag
   bind:
     source: config
     field: antiLagEnabled
@@ -39,7 +39,6 @@ children:
 - type: enum-field
   id: alsactivatepin
   props:
-    label: Switch Input
     options:
     - value: 0
       label: NONE
@@ -297,12 +296,14 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
+    label: Switch Input
   bind:
     source: config
     field: ALSActivatePin
 - type: enum-field
   id: alsactivatepinmode
   props:
+    label: ALS Button mode
     options:
     - value: 0
       label: DEFAULT
@@ -320,7 +321,6 @@ children:
       label: INVERTED PULLDOWN
     - value: 7
       label: '"INVALID'
-    label: ALS Button mode
   bind:
     source: config
     field: ALSActivatePinMode
@@ -383,16 +383,16 @@ children:
 - type: config-table
   id: fueladdertableals
   props:
-    variant: table
-    yBins: alsFuelAdjustmentLoadBins
-    title: Fuel adjustment
-    zBins: ALSFuelAdjustment
     xBins: alsFuelAdjustmentrpmBins
+    title: Fuel adjustment
+    yBins: alsFuelAdjustmentLoadBins
+    zBins: ALSFuelAdjustment
+    variant: table
 - type: config-table
   id: ignretardtableals
   props:
-    title: Ignition adjustment
     xBins: alsIgnRetardrpmBins
+    title: Ignition adjustment
     yBins: alsIgnRetardLoadBins
     zBins: ALSTimingRetardTable
     variant: table

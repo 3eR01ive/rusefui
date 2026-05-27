@@ -15,7 +15,6 @@ children:
     - type: enum-field
       id: throttlepedalpositionadcchannel
       props:
-        label: Throttle pedal Position Channel
         options:
         - value: 0
           label: NONE
@@ -81,6 +80,7 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
+        label: Throttle pedal Position Channel
       bind:
         source: config
         field: throttlePedalPositionAdcChannel
@@ -159,7 +159,6 @@ children:
     - type: enum-field
       id: tps1-1adcchannel
       props:
-        label: TPS1 ADC input
         options:
         - value: 0
           label: NONE
@@ -225,12 +224,14 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
+        label: TPS1 ADC input
       bind:
         source: config
         field: tps1_1AdcChannel
     - type: enum-field
       id: tps2-1adcchannel
       props:
+        label: TPS2 ADC input
         options:
         - value: 0
           label: NONE
@@ -296,14 +297,12 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
-        label: TPS2 ADC input
       bind:
         source: config
         field: tps2_1AdcChannel
     - type: enum-field
       id: clt-adcchannel
       props:
-        label: CLT ADC input
         options:
         - value: 0
           label: NONE
@@ -369,6 +368,7 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
+        label: CLT ADC input
       bind:
         source: config
         field: clt_adcChannel
@@ -591,7 +591,6 @@ children:
     - type: enum-field
       id: maf2adcchannel
       props:
-        label: MAF 2 ADC input
         options:
         - value: 0
           label: NONE
@@ -657,12 +656,14 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
+        label: MAF 2 ADC input
       bind:
         source: config
         field: maf2AdcChannel
     - type: enum-field
       id: afr-hwchannel
       props:
+        label: AFR ADC input
         options:
         - value: 0
           label: NONE
@@ -728,14 +729,12 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
-        label: AFR ADC input
       bind:
         source: config
         field: afr_hwChannel
     - type: enum-field
       id: afr-hwchannel2
       props:
-        label: AFR 2 ADC input
         options:
         - value: 0
           label: NONE
@@ -801,6 +800,7 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
+        label: AFR 2 ADC input
       bind:
         source: config
         field: afr_hwChannel2
@@ -1027,6 +1027,7 @@ children:
     - type: enum-field
       id: auxtempsensor1-adcchannel
       props:
+        label: 'Aux Temperature #1'
         options:
         - value: 0
           label: NONE
@@ -1092,7 +1093,6 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
-        label: 'Aux Temperature #1'
       bind:
         source: config
         field: auxTempSensor1_adcChannel
@@ -1243,6 +1243,7 @@ children:
     - type: enum-field
       id: auxanaloginputs1
       props:
+        label: 'Aux ADC #1'
         options:
         - value: 0
           label: NONE
@@ -1308,7 +1309,6 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
-        label: 'Aux ADC #1'
       bind:
         source: config
         field: auxAnalogInputs1
@@ -1387,6 +1387,7 @@ children:
     - type: enum-field
       id: auxanaloginputs3
       props:
+        label: 'Aux ADC #3'
         options:
         - value: 0
           label: NONE
@@ -1452,13 +1453,13 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
-        label: 'Aux ADC #3'
       bind:
         source: config
         field: auxAnalogInputs3
     - type: enum-field
       id: auxanaloginputs4
       props:
+        label: 'Aux ADC #4'
         options:
         - value: 0
           label: NONE
@@ -1524,14 +1525,12 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
-        label: 'Aux ADC #4'
       bind:
         source: config
         field: auxAnalogInputs4
     - type: enum-field
       id: auxanaloginputs5
       props:
-        label: 'Aux ADC #5'
         options:
         - value: 0
           label: NONE
@@ -1597,6 +1596,7 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
+        label: 'Aux ADC #5'
       bind:
         source: config
         field: auxAnalogInputs5
@@ -1747,7 +1747,6 @@ children:
     - type: enum-field
       id: auxanaloginputs8
       props:
-        label: 'Aux ADC #8'
         options:
         - value: 0
           label: NONE
@@ -1813,6 +1812,7 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
+        label: 'Aux ADC #8'
       bind:
         source: config
         field: auxAnalogInputs8
@@ -2351,7 +2351,6 @@ children:
   - type: enum-field
     id: clutchuppin
     props:
-      label: Clutch Up input
       options:
       - value: 0
         label: NONE
@@ -2609,13 +2608,13 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: Clutch Up input
     bind:
       source: config
       field: clutchUpPin
   - type: enum-field
     id: brakepedalpin
     props:
-      label: Brake pedal input
       options:
       - value: 0
         label: NONE
@@ -2873,6 +2872,7 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: Brake pedal input
     bind:
       source: config
       field: brakePedalPin
@@ -3143,6 +3143,7 @@ children:
   - type: enum-field
     id: triggerinputpins1
     props:
+      label: Primary input channel
       options:
       - value: 0
         label: NONE
@@ -3400,14 +3401,12 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: Primary input channel
     bind:
       source: config
       field: triggerInputPins1
   - type: enum-field
     id: triggerinputpins2
     props:
-      label: Secondary channel
       options:
       - value: 0
         label: NONE
@@ -3665,13 +3664,13 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: Secondary channel
     bind:
       source: config
       field: triggerInputPins2
   - type: enum-field
     id: caminputs1
     props:
-      label: Cam Sync/VVT input
       options:
       - value: 0
         label: NONE
@@ -3929,6 +3928,7 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: Cam Sync/VVT input
     bind:
       source: config
       field: camInputs1
@@ -4199,6 +4199,7 @@ children:
   - type: enum-field
     id: auxspeedsensorinputpin2
     props:
+      label: auxSpeedSensorInputPin2
       options:
       - value: 0
         label: NONE
@@ -4456,7 +4457,6 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: auxSpeedSensorInputPin2
     bind:
       source: config
       field: auxSpeedSensorInputPin2
@@ -4727,7 +4727,6 @@ children:
   - type: enum-field
     id: tcuupshiftbuttonpin
     props:
-      label: Upshift Pin
       options:
       - value: 0
         label: NONE
@@ -4985,6 +4984,7 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: Upshift Pin
     bind:
       source: config
       field: tcuUpshiftButtonPin

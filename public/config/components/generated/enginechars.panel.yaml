@@ -21,6 +21,7 @@ children:
 - type: enum-field
   id: firingorder
   props:
+    label: Firing order
     options:
     - value: 0
       label: One Cylinder
@@ -278,7 +279,6 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
-    label: Firing order
   bind:
     source: config
     field: firingOrder
@@ -288,32 +288,36 @@ children:
   children:
   - type: text
     props:
-      variant: hint
       text: These metadata are used by rusEFI Online
-  - type: scalar-field
+      variant: hint
+  - type: string-field
     id: enginemake
     props:
+      maxLength: 32
       label: Engine Make
     bind:
       source: config
       field: engineMake
-  - type: scalar-field
+  - type: string-field
     id: enginecode
     props:
       label: Manufacturer Engine Code
+      maxLength: 32
     bind:
       source: config
       field: engineCode
-  - type: scalar-field
+  - type: string-field
     id: vehiclename
     props:
       label: Vehicle Name
+      maxLength: 32
     bind:
       source: config
       field: vehicleName
-  - type: scalar-field
+  - type: string-field
     id: vinnumber
     props:
+      maxLength: 17
       label: VIN
     bind:
       source: config
@@ -324,8 +328,8 @@ children:
   children:
   - type: text
     props:
-      text: https://rusefi.com/s/fuel
       variant: hint
+      text: https://rusefi.com/s/fuel
   - type: enum-field
     id: fuelalgorithm
     props:
@@ -361,28 +365,28 @@ children:
 - type: enum-field
   id: uselambdaoninterface
   props:
-    label: Lambda display
     options:
     - value: 0
       label: AFR
     - value: 1
       label: Lambda
+    label: Lambda display
   bind:
     source: config
     field: useLambdaOnInterface
 - type: text
   props:
-    text: After changing this configuration, it is recommended to create a new project due to a limitation in TS.
     variant: hint
+    text: After changing this configuration, it is recommended to create a new project due to a limitation in TS.
 - type: enum-field
   id: usemetriconinterface
   props:
-    label: Temperature/Pressure display
     options:
     - value: 0
       label: Imperial
     - value: 1
       label: Metric
+    label: Temperature/Pressure display
   bind:
     source: config
     field: useMetricOnInterface

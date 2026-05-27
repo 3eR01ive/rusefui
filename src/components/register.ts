@@ -7,6 +7,7 @@ import TextBlock from "./builtins/TextBlock.vue";
 import ConnectionPanel from "./builtins/ConnectionPanel.vue";
 import SimulationPanel from "./builtins/SimulationPanel.vue";
 import ScalarField from "./builtins/ScalarField.vue";
+import StringField from "./builtins/StringField.vue";
 import EnumField from "./builtins/EnumField.vue";
 import ConfigTable from "./builtins/ConfigTable.vue";
 import ConfigCurve from "./builtins/ConfigCurve.vue";
@@ -112,6 +113,17 @@ export function registerBuiltinComponents(): void {
       description: "Поле калибровки (config page)",
     },
     ScalarField,
+  );
+
+  registerComponent(
+    {
+      type: "string-field",
+      label: "String field",
+      mode: "edit",
+      isContainer: false,
+      description: "Строковое поле калибровки (INI string, ASCII)",
+    },
+    StringField,
   );
 
   registerComponent(

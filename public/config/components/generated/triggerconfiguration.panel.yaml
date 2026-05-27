@@ -11,12 +11,12 @@ children:
   - type: enum-field
     id: twostroke
     props:
+      label: Strokes
       options:
       - value: 0
         label: Four Stroke
       - value: 1
         label: Two Stroke
-      label: Strokes
     bind:
       source: config
       field: twoStroke
@@ -301,12 +301,12 @@ children:
   - type: enum-field
     id: skippedwheeloncam
     props:
-      label: Skipped wheel location
       options:
       - value: 0
         label: On crankshaft
       - value: 1
         label: On camshaft
+      label: Skipped wheel location
     bind:
       source: config
       field: skippedWheelOnCam
@@ -868,7 +868,6 @@ children:
   - type: enum-field
     id: triggerinputpins2
     props:
-      label: Secondary channel
       options:
       - value: 0
         label: NONE
@@ -1126,18 +1125,19 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: Secondary channel
     bind:
       source: config
       field: triggerInputPins2
   - type: enum-field
     id: invertsecondarytriggersignal
     props:
-      label: Secondary Edge
       options:
       - value: 0
         label: Rising
       - value: 1
         label: Falling
+      label: Secondary Edge
     bind:
       source: config
       field: invertSecondaryTriggerSignal
@@ -1147,8 +1147,8 @@ children:
   children:
   - type: text
     props:
-      text: <html><a href=https://rusefi.com/s/vvt>https://rusefi.com/s/vvt</a></html>
       variant: hint
+      text: <html><a href=https://rusefi.com/s/vvt>https://rusefi.com/s/vvt</a></html>
   - type: enum-field
     id: vvtmode1
     props:
@@ -1966,6 +1966,7 @@ children:
   - type: enum-field
     id: caminputs3
     props:
+      label: Cam sensor bank 2 intake
       options:
       - value: 0
         label: NONE
@@ -2223,13 +2224,13 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: Cam sensor bank 2 intake
     bind:
       source: config
       field: camInputs3
   - type: enum-field
     id: caminputs4
     props:
+      label: Cam sensor bank 2 exhaust
       options:
       - value: 0
         label: NONE
@@ -2487,7 +2488,6 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: Cam sensor bank 2 exhaust
     bind:
       source: config
       field: camInputs4
@@ -2517,8 +2517,8 @@ children:
       field: invertExhaustCamVVTSignal
   - type: text
     props:
-      variant: hint
       text: Set offset so VVT indicates 0 degrees in default position
+      variant: hint
   - type: scalar-field
     id: vvtoffsets1
     props:

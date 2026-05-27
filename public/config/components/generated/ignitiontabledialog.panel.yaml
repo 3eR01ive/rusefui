@@ -39,9 +39,9 @@ children:
 - type: config-table
   id: ignitiontabletbl
   props:
-    zBins: ignitionTable
     variant: table
+    zBins: ignitionTable
     title: Ignition Table
-    xLabel: RPM
-    xBins: ignitionRpmBins
     yBins: ignitionLoadBins
+    xBins: ignitionRpmBins
+    xLabel: RPM

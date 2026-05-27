@@ -14,8 +14,8 @@ children:
 - type: curve
   id: primingpulse
   props:
-    xLabel: Coolant
+    title: Priming pulse fuel mass
     yLabel: Prime Pulse
     xBins: primeBins
     yBins: primeValues
-    title: Priming pulse fuel mass
+    xLabel: Coolant

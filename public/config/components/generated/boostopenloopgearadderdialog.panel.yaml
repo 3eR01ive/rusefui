@@ -8,7 +8,7 @@ children:
   id: boostopenloopgearaddercurve
   props:
     xBins: gearCountArray
-    yBins: gearBasedOpenLoopBoostAdder
+    xLabel: Gear
     yLabel: duty cycle
     title: Boost Open Loop gear-based modifier
-    xLabel: Gear
+    yBins: gearBasedOpenLoopBoostAdder

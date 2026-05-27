@@ -15,6 +15,7 @@ children:
     - type: enum-field
       id: vehiclespeedsensorinputpin
       props:
+        label: Input
         options:
         - value: 0
           label: NONE
@@ -272,7 +273,6 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: Input
       bind:
         source: config
         field: vehicleSpeedSensorInputPin
@@ -311,12 +311,12 @@ children:
     - type: enum-field
       id: enablecanvss
       props:
+        label: Enable CAN VSS
         options:
         - value: 0
           label: no
         - value: 1
           label: yes
-        label: Enable CAN VSS
       bind:
         source: config
         field: enableCanVss

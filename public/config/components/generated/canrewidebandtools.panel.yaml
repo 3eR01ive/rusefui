@@ -11,12 +11,12 @@ children:
   - type: enum-field
     id: widebandonsecondbus
     props:
+      label: Wideband CAN bus
       options:
       - value: 0
         label: CAN1
       - value: 1
         label: CAN2
-      label: Wideband CAN bus
     bind:
       source: config
       field: widebandOnSecondBus
@@ -44,8 +44,8 @@ children:
       text: 'Кнопка: Set Index (cmd_set_wideband_idx_by_id)'
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Update to 2026-01 Firmware (cmd_set_wideband_flash_by_id)'
+      variant: hint
   - type: text
     props:
       variant: hint
@@ -63,8 +63,8 @@ children:
       field: 'FW version and build date:'
   - type: text
     props:
-      variant: hint
       text: Панель «canReWidebandBuildDate» — нет определения в INI
+      variant: hint
 - type: section
   props:
     title: Legacy 2023 (stock) firmware
@@ -92,12 +92,12 @@ children:
   - type: enum-field
     id: canwbo1-enableremap
     props:
+      label: Auto remap on start
       options:
       - value: 0
         label: no
       - value: 1
         label: yes
-      label: Auto remap on start
     bind:
       source: config
       field: canWbo1_enableRemap
@@ -144,6 +144,7 @@ children:
   - type: enum-field
     id: canwbo1-reid
     props:
+      label: rusEFI WBO CAN ID
       options:
       - value: 0
         label: ID1 0x190/191
@@ -177,7 +178,6 @@ children:
         label: ID15 0x20C/20D
       - value: 15
         label: ID16 0x20E/20F
-      label: rusEFI WBO CAN ID
     bind:
       source: config
       field: canWbo1_reId
@@ -188,12 +188,12 @@ children:
   - type: enum-field
     id: canwbo2-enableremap
     props:
+      label: Auto remap on start
       options:
       - value: 0
         label: no
       - value: 1
         label: yes
-      label: Auto remap on start
     bind:
       source: config
       field: canWbo2_enableRemap

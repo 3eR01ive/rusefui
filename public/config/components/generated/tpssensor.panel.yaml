@@ -101,6 +101,7 @@ children:
     - type: enum-field
       id: tps1-2adcchannel
       props:
+        label: Secondary sensor input
         options:
         - value: 0
           label: NONE
@@ -166,7 +167,6 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
-        label: Secondary sensor input
       bind:
         source: config
         field: tps1_2AdcChannel
@@ -190,12 +190,12 @@ children:
         text: 'Кнопка: Auto Calibrate ETB 1 (cmd_etb_auto_calibrate)'
     - type: text
       props:
-        text: 'Кнопка: Grab Closed Throttle voltage (cmd_calibrate_tps_closed)'
         variant: hint
+        text: 'Кнопка: Grab Closed Throttle voltage (cmd_calibrate_tps_closed)'
     - type: text
       props:
-        text: 'Кнопка: Grab Fully Opened Throttle voltage  (cmd_calibrate_tps_open)'
         variant: hint
+        text: 'Кнопка: Grab Fully Opened Throttle voltage  (cmd_calibrate_tps_open)'
   - type: section
     props:
       title: 'Throttle Body #2 Sensor(s)'
@@ -289,7 +289,6 @@ children:
     - type: enum-field
       id: tps2-2adcchannel
       props:
-        label: Secondary sensor
         options:
         - value: 0
           label: NONE
@@ -355,6 +354,7 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
+        label: Secondary sensor
       bind:
         source: config
         field: tps2_2AdcChannel
@@ -408,12 +408,12 @@ children:
     - type: enum-field
       id: usefordredundanttps
       props:
+        label: Ford/Toyota redundant TPS mode
         options:
         - value: 0
           label: no
         - value: 1
           label: yes
-        label: Ford/Toyota redundant TPS mode
       bind:
         source: config
         field: useFordRedundantTps

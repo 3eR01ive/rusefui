@@ -14,12 +14,12 @@ children:
 - type: enum-field
   id: enableaemxseries
   props:
-    label: Enable CAN Wideband
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
+    label: Enable CAN Wideband
   bind:
     source: config
     field: enableAemXSeries
@@ -72,5 +72,5 @@ children:
     variant: hint
 - type: text
   props:
-    text: 'Кнопка: Update 2023 Firmware from file (cmd_wideband_firmare_update_file)'
     variant: hint
+    text: 'Кнопка: Update 2023 Firmware from file (cmd_wideband_firmare_update_file)'

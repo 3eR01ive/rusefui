@@ -11,7 +11,6 @@ children:
   - type: enum-field
     id: throttlepedalpositionadcchannel
     props:
-      label: Accelerator position primary sensor
       options:
       - value: 0
         label: NONE
@@ -77,6 +76,7 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
+      label: Accelerator position primary sensor
     bind:
       source: config
       field: throttlePedalPositionAdcChannel
@@ -182,8 +182,8 @@ children:
       field: throttlePedalSecondaryWOTVoltage
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Grab Idle/Up (cmd_calibrate_pedal_up)'
+      variant: hint
   - type: text
     props:
       text: 'Кнопка: Grab WOT/Down (cmd_calibrate_pedal_down)'

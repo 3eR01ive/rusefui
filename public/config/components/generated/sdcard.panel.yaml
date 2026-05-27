@@ -26,8 +26,8 @@ children:
     variant: hint
 - type: text
   props:
-    variant: hint
     text: Панель «sdCardActivityIndicators» — нет определения в INI
+    variant: hint
 - type: section
   props:
     title: SD Card Logging
@@ -46,17 +46,17 @@ children:
       variant: hint
   - type: text
     props:
-      variant: hint
       text: rusEFI connects SD to your PC when powered by USB
+      variant: hint
   - type: enum-field
     id: alwayswritesdcard
     props:
-      label: Always start in Logging mode
       options:
       - value: 0
         label: no
       - value: 1
         label: yes
+      label: Always start in Logging mode
     bind:
       source: config
       field: alwaysWriteSdCard
@@ -82,12 +82,12 @@ children:
   - type: enum-field
     id: sdtriggerlogcsv
     props:
+      label: Trigger logger foramt
       options:
       - value: 0
         label: Binary
       - value: 1
         label: CSV
-      label: Trigger logger foramt
     bind:
       source: config
       field: sdTriggerLogCsv
@@ -113,8 +113,8 @@ children:
       variant: hint
   - type: text
     props:
-      text: 'Кнопка: Unmount (cmd_unmount)'
       variant: hint
+      text: 'Кнопка: Unmount (cmd_unmount)'
   - type: text
     props:
       text: 'Кнопка: Format (cmd_format)'
@@ -132,9 +132,9 @@ children:
       field: Executed only when SD card is mounted to ECU
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Remove all fail reports (cmd_delete_reports)'
+      variant: hint
   - type: text
     props:
-      text: Панель «sdCardErrorReportIndicators» — нет определения в INI
       variant: hint
+      text: Панель «sdCardErrorReportIndicators» — нет определения в INI

@@ -43,8 +43,8 @@ children:
       field: lambdaProtectionMinRpm
   - type: text
     props:
-      text: and after delay
       variant: hint
+      text: and after delay
   - type: scalar-field
     id: then-cut-fuel-until
     props:
@@ -80,9 +80,9 @@ children:
   - type: config-table
     id: lambdamaxdeviationtabletbl
     props:
-      zBins: lambdaMaxDeviationTable
       yBins: lambdaMaxDeviationLoadBins
-      title: Maximum Lambda Deviation
       xBins: lambdaMaxDeviationRpmBins
       xLabel: RPM
+      title: Maximum Lambda Deviation
+      zBins: lambdaMaxDeviationTable
       variant: table

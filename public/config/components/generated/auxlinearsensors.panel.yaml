@@ -11,7 +11,6 @@ children:
   - type: enum-field
     id: auxlinear1-hwchannel
     props:
-      label: Input
       options:
       - value: 0
         label: NONE
@@ -77,6 +76,7 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
+      label: Input
     bind:
       source: config
       field: auxLinear1_hwChannel
@@ -743,24 +743,24 @@ children:
 - type: enum-field
   id: useauxspeedforslipratio
   props:
+    label: Use Aux Speed Sensors for slip ratio
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
-    label: Use Aux Speed Sensors for slip ratio
   bind:
     source: config
     field: useAuxSpeedForSlipRatio
 - type: enum-field
   id: usevssassecondwheelspeed
   props:
+    label: Use VSS As Second Wheel Speed
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
-    label: Use VSS As Second Wheel Speed
   bind:
     source: config
     field: useVssAsSecondWheelSpeed

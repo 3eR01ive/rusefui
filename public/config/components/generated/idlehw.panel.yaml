@@ -6,17 +6,17 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: ECU reboot needed to apply these settings
+    variant: hint
 - type: enum-field
   id: usestepperidle
   props:
-    label: Use Stepper
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
+    label: Use Stepper
   bind:
     source: config
     field: useStepperIdle
@@ -314,7 +314,6 @@ children:
     - type: enum-field
       id: secondsolenoidpin
       props:
-        label: Idle Solenoid Secondary output
         options:
         - value: 0
           label: NONE
@@ -572,12 +571,14 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
+        label: Idle Solenoid Secondary output
       bind:
         source: config
         field: secondSolenoidPin
     - type: enum-field
       id: idle-solenoidpinmode
       props:
+        label: Idle Solenoid output(s) Mode
         options:
         - value: 0
           label: default
@@ -587,7 +588,6 @@ children:
           label: open collector
         - value: 3
           label: open collector inverted
-        label: Idle Solenoid output(s) Mode
       bind:
         source: config
         field: idle_solenoidPinMode
@@ -674,6 +674,7 @@ children:
         - type: enum-field
           id: idle-steppersteppin
           props:
+            label: Idle Stepper Step Pin
             options:
             - value: 0
               label: NONE
@@ -1031,13 +1032,13 @@ children:
               label: PK14
             - value: 177
               label: PK15
-            label: Idle Stepper Step Pin
           bind:
             source: config
             field: idle_stepperStepPin
         - type: enum-field
           id: idle-stepperdirectionpin
           props:
+            label: Idle Stepper Dir Pin
             options:
             - value: 0
               label: NONE
@@ -1395,14 +1396,12 @@ children:
               label: PK14
             - value: 177
               label: PK15
-            label: Idle Stepper Dir Pin
           bind:
             source: config
             field: idle_stepperDirectionPin
         - type: enum-field
           id: stepperdirectionpinmode
           props:
-            label: Idle Stepper Dir Pin Mode
             options:
             - value: 0
               label: default
@@ -1412,6 +1411,7 @@ children:
               label: open collector
             - value: 3
               label: open collector inverted
+            label: Idle Stepper Dir Pin Mode
           bind:
             source: config
             field: stepperDirectionPinMode
@@ -1782,7 +1782,6 @@ children:
         - type: enum-field
           id: stepperenablepinmode
           props:
-            label: Idle Stepper Enable Pin Mode
             options:
             - value: 0
               label: default
@@ -1792,6 +1791,7 @@ children:
               label: open collector
             - value: 3
               label: open collector inverted
+            label: Idle Stepper Enable Pin Mode
           bind:
             source: config
             field: stepperEnablePinMode
@@ -1802,12 +1802,12 @@ children:
         - type: enum-field
           id: stepperdcinvertedpins
           props:
+            label: Inverted driver pins
             options:
             - value: 0
               label: no
             - value: 1
               label: yes
-            label: Inverted driver pins
           bind:
             source: config
             field: stepperDcInvertedPins
@@ -1818,7 +1818,6 @@ children:
           - type: enum-field
             id: stepperdcio1-directionpin1
             props:
-              label: 'No1 Direction #1'
               options:
               - value: 0
                 label: NONE
@@ -2176,6 +2175,7 @@ children:
                 label: PK14
               - value: 177
                 label: PK15
+              label: 'No1 Direction #1'
             bind:
               source: config
               field: stepperDcIo1_directionPin1
@@ -4006,7 +4006,6 @@ children:
           - type: enum-field
             id: stepperdcio2-controlpin
             props:
-              label: No2 Control
               options:
               - value: 0
                 label: NONE
@@ -4364,6 +4363,7 @@ children:
                 label: PK14
               - value: 177
                 label: PK15
+              label: No2 Control
             bind:
               source: config
               field: stepperDcIo2_controlPin

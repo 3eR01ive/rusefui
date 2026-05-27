@@ -14,8 +14,8 @@ children:
 - type: curve
   id: cltcrankingcurve
   props:
-    xLabel: Coolant
-    title: Cranking Idle Valve Curve
-    yLabel: Percent
     xBins: cltCrankingCorrBins
+    yLabel: Percent
+    title: Cranking Idle Valve Curve
     yBins: cltCrankingCorr
+    xLabel: Coolant

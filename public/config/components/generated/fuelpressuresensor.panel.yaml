@@ -15,7 +15,6 @@ children:
     - type: enum-field
       id: lowpressurefuel-hwchannel
       props:
-        label: Analog input
         options:
         - value: 0
           label: NONE
@@ -81,13 +80,13 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
+        label: Analog input
       bind:
         source: config
         field: lowPressureFuel_hwChannel
     - type: enum-field
       id: fuelpressuresensormode
       props:
-        label: sensor type
         options:
         - value: 0
           label: Absolute
@@ -97,6 +96,7 @@ children:
           label: Differential
         - value: 3
           label: INVALID
+        label: sensor type
       bind:
         source: config
         field: fuelPressureSensorMode

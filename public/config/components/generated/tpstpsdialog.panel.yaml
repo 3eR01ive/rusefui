@@ -27,8 +27,8 @@ children:
 - type: config-table
   id: tpstpsacceltbl
   props:
+    xBins: tpsTpsAccelFromRpmBins
+    variant: table
+    title: TPS/TPS Acceleration Extra Fuel(ms)
     yBins: tpsTpsAccelToRpmBins
     zBins: tpsTpsAccelTable
-    xBins: tpsTpsAccelFromRpmBins
-    title: TPS/TPS Acceleration Extra Fuel(ms)
-    variant: table

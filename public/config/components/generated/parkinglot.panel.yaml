@@ -35,12 +35,12 @@ children:
 - type: enum-field
   id: can2listenmode
   props:
-    label: can2ListenMode
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
+    label: can2ListenMode
   bind:
     source: config
     field: can2ListenMode
@@ -86,8 +86,8 @@ children:
     field: verboseQuad
 - type: text
   props:
-    text: System hacks
     variant: hint
+    text: System hacks
 - type: enum-field
   id: vvtbooleanforveryspecialcases
   props:
@@ -115,12 +115,12 @@ children:
 - type: enum-field
   id: verboseisotp
   props:
-    label: TS over CAN debug
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
+    label: TS over CAN debug
   bind:
     source: config
     field: verboseIsoTp
@@ -139,36 +139,36 @@ children:
 - type: enum-field
   id: allowidenticalpps
   props:
+    label: BRZ/FRS/GT86 pedal
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
-    label: BRZ/FRS/GT86 pedal
   bind:
     source: config
     field: allowIdenticalPps
 - type: enum-field
   id: artificialtestmisfire
   props:
-    label: Artificial Misfire
     options:
     - value: 0
       label: No thank you
     - value: 1
       label: Danger Mode
+    label: Artificial Misfire
   bind:
     source: config
     field: artificialTestMisfire
 - type: enum-field
   id: alwaysinstantrpm
   props:
-    label: Always use instant RPM
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
+    label: Always use instant RPM
   bind:
     source: config
     field: alwaysInstantRpm
@@ -191,10 +191,11 @@ children:
   bind:
     source: config
     field: idleMaximumAirmass
-- type: scalar-field
+- type: string-field
   id: vinnumber
   props:
     label: vinNumber
+    maxLength: 17
   bind:
     source: config
     field: vinNumber
@@ -227,12 +228,12 @@ children:
 - type: enum-field
   id: kickstartcranking
   props:
+    label: TODO KS mode 4569
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
-    label: TODO KS mode 4569
   bind:
     source: config
     field: kickStartCranking

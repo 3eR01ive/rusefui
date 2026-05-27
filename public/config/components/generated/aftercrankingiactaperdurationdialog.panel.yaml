@@ -8,7 +8,7 @@ children:
   id: aftercrankingiactapercurve
   props:
     xBins: afterCrankingIACtaperDurationBins
-    xLabel: Coolant
-    yBins: afterCrankingIACtaperDuration
-    yLabel: cyles
     title: Idle valve Crank-to-Run Taper
+    xLabel: Coolant
+    yLabel: cyles
+    yBins: afterCrankingIACtaperDuration

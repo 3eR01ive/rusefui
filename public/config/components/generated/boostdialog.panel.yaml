@@ -7,24 +7,24 @@ children:
 - type: enum-field
   id: isboostcontrolenabled
   props:
+    label: Boost Control
     options:
     - value: 0
       label: disabled
     - value: 1
       label: enabled
-    label: Boost Control
   bind:
     source: config
     field: isBoostControlEnabled
 - type: enum-field
   id: boosttype
   props:
+    label: Control Mode
     options:
     - value: 0
       label: Open Loop
     - value: 1
       label: Open + Closed Loop
-    label: Control Mode
   bind:
     source: config
     field: boostType
@@ -295,7 +295,6 @@ children:
 - type: enum-field
   id: boostcontrolpinmode
   props:
-    label: Output Mode
     options:
     - value: 0
       label: default
@@ -305,6 +304,7 @@ children:
       label: open collector
     - value: 3
       label: open collector inverted
+    label: Output Mode
   bind:
     source: config
     field: boostControlPinMode

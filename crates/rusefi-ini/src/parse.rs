@@ -116,10 +116,18 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
             }
         }
 
-        if line.contains('=') && (line.contains("scalar,") || line.contains("bits,") || line.contains("array,")) {
+        if line.contains('=')
+            && (line.contains("scalar,")
+                || line.contains("bits,")
+                || line.contains("array,")
+                || line.contains("string,"))
+        {
             match parse_config_or_output_line(line, &defines) {
                 Ok(field) => {
                     if section == Section::OutputChannels {
+                        if matches!(field.kind, FieldKind::String(_)) {
+                            continue;
+                        }
                         if !matches!(field.kind, FieldKind::Array(_)) {
                             fields.push(OutputChannelField {
                                 name: field.name,
@@ -232,6 +240,7 @@ impl ParsedIniField {
                 }
             }
             FieldKind::Array(array) => Some((self.name, ConfigFieldKind::Array(array))),
+            FieldKind::String(s) => Some((self.name, ConfigFieldKind::String(s))),
         }
     }
 }
@@ -342,6 +351,14 @@ fn parse_config_or_output_line(
                 digits,
             })
         }
+        "string" => {
+            if parts.len() < 4 {
+                return Err("string needs encoding, offset, length".into());
+            }
+            let offset: u32 = parts[2].parse().map_err(|_| "bad string offset")?;
+            let length: u32 = parts[3].parse().map_err(|_| "bad string length")?;
+            FieldKind::String(crate::model::StringField { offset, length })
+        }
         other => return Err(format!("unknown field kind: {other}")),
     };
 
@@ -429,6 +446,11 @@ mod tests {
             ini.config_fields
                 .get("injectionMode")
                 .is_some_and(|k| matches!(k, ConfigFieldKind::Enum(_)))
+        );
+        assert!(
+            ini.config_fields
+                .get("vehicleName")
+                .is_some_and(|k| matches!(k, ConfigFieldKind::String(_)))
         );
     }
 

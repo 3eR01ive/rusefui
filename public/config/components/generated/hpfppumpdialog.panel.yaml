@@ -286,8 +286,8 @@ children:
     field: hpfpValvePinMode
 - type: text
   props:
-    variant: hint
     text: 'Кнопка: Bench Test HPFP Valve (cmd_test_hpfp_valve)'
+    variant: hint
 - type: scalar-field
   id: hpfppumpvolume
   props:
@@ -348,7 +348,7 @@ children:
   id: hpfpdeadtimecurve
   props:
     title: HPFP Valve Deadtime
-    xLabel: volts
-    xBins: hpfpDeadtimeVoltsBins
     yBins: hpfpDeadtimeMS
+    xBins: hpfpDeadtimeVoltsBins
     yLabel: ms
+    xLabel: volts

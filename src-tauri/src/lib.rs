@@ -50,6 +50,7 @@ pub fn run() {
             runtime_cmds::config_diff_apply,
             runtime_cmds::config_diff_dismiss,
             runtime_cmds::config_set_scalar,
+            runtime_cmds::config_set_string,
             runtime_cmds::config_burn,
             runtime_cmds::config_get_array,
             runtime_cmds::config_set_array_value,

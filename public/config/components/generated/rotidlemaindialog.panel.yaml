@@ -30,24 +30,24 @@ children:
   - type: enum-field
     id: rotationalidlecontroller-auto-engage-clt-enable
     props:
+      label: Auto enable based on CLT
       options:
       - value: 0
         label: disabled
       - value: 1
         label: enabled
-      label: Auto enable based on CLT
     bind:
       source: config
       field: rotationalIdleController_auto_engage_clt_enable
   - type: enum-field
     id: rotationalidlecontroller-auto-engage
     props:
-      label: Auto enable based on TPS/PPS
       options:
       - value: 0
         label: disabled
       - value: 1
         label: enabled
+      label: Auto enable based on TPS/PPS
     bind:
       source: config
       field: rotationalIdleController_auto_engage

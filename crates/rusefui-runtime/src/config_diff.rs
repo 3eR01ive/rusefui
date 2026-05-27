@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use rusefi_ini::{encode_config_value, ConfigFieldKind};
+use rusefi_ini::{encode_config_value, encode_string_value, ConfigFieldKind};
 use serde::{Deserialize, Serialize};
 
 use crate::sources::output_channels::IniContext;
@@ -53,7 +53,7 @@ pub fn compute_config_diff(
         let ty = match kind {
             ConfigFieldKind::Scalar(_) => "scalar",
             ConfigFieldKind::Enum(_) => "enum",
-            ConfigFieldKind::Array(_) => continue,
+            ConfigFieldKind::Array(_) | ConfigFieldKind::String(_) => continue,
         };
         let (Some(&pv), Some(&ev)) = (project.get(name), ecu.get(name)) else {
             continue;
@@ -87,14 +87,41 @@ pub fn encode_scalar_into_page(
             return Err(format!("{field}: таблицы/кривые пока не поддерживаются в diff"));
         }
         ConfigFieldKind::Scalar(_) | ConfigFieldKind::Enum(_) => {}
+        ConfigFieldKind::String(_) => {
+            return Err(format!("{field}: используйте encode_string_into_page"));
+        }
     }
     let offset = match kind {
         ConfigFieldKind::Scalar(s) => s.offset,
         ConfigFieldKind::Enum(e) => e.bits.offset,
         ConfigFieldKind::Array(a) => a.offset,
+        ConfigFieldKind::String(_) => unreachable!(),
     } as usize;
     let encoded = encode_config_value(kind, value, raw)
         .ok_or_else(|| format!("cannot encode {field}"))?;
+    if offset + encoded.len() > raw.len() {
+        raw.resize(offset + encoded.len(), 0);
+    }
+    raw[offset..offset + encoded.len()].copy_from_slice(&encoded);
+    Ok(())
+}
+
+pub fn encode_string_into_page(
+    ini: &IniContext,
+    raw: &mut Vec<u8>,
+    field: &str,
+    value: &str,
+) -> Result<(), String> {
+    let kind = ini
+        .config_fields
+        .get(field)
+        .ok_or_else(|| format!("unknown config field: {field}"))?;
+    let ConfigFieldKind::String(s) = kind else {
+        return Err(format!("{field} is not a string field"));
+    };
+    let offset = s.offset as usize;
+    let encoded = encode_string_value(s, value)
+        .ok_or_else(|| format!("cannot encode string {field}"))?;
     if offset + encoded.len() > raw.len() {
         raw.resize(offset + encoded.len(), 0);
     }

@@ -310,7 +310,6 @@ children:
   - type: enum-field
     id: gppwm2-rpmaxis
     props:
-      label: X Axis
       options:
       - value: 0
         label: Zero
@@ -382,13 +381,13 @@ children:
         label: Oil temp
       - value: 34
         label: Fuel Pressure
+      label: X Axis
     bind:
       source: config
       field: gppwm2_rpmAxis
   - type: enum-field
     id: gppwm2-loadaxis
     props:
-      label: Y Axis
       options:
       - value: 0
         label: Zero
@@ -460,22 +459,24 @@ children:
         label: Oil temp
       - value: 34
         label: Fuel Pressure
+      label: Y Axis
     bind:
       source: config
       field: gppwm2_loadAxis
-  - type: scalar-field
+  - type: string-field
     id: gppwmnote2
     props:
       label: Note
+      maxLength: 16
     bind:
       source: config
       field: gpPwmNote2
 - type: config-table
   id: gppwm2tbl
   props:
-    title: GP#2
-    yLabel: gppwm2_rpmAxis)}
-    variant: table
     zBins: gppwm2_table
+    yLabel: gppwm2_rpmAxis)}
+    title: GP#2
     xBins: gppwm2_rpmBins
     yBins: gppwm2_loadBins
+    variant: table

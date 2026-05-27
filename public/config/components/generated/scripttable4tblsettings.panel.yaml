@@ -4,9 +4,10 @@ source:
   ini_dialog: scriptTable4TblSettings
   menu_path: 'Advanced › Lua Calibrations › Script Table #4'
 children:
-- type: scalar-field
+- type: string-field
   id: scripttablename4
   props:
+    maxLength: 16
     label: Name
   bind:
     source: config
@@ -14,8 +15,8 @@ children:
 - type: config-table
   id: scripttable4tbl
   props:
-    variant: table
-    title: 'Script Table #4'
-    zBins: scriptTable4
-    yBins: scriptTable4LoadBins
     xBins: scriptTable4RpmBins
+    title: 'Script Table #4'
+    yBins: scriptTable4LoadBins
+    zBins: scriptTable4
+    variant: table

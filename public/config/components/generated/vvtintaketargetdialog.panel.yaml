@@ -8,10 +8,10 @@ children:
   id: vvttable1tbl
   props:
     xBins: vvtTable1RpmBins
+    yBins: vvtTable1LoadBins
     zBins: vvtTable1
     title: Intake VVT closed loop Target
     variant: table
-    yBins: vvtTable1LoadBins
 - type: section
   props:
     title: VVT status & offset

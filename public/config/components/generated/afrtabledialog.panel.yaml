@@ -35,9 +35,9 @@ children:
 - type: config-table
   id: afrtabletbl
   props:
-    xLabel: RPM
-    title: Target AFR Table
     variant: table
-    xBins: lambdaRpmBins
     yBins: lambdaLoadBins
+    title: Target AFR Table
+    xLabel: RPM
     zBins: lambdaTable
+    xBins: lambdaRpmBins

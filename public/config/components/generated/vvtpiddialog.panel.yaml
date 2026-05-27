@@ -560,7 +560,6 @@ children:
   - type: enum-field
     id: vvtpins3
     props:
-      label: VVT solenoid bank 2 intake
       options:
       - value: 0
         label: NONE
@@ -818,13 +817,13 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: VVT solenoid bank 2 intake
     bind:
       source: config
       field: vvtPins3
   - type: enum-field
     id: vvtpins4
     props:
-      label: VVT solenoid bank 2 exhaust
       options:
       - value: 0
         label: NONE
@@ -1082,30 +1081,31 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: VVT solenoid bank 2 exhaust
     bind:
       source: config
       field: vvtPins4
   - type: enum-field
     id: invertvvtcontrolintake
     props:
+      label: VVT solenoid intake cams control direction
       options:
       - value: 0
         label: advance
       - value: 1
         label: retard
-      label: VVT solenoid intake cams control direction
     bind:
       source: config
       field: invertVvtControlIntake
   - type: enum-field
     id: invertvvtcontrolexhaust
     props:
-      label: VVT solenoid exhaust cams control direction
       options:
       - value: 0
         label: advance
       - value: 1
         label: retard
+      label: VVT solenoid exhaust cams control direction
     bind:
       source: config
       field: invertVvtControlExhaust
@@ -1157,9 +1157,9 @@ children:
       field: auxPid1_maxValue
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Bench bank 1 (cmd_test_vvt0_valve)'
+      variant: hint
   - type: text
     props:
-      text: 'Кнопка: Bench bank 2 (cmd_test_vvt2_valve)'
       variant: hint
+      text: 'Кнопка: Bench bank 2 (cmd_test_vvt2_valve)'

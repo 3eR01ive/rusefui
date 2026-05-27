@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::model::{
     ArrayField, BitsField, ConfigFieldKind, FieldKind, OutputChannels, ScalarField,
-    ScalarType,
+    ScalarType, StringField,
 };
 
 /// Декодирует поля конфигурации (секция `[Constants]`).
@@ -14,6 +14,22 @@ pub fn decode_config_fields(
     for (name, field) in fields {
         if let Some(v) = decode_config_field(field, bytes) {
             out.insert(name.clone(), v);
+        }
+    }
+    out
+}
+
+/// Декодирует строковые поля page 0.
+pub fn decode_config_strings(
+    fields: &HashMap<String, ConfigFieldKind>,
+    bytes: &[u8],
+) -> HashMap<String, String> {
+    let mut out = HashMap::new();
+    for (name, field) in fields {
+        if let ConfigFieldKind::String(s) = field {
+            if let Some(v) = decode_string(s, bytes) {
+                out.insert(name.clone(), v);
+            }
         }
     }
     out
@@ -42,8 +58,32 @@ fn decode_config_field(field: &ConfigFieldKind, bytes: &[u8]) -> Option<f64> {
     match field {
         ConfigFieldKind::Scalar(s) => decode_scalar(s, bytes),
         ConfigFieldKind::Enum(e) => decode_bits(&e.bits, bytes),
-        ConfigFieldKind::Array(_) => None,
+        ConfigFieldKind::Array(_) | ConfigFieldKind::String(_) => None,
     }
+}
+
+fn decode_string(field: &StringField, bytes: &[u8]) -> Option<String> {
+    let off = field.offset as usize;
+    let len = field.length as usize;
+    if len == 0 || off + len > bytes.len() {
+        return None;
+    }
+    let slice = &bytes[off..off + len];
+    let end = slice.iter().position(|&b| b == 0).unwrap_or(len);
+    Some(String::from_utf8_lossy(&slice[..end]).into_owned())
+}
+
+/// Кодирует строку для записи в page 0 (нуль-терминатор + padding).
+pub fn encode_string_value(field: &StringField, value: &str) -> Option<Vec<u8>> {
+    let len = field.length as usize;
+    if len == 0 {
+        return None;
+    }
+    let mut out = vec![0u8; len];
+    let bytes = value.as_bytes();
+    let copy_len = bytes.len().min(len.saturating_sub(1));
+    out[..copy_len].copy_from_slice(&bytes[..copy_len]);
+    Some(out)
 }
 
 /// Декодирует все элементы массива config.
@@ -92,7 +132,7 @@ pub fn encode_config_value(
     match field {
         ConfigFieldKind::Scalar(s) => encode_scalar_value(s, value),
         ConfigFieldKind::Enum(e) => encode_bits_value(&e.bits, value, current_bytes),
-        ConfigFieldKind::Array(_) => None,
+        ConfigFieldKind::Array(_) | ConfigFieldKind::String(_) => None,
     }
 }
 
@@ -132,6 +172,7 @@ fn decode_field(kind: &FieldKind, bytes: &[u8]) -> Option<f64> {
         FieldKind::Scalar(s) => decode_scalar(s, bytes),
         FieldKind::Bits(b) => decode_bits(b, bytes),
         FieldKind::Array(a) => decode_array(a, bytes).first().copied(),
+        FieldKind::String(_) => None,
     }
 }
 
@@ -266,5 +307,22 @@ mod tests {
         bytes[455] = 0x02;
         let map = decode_config_fields(&ini.config_fields, &bytes);
         assert_eq!(map.get("injectionMode"), Some(&2.0));
+    }
+
+    #[test]
+    fn decode_vehicle_name_string() {
+        let ini = IniFile::load_test_proteus().unwrap();
+        let ConfigFieldKind::String(field) = ini.config_fields.get("vehicleName").unwrap()
+        else {
+            panic!("vehicleName should be string");
+        };
+        assert_eq!(field.offset, 1240);
+        assert_eq!(field.length, 32);
+
+        let mut bytes = vec![0u8; 1300];
+        let name = b"Orange Miata";
+        bytes[1240..1240 + name.len()].copy_from_slice(name);
+        let strings = decode_config_strings(&ini.config_fields, &bytes);
+        assert_eq!(strings.get("vehicleName"), Some(&"Orange Miata".to_string()));
     }
 }

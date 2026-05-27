@@ -6,8 +6,8 @@ source:
 children:
 - type: text
   props:
-    variant: hint
     text: This is a pretty advanced feature for when you are debugging trigger synchronization
+    variant: hint
 - type: enum-field
   id: overridetriggergaps
   props:

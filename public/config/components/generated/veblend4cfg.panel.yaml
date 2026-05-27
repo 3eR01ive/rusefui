@@ -6,20 +6,20 @@ source:
 children:
 - type: text
   props:
+    variant: hint
     text: The bias table controls how much of the blend table
-    variant: hint
 - type: text
   props:
+    variant: hint
     text: is mixed in to the VE table. For example, a value of
-    variant: hint
 - type: text
   props:
-    variant: hint
     text: +10 in the table, with 50 as the current bias will result
+    variant: hint
 - type: text
   props:
-    text: in +5.0% added to the VE. Note that this doesn't add 5% VE,
     variant: hint
+    text: in +5.0% added to the VE. Note that this doesn't add 5% VE,
 - type: scalar-field
   id: instead--it-adds-5--to-the-current-ve-value--multiplying-ve-by-1-05
   props:
@@ -33,8 +33,8 @@ children:
     variant: hint
 - type: text
   props:
-    text: parameter below.
     variant: hint
+    text: parameter below.
 - type: enum-field
   id: veblends4-blendparameter
   props:
@@ -116,6 +116,7 @@ children:
 - type: enum-field
   id: veblends4-yaxisoverride
   props:
+    label: Y axis override (set Zero for no override)
     options:
     - value: 0
       label: Zero
@@ -187,14 +188,13 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
-    label: Y axis override (set Zero for no override)
   bind:
     source: config
     field: veBlends4_yAxisOverride
 - type: curve
   id: veblend4bias
   props:
-    xBins: veBlends4_blendBins
-    yBins: veBlends4_blendValues
     title: VE blend 4 bias
     yLabel: veBlends4_blendParameter)}
+    yBins: veBlends4_blendValues
+    xBins: veBlends4_blendBins

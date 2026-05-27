@@ -10,8 +10,8 @@ children:
   children:
   - type: text
     props:
-      variant: hint
       text: Read these with getAuxDigital(0) etc
+      variant: hint
   - type: enum-field
     id: luadigitalinputpins1
     props:
@@ -543,7 +543,6 @@ children:
   - type: enum-field
     id: luadigitalinputpins3
     props:
-      label: 'Digital #3'
       options:
       - value: 0
         label: NONE
@@ -801,13 +800,13 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: 'Digital #3'
     bind:
       source: config
       field: luaDigitalInputPins3
   - type: enum-field
     id: luadigitalinputpins4
     props:
-      label: 'Digital #4'
       options:
       - value: 0
         label: NONE
@@ -1065,6 +1064,7 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: 'Digital #4'
     bind:
       source: config
       field: luaDigitalInputPins4
@@ -1335,7 +1335,6 @@ children:
   - type: enum-field
     id: luadigitalinputpins6
     props:
-      label: 'Digital #6'
       options:
       - value: 0
         label: NONE
@@ -1593,13 +1592,13 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: 'Digital #6'
     bind:
       source: config
       field: luaDigitalInputPins6
   - type: enum-field
     id: luadigitalinputpins7
     props:
-      label: 'Digital #7'
       options:
       - value: 0
         label: NONE
@@ -1857,13 +1856,13 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: 'Digital #7'
     bind:
       source: config
       field: luaDigitalInputPins7
   - type: enum-field
     id: luadigitalinputpins8
     props:
-      label: 'Digital #8'
       options:
       - value: 0
         label: NONE
@@ -2121,6 +2120,7 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: 'Digital #8'
     bind:
       source: config
       field: luaDigitalInputPins8
@@ -2131,7 +2131,6 @@ children:
   - type: enum-field
     id: luadigitalinputpinmodes1
     props:
-      label: 'Mode #1'
       options:
       - value: 0
         label: DEFAULT
@@ -2149,12 +2148,14 @@ children:
         label: INVERTED PULLDOWN
       - value: 7
         label: '"INVALID'
+      label: 'Mode #1'
     bind:
       source: config
       field: luaDigitalInputPinModes1
   - type: enum-field
     id: luadigitalinputpinmodes2
     props:
+      label: 'Mode #2'
       options:
       - value: 0
         label: DEFAULT
@@ -2172,14 +2173,12 @@ children:
         label: INVERTED PULLDOWN
       - value: 7
         label: '"INVALID'
-      label: 'Mode #2'
     bind:
       source: config
       field: luaDigitalInputPinModes2
   - type: enum-field
     id: luadigitalinputpinmodes3
     props:
-      label: 'Mode #3'
       options:
       - value: 0
         label: DEFAULT
@@ -2197,13 +2196,13 @@ children:
         label: INVERTED PULLDOWN
       - value: 7
         label: '"INVALID'
+      label: 'Mode #3'
     bind:
       source: config
       field: luaDigitalInputPinModes3
   - type: enum-field
     id: luadigitalinputpinmodes4
     props:
-      label: 'Mode #4'
       options:
       - value: 0
         label: DEFAULT
@@ -2221,6 +2220,7 @@ children:
         label: INVERTED PULLDOWN
       - value: 7
         label: '"INVALID'
+      label: 'Mode #4'
     bind:
       source: config
       field: luaDigitalInputPinModes4
@@ -2251,6 +2251,7 @@ children:
   - type: enum-field
     id: luadigitalinputpinmodes6
     props:
+      label: 'Mode #6'
       options:
       - value: 0
         label: DEFAULT
@@ -2268,7 +2269,6 @@ children:
         label: INVERTED PULLDOWN
       - value: 7
         label: '"INVALID'
-      label: 'Mode #6'
     bind:
       source: config
       field: luaDigitalInputPinModes6
@@ -2299,7 +2299,6 @@ children:
   - type: enum-field
     id: luadigitalinputpinmodes8
     props:
-      label: 'Mode #8'
       options:
       - value: 0
         label: DEFAULT
@@ -2317,6 +2316,7 @@ children:
         label: INVERTED PULLDOWN
       - value: 7
         label: '"INVALID'
+      label: 'Mode #8'
     bind:
       source: config
       field: luaDigitalInputPinModes8

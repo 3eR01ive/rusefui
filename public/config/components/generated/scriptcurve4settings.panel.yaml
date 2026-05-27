@@ -4,10 +4,11 @@ source:
   ini_dialog: scriptCurve4Settings
   menu_path: 'Advanced › Lua Calibrations › Script Curve #4'
 children:
-- type: scalar-field
+- type: string-field
   id: scriptcurvename4
   props:
     label: Name
+    maxLength: 16
   bind:
     source: config
     field: scriptCurveName4
@@ -15,7 +16,7 @@ children:
   id: scriptcurve4
   props:
     xLabel: X
-    xBins: scriptCurve4Bins
-    yBins: scriptCurve4
     yLabel: Y
     title: 'Script Curve #4'
+    yBins: scriptCurve4
+    xBins: scriptCurve4Bins

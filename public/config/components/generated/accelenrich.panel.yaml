@@ -27,19 +27,19 @@ children:
   - type: enum-field
     id: istuningdetectorenabled
     props:
+      label: Detect Tuning and Suspend
       options:
       - value: 0
         label: no
       - value: 1
         label: yes
-      label: Detect Tuning and Suspend
     bind:
       source: config
       field: isTuningDetectorEnabled
   - type: text
     props:
-      text: '"" ; spacer'
       variant: hint
+      text: '"" ; spacer'
   - type: scalar-field
     id: tpsaccellookback
     props:
@@ -111,5 +111,5 @@ children:
       field: wwaeBeta
 - type: text
   props:
-    text: Панель «AccelEnfichIndicatorsPanel» — нет определения в INI
     variant: hint
+    text: Панель «AccelEnfichIndicatorsPanel» — нет определения в INI

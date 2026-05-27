@@ -11,7 +11,6 @@ children:
 - type: enum-field
   id: mafadcchannel
   props:
-    label: MAF ADC input
     options:
     - value: 0
       label: NONE
@@ -77,13 +76,13 @@ children:
       label: INVALID
     - value: 31
       label: INVALID
+    label: MAF ADC input
   bind:
     source: config
     field: mafAdcChannel
 - type: enum-field
   id: maf2adcchannel
   props:
-    label: MAF 2 ADC input
     options:
     - value: 0
       label: NONE
@@ -149,6 +148,7 @@ children:
       label: INVALID
     - value: 31
       label: INVALID
+    label: MAF 2 ADC input
   bind:
     source: config
     field: maf2AdcChannel

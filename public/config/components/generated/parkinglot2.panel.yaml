@@ -371,7 +371,6 @@ children:
 - type: enum-field
   id: dacoutputpins2
   props:
-    label: dacOutputPins2
     options:
     - value: 0
       label: NONE
@@ -729,6 +728,7 @@ children:
       label: PK14
     - value: 177
       label: PK15
+    label: dacOutputPins2
   bind:
     source: config
     field: dacOutputPins2
@@ -747,12 +747,12 @@ children:
 - type: enum-field
   id: caninputbcm
   props:
+    label: Read RPM matching VSS profile
     options:
     - value: 0
       label: disabled
     - value: 1
       label: enabled
-    label: Read RPM matching VSS profile
   bind:
     source: config
     field: canInputBCM

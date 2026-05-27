@@ -86,8 +86,8 @@ children:
   id: torquereductionignitioncuttlb
   props:
     variant: table
+    xBins: torqueReductionCutXBins
+    yBins: torqueReductionCutGearBins
+    title: Torque reduction cut table
     yLabel: torqueReductionCutXaxis)}
     zBins: torqueReductionIgnitionCutTable
-    xBins: torqueReductionCutXBins
-    title: Torque reduction cut table
-    yBins: torqueReductionCutGearBins

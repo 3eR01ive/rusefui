@@ -7,12 +7,12 @@ children:
 - type: enum-field
   id: usespiimu
   props:
-    label: Use SPI accelerometer
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
+    label: Use SPI accelerometer
   bind:
     source: config
     field: useSpiImu

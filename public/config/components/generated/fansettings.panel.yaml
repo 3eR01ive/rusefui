@@ -351,12 +351,12 @@ children:
     - type: enum-field
       id: fan1pwmenabled
       props:
-        label: Enable PWM mode
         options:
         - value: 0
           label: no
         - value: 1
           label: yes
+        label: Enable PWM mode
       bind:
         source: config
         field: fan1PwmEnabled
@@ -401,12 +401,12 @@ children:
   children:
   - type: text
     props:
-      text: Панель «fan_control0IndicatorPanel» — нет определения в INI
       variant: hint
+      text: Панель «fan_control0IndicatorPanel» — нет определения в INI
   - type: text
     props:
-      text: Панель «fan_control1IndicatorPanel» — нет определения в INI
       variant: hint
+      text: Панель «fan_control1IndicatorPanel» — нет определения в INI
 - type: section
   props:
     title: Fan 2
@@ -678,6 +678,7 @@ children:
   - type: enum-field
     id: fan2pinmode
     props:
+      label: Output mode
       options:
       - value: 0
         label: default
@@ -687,7 +688,6 @@ children:
         label: open collector
       - value: 3
         label: open collector inverted
-      label: Output mode
     bind:
       source: config
       field: fan2PinMode
@@ -808,9 +808,9 @@ children:
       variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Test Fan 1 (cmd_test_fan_1)'
+      variant: hint
   - type: text
     props:
-      text: 'Кнопка: Test Fan 2 (cmd_test_fan_2)'
       variant: hint
+      text: 'Кнопка: Test Fan 2 (cmd_test_fan_2)'

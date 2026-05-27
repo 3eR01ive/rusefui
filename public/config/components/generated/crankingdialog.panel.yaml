@@ -18,7 +18,6 @@ children:
   - type: enum-field
     id: crankinginjectionmode
     props:
-      label: Injection mode
       options:
       - value: 0
         label: Simultaneous
@@ -28,6 +27,7 @@ children:
         label: Batch
       - value: 3
         label: Single Point
+      label: Injection mode
     bind:
       source: config
       field: crankingInjectionMode
@@ -92,12 +92,12 @@ children:
   - type: enum-field
     id: isfasterenginespinupenabled
     props:
-      label: Faster engine spin-up
       options:
       - value: 0
         label: disabled
       - value: 1
         label: enabled
+      label: Faster engine spin-up
     bind:
       source: config
       field: isFasterEngineSpinUpEnabled
@@ -116,12 +116,12 @@ children:
   - type: enum-field
     id: flexcranking
     props:
-      label: Separate Flex Fuel cranking table
       options:
       - value: 0
         label: disabled
       - value: 1
         label: enabled
+      label: Separate Flex Fuel cranking table
     bind:
       source: config
       field: flexCranking

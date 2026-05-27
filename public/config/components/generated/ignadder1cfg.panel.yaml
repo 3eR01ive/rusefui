@@ -10,16 +10,16 @@ children:
     variant: hint
 - type: text
   props:
-    text: is mixed in to the base ignition table. For example, a value of
     variant: hint
+    text: is mixed in to the base ignition table. For example, a value of
 - type: text
   props:
     text: +10 in the table, with 50 as the current bias will result
     variant: hint
 - type: text
   props:
-    text: in 5.0 degrees of ignition timing added.
     variant: hint
+    text: in 5.0 degrees of ignition timing added.
 - type: text
   props:
     text: The X axis of the bias table is controlled by the selected blend
@@ -31,7 +31,6 @@ children:
 - type: enum-field
   id: ignblends1-blendparameter
   props:
-    label: Blend parameter
     options:
     - value: 0
       label: Zero
@@ -103,6 +102,7 @@ children:
       label: Oil temp
     - value: 34
       label: Fuel Pressure
+    label: Blend parameter
   bind:
     source: config
     field: ignBlends1_blendParameter
@@ -187,8 +187,8 @@ children:
 - type: curve
   id: ignadder1bias
   props:
-    yBins: ignBlends1_blendValues
     yLabel: bias
-    xLabel: param
-    title: Ignition adder 1 bias
     xBins: ignBlends1_blendBins
+    title: Ignition adder 1 bias
+    xLabel: param
+    yBins: ignBlends1_blendValues

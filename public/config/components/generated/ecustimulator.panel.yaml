@@ -22,7 +22,6 @@ children:
 - type: enum-field
   id: logicanalyzerpins1
   props:
-    label: Logic input channel 1
     options:
     - value: 0
       label: NONE
@@ -280,6 +279,7 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
+    label: Logic input channel 1
   bind:
     source: config
     field: logicAnalyzerPins1
@@ -550,7 +550,6 @@ children:
 - type: enum-field
   id: logicanalyzerpins3
   props:
-    label: Logic input channel 3
     options:
     - value: 0
       label: NONE
@@ -808,13 +807,13 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
+    label: Logic input channel 3
   bind:
     source: config
     field: logicAnalyzerPins3
 - type: enum-field
   id: logicanalyzerpins4
   props:
-    label: Logic input channel 4
     options:
     - value: 0
       label: NONE
@@ -1072,6 +1071,7 @@ children:
       label: INVALID
     - value: 127
       label: INVALID
+    label: Logic input channel 4
   bind:
     source: config
     field: logicAnalyzerPins4

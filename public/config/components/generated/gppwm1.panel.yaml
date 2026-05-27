@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: gppwm1-pin
     props:
+      label: Output
       options:
       - value: 0
         label: NONE
@@ -268,7 +269,6 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
-      label: Output
     bind:
       source: config
       field: gppwm1_pin
@@ -463,19 +463,20 @@ children:
     bind:
       source: config
       field: gppwm1_loadAxis
-  - type: scalar-field
+  - type: string-field
     id: gppwmnote1
     props:
       label: Note
+      maxLength: 16
     bind:
       source: config
       field: gpPwmNote1
 - type: config-table
   id: gppwm1tbl
   props:
-    yLabel: gppwm1_rpmAxis)}
     yBins: gppwm1_loadBins
-    zBins: gppwm1_table
-    xBins: gppwm1_rpmBins
     variant: table
+    xBins: gppwm1_rpmBins
     title: GP#1
+    zBins: gppwm1_table
+    yLabel: gppwm1_rpmAxis)}

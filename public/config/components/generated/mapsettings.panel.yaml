@@ -63,6 +63,7 @@ children:
     - type: enum-field
       id: map-sensor-hwchannel
       props:
+        label: MAP input
         options:
         - value: 0
           label: NONE
@@ -128,13 +129,13 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
-        label: MAP input
       bind:
         source: config
         field: map_sensor_hwChannel
     - type: enum-field
       id: map-sensor-type
       props:
+        label: MAP type
         options:
         - value: 0
           label: Custom
@@ -200,7 +201,6 @@ children:
           label: INVALID
         - value: 31
           label: INVALID
-        label: MAP type
       bind:
         source: config
         field: map_sensor_type

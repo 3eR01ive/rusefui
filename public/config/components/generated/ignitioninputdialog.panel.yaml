@@ -11,7 +11,6 @@ children:
 - type: enum-field
   id: ignkeyadcchannel
   props:
-    label: Ignition Key ADC input
     options:
     - value: 0
       label: NONE
@@ -77,6 +76,7 @@ children:
       label: INVALID
     - value: 31
       label: INVALID
+    label: Ignition Key ADC input
   bind:
     source: config
     field: ignKeyAdcChannel

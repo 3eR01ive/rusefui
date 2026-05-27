@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: iat-adcchannel
     props:
+      label: Input channel
       options:
       - value: 0
         label: NONE
@@ -76,7 +77,6 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
-      label: Input channel
     bind:
       source: config
       field: iat_adcChannel
@@ -86,8 +86,8 @@ children:
       text: Input three pairs of thermistor temperature and resistance.
   - type: text
     props:
-      variant: hint
       text: Typical temperatures are -40 deg C, 0 deg C and 100 deg C
+      variant: hint
   - type: scalar-field
     id: iat-tempc-1
     props:
@@ -133,12 +133,12 @@ children:
   - type: enum-field
     id: uselineariatsensor
     props:
-      label: Linear characteristic
       options:
       - value: 0
         label: no
       - value: 1
         label: yes
+      label: Linear characteristic
     bind:
       source: config
       field: useLinearIatSensor

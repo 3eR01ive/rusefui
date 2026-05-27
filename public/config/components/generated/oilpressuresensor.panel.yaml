@@ -11,7 +11,6 @@ children:
   - type: enum-field
     id: oilpressure-hwchannel
     props:
-      label: Oil Pressure input
       options:
       - value: 0
         label: NONE
@@ -77,6 +76,7 @@ children:
         label: INVALID
       - value: 31
         label: INVALID
+      label: Oil Pressure input
     bind:
       source: config
       field: oilPressure_hwChannel

@@ -30,6 +30,7 @@ children:
     - type: enum-field
       id: injectionpins1
       props:
+        label: Injection Output 1
         options:
         - value: 0
           label: NONE
@@ -287,14 +288,12 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: Injection Output 1
       bind:
         source: config
         field: injectionPins1
     - type: enum-field
       id: injectionpins2
       props:
-        label: Injection Output 2
         options:
         - value: 0
           label: NONE
@@ -552,12 +551,14 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
+        label: Injection Output 2
       bind:
         source: config
         field: injectionPins2
     - type: enum-field
       id: injectionpins3
       props:
+        label: Injection Output 3
         options:
         - value: 0
           label: NONE
@@ -815,7 +816,6 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: Injection Output 3
       bind:
         source: config
         field: injectionPins3
@@ -1878,7 +1878,6 @@ children:
     - type: enum-field
       id: injectionpins8
       props:
-        label: 'Injection Output 8 '
         options:
         - value: 0
           label: NONE
@@ -2136,13 +2135,13 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
+        label: 'Injection Output 8 '
       bind:
         source: config
         field: injectionPins8
     - type: enum-field
       id: injectionpins9
       props:
-        label: 'Injection Output 9 '
         options:
         - value: 0
           label: NONE
@@ -2400,13 +2399,13 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
+        label: 'Injection Output 9 '
       bind:
         source: config
         field: injectionPins9
     - type: enum-field
       id: injectionpins10
       props:
-        label: 'Injection Output 10 '
         options:
         - value: 0
           label: NONE
@@ -2664,12 +2663,14 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
+        label: 'Injection Output 10 '
       bind:
         source: config
         field: injectionPins10
     - type: enum-field
       id: injectionpins11
       props:
+        label: 'Injection Output 11 '
         options:
         - value: 0
           label: NONE
@@ -2927,13 +2928,13 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: 'Injection Output 11 '
       bind:
         source: config
         field: injectionPins11
     - type: enum-field
       id: injectionpins12
       props:
+        label: 'Injection Output 12 '
         options:
         - value: 0
           label: NONE
@@ -3191,7 +3192,6 @@ children:
           label: INVALID
         - value: 127
           label: INVALID
-        label: 'Injection Output 12 '
       bind:
         source: config
         field: injectionPins12
@@ -3205,36 +3205,36 @@ children:
     children:
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Injector #1 (cmd_test_inj1)'
+        variant: hint
     - type: text
       props:
         variant: hint
         text: 'Кнопка: Injector #2 (cmd_test_inj2)'
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Injector #3 (cmd_test_inj3)'
+        variant: hint
     - type: text
       props:
         text: 'Кнопка: Injector #4 (cmd_test_inj4)'
         variant: hint
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Injector #5 (cmd_test_inj5)'
+        variant: hint
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Injector #6 (cmd_test_inj6)'
+        variant: hint
     - type: text
       props:
         variant: hint
         text: 'Кнопка: Injector #7 (cmd_test_inj7)'
     - type: text
       props:
-        text: 'Кнопка: Injector #8 (cmd_test_inj8)'
         variant: hint
+        text: 'Кнопка: Injector #8 (cmd_test_inj8)'
     - type: text
       props:
         text: 'Кнопка: Injector #9 (cmd_test_inj9)'
@@ -3249,8 +3249,8 @@ children:
         text: 'Кнопка: Injector #11 (cmd_test_inj11)'
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Injector #12 (cmd_test_inj12)'
+        variant: hint
     - type: text
       props:
         text: 'Кнопка: Abort test (cmd_test_cancel)'

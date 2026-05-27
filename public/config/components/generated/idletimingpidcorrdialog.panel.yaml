@@ -7,12 +7,12 @@ children:
 - type: enum-field
   id: useidletimingpidcontrol
   props:
+    label: Enable closed loop idle ignition timing
     options:
     - value: 0
       label: no
     - value: 1
       label: yes
-    label: Enable closed loop idle ignition timing
   bind:
     source: config
     field: useIdleTimingPidControl

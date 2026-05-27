@@ -7,6 +7,7 @@ children:
 - type: enum-field
   id: triggererrorpin
   props:
+    label: Trigger error LED
     options:
     - value: 0
       label: NONE
@@ -364,7 +365,6 @@ children:
       label: PK14
     - value: 177
       label: PK15
-    label: Trigger error LED
   bind:
     source: config
     field: triggerErrorPin

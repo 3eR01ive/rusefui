@@ -15,6 +15,7 @@ export interface ConfigSnapshot {
   bytesTotal: number;
   rawLen: number;
   values: Record<string, number>;
+  stringValues?: Record<string, string>;
   fieldCount: number;
   lastError?: string | null;
 }
@@ -126,6 +127,15 @@ export async function setConfigScalar(
   });
 }
 
+export async function setConfigString(
+  field: string,
+  value: string,
+): Promise<void> {
+  snapshot.value = await invoke<ConfigSnapshot>("config_set_string", {
+    params: { field, value },
+  });
+}
+
 export async function getConfigArray(field: string): Promise<number[]> {
   return invoke<number[]>("config_get_array", { params: { field } });
 }
@@ -172,9 +182,14 @@ export function useConfig() {
       const v = snapshot.value.values[name];
       return v === undefined ? null : v;
     },
+    getStringField: (name: string): string | null => {
+      const v = snapshot.value.stringValues?.[name];
+      return v === undefined ? null : v;
+    },
     getFieldInfo: (name: string): ConfigFieldInfo | null =>
       fieldsByName.value.get(name) ?? null,
     setField: setConfigScalar,
+    setStringField: setConfigString,
     burn: burnConfig,
     getArray: getConfigArray,
     setArrayValue: setConfigArrayValue,

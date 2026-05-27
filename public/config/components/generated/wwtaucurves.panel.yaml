@@ -12,15 +12,15 @@ children:
   id: wwtaucltcurve
   props:
     yBins: wwTauCltValues
-    yLabel: seconds
-    xBins: wwCltBins
     title: Evap time vs. CLT
+    yLabel: seconds
     xLabel: coolant
+    xBins: wwCltBins
 - type: curve
   id: wwtaumapcurve
   props:
-    xLabel: MAP
-    title: Evap time vs. MAP
-    yLabel: mult
     xBins: wwMapBins
     yBins: wwTauMapValues
+    title: Evap time vs. MAP
+    xLabel: MAP
+    yLabel: mult

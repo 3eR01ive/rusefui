@@ -85,9 +85,9 @@ children:
 - type: config-table
   id: torquereductionignitionretardtlb
   props:
-    yLabel: torqueReductionIgnitionRetardXaxis)}
-    yBins: torqueReductionIgnitionRetardGearBins
-    zBins: torqueReductionIgnitionRetardTable
-    title: Torque reduction ignition retard table
-    xBins: torqueReductionIgnitionRetardXBins
     variant: table
+    yBins: torqueReductionIgnitionRetardGearBins
+    xBins: torqueReductionIgnitionRetardXBins
+    yLabel: torqueReductionIgnitionRetardXaxis)}
+    title: Torque reduction ignition retard table
+    zBins: torqueReductionIgnitionRetardTable

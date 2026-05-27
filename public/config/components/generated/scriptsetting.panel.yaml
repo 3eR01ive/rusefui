@@ -6,8 +6,8 @@ source:
 children:
 - type: text
   props:
-    text: Use rusEFI console for Lua script editing
     variant: hint
+    text: Use rusEFI console for Lua script editing
 - type: scalar-field
   id: set-number-is-not-associated-with-the-output-number
   props:
@@ -22,10 +22,11 @@ children:
   bind:
     source: config
     field: Set number, only the cell number with some numbers.
-- type: scalar-field
+- type: string-field
   id: scriptsettingname1
   props:
     label: 'Name #1'
+    maxLength: 16
   bind:
     source: config
     field: scriptSettingName1
@@ -36,10 +37,11 @@ children:
   bind:
     source: config
     field: scriptSetting1
-- type: scalar-field
+- type: string-field
   id: scriptsettingname2
   props:
     label: 'Name #2'
+    maxLength: 16
   bind:
     source: config
     field: scriptSettingName2
@@ -50,10 +52,11 @@ children:
   bind:
     source: config
     field: scriptSetting2
-- type: scalar-field
+- type: string-field
   id: scriptsettingname3
   props:
     label: 'Name #3'
+    maxLength: 16
   bind:
     source: config
     field: scriptSettingName3
@@ -64,10 +67,11 @@ children:
   bind:
     source: config
     field: scriptSetting3
-- type: scalar-field
+- type: string-field
   id: scriptsettingname4
   props:
     label: 'Name #4'
+    maxLength: 16
   bind:
     source: config
     field: scriptSettingName4
@@ -78,9 +82,10 @@ children:
   bind:
     source: config
     field: scriptSetting4
-- type: scalar-field
+- type: string-field
   id: scriptsettingname5
   props:
+    maxLength: 16
     label: 'Name #5'
   bind:
     source: config
@@ -92,9 +97,10 @@ children:
   bind:
     source: config
     field: scriptSetting5
-- type: scalar-field
+- type: string-field
   id: scriptsettingname6
   props:
+    maxLength: 16
     label: 'Name #6'
   bind:
     source: config

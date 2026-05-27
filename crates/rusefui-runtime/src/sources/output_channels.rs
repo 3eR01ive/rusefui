@@ -95,6 +95,7 @@ impl IniContext {
                     }
                     FieldKind::Bits(_) => (None, "bits".to_string()),
                     FieldKind::Array(_) => (None, "array".to_string()),
+                    FieldKind::String(_) => (None, "string".to_string()),
                 };
                 OutputFieldInfo {
                     name: f.name.clone(),

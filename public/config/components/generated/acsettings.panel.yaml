@@ -299,7 +299,6 @@ children:
   - type: enum-field
     id: acrelaypin
     props:
-      label: A/C Relay
       options:
       - value: 0
         label: NONE
@@ -557,6 +556,7 @@ children:
         label: INVALID
       - value: 127
         label: INVALID
+      label: A/C Relay
     bind:
       source: config
       field: acRelayPin
@@ -648,5 +648,5 @@ children:
       field: acPressureEnableHyst
 - type: text
   props:
-    text: Панель «ac_controlIndicatorPanel» — нет определения в INI
     variant: hint
+    text: Панель «ac_controlIndicatorPanel» — нет определения в INI

@@ -11,6 +11,7 @@ children:
   - type: enum-field
     id: tchargemode
     props:
+      label: Mode
       options:
       - value: 0
         label: RPM+TPS (Default)
@@ -20,14 +21,13 @@ children:
         label: Table
       - value: 3
         label: INVALID
-      label: Mode
     bind:
       source: config
       field: tChargeMode
   - type: text
     props:
-      variant: hint
       text: These two parameters limit the estimate's rate of change
+      variant: hint
   - type: scalar-field
     id: tchargeairincrlimit
     props:
@@ -116,8 +116,8 @@ children:
 - type: curve
   id: tchargecurve
   props:
-    yBins: tchargeValues
-    title: Charge temperature estimation coefficient
-    xLabel: flow
     yLabel: coefficient
+    xLabel: flow
     xBins: tchargeBins
+    title: Charge temperature estimation coefficient
+    yBins: tchargeValues

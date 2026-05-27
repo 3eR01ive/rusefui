@@ -7,11 +7,11 @@ children:
 - type: config-table
   id: tractionetbtabletbl
   props:
-    title: Traction Control ETB drop
-    variant: table
-    xBins: tractionControlSpeedBins
-    yBins: tractionControlSlipBins
     zBins: tractionControlEtbDrop
+    title: Traction Control ETB drop
+    xBins: tractionControlSpeedBins
+    variant: table
+    yBins: tractionControlSlipBins
 - type: section
   props:
     title: tractionControlGauges

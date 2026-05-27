@@ -25,12 +25,12 @@ children:
     - type: enum-field
       id: ltft-enabled
       props:
-        label: Gathering Data
         options:
         - value: 0
           label: no
         - value: 1
           label: yes
+        label: Gathering Data
       bind:
         source: config
         field: ltft_enabled
@@ -120,12 +120,12 @@ children:
     children:
     - type: text
       props:
-        variant: hint
         text: Панель «ltftIndicatorsPanel» — нет определения в INI
+        variant: hint
     - type: text
       props:
-        variant: hint
         text: Панель «ltftValuesReadoutPanel» — нет определения в INI
+        variant: hint
 - type: section
   props:
     title: Trim bank 2

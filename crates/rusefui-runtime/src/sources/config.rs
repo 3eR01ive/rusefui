@@ -7,13 +7,13 @@ use std::time::{Duration, Instant};
 
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use rusefi_ini::{
-    decode_array, decode_config_fields, encode_array_element,
-    encode_config_value, ArrayShape, ConfigFieldKind,
+    decode_array, decode_config_fields, decode_config_strings, encode_array_element,
+    encode_config_value, encode_string_value, ArrayShape, ConfigFieldKind,
 };
 use rusefi_protocol::{ProtocolError, TS_PAGE_SETTINGS};
 use serde::Serialize;
 
-use crate::config_diff::encode_scalar_into_page;
+use crate::config_diff::{encode_scalar_into_page, encode_string_into_page};
 use crate::project::ProjectEcuConfig;
 use crate::session::EcuSession;
 use crate::sources::output_channels::IniContext;
@@ -62,6 +62,8 @@ pub struct ConfigSnapshot {
     pub bytes_total: u32,
     pub raw_len: usize,
     pub values: HashMap<String, f64>,
+    #[serde(default)]
+    pub string_values: HashMap<String, String>,
     pub field_count: usize,
     pub last_error: Option<String>,
 }
@@ -78,6 +80,7 @@ impl ConfigSnapshot {
             bytes_total: 0,
             raw_len: 0,
             values: HashMap::new(),
+            string_values: HashMap::new(),
             field_count: ini.config_fields.len(),
             last_error: None,
         }
@@ -135,6 +138,7 @@ impl ConfigSource {
         }
 
         let values = decode_config_fields(&ini.config_fields, &raw);
+        let string_values = decode_config_strings(&ini.config_fields, &raw);
 
         *self.raw.lock().unwrap() = raw.clone();
 
@@ -148,6 +152,7 @@ impl ConfigSource {
         snap.bytes_total = ecu.page_size;
         snap.raw_len = raw.len();
         snap.values = values;
+        snap.string_values = string_values;
         snap.field_count = ini.config_fields.len();
         snap.last_error = None;
         Ok(())
@@ -172,6 +177,7 @@ impl ConfigSource {
 
     fn refresh_snapshot_from_raw(&self, ini: &IniContext, raw: &[u8], project_mode: bool) {
         let values = decode_config_fields(&ini.config_fields, raw);
+        let string_values = decode_config_strings(&ini.config_fields, raw);
         let mut snap = self.snapshot.write().unwrap();
         snap.loaded = true;
         snap.read_only = project_mode;
@@ -182,8 +188,24 @@ impl ConfigSource {
         snap.bytes_total = ini.page_size;
         snap.raw_len = raw.len();
         snap.values = values;
+        snap.string_values = string_values;
         snap.field_count = ini.config_fields.len();
         snap.last_error = None;
+    }
+
+    /// Изменить строковое поле в RAM-снимке проекта (без ECU).
+    pub fn set_string_local(&self, name: &str, value: &str) -> Result<(), String> {
+        let ini = self.ini.lock().unwrap().clone();
+        if ini.config_fields.is_empty() {
+            return Err("INI не загружен".into());
+        }
+        let mut raw = self.raw.lock().unwrap();
+        self.ensure_page_raw(&ini, &mut raw);
+        encode_string_into_page(&ini, &mut raw, name, value)?;
+        let raw_copy = raw.clone();
+        drop(raw);
+        self.refresh_snapshot_from_raw(&ini, &raw_copy, true);
+        Ok(())
     }
 
     /// Изменить поле в RAM-снимке проекта (без ECU).
@@ -282,6 +304,15 @@ impl ConfigSource {
                         array_rows,
                         array_length,
                     }
+                },
+                ConfigFieldKind::String(s) => ConfigFieldInfo {
+                    name: name.clone(),
+                    units: None,
+                    ty: "string".into(),
+                    options: None,
+                    array_cols: None,
+                    array_rows: None,
+                    array_length: Some(s.length as usize),
                 },
             })
             .collect()
@@ -470,6 +501,7 @@ impl ConfigSource {
                     match load_result {
                         Some(Ok(bytes)) => {
                             let values = decode_config_fields(&config_fields, &bytes);
+                            let string_values = decode_config_strings(&config_fields, &bytes);
                             *raw_store.lock().unwrap() = bytes.clone();
                             snap = ConfigSnapshot {
                                 connected: true,
@@ -481,6 +513,7 @@ impl ConfigSource {
                                 bytes_total: page_size,
                                 raw_len: bytes.len(),
                                 values,
+                                string_values,
                                 field_count,
                                 last_error: None,
                             };
@@ -564,6 +597,57 @@ impl ConfigSource {
         Ok(())
     }
 
+    /// Запись строки в RAM ECU (`C`) + verify-read.
+    pub fn write_string(
+        &self,
+        session: &EcuSession,
+        name: &str,
+        value: &str,
+    ) -> Result<(), String> {
+        self.ensure_ecu_writable()?;
+        let ini = self.ini.lock().unwrap().clone();
+        let field = ini
+            .config_fields
+            .get(name)
+            .ok_or_else(|| format!("unknown config field: {name}"))?;
+        let ConfigFieldKind::String(s) = field else {
+            return Err(format!("{name} is not a string field"));
+        };
+        let offset = s.offset;
+        let encoded = encode_string_value(s, value)
+            .ok_or_else(|| format!("cannot encode value for {name}"))?;
+
+        if offset > u16::MAX as u32 {
+            return Err(format!("offset {name} exceeds protocol limit"));
+        }
+
+        self.write_verified_chunk(
+            session,
+            ini.page_read_has_page_index,
+            ini.page_chunk_write_has_page_index,
+            offset as u16,
+            &encoded,
+            name,
+        )?;
+
+        {
+            let mut raw = self.raw.lock().unwrap();
+            let off = offset as usize;
+            if off + encoded.len() > raw.len() {
+                raw.resize(off + encoded.len(), 0);
+            }
+            raw[off..off + encoded.len()].copy_from_slice(&encoded);
+        }
+
+        {
+            let mut snap = self.snapshot.write().unwrap();
+            snap.string_values.insert(name.to_string(), value.to_string());
+            snap.last_error = None;
+        }
+
+        Ok(())
+    }
+
     /// `C` + verify + `B` (как было при сохранении поля целиком).
     pub fn set_scalar(
         &self,
@@ -637,6 +721,7 @@ impl ConfigSource {
         })?;
 
         let values = decode_config_fields(&config_fields, &bytes);
+        let string_values = decode_config_strings(&config_fields, &bytes);
         *self.raw.lock().unwrap() = bytes.clone();
 
         let mut snap = self.snapshot.write().unwrap();
@@ -649,6 +734,7 @@ impl ConfigSource {
         snap.bytes_total = page_size;
         snap.raw_len = bytes.len();
         snap.values = values;
+        snap.string_values = string_values;
         snap.field_count = config_fields.len();
         snap.last_error = None;
 
@@ -710,5 +796,6 @@ fn config_field_offset(field: &ConfigFieldKind) -> u32 {
         ConfigFieldKind::Scalar(s) => s.offset,
         ConfigFieldKind::Enum(e) => e.bits.offset,
         ConfigFieldKind::Array(a) => a.offset,
+        ConfigFieldKind::String(s) => s.offset,
     }
 }

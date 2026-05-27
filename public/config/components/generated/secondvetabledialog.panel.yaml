@@ -6,8 +6,8 @@ source:
 children:
 - type: text
   props:
-    text: Таблица/кривая «secondVeTableControls» — нет определения в INI
     variant: hint
+    text: Таблица/кривая «secondVeTableControls» — нет определения в INI
 - type: config-table
   id: secondvetabletbl
   props:

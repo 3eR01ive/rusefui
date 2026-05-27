@@ -35,9 +35,9 @@ children:
 - type: config-table
   id: lambdatabletbl
   props:
-    xLabel: RPM
     variant: table
-    title: Target Lambda Table
+    xLabel: RPM
     xBins: lambdaRpmBins
     yBins: lambdaLoadBins
+    title: Target Lambda Table
     zBins: lambdaTable

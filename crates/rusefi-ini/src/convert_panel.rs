@@ -319,6 +319,9 @@ fn field_node(
             return enum_node(field, label, &e.options);
         }
     }
+    if let Some(ConfigFieldKind::String(s)) = config_fields.get(field) {
+        return string_node(field, label, s.length);
+    }
     scalar_node(field, label)
 }
 
@@ -350,6 +353,30 @@ fn enum_node(field: &str, label: &str, options: &[EnumOption]) -> YamlNode {
                 serde_yaml::Value::String(label.to_string()),
             );
             m.insert("options".into(), serde_yaml::Value::Sequence(option_values));
+            m
+        }),
+        bind: Some(YamlBind {
+            source: "config".into(),
+            field: field.to_string(),
+        }),
+        children: None,
+    }
+}
+
+fn string_node(field: &str, label: &str, max_length: u32) -> YamlNode {
+    YamlNode {
+        node_type: "string-field".into(),
+        id: Some(slugify(field)),
+        props: Some({
+            let mut m = HashMap::new();
+            m.insert(
+                "label".into(),
+                serde_yaml::Value::String(label.to_string()),
+            );
+            m.insert(
+                "maxLength".into(),
+                serde_yaml::Value::Number(max_length.into()),
+            );
             m
         }),
         bind: Some(YamlBind {
@@ -454,5 +481,10 @@ mod tests {
             .values()
             .any(|yaml| yaml.contains("\n  type: curve\n") || yaml.contains("- type: curve"));
         assert!(has_curve, "expected curve in converted panels");
+        let enginechars = result.files.get("enginechars.panel.yaml").unwrap();
+        assert!(
+            enginechars.contains("- type: string-field\n    id: vehiclename"),
+            "vehicleName should be string-field"
+        );
     }
 }

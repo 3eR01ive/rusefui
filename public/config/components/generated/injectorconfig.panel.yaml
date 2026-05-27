@@ -55,7 +55,6 @@ children:
   - type: enum-field
     id: veoverridemode
     props:
-      label: Override VE table load axis
       options:
       - value: 0
         label: None
@@ -65,12 +64,14 @@ children:
         label: TPS
       - value: 3
         label: INVALID
+      label: Override VE table load axis
     bind:
       source: config
       field: veOverrideMode
   - type: enum-field
     id: afroverridemode
     props:
+      label: Override AFR table load axis
       options:
       - value: 0
         label: None
@@ -88,7 +89,6 @@ children:
         label: INVALID
       - value: 7
         label: INVALID
-      label: Override AFR table load axis
     bind:
       source: config
       field: afrOverrideMode
@@ -122,31 +122,30 @@ children:
   - type: enum-field
     id: injectorflowasmassflow
     props:
-      label: Injector flow units
       options:
       - value: 0
         label: cc/min
       - value: 1
         label: grams per second
+      label: Injector flow units
     bind:
       source: config
       field: injectorFlowAsMassFlow
   - type: enum-field
     id: injectorpressuretype
     props:
+      label: Fuel rail pressure sensor
       options:
       - value: 0
         label: Low
       - value: 1
         label: High
-      label: Fuel rail pressure sensor
     bind:
       source: config
       field: injectorPressureType
   - type: enum-field
     id: injectorcompensationmode
     props:
-      label: Injector flow compensation mode
       options:
       - value: 0
         label: None
@@ -156,6 +155,7 @@ children:
         label: Sensed Rail Pressure
       - value: 3
         label: HPFP fuel mass compensation
+      label: Injector flow compensation mode
     bind:
       source: config
       field: injectorCompensationMode
@@ -195,12 +195,12 @@ children:
   - type: enum-field
     id: useabsolutepressureforlagtime
     props:
-      label: Use absolute fuel pressure for dead time calculation
       options:
       - value: 0
         label: no
       - value: 1
         label: yes
+      label: Use absolute fuel pressure for dead time calculation
     bind:
       source: config
       field: useAbsolutePressureForLagTime

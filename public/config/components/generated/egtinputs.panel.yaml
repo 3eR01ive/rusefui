@@ -63,7 +63,6 @@ children:
   - type: enum-field
     id: max31855-cs1
     props:
-      label: CS for EGT1
       options:
       - value: 0
         label: NONE
@@ -421,6 +420,7 @@ children:
         label: PK14
       - value: 177
         label: PK15
+      label: CS for EGT1
     bind:
       source: config
       field: max31855_cs1
@@ -791,7 +791,6 @@ children:
   - type: enum-field
     id: max31855-cs3
     props:
-      label: CS for EGT3
       options:
       - value: 0
         label: NONE
@@ -1149,12 +1148,14 @@ children:
         label: PK14
       - value: 177
         label: PK15
+      label: CS for EGT3
     bind:
       source: config
       field: max31855_cs3
   - type: enum-field
     id: max31855-cs4
     props:
+      label: CS for EGT4
       options:
       - value: 0
         label: NONE
@@ -1512,7 +1513,6 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: CS for EGT4
     bind:
       source: config
       field: max31855_cs4
@@ -1883,6 +1883,7 @@ children:
   - type: enum-field
     id: max31855-cs6
     props:
+      label: CS for EGT6
       options:
       - value: 0
         label: NONE
@@ -2240,13 +2241,13 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: CS for EGT6
     bind:
       source: config
       field: max31855_cs6
   - type: enum-field
     id: max31855-cs7
     props:
+      label: CS for EGT7
       options:
       - value: 0
         label: NONE
@@ -2604,13 +2605,13 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: CS for EGT7
     bind:
       source: config
       field: max31855_cs7
   - type: enum-field
     id: max31855-cs8
     props:
+      label: CS for EGT8
       options:
       - value: 0
         label: NONE
@@ -2968,7 +2969,6 @@ children:
         label: PK14
       - value: 177
         label: PK15
-      label: CS for EGT8
     bind:
       source: config
       field: max31855_cs8

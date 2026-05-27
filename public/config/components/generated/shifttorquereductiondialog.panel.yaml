@@ -11,12 +11,12 @@ children:
   - type: enum-field
     id: torquereductionenabled
     props:
+      label: Enable Shift Torque Reduction
       options:
       - value: 0
         label: disabled
       - value: 1
         label: enabled
-      label: Enable Shift Torque Reduction
     bind:
       source: config
       field: torqueReductionEnabled
@@ -54,6 +54,7 @@ children:
       - type: enum-field
         id: torquereductiontriggerpin
         props:
+          label: Torque Reduction Button
           options:
           - value: 0
             label: NONE
@@ -311,7 +312,6 @@ children:
             label: INVALID
           - value: 127
             label: INVALID
-          label: Torque Reduction Button
         bind:
           source: config
           field: torqueReductionTriggerPin
@@ -590,7 +590,6 @@ children:
       - type: enum-field
         id: clutchdownpin
         props:
-          label: Clutch Down
           options:
           - value: 0
             label: NONE
@@ -848,6 +847,7 @@ children:
             label: INVALID
           - value: 127
             label: INVALID
+          label: Clutch Down
         bind:
           source: config
           field: clutchDownPin

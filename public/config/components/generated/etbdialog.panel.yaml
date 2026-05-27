@@ -94,8 +94,8 @@ children:
         variant: hint
   - type: text
     props:
-      text: Панель «etbIndicatorPanel» — нет определения в INI
       variant: hint
+      text: Панель «etbIndicatorPanel» — нет определения в INI
 - type: section
   props:
     title: etbDialogRight
@@ -173,12 +173,12 @@ children:
         field: Should first OPEN, then CLOSE
     - type: text
       props:
-        text: Please check with your eyes that throttle first OPENS and then CLOSES
         variant: hint
+        text: Please check with your eyes that throttle first OPENS and then CLOSES
     - type: text
       props:
-        variant: hint
         text: If order is reversed swap ETB+/ETB- wires
+        variant: hint
     - type: text
       props:
         text: 'Bench test: opens ETB 300ms, no ignition/sensors needed'
@@ -227,8 +227,8 @@ children:
         variant: hint
     - type: text
       props:
-        variant: hint
         text: 'Кнопка: Auto Calibrate ETB 2 (cmd_etb_auto_calibrate_2)'
+        variant: hint
   - type: section
     props:
       title: Sensor/PID autotune

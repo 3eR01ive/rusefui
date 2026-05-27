@@ -71,7 +71,6 @@ children:
     - type: enum-field
       id: canwbo1-aemid
       props:
-        label: AEM ID
         options:
         - value: 0
           label: ID1 0x0000180
@@ -105,6 +104,7 @@ children:
           label: ID15 0x000018E
         - value: 15
           label: ID16 0x000018F
+        label: AEM ID
       bind:
         source: config
         field: canWbo1_aemId
@@ -153,12 +153,12 @@ children:
   - type: enum-field
     id: widebandonsecondbus
     props:
-      label: Wideband CAN bus
       options:
       - value: 0
         label: CAN1
       - value: 1
         label: CAN2
+      label: Wideband CAN bus
     bind:
       source: config
       field: widebandOnSecondBus
@@ -175,8 +175,8 @@ children:
       variant: hint
   - type: text
     props:
-      text: Never keep enabled outside workshop.
       variant: hint
+      text: Never keep enabled outside workshop.
   - type: text
     props:
       text: This can damage your sensor.
@@ -195,12 +195,12 @@ children:
       field: forceO2Heating
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Restart all WBO (cmd_restart_widebands)'
+      variant: hint
   - type: text
     props:
-      variant: hint
       text: 'Кнопка: Update 2023 Firmware from file (cmd_wideband_firmare_update_file)'
+      variant: hint
 - type: section
   props:
     title: CAN UEGO 2
@@ -319,8 +319,8 @@ children:
         text: Панель «uegoCan1IndicatorsExt» — нет определения в INI
     - type: text
       props:
-        text: Панель «uegoCan1IndicatorsAem» — нет определения в INI
         variant: hint
+        text: Панель «uegoCan1IndicatorsAem» — нет определения в INI
   - type: section
     props:
       title: uegoCan1Gauges
