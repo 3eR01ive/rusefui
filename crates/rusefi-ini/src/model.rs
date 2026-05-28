@@ -7,6 +7,9 @@ pub struct IniFile {
     pub blocking_factor: u16,
     /// Размер страницы 0 (основная калибровка), первое значение `pageSize` в INI.
     pub page_size: u32,
+    /// Все `pageSize` из INI (`64480, 256, …`); индекс 0 = INI page 1.
+    #[serde(default)]
+    pub page_sizes: Vec<u32>,
     /// `pageReadCommand` для page 0 включает `%2i` (новый формат с номером страницы).
     /// Старый `"R%2o%2c"` (длина 7) — только offset+count, как в Java `BinaryProtocol`.
     pub page_read_has_page_index: bool,
@@ -65,10 +68,25 @@ impl ArrayShape {
     }
 }
 
+/// Номер страницы в INI (`page = N` в `[Constants]`), **1-based** (как Java `PageReader`).
+pub const DEFAULT_INI_PAGE: u8 = 1;
+
+pub fn config_field_ini_page(kind: &ConfigFieldKind) -> u8 {
+    match kind {
+        ConfigFieldKind::Scalar(s) => s.page,
+        ConfigFieldKind::Enum(e) => e.bits.page,
+        ConfigFieldKind::Array(a) => a.page,
+        ConfigFieldKind::String(s) => s.page,
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct ArrayField {
     pub ty: ScalarType,
     pub offset: u32,
+    /// INI `page = N` (1-based). Page 1 = основная калибровка (~64 KiB).
+    #[serde(default = "default_ini_page")]
+    pub page: u8,
     pub shape: ArrayShape,
     pub units: String,
     pub scale: f64,
@@ -90,7 +108,13 @@ pub enum ConfigFieldKind {
 #[derive(Debug, Clone, Serialize)]
 pub struct StringField {
     pub offset: u32,
+    #[serde(default = "default_ini_page")]
+    pub page: u8,
     pub length: u32,
+}
+
+fn default_ini_page() -> u8 {
+    DEFAULT_INI_PAGE
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -190,6 +214,8 @@ impl ScalarType {
 pub struct ScalarField {
     pub ty: ScalarType,
     pub offset: u32,
+    #[serde(default = "default_ini_page")]
+    pub page: u8,
     pub units: String,
     pub scale: f64,
     pub translate: f64,
@@ -199,6 +225,8 @@ pub struct ScalarField {
 pub struct BitsField {
     pub ty: ScalarType,
     pub offset: u32,
+    #[serde(default = "default_ini_page")]
+    pub page: u8,
     pub bit_low: u8,
     pub bit_high: u8,
 }

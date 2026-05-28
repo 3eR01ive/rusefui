@@ -125,8 +125,16 @@ impl ConfigTableLogic {
         y_len: usize,
         z_len: usize,
     ) -> (usize, usize) {
+        if z_len == 0 {
+            return (1, 1);
+        }
+        if x_len > 0 || y_len > 0 {
+            return Self::infer_dims(x_len, y_len, z_len);
+        }
         if let Some((rows, cols)) = self.config().get_array_matrix_size(z_name) {
-            return (rows, cols);
+            if z_len == rows * cols {
+                return (rows, cols);
+            }
         }
         Self::infer_dims(x_len, y_len, z_len)
     }

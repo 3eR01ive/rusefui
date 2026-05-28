@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use crate::model::{
-    ArrayField, BitsField, ConfigFieldKind, FieldKind, OutputChannels, ScalarField,
-    ScalarType, StringField,
+    config_field_ini_page, ArrayField, BitsField, ConfigFieldKind, FieldKind, OutputChannels,
+    ScalarField, ScalarType, StringField, DEFAULT_INI_PAGE,
 };
 
 /// Декодирует поля конфигурации (секция `[Constants]`).
@@ -10,8 +10,22 @@ pub fn decode_config_fields(
     fields: &HashMap<String, ConfigFieldKind>,
     bytes: &[u8],
 ) -> HashMap<String, f64> {
+    decode_config_fields_pages(fields, &[(1, bytes)])
+}
+
+/// Декодирует config-поля с учётом INI-страницы (`page = N`, 1-based).
+pub fn decode_config_fields_pages(
+    fields: &HashMap<String, ConfigFieldKind>,
+    pages: &[(u8, &[u8])],
+) -> HashMap<String, f64> {
     let mut out = HashMap::new();
     for (name, field) in fields {
+        let page = config_field_ini_page(field);
+        let bytes = pages
+            .iter()
+            .find(|(p, _)| *p == page)
+            .map(|(_, b)| *b)
+            .unwrap_or(&[]);
         if let Some(v) = decode_config_field(field, bytes) {
             out.insert(name.clone(), v);
         }
@@ -24,9 +38,22 @@ pub fn decode_config_strings(
     fields: &HashMap<String, ConfigFieldKind>,
     bytes: &[u8],
 ) -> HashMap<String, String> {
+    decode_config_strings_pages(fields, &[(1, bytes)])
+}
+
+pub fn decode_config_strings_pages(
+    fields: &HashMap<String, ConfigFieldKind>,
+    pages: &[(u8, &[u8])],
+) -> HashMap<String, String> {
     let mut out = HashMap::new();
     for (name, field) in fields {
         if let ConfigFieldKind::String(s) = field {
+            let page = config_field_ini_page(field);
+            let bytes = pages
+                .iter()
+                .find(|(p, _)| *p == page)
+                .map(|(_, b)| *b)
+                .unwrap_or(&[]);
             if let Some(v) = decode_string(s, bytes) {
                 out.insert(name.clone(), v);
             }
@@ -90,6 +117,10 @@ pub fn encode_string_value(field: &StringField, value: &str) -> Option<Vec<u8>> 
 pub fn decode_array(field: &ArrayField, bytes: &[u8]) -> Vec<f64> {
     let count = field.shape.element_count();
     let size = field.ty.size_bytes();
+    let need = field.offset as usize + count * size;
+    if need > bytes.len() {
+        return Vec::new();
+    }
     let mut out = Vec::with_capacity(count);
     for i in 0..count {
         let off = field.offset as usize + i * size;
@@ -113,6 +144,7 @@ pub fn encode_array_element(
         &ScalarField {
             ty: field.ty,
             offset: 0,
+            page: DEFAULT_INI_PAGE,
             units: String::new(),
             scale: 1.0,
             translate: 0.0,

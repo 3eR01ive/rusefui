@@ -6,7 +6,7 @@ use crate::enum_options::parse_enum_options;
 use crate::error::IniError;
 use crate::model::{
     ArrayField, BitsField, ConfigFieldKind, EnumField, FieldKind, IniFile, OutputChannelField,
-    OutputChannels, ScalarField, ScalarType,
+    OutputChannels, ScalarField, ScalarType, DEFAULT_INI_PAGE,
 };
 
 #[derive(PartialEq, Eq)]
@@ -27,6 +27,8 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
     let mut och_block_size = 2044u16;
     let mut blocking_factor = 1024u16;
     let mut page_size = 64_000u32;
+    let mut page_sizes: Vec<u32> = Vec::new();
+    let mut current_config_page = DEFAULT_INI_PAGE;
     let mut page_read_has_page_index = true;
     let mut page_chunk_write_has_page_index = true;
     let mut inter_write_delay_ms = 10u16;
@@ -70,8 +72,9 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
                 if let Some(factor) = parse_key_u16(line, "blockingFactor") {
                     blocking_factor = factor;
                 }
-                if let Some(size) = parse_key_first_u32(line, "pageSize") {
-                    page_size = size;
+                if let Some(sizes) = parse_page_sizes_line(line) {
+                    page_sizes = sizes.clone();
+                    page_size = sizes.first().copied().unwrap_or(page_size);
                 }
             }
             continue;
@@ -82,8 +85,13 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
                 blocking_factor = factor;
                 continue;
             }
-            if let Some(size) = parse_key_first_u32(line, "pageSize") {
-                page_size = size;
+            if let Some(sizes) = parse_page_sizes_line(line) {
+                page_sizes = sizes.clone();
+                page_size = sizes.first().copied().unwrap_or(page_size);
+                continue;
+            }
+            if let Some(page_num) = parse_page_directive(line) {
+                current_config_page = page_num;
                 continue;
             }
             if let Some(cmd) = parse_key_first_quoted(line, "pageReadCommand") {
@@ -122,7 +130,7 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
                 || line.contains("array,")
                 || line.contains("string,"))
         {
-            match parse_config_or_output_line(line, &defines) {
+            match parse_config_or_output_line(line, &defines, current_config_page) {
                 Ok(field) => {
                     if section == Section::OutputChannels {
                         if matches!(field.kind, FieldKind::String(_)) {
@@ -158,10 +166,17 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
     };
     output_channels.index_fields();
 
+    let page_sizes = if page_sizes.is_empty() {
+        vec![page_size]
+    } else {
+        page_sizes
+    };
+
     Ok(IniFile {
         signature,
         blocking_factor,
         page_size,
+        page_sizes,
         page_read_has_page_index,
         page_chunk_write_has_page_index,
         inter_write_delay_ms,
@@ -270,6 +285,29 @@ fn parse_key_first_u32(line: &str, key: &str) -> Option<u32> {
     v.split(',').next()?.trim().parse().ok()
 }
 
+fn parse_page_sizes_line(line: &str) -> Option<Vec<u32>> {
+    let v = parse_key_value(line, "pageSize")?;
+    let sizes: Vec<u32> = v
+        .split(',')
+        .filter_map(|s| s.trim().parse().ok())
+        .collect();
+    if sizes.is_empty() {
+        None
+    } else {
+        Some(sizes)
+    }
+}
+
+/// `page = 4` в `[Constants]` (номер страницы INI, 1-based).
+fn parse_page_directive(line: &str) -> Option<u8> {
+    let trimmed = line.trim();
+    let rest = trimmed.strip_prefix("page")?.trim();
+    if !rest.starts_with('=') {
+        return None;
+    }
+    rest.trim_start_matches('=').trim().parse().ok()
+}
+
 fn parse_key_first_quoted(line: &str, key: &str) -> Option<String> {
     let v = parse_key_value(line, key)?;
     let first = v.split(',').next()?.trim();
@@ -279,6 +317,7 @@ fn parse_key_first_quoted(line: &str, key: &str) -> Option<String> {
 fn parse_config_or_output_line(
     line: &str,
     defines: &HashMap<String, Vec<String>>,
+    config_page: u8,
 ) -> Result<ParsedIniField, String> {
     let (name, rest) = line.split_once('=').ok_or("missing '='")?;
     let name = name.trim().to_string();
@@ -309,6 +348,7 @@ fn parse_config_or_output_line(
             FieldKind::Scalar(ScalarField {
                 ty,
                 offset,
+                page: config_page,
                 units,
                 scale,
                 translate,
@@ -329,6 +369,7 @@ fn parse_config_or_output_line(
             FieldKind::Bits(BitsField {
                 ty,
                 offset,
+                page: config_page,
                 bit_low: low,
                 bit_high: high,
             })
@@ -349,6 +390,7 @@ fn parse_config_or_output_line(
             FieldKind::Array(ArrayField {
                 ty,
                 offset,
+                page: config_page,
                 shape,
                 units,
                 scale,
@@ -364,7 +406,11 @@ fn parse_config_or_output_line(
             }
             let offset: u32 = parts[2].parse().map_err(|_| "bad string offset")?;
             let length: u32 = parts[3].parse().map_err(|_| "bad string length")?;
-            FieldKind::String(crate::model::StringField { offset, length })
+            FieldKind::String(crate::model::StringField {
+                offset,
+                page: config_page,
+                length,
+            })
         }
         other => return Err(format!("unknown field kind: {other}")),
     };

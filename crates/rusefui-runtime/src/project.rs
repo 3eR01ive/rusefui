@@ -6,14 +6,14 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use base64::{engine::general_purpose::STANDARD as B64, Engine};
-use rusefi_ini::decode_config_fields;
+use rusefi_ini::{config_field_ini_page, decode_config_fields_pages, DEFAULT_INI_PAGE};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::config_diff::encode_scalar_into_page;
 use crate::ini::resolve_ini_for_signature;
 use crate::session::EcuSession;
+use crate::sources::config::{build_project_ecu_config, pages_from_project_ecu};
 use crate::ui_persist::{self, ProjectUi};
 
 pub const FORMAT_VERSION: u32 = 1;
@@ -54,8 +54,11 @@ pub struct ProjectIniRef {
 pub struct ProjectEcuConfig {
     pub captured_at_ms: u64,
     pub page_size: u32,
-    /// Сырой page 0 (как после чтения с ECU), base64.
+    /// Сырой INI page 1 (основная калибровка), base64.
     pub raw_page0_base64: String,
+    /// Доп. страницы INI (`"2"`…`"4"` → base64). Second ignition/VE — page 4.
+    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
+    pub config_pages_base64: HashMap<String, String>,
     /// Декодированные скаляры/enum для просмотра и diff.
     pub values: HashMap<String, f64>,
 }
@@ -226,24 +229,17 @@ impl ProjectStore {
 
     pub fn capture_ecu_config(&self, session: &EcuSession) -> Result<(), String> {
         let snap = session.config().snapshot();
-        let mut raw = session.config().page_raw();
-        if raw.is_empty() || !snap.loaded {
+        let pages = session.config().config_pages();
+        if pages.is_empty() || !snap.loaded {
             return Err(
                 "Сначала загрузите конфигурацию с ECU (страница настроек)".into(),
             );
         }
         let ini = session.ini_context();
-        let page_len = ini.page_size as usize;
-        if raw.len() < page_len {
-            raw.resize(page_len, 0);
-        }
+        let mut ecu = build_project_ecu_config(&pages, &ini, snap.values.clone());
+        ecu.captured_at_ms = now_ms();
         let mut doc = self.doc.lock().unwrap();
-        doc.ecu_config = Some(ProjectEcuConfig {
-            captured_at_ms: now_ms(),
-            page_size: ini.page_size,
-            raw_page0_base64: B64.encode(&raw),
-            values: snap.values.clone(),
-        });
+        doc.ecu_config = Some(ecu);
         doc.ini = Some(ProjectIniRef {
             path: session.loaded_ini_path().map(|p| {
                 Self::ini_path_for_project_store(
@@ -302,23 +298,18 @@ impl ProjectStore {
         if !snap.loaded {
             return Err("Config не загружен в сессии".into());
         }
-        let mut raw = session.config().page_raw();
-        if raw.is_empty() {
-            return Err("Пустой образ page 0".into());
+        let pages = session.config().config_pages();
+        if pages.is_empty() {
+            return Err("Пустой образ config".into());
         }
         let ini = session.ini_context();
-        let page_len = ini.page_size as usize;
-        if raw.len() < page_len {
-            raw.resize(page_len, 0);
-        }
-        let values = decode_config_fields(&ini.config_fields, &raw);
+        let owned: Vec<(u8, Vec<u8>)> = pages.iter().map(|(p, v)| (*p, v.clone())).collect();
+        let slices: Vec<(u8, &[u8])> = owned.iter().map(|(p, v)| (*p, v.as_slice())).collect();
+        let values = decode_config_fields_pages(&ini.config_fields, &slices);
+        let mut ecu = build_project_ecu_config(&pages, &ini, values);
+        ecu.captured_at_ms = now_ms();
         let mut doc = self.doc.lock().unwrap();
-        doc.ecu_config = Some(ProjectEcuConfig {
-            captured_at_ms: now_ms(),
-            page_size: ini.page_size,
-            raw_page0_base64: B64.encode(&raw),
-            values,
-        });
+        doc.ecu_config = Some(ecu);
         doc.touch();
         *self.dirty.lock().unwrap() = true;
         Ok(())
@@ -337,13 +328,20 @@ impl ProjectStore {
             .ecu_config
             .as_mut()
             .ok_or_else(|| "В проекте нет снимка ecuConfig".to_string())?;
-        let mut raw = B64
-            .decode(&ecu.raw_page0_base64)
-            .map_err(|e| format!("page0 base64: {e}"))?;
-        encode_scalar_into_page(&ini, &mut raw, field, value)?;
-        ecu.raw_page0_base64 = B64.encode(&raw);
-        ecu.values = decode_config_fields(&ini.config_fields, &raw);
-        ecu.values.insert(field.to_string(), value);
+        let mut pages = pages_from_project_ecu(ecu, &ini)?;
+        let ini_page = ini
+            .config_fields
+            .get(field)
+            .map(config_field_ini_page)
+            .unwrap_or(DEFAULT_INI_PAGE);
+        let page_len = ini_page_size(ini_page, &ini) as usize;
+        let raw = pages.entry(ini_page).or_insert_with(|| vec![0u8; page_len]);
+        encode_scalar_into_page(&ini, raw, field, value)?;
+        let owned: Vec<(u8, Vec<u8>)> = pages.iter().map(|(p, v)| (*p, v.clone())).collect();
+        let slices: Vec<(u8, &[u8])> = owned.iter().map(|(p, v)| (*p, v.as_slice())).collect();
+        let mut values = decode_config_fields_pages(&ini.config_fields, &slices);
+        values.insert(field.to_string(), value);
+        *ecu = build_project_ecu_config(&pages, &ini, values);
         doc.touch();
         *self.dirty.lock().unwrap() = true;
         Ok(())
@@ -448,6 +446,14 @@ impl ProjectStore {
                 .into(),
         )
     }
+}
+
+fn ini_page_size(ini_page: u8, ini: &crate::sources::output_channels::IniContext) -> u32 {
+    let idx = ini_page.saturating_sub(1) as usize;
+    ini.page_sizes
+        .get(idx)
+        .copied()
+        .unwrap_or(ini.page_size)
 }
 
 #[cfg(test)]

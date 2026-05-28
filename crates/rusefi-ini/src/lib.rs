@@ -12,16 +12,17 @@ mod tables;
 
 pub use convert_panel::{convert_menu_panels, ConvertResult, PanelManifest, PanelManifestEntry};
 pub use decode::{
-    decode_array, decode_config_at, decode_config_fields, decode_config_scalars,
+    decode_array, decode_config_at, decode_config_fields, decode_config_fields_pages,
+    decode_config_scalars, decode_config_strings_pages,
     decode_config_strings, decode_output_channels, decode_scalar_at, encode_array_element,
     encode_bits_value, encode_config_value, encode_scalar_value, encode_string_value,
 };
 pub use error::IniError;
 pub use menu::{parse_menu_section, IniMenu};
 pub use model::{
-    ArrayField, ArrayShape, BitsField, ConfigFieldKind, EnumField, EnumOption, FieldKind,
-    IniCurveDef,
-    IniFile, IniTableDef, OutputChannelField, OutputChannels, ScalarField, ScalarType, StringField,
+    config_field_ini_page, ArrayField, ArrayShape, BitsField, ConfigFieldKind, EnumField,
+    EnumOption, FieldKind, IniCurveDef, IniFile, IniTableDef, OutputChannelField, OutputChannels,
+    ScalarField, ScalarType, StringField, DEFAULT_INI_PAGE,
 };
 pub use parse::{parse_ini, split_ini_args, unescape_ini_bytes};
 

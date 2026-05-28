@@ -469,10 +469,8 @@ fn sync_config_load(state: &RuntimeState, app: &AppHandle) {
     if cfg.loaded && !cfg.read_only {
         return;
     }
-    // Preview из проекта — сбросить и загрузить с блока.
-    if cfg.loaded && cfg.read_only {
-        state.session.config().stop();
-    }
+    // Preview из проекта не сбрасываем: start_load подменит RAM только после
+    // успешного чтения page 1 с ECU (иначе при 0x84 на доп. страницах UI пустой).
 
     state.session.output().stop();
     state.session.composite().stop();
