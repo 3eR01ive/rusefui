@@ -9,7 +9,7 @@ use crate::config_table_grid::{
 };
 use crate::session::EcuSession;
 
-const NUDGE_STEP: f64 = 1.0;
+const DEFAULT_NUDGE_STEP: f64 = 0.1;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -41,6 +41,8 @@ pub struct ConfigTableLogic {
     loading: bool,
     saving: bool,
     local_error: Option<String>,
+    edit_buffer: String,
+    nudge_step: f64,
 }
 
 impl ConfigTableLogic {
@@ -59,6 +61,8 @@ impl ConfigTableLogic {
             loading: false,
             saving: false,
             local_error: None,
+            edit_buffer: String::new(),
+            nudge_step: DEFAULT_NUDGE_STEP,
         }
     }
 
@@ -266,9 +270,9 @@ impl ConfigTableLogic {
                     return Ok(());
                 }
                 let delta = if dir == NavDir::Up {
-                    NUDGE_STEP
+                    self.nudge_step
                 } else {
-                    -NUDGE_STEP
+                    -self.nudge_step
                 };
                 let rect = self.grid.selection();
                 let updates = nudge_rect_values(&self.grid, rect, delta);
@@ -280,9 +284,103 @@ impl ConfigTableLogic {
             } else {
                 self.grid.move_cursor(dir);
             }
+            self.edit_buffer.clear();
             return Ok(());
         }
         Ok(())
+    }
+
+    fn apply_value_to_selection(&mut self, value: f64) -> Result<(), String> {
+        if !self.can_edit() {
+            return Ok(());
+        }
+        let rect = self.grid.selection();
+        let mut updates = Vec::new();
+        for r in rect.r0..=rect.r1 {
+            for c in rect.c0..=rect.c1 {
+                let idx = self.grid.index_visual(r, c);
+                let current = self.grid.values.get(idx).copied().unwrap_or(0.0);
+                if (current - value).abs() >= 1e-9 {
+                    updates.push((idx, value));
+                }
+            }
+        }
+        self.apply_updates(&updates)
+    }
+
+    fn handle_type_key(&mut self, payload: &Value) -> Result<(), String> {
+        let kind = payload.get("kind").and_then(|v| v.as_str()).unwrap_or("");
+        match kind {
+            "char" => {
+                let ch = payload
+                    .get("ch")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| s.chars().next())
+                    .ok_or("пустой символ ввода")?;
+                match ch {
+                    '0'..='9' => self.edit_buffer.push(ch),
+                    '.' => {
+                        if !self.edit_buffer.contains('.') {
+                            if self.edit_buffer.is_empty() {
+                                self.edit_buffer.push('0');
+                            }
+                            self.edit_buffer.push('.');
+                        }
+                    }
+                    '-' => {
+                        if self.edit_buffer.is_empty() {
+                            self.edit_buffer.push('-');
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            "backspace" => {
+                self.edit_buffer.pop();
+            }
+            "commit" | "cancel" => {
+                self.edit_buffer.clear();
+                return Ok(());
+            }
+            _ => return Ok(()),
+        }
+
+        let parsed = self
+            .edit_buffer
+            .replace(',', ".")
+            .parse::<f64>()
+            .ok()
+            .filter(|v| v.is_finite());
+        if let Some(v) = parsed {
+            self.apply_value_to_selection(v)?;
+        }
+        Ok(())
+    }
+
+    fn set_selection_value(&mut self, row: usize, col: usize, value: f64) -> Result<(), String> {
+        if !self.can_edit() {
+            return Ok(());
+        }
+        if !value.is_finite() {
+            return Err("некорректное число".into());
+        }
+
+        let mut rect = self.grid.selection();
+        if !rect.contains(row, col) {
+            self.grid.select_cell(row, col);
+            rect = self.grid.selection();
+        }
+        let mut updates = Vec::new();
+        for r in rect.r0..=rect.r1 {
+            for c in rect.c0..=rect.c1 {
+                let idx = self.grid.index_visual(r, c);
+                let current = self.grid.values.get(idx).copied().unwrap_or(0.0);
+                if (current - value).abs() >= 1e-9 {
+                    updates.push((idx, value));
+                }
+            }
+        }
+        self.apply_updates(&updates)
     }
 
     fn bind_str(payload: &Value, key: &str) -> Option<String> {
@@ -292,6 +390,17 @@ impl ConfigTableLogic {
             .map(str::trim)
             .filter(|s| !s.is_empty())
             .map(str::to_string)
+    }
+
+    fn bind_f64(payload: &Value, key: &str) -> Option<f64> {
+        let raw = payload.get(key)?;
+        if let Some(v) = raw.as_f64() {
+            return Some(v);
+        }
+        if let Some(s) = raw.as_str() {
+            return s.trim().replace(',', ".").parse::<f64>().ok();
+        }
+        None
     }
 
     fn set_bind_from_payload(&mut self, payload: &Value) {
@@ -312,6 +421,11 @@ impl ConfigTableLogic {
         }
         if payload.get("zBins").is_some() {
             self.z_field = Self::bind_str(payload, "zBins");
+        }
+        if payload.get("nudgeStep").is_some() {
+            self.nudge_step = Self::bind_f64(payload, "nudgeStep")
+                .filter(|v| v.is_finite() && *v > 0.0)
+                .unwrap_or(DEFAULT_NUDGE_STEP);
         }
     }
 
@@ -386,6 +500,7 @@ impl ComponentLogic for ConfigTableLogic {
                 } else {
                     self.grid.select_cell(row, col);
                 }
+                self.edit_buffer.clear();
             }
             "commit_cell" => {
                 if !self.can_edit() {
@@ -411,6 +526,18 @@ impl ComponentLogic for ConfigTableLogic {
                     return Ok(self.to_json());
                 }
                 self.apply_updates(&[(idx, parsed)])?;
+            }
+            "set_selection_value" => {
+                let row = payload.get("row").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+                let col = payload.get("col").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+                let value = payload
+                    .get("value")
+                    .and_then(|v| v.as_f64())
+                    .ok_or("некорректное число")?;
+                self.set_selection_value(row, col, value)?;
+            }
+            "type_key" => {
+                self.handle_type_key(&payload)?;
             }
             _ => {}
         }

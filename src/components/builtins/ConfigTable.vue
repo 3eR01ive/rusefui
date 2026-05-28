@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useRustComponent } from "../../composables/useRustComponent";
 import { useInstanceBind } from "../../composables/useInstanceBind";
@@ -21,7 +21,18 @@ const bindingRef = computed(() => props.binding);
 const { paramString, bind } = useInstanceBind(instanceRef, bindingRef);
 const { snapshot: configSnapshot } = useConfig();
 
+function numericProp(name: string): number | undefined {
+  const raw = propsRef.value[name];
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  if (typeof raw === "string") {
+    const parsed = Number(raw.replace(",", ".").trim());
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
 function buildBindPayload(): Record<string, unknown> {
+  const nudgeStep = numericProp("nudgeStep");
   return {
     title: propsRef.value.title,
     xLabel: propsRef.value.xLabel,
@@ -29,6 +40,7 @@ function buildBindPayload(): Record<string, unknown> {
     xBins: paramString("xBins") ?? "",
     yBins: paramString("yBins") ?? "",
     zBins: paramString("zBins") ?? "",
+    ...(nudgeStep !== undefined ? { nudgeStep } : {}),
   };
 }
 
@@ -39,6 +51,7 @@ const { state, dispatch, ready, error } = useRustComponent(
 );
 
 const gridRef = ref<HTMLElement | null>(null);
+const isMouseSelecting = ref(false);
 
 const title = computed(() => String(state.value.title ?? propsRef.value.title ?? ""));
 const xLabel = computed(() => String(state.value.xLabel ?? propsRef.value.xLabel ?? "X"));
@@ -75,10 +88,32 @@ interface TableGridView {
   rows: number;
   cols: number;
   cells: TableCellView[];
+  selection?: {
+    r0: number;
+    r1: number;
+    c0: number;
+    c1: number;
+  };
 }
 
 function cellAt(row: number, col: number): TableCellView | undefined {
   return cells.value.find((c) => c.row === row && c.col === col);
+}
+
+const selectionRect = computed(() => grid.value?.selection);
+
+function isSelectionEdge(
+  row: number,
+  col: number,
+  edge: "top" | "bottom" | "left" | "right",
+): boolean {
+  const sel = selectionRect.value;
+  if (!sel) return false;
+  if (row < sel.r0 || row > sel.r1 || col < sel.c0 || col > sel.c1) return false;
+  if (edge === "top") return row === sel.r0;
+  if (edge === "bottom") return row === sel.r1;
+  if (edge === "left") return col === sel.c0;
+  return col === sel.c1;
 }
 
 function fmtAxis(v: number | undefined, fallback: number): string {
@@ -132,14 +167,38 @@ watch(
 function onGridKeydown(e: KeyboardEvent) {
   if (!ready.value) return;
   const key = e.key;
+  const code = e.code;
+  const isInterpolate = e.ctrlKey && code === "KeyI";
+  const isTypeChar =
+    (!e.ctrlKey && !e.metaKey && !e.altKey && /^[0-9]$/.test(key)) ||
+    code === "NumpadDecimal" ||
+    code === "NumpadSubtract" ||
+    key === "." ||
+    key === "," ||
+    key === "-";
+  const isTypeControl = key === "Backspace" || key === "Enter" || key === "Escape";
   if (
     !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key) &&
-    !(e.ctrlKey && key.toLowerCase() === "i")
+    !isInterpolate &&
+    !isTypeChar &&
+    !isTypeControl
   ) {
     return;
   }
   e.preventDefault();
-  if (e.ctrlKey && key.toLowerCase() === "i") {
+  if (isTypeChar || isTypeControl) {
+    if (isTypeControl) {
+      const kind = key === "Backspace" ? "backspace" : key === "Enter" ? "commit" : "cancel";
+      void dispatch("type_key", { kind });
+      return;
+    }
+    let ch = key;
+    if (code === "NumpadDecimal" || key === "," || key === ".") ch = ".";
+    if (code === "NumpadSubtract" || key === "-") ch = "-";
+    void dispatch("type_key", { kind: "char", ch });
+    return;
+  }
+  if (isInterpolate) {
     void dispatch("interpolate");
     return;
   }
@@ -150,15 +209,47 @@ function onGridKeydown(e: KeyboardEvent) {
   });
 }
 
-function onCellClick(row: number, col: number, e: MouseEvent) {
+function onCellMouseDown(row: number, col: number, e: MouseEvent) {
   if (!ready.value) return;
+  if (e.button !== 0) return;
+  const isInputTarget = e.target instanceof HTMLInputElement;
+  if (!isInputTarget) {
+    e.preventDefault();
+  }
+  isMouseSelecting.value = true;
   void dispatch("select_cell", { row, col, extend: e.shiftKey });
-  gridRef.value?.focus();
+  if (!isInputTarget) {
+    gridRef.value?.focus();
+  }
 }
 
-function onCellChange(row: number, col: number, raw: string) {
-  void dispatch("commit_cell", { row, col, value: raw });
+function onCellMouseEnter(row: number, col: number) {
+  if (!ready.value || !isMouseSelecting.value) return;
+  void dispatch("select_cell", { row, col, extend: true });
 }
+
+function onGlobalMouseUp() {
+  isMouseSelecting.value = false;
+}
+
+if (typeof window !== "undefined") {
+  window.addEventListener("mouseup", onGlobalMouseUp);
+}
+
+onBeforeUnmount(() => {
+  if (typeof window !== "undefined") {
+    window.removeEventListener("mouseup", onGlobalMouseUp);
+  }
+});
+
+function onCellFocus(row: number, col: number, e: FocusEvent) {
+  void dispatch("select_cell", { row, col });
+  const input = e.target as HTMLInputElement;
+  // Без выделения текста при фокусе (убираем "синюю подсветку" браузера).
+  const end = input.value.length;
+  input.setSelectionRange(end, end);
+}
+
 </script>
 
 <template>
@@ -207,19 +298,25 @@ function onCellChange(row: number, col: number, raw: string) {
                 'cell-td--selected': cellAt(row, col)?.selected,
                 'cell-td--cursor': cellAt(row, col)?.cursor,
                 'cell-td--corner': cellAt(row, col)?.corner,
+                'cell-td--sel-top': isSelectionEdge(row, col, 'top'),
+                'cell-td--sel-bottom': isSelectionEdge(row, col, 'bottom'),
+                'cell-td--sel-left': isSelectionEdge(row, col, 'left'),
+                'cell-td--sel-right': isSelectionEdge(row, col, 'right'),
               }"
               :style="{ background: cellAt(row, col)?.heatBg }"
-              @click="onCellClick(row, col, $event)"
+              @mousedown="onCellMouseDown(row, col, $event)"
+              @mouseenter="onCellMouseEnter(row, col)"
             >
               <input
                 type="text"
                 class="cell-input"
                 :disabled="disabled"
+                spellcheck="false"
+                autocomplete="off"
+                readonly
+                tabindex="-1"
                 :value="cellAt(row, col)?.display ?? ''"
-                @change="
-                  onCellChange(row, col, ($event.target as HTMLInputElement).value)
-                "
-                @focus="dispatch('select_cell', { row, col })"
+                @focus="onCellFocus(row, col, $event)"
               />
             </td>
           </tr>
@@ -227,7 +324,7 @@ function onCellChange(row: number, col: number, raw: string) {
       </table>
     </div>
     <p class="grid-hint">
-      ↑↓←→ — курсор · Shift+стрелки — выделение · Ctrl+↑↓ — ±1 · Ctrl+I — интерполяция
+      ↑↓←→ — курсор · Shift+стрелки — выделение · Ctrl+↑↓ — ±шаг · Ctrl+I — интерполяция
     </p>
   </div>
 </template>
@@ -324,12 +421,26 @@ function onCellChange(row: number, col: number, raw: string) {
 }
 
 .cell-td--selected {
-  box-shadow: inset 0 0 0 2px var(--color-accent, #3b82f6);
+  background-image: linear-gradient(
+    rgba(59, 130, 246, 0.08),
+    rgba(59, 130, 246, 0.08)
+  );
 }
 
-.cell-td--cursor .cell-input {
-  outline: 2px solid var(--color-text);
-  outline-offset: -2px;
+.cell-td--sel-top {
+  border-top: 2px solid var(--color-accent, #3b82f6) !important;
+}
+
+.cell-td--sel-bottom {
+  border-bottom: 2px solid var(--color-accent, #3b82f6) !important;
+}
+
+.cell-td--sel-left {
+  border-left: 2px solid var(--color-accent, #3b82f6) !important;
+}
+
+.cell-td--sel-right {
+  border-right: 2px solid var(--color-accent, #3b82f6) !important;
 }
 
 .cell-td--corner .cell-input {
@@ -342,8 +453,32 @@ function onCellChange(row: number, col: number, raw: string) {
   border: none;
   background: transparent;
   color: var(--color-text);
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.95);
   text-align: right;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+  -webkit-tap-highlight-color: transparent;
 }
+
+.cell-input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.cell-input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.cell-input::selection {
+  background: transparent;
+}
+
+.cell-input::-moz-selection {
+  background: transparent;
+}
+
 
 .cell-input:disabled {
   color: var(--color-text-muted);

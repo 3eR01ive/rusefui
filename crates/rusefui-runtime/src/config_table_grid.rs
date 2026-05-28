@@ -239,6 +239,7 @@ pub fn interpolate_rect(state: &TableGridState, rect: GridRect) -> Vec<(usize, f
             let top = v00 + (v01 - v00) * tc;
             let bottom = v10 + (v11 - v10) * tc;
             let v = top + (bottom - top) * tr;
+            let v = (v * 10.0).round() / 10.0;
             out.push((state.index_visual(row, col), v));
         }
     }

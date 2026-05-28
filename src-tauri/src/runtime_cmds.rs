@@ -762,7 +762,7 @@ fn component_dispatch_inner(
 
 fn config_table_action_may_write(action: &str, payload: &Value) -> bool {
     match action {
-        "interpolate" | "commit_cell" => true,
+        "interpolate" | "commit_cell" | "set_selection_value" | "type_key" => true,
         "keydown" => {
             let ctrl = payload.get("ctrl").and_then(|v| v.as_bool()).unwrap_or(false);
             let key = payload.get("key").and_then(|v| v.as_str()).unwrap_or("");
