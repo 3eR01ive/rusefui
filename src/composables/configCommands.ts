@@ -250,6 +250,8 @@ export function configTableActionMayWrite(
       return true;
     case "type_key":
       return true;
+    case "paste":
+      return true;
     case "keydown": {
       const ctrl = Boolean(payload.ctrl);
       const key = String(payload.key ?? "");

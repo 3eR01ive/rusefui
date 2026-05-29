@@ -5,6 +5,8 @@ import { useRustComponent } from "../../composables/useRustComponent";
 import { useInstanceBind } from "../../composables/useInstanceBind";
 import { initConfig, useConfig } from "../../composables/useConfig";
 import { dispatchConfigTableWithHistory } from "../../composables/configTableDispatch";
+import { readClipboardText, writeClipboardText } from "../../composables/clipboardText";
+import { useComponentBinding } from "../../composables/useKeyboardRouter";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -74,6 +76,12 @@ function onConfigUndoRedo() {
 
 onMounted(() => {
   window.addEventListener("config-undo-redo", onConfigUndoRedo);
+  window.addEventListener("mouseup", onGlobalMouseUp);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("config-undo-redo", onConfigUndoRedo);
+  window.removeEventListener("mouseup", onGlobalMouseUp);
 });
 
 const gridRef = ref<HTMLElement | null>(null);
@@ -93,6 +101,7 @@ const rowIndices = computed(() =>
 );
 
 const disabled = computed(() => !state.value.canEdit);
+const editBuffer = computed(() => String(state.value.editBuffer ?? ""));
 const statusText = computed(() => String(state.value.statusText ?? ""));
 const localError = computed(() =>
   state.value.localError ? String(state.value.localError) : error.value,
@@ -113,6 +122,8 @@ interface TableGridView {
   rows: number;
   cols: number;
   cells: TableCellView[];
+  cursorRow?: number;
+  cursorCol?: number;
   selection?: {
     r0: number;
     r1: number;
@@ -189,10 +200,47 @@ watch(
   },
 );
 
-function onGridKeydown(e: KeyboardEvent) {
-  if (!ready.value) return;
+watch(
+  () => [grid.value?.cursorRow, grid.value?.cursorCol] as const,
+  () => {
+    const el = gridRef.value?.querySelector(".cell-td--cursor");
+    el?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  },
+);
+
+function selectionTsv(): string {
+  const sel = selectionRect.value;
+  if (!sel) return "";
+  const lines: string[] = [];
+  for (let row = sel.r0; row <= sel.r1; row++) {
+    const cols: string[] = [];
+    for (let col = sel.c0; col <= sel.c1; col++) {
+      cols.push(cellAt(row, col)?.display ?? "");
+    }
+    lines.push(cols.join("\t"));
+  }
+  return lines.join("\n");
+}
+
+async function copySelection(): Promise<void> {
+  const text = selectionTsv();
+  if (!text) return;
+  await writeClipboardText(text);
+}
+
+async function pasteSelection(): Promise<void> {
+  if (disabled.value) return;
+  const text = await readClipboardText();
+  if (!text.trim()) return;
+  await dispatchWrite("paste", { text });
+}
+
+function onComponentKeydown(e: KeyboardEvent): boolean {
+  if (!ready.value) return false;
   const key = e.key;
   const code = e.code;
+  const isCopy = (e.ctrlKey || e.metaKey) && !e.shiftKey && code === "KeyC";
+  const isPaste = (e.ctrlKey || e.metaKey) && !e.shiftKey && code === "KeyV";
   const isInterpolate = e.ctrlKey && code === "KeyI";
   const isTypeChar =
     (!e.ctrlKey && !e.metaKey && !e.altKey && /^[0-9]$/.test(key)) ||
@@ -204,35 +252,50 @@ function onGridKeydown(e: KeyboardEvent) {
   const isTypeControl = key === "Backspace" || key === "Enter" || key === "Escape";
   if (
     !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key) &&
+    !isCopy &&
+    !isPaste &&
     !isInterpolate &&
     !isTypeChar &&
     !isTypeControl
   ) {
-    return;
+    return false;
   }
-  e.preventDefault();
+  if (isCopy) {
+    void copySelection();
+    return true;
+  }
+  if (isPaste) {
+    void pasteSelection();
+    return true;
+  }
   if (isTypeChar || isTypeControl) {
     if (isTypeControl) {
+      if ((key === "Enter" || key === "Escape") && !editBuffer.value) {
+        return false;
+      }
       const kind = key === "Backspace" ? "backspace" : key === "Enter" ? "commit" : "cancel";
       void dispatchWrite("type_key", { kind });
-      return;
+      return true;
     }
     let ch = key;
     if (code === "NumpadDecimal" || key === "," || key === ".") ch = ".";
     if (code === "NumpadSubtract" || key === "-") ch = "-";
     void dispatchWrite("type_key", { kind: "char", ch });
-    return;
+    return true;
   }
   if (isInterpolate) {
     void dispatchWrite("interpolate");
-    return;
+    return true;
   }
   void dispatchWrite("keydown", {
     key,
     shift: e.shiftKey,
     ctrl: e.ctrlKey,
   });
+  return true;
 }
+
+useComponentBinding(props.path, onComponentKeydown);
 
 function onCellMouseDown(row: number, col: number, e: MouseEvent) {
   if (!ready.value) return;
@@ -243,9 +306,7 @@ function onCellMouseDown(row: number, col: number, e: MouseEvent) {
   }
   isMouseSelecting.value = true;
   void dispatch("select_cell", { row, col, extend: e.shiftKey });
-  if (!isInputTarget) {
-    gridRef.value?.focus();
-  }
+  gridRef.value?.focus();
 }
 
 function onCellMouseEnter(row: number, col: number) {
@@ -256,17 +317,6 @@ function onCellMouseEnter(row: number, col: number) {
 function onGlobalMouseUp() {
   isMouseSelecting.value = false;
 }
-
-if (typeof window !== "undefined") {
-  window.addEventListener("mouseup", onGlobalMouseUp);
-}
-
-onBeforeUnmount(() => {
-  if (typeof window !== "undefined") {
-    window.removeEventListener("mouseup", onGlobalMouseUp);
-    window.removeEventListener("config-undo-redo", onConfigUndoRedo);
-  }
-});
 
 function onCellFocus(row: number, col: number, e: FocusEvent) {
   void dispatch("select_cell", { row, col });
@@ -302,7 +352,6 @@ function onCellFocus(row: number, col: number, e: FocusEvent) {
       ref="gridRef"
       class="grid-scroll"
       tabindex="0"
-      @keydown="onGridKeydown"
     >
       <table class="grid">
         <thead>
@@ -350,7 +399,7 @@ function onCellFocus(row: number, col: number, e: FocusEvent) {
       </table>
     </div>
     <p class="grid-hint">
-      ↑↓←→ — курсор · Shift+стрелки — выделение · Ctrl+↑↓ — ±шаг · Ctrl+I — интерполяция
+      ↑↓←→ — смещение · Shift+стрелки — выделение · Ctrl+C/V — копировать/вставить · Ctrl+↑↓ — ±шаг · Ctrl+I — интерполяция
     </p>
   </div>
 </template>

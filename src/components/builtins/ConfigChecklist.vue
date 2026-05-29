@@ -1,7 +1,17 @@
 <script setup lang="ts">
-import { computed, ref, shallowRef, watch } from "vue";
+import { computed, onUnmounted, ref, shallowRef, watch } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import ComponentHost from "../ComponentHost.vue";
+import {
+  activateComponent,
+  activePath,
+  focusComponent,
+  navMode,
+  selectedPath,
+  selectComponent,
+  setNavExtension,
+  setNavMenuPaths,
+} from "../../composables/useWorkspaceNav";
 import {
   configCanView,
   initConfig,
@@ -11,7 +21,7 @@ import {
 import { initChecklist } from "../../composables/useChecklist";
 import { resolveChecklistEditor } from "../../composables/useChecklistEditor";
 
-defineProps<{
+const props = defineProps<{
   instance: ComponentInstance;
   path: string;
   props: Record<string, unknown>;
@@ -28,6 +38,7 @@ const checklist = computed(() => snapshot.value.checklist);
 const canShow = computed(() => configCanView(snapshot.value));
 
 const selectedId = ref<string>("");
+const showOnlyIncomplete = ref(false);
 const editorInstance = shallowRef<ComponentInstance | null>(null);
 const editorLoading = ref(false);
 const editorError = ref<string | null>(null);
@@ -42,7 +53,10 @@ interface GroupBlock {
 }
 
 function groupsForLevel(levelId: string): GroupBlock[] {
-  const items = checklist.value?.items.filter((i) => i.level === levelId) ?? [];
+  let items = checklist.value?.items.filter((i) => i.level === levelId) ?? [];
+  if (showOnlyIncomplete.value) {
+    items = items.filter((i) => !i.ok);
+  }
   const map = new Map<string, GroupBlock>();
   for (const item of items) {
     let block = map.get(item.group);
@@ -62,7 +76,36 @@ function groupsForLevel(levelId: string): GroupBlock[] {
 
 const levels = computed(() => checklist.value?.levels ?? []);
 
+const visibleLevels = computed(() =>
+  levels.value.filter((level) => groupsForLevel(level.id).length > 0),
+);
+
 const flatItems = computed(() => checklist.value?.items ?? []);
+
+const visibleMenuItems = computed((): ChecklistItemView[] => {
+  const result: ChecklistItemView[] = [];
+  for (const level of visibleLevels.value) {
+    for (const group of groupsForLevel(level.id)) {
+      result.push(...group.items);
+    }
+  }
+  return result;
+});
+
+function menuItemPath(id: string): string {
+  return `${props.path}/menu/${id}`;
+}
+
+const menuNavPaths = computed(() =>
+  visibleMenuItems.value.map((item) => menuItemPath(item.id)),
+);
+
+function menuNavClasses(path: string): Record<string, boolean> {
+  return {
+    "nav-target--selected": navMode.value === "select" && selectedPath.value === path,
+    "nav-target--active": navMode.value === "active" && activePath.value === path,
+  };
+}
 
 watch(
   flatItems,
@@ -78,6 +121,15 @@ watch(
   },
   { immediate: true },
 );
+
+watch(showOnlyIncomplete, (on) => {
+  if (!on) return;
+  const current = flatItems.value.find((i) => i.id === selectedId.value);
+  if (current?.ok) {
+    const firstFail = flatItems.value.find((i) => !i.ok);
+    if (firstFail) selectedId.value = firstFail.id;
+  }
+});
 
 watch(
   selectedId,
@@ -104,8 +156,39 @@ watch(
   { immediate: true },
 );
 
+watch(
+  menuNavPaths,
+  (paths) => {
+    setNavMenuPaths(props.path, paths);
+  },
+  { immediate: true },
+);
+
+watch(
+  editorInstance,
+  (inst) => {
+    setNavExtension(`${props.path}/editor`, inst);
+  },
+  { immediate: true },
+);
+
+watch(selectedPath, (path) => {
+  const prefix = `${props.path}/menu/`;
+  if (!path.startsWith(prefix)) return;
+  const id = path.slice(prefix.length);
+  if (visibleMenuItems.value.some((i) => i.id === id) && selectedId.value !== id) {
+    selectedId.value = id;
+  }
+});
+
+onUnmounted(() => {
+  setNavExtension(`${props.path}/editor`, null);
+  setNavMenuPaths(props.path, []);
+});
+
 function selectItem(id: string): void {
   selectedId.value = id;
+  selectComponent(menuItemPath(id));
 }
 
 function levelSummary(levelId: string) {
@@ -118,7 +201,13 @@ function levelSummary(levelId: string) {
 <template>
   <section class="checklist-shell">
     <header class="checklist-head">
-      <h2 class="checklist-title">CHKLST</h2>
+      <div class="checklist-head-row">
+        <h2 class="checklist-title">CHKLST</h2>
+        <label v-if="canShow && checklist?.evaluated" class="checklist-filter">
+          <input v-model="showOnlyIncomplete" type="checkbox" />
+          <span>Только невыполненные</span>
+        </label>
+      </div>
       <p class="checklist-sub">
         Минимальная готовность к запуску. Правила — <code>config/checklist.yaml</code>.
       </p>
@@ -134,7 +223,10 @@ function levelSummary(levelId: string) {
 
     <div v-else class="checklist-split">
       <aside class="checklist-sidebar">
-        <article v-for="level in levels" :key="level.id" class="level-block">
+        <p v-if="showOnlyIncomplete && visibleLevels.length === 0" class="checklist-filter-empty">
+          Все пункты выполнены.
+        </p>
+        <article v-for="level in visibleLevels" :key="level.id" class="level-block">
           <header class="level-head">
             <h3 class="level-title">{{ level.title }}</h3>
             <span class="level-count">{{ levelSummary(level.id).done }}/{{ levelSummary(level.id).total }}</span>
@@ -148,12 +240,14 @@ function levelSummary(levelId: string) {
                 <button
                   type="button"
                   class="check-row"
+                  data-nav-node="1"
+                  :data-nav-path="menuItemPath(item.id)"
                   :class="{
                     'check-row--ok': item.ok,
                     'check-row--fail': !item.ok,
-                    'check-row--active': item.id === selectedId,
+                    ...menuNavClasses(menuItemPath(item.id)),
                   }"
-                  @click="selectItem(item.id)"
+                  @mousedown.prevent="selectItem(item.id)"
                 >
                   <span class="check-icon" aria-hidden="true">{{ item.ok ? "✓" : "✗" }}</span>
                   <span class="check-label">{{ item.label }}</span>
@@ -173,6 +267,11 @@ function levelSummary(levelId: string) {
           v-else
           :instance="editorInstance"
           :path="`${path}/editor`"
+          :selected-path="selectedPath"
+          :active-path="activePath"
+          :nav-mode="navMode"
+          @select-path="selectComponent"
+          @activate-path="(p) => { activateComponent(p); focusComponent(p); }"
         />
       </main>
     </div>
@@ -190,6 +289,36 @@ function levelSummary(levelId: string) {
 
 .checklist-head {
   flex-shrink: 0;
+}
+
+.checklist-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.checklist-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checklist-filter input {
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+.checklist-filter-empty {
+  margin: 0;
+  padding: 0.5rem 0.25rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
 }
 
 .checklist-title {
@@ -308,17 +437,22 @@ function levelSummary(levelId: string) {
   cursor: pointer;
 }
 
-.check-row--active {
-  border-color: rgba(120, 170, 255, 0.45);
-  background: rgba(120, 170, 255, 0.08);
-}
-
 .check-row--ok .check-icon {
   color: var(--color-success, #6ecf8a);
 }
 
 .check-row--fail .check-icon {
   color: var(--color-danger, #f08080);
+}
+
+.nav-target--selected {
+  outline: 2px solid rgba(59, 130, 246, 0.95);
+  outline-offset: 2px;
+}
+
+.nav-target--active {
+  outline: 2px solid rgba(22, 163, 74, 0.95);
+  outline-offset: 2px;
 }
 
 .check-label {

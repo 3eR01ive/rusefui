@@ -15,6 +15,7 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
   (e: "select-path", path: string): void;
+  (e: "activate-path", path: string): void;
 }>();
 
 const entry = computed(() => {
@@ -39,6 +40,10 @@ const navSelected = computed(
 const navActive = computed(
   () => props.navMode === "active" && props.activePath === props.path,
 );
+
+function onNodeMouseDown(): void {
+  emit("select-path", props.path);
+}
 </script>
 
 <template>
@@ -53,7 +58,7 @@ const navActive = computed(
     data-nav-node="1"
     :data-nav-path="path"
     tabindex="-1"
-    @mousedown.stop="emit('select-path', path)"
+    @mousedown.stop="onNodeMouseDown"
   >
     <component
       :is="entry.component"
@@ -83,6 +88,7 @@ const navActive = computed(
         :active-path="activePath"
         :nav-mode="navMode"
         @select-path="emit('select-path', $event)"
+        @activate-path="emit('activate-path', $event)"
       />
     </template>
   </component>

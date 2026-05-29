@@ -1,9 +1,19 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
 import { parse as parseYaml } from "yaml";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import ComponentHost from "../ComponentHost.vue";
 import { useTabEnterHandler } from "../../composables/useHotkeys";
+import {
+  activateComponent,
+  activePath,
+  focusComponent,
+  navMode,
+  selectedPath,
+  selectComponent,
+  setNavExtension,
+  setNavMenuPaths,
+} from "../../composables/useWorkspaceNav";
 
 interface ManifestEntry {
   id: string;
@@ -34,12 +44,25 @@ const manifest = shallowRef<Manifest | null>(null);
 const loadError = ref<string | null>(null);
 const filter = ref("");
 const filterInputRef = ref<HTMLInputElement | null>(null);
-const panelListRef = ref<HTMLElement | null>(null);
-const panelBtnRefs = new Map<string, HTMLButtonElement>();
 const selectedId = ref<string>("");
 const panelRoot = shallowRef<ComponentInstance | null>(null);
 const panelLoading = ref(false);
 const panelError = ref<string | null>(null);
+
+function filterPath(): string {
+  return `${props.path}/filter`;
+}
+
+function menuItemPath(id: string): string {
+  return `${props.path}/menu/${id}`;
+}
+
+function menuNavClasses(path: string): Record<string, boolean> {
+  return {
+    "nav-target--selected": navMode.value === "select" && selectedPath.value === path,
+    "nav-target--active": navMode.value === "active" && activePath.value === path,
+  };
+}
 
 const groupedPanels = computed(() => {
   const list = manifest.value?.panels ?? [];
@@ -75,10 +98,13 @@ const filteredPanels = computed((): ManifestEntry[] => {
   );
 });
 
-function setPanelBtnRef(id: string, el: unknown): void {
-  if (el instanceof HTMLButtonElement) panelBtnRefs.set(id, el);
-  else panelBtnRefs.delete(id);
-}
+const menuNavPaths = computed((): string[] => {
+  const paths = [filterPath()];
+  for (const p of filteredPanels.value) {
+    paths.push(menuItemPath(p.id));
+  }
+  return paths;
+});
 
 function ensureGroupExpandedForEntry(entry: ManifestEntry): void {
   if (filter.value.trim()) return;
@@ -87,63 +113,13 @@ function ensureGroupExpandedForEntry(entry: ManifestEntry): void {
   expandedGroups.value = new Set([...expandedGroups.value, group]);
 }
 
-function scrollSelectedIntoView(): void {
-  void nextTick(() => {
-    panelBtnRefs.get(selectedId.value)?.scrollIntoView({ block: "nearest" });
-  });
+function selectPanel(id: string): void {
+  selectedId.value = id;
+  selectComponent(menuItemPath(id));
 }
 
-function focusSelectedPanelBtn(): void {
-  void nextTick(() => {
-    panelBtnRefs.get(selectedId.value)?.focus();
-    scrollSelectedIntoView();
-  });
-}
-
-function moveSelection(delta: -1 | 1): void {
-  const panels = filteredPanels.value;
-  if (!panels.length) return;
-
-  const idx = panels.findIndex((p) => p.id === selectedId.value);
-  const nextIdx =
-    idx < 0
-      ? delta > 0
-        ? 0
-        : panels.length - 1
-      : Math.max(0, Math.min(idx + delta, panels.length - 1));
-
-  const entry = panels[nextIdx]!;
-  ensureGroupExpandedForEntry(entry);
-  selectedId.value = entry.id;
-  focusSelectedPanelBtn();
-}
-
-function onSidebarKeydown(e: KeyboardEvent): void {
-  const target = e.target as HTMLElement;
-  const inFilter = target === filterInputRef.value;
-  const inList = target.closest(".panel-list") !== null;
-  if (!inFilter && !inList) return;
-
-  if (e.key === "ArrowDown") {
-    e.preventDefault();
-    if (inFilter) {
-      if (!filteredPanels.value.length) return;
-      if (!filteredPanels.value.some((p) => p.id === selectedId.value)) {
-        selectedId.value = filteredPanels.value[0]!.id;
-        ensureGroupExpandedForEntry(filteredPanels.value[0]!);
-      }
-      focusSelectedPanelBtn();
-      return;
-    }
-    moveSelection(1);
-    return;
-  }
-
-  if (e.key === "ArrowUp") {
-    if (inFilter) return;
-    e.preventDefault();
-    moveSelection(-1);
-  }
+function selectFilter(): void {
+  selectComponent(filterPath());
 }
 
 async function loadManifest(): Promise<void> {
@@ -192,10 +168,8 @@ async function loadPanel(id: string): Promise<void> {
 }
 
 useTabEnterHandler("ini-preview", () => {
-  const el = filterInputRef.value;
-  if (!el) return;
-  el.focus();
-  el.select();
+  selectFilter();
+  focusComponent(filterPath());
 });
 
 onMounted(() => {
@@ -210,10 +184,45 @@ watch(selectedId, (id) => {
   }
 });
 
+watch(selectedPath, (path) => {
+  const menuPrefix = `${props.path}/menu/`;
+  if (path.startsWith(menuPrefix)) {
+    const id = path.slice(menuPrefix.length);
+    if (filteredPanels.value.some((p) => p.id === id) && selectedId.value !== id) {
+      selectedId.value = id;
+    }
+    return;
+  }
+  if (path === filterPath()) {
+    void nextTick(() => filterInputRef.value?.focus());
+  }
+});
+
+watch(
+  menuNavPaths,
+  (paths) => {
+    setNavMenuPaths(props.path, paths);
+  },
+  { immediate: true },
+);
+
 watch(manifest, (m) => {
   if (m?.panels.length && selectedId.value) {
     void loadPanel(selectedId.value);
   }
+});
+
+watch(
+  panelRoot,
+  (root) => {
+    setNavExtension(`${props.path}/preview`, root);
+  },
+  { immediate: true },
+);
+
+onUnmounted(() => {
+  setNavExtension(`${props.path}/preview`, null);
+  setNavMenuPaths(props.path, []);
 });
 
 const selectedEntry = computed(() =>
@@ -238,7 +247,7 @@ function toggleGroup(group: string): void {
 
 <template>
   <div class="ini-panels-browser">
-    <aside class="sidebar" @keydown="onSidebarKeydown">
+    <aside class="sidebar">
       <div class="sidebar-head">
         <h3 class="sidebar-title">INI панели</h3>
         <p v-if="manifest" class="sidebar-meta">
@@ -250,11 +259,15 @@ function toggleGroup(group: string): void {
         v-model="filter"
         type="search"
         class="filter"
+        data-nav-node="1"
+        :data-nav-path="filterPath()"
+        :class="menuNavClasses(filterPath())"
         placeholder="Поиск панели…"
         autocomplete="off"
+        @mousedown.stop="selectFilter()"
       />
       <p v-if="loadError" class="err">{{ loadError }}</p>
-      <div v-else ref="panelListRef" class="panel-list" tabindex="-1" role="listbox" aria-label="INI панели">
+      <div v-else class="panel-list" role="listbox" aria-label="INI панели">
         <div v-for="[group, items] in groupedPanels" :key="group" class="group">
           <button
             type="button"
@@ -270,13 +283,14 @@ function toggleGroup(group: string): void {
             <button
               v-for="p in items"
               :key="p.id"
-              :ref="(el) => setPanelBtnRef(p.id, el)"
               type="button"
               class="panel-btn"
-              :class="{ active: p.id === selectedId }"
+              data-nav-node="1"
+              :data-nav-path="menuItemPath(p.id)"
+              :class="menuNavClasses(menuItemPath(p.id))"
               role="option"
               :aria-selected="p.id === selectedId"
-              @click="selectedId = p.id"
+              @mousedown.prevent="selectPanel(p.id)"
             >
               <span class="panel-btn-title">{{ p.title }}</span>
               <span class="panel-btn-path">{{ p.menuPath }}</span>
@@ -299,6 +313,11 @@ function toggleGroup(group: string): void {
         v-else-if="panelRoot"
         :instance="panelRoot"
         :path="`${path}/preview`"
+        :selected-path="selectedPath"
+        :active-path="activePath"
+        :nav-mode="navMode"
+        @select-path="selectComponent"
+        @activate-path="(p) => { activateComponent(p); focusComponent(p); }"
       />
       <p v-else class="state">Выберите панель слева</p>
     </main>
@@ -351,17 +370,20 @@ function toggleGroup(group: string): void {
   background: var(--color-bg-muted);
 }
 
+.nav-target--selected {
+  outline: 2px solid rgba(59, 130, 246, 0.95);
+  outline-offset: 2px;
+}
+
+.nav-target--active {
+  outline: 2px solid rgba(22, 163, 74, 0.95);
+  outline-offset: 2px;
+}
+
 .panel-list {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  outline: none;
-}
-
-.panel-list:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
 }
 
 .panel-btn:focus-visible {
@@ -437,10 +459,6 @@ function toggleGroup(group: string): void {
 
 .panel-btn:hover {
   background: var(--color-bg-muted);
-}
-
-.panel-btn.active {
-  background: var(--color-bg-accent-soft);
 }
 
 .panel-btn-title {

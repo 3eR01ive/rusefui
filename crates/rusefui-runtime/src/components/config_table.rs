@@ -5,7 +5,8 @@ use serde_json::{json, Value};
 
 use crate::component::{ComponentLogic, ComponentMeta, EcuSyncOnMount, LogicComponentType};
 use crate::config_table_grid::{
-    build_grid_view, interpolate_rect, nudge_rect_values, NavDir, TableGridState,
+    build_grid_view, copy_rect_to_tsv, interpolate_rect, nudge_rect_values, paste_tsv_at, NavDir,
+    TableGridState,
 };
 use crate::session::EcuSession;
 
@@ -25,6 +26,7 @@ struct ConfigTableViewState {
     saving: bool,
     status_text: String,
     local_error: Option<String>,
+    edit_buffer: String,
 }
 
 pub struct ConfigTableLogic {
@@ -282,12 +284,25 @@ impl ConfigTableLogic {
             if shift {
                 self.grid.extend_selection(dir);
             } else {
-                self.grid.move_cursor(dir);
+                self.grid.translate_selection(dir);
             }
             self.edit_buffer.clear();
             return Ok(());
         }
         Ok(())
+    }
+
+    fn copy_selection_tsv(&self) -> String {
+        copy_rect_to_tsv(&self.grid, self.grid.selection())
+    }
+
+    fn paste_from_text(&mut self, text: &str) -> Result<(), String> {
+        if !self.can_edit() {
+            return Ok(());
+        }
+        let rect = self.grid.selection();
+        let updates = paste_tsv_at(&self.grid, rect, text);
+        self.apply_updates(&updates)
     }
 
     fn apply_value_to_selection(&mut self, value: f64) -> Result<(), String> {
@@ -442,6 +457,7 @@ impl ConfigTableLogic {
             saving: self.saving,
             status_text: self.status_text(),
             local_error: self.local_error.clone(),
+            edit_buffer: self.edit_buffer.clone(),
         }
     }
 
@@ -538,6 +554,21 @@ impl ComponentLogic for ConfigTableLogic {
             }
             "type_key" => {
                 self.handle_type_key(&payload)?;
+            }
+            "copy_selection" => {
+                let tsv = self.copy_selection_tsv();
+                let mut value = self.to_json();
+                if let Value::Object(ref mut map) = value {
+                    map.insert("copyText".into(), json!(tsv));
+                }
+                return Ok(value);
+            }
+            "paste" => {
+                let text = payload
+                    .get("text")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                self.paste_from_text(text)?;
             }
             _ => {}
         }

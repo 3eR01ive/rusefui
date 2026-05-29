@@ -51,6 +51,10 @@ impl GridRect {
     pub fn cols(&self) -> usize {
         self.c1 - self.c0 + 1
     }
+
+    pub fn is_single(&self) -> bool {
+        self.r0 == self.r1 && self.c0 == self.c1
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -192,6 +196,89 @@ impl TableGridState {
         self.cursor = pos;
         self.anchor = pos;
     }
+
+    /// Сдвинуть прямоугольник выделения на одну ячейку; `false` у края сетки.
+    pub fn translate_selection(&mut self, dir: NavDir) -> bool {
+        let rect = self.selection();
+        if rect.is_single() {
+            self.move_cursor(dir);
+            return true;
+        }
+        let (dr, dc) = dir.delta();
+        let nr0 = rect.r0 as isize + dr;
+        let nc0 = rect.c0 as isize + dc;
+        let nr1 = rect.r1 as isize + dr;
+        let nc1 = rect.c1 as isize + dc;
+        if nr0 < 0
+            || nc0 < 0
+            || nr1 >= self.rows as isize
+            || nc1 >= self.cols as isize
+        {
+            return false;
+        }
+        self.anchor = CellPos {
+            row: nr0 as usize,
+            col: nc0 as usize,
+        };
+        self.cursor = CellPos {
+            row: nr1 as usize,
+            col: nc1 as usize,
+        };
+        true
+    }
+}
+
+/// TSV для буфера обмена (строки — `\n`, колонки — `\t`).
+pub fn copy_rect_to_tsv(state: &TableGridState, rect: GridRect) -> String {
+    let mut lines = Vec::with_capacity(rect.rows());
+    for row in rect.r0..=rect.r1 {
+        let cols: Vec<String> = (rect.c0..=rect.c1)
+            .map(|col| format_cell_value(state.value_at_visual(row, col)))
+            .collect();
+        lines.push(cols.join("\t"));
+    }
+    lines.join("\n")
+}
+
+fn parse_paste_cell(raw: &str) -> Option<f64> {
+    let s = raw.trim();
+    if s.is_empty() {
+        return None;
+    }
+    s.replace(',', ".")
+        .parse::<f64>()
+        .ok()
+        .filter(|v| v.is_finite())
+}
+
+/// Вставка TSV/CSV из буфера: от левого верхнего угла `rect`, обрезка по границам таблицы.
+pub fn paste_tsv_at(state: &TableGridState, rect: GridRect, text: &str) -> Vec<(usize, f64)> {
+    let mut lines: Vec<&str> = text.split(['\r', '\n']).collect();
+    while lines.last().is_some_and(|l| l.trim().is_empty()) {
+        lines.pop();
+    }
+    let mut updates = Vec::new();
+    for (dr, line) in lines.iter().enumerate() {
+        let row = rect.r0 + dr;
+        if row >= state.rows {
+            break;
+        }
+        for (dc, cell) in line.split('\t').enumerate() {
+            let col = rect.c0 + dc;
+            if col >= state.cols {
+                break;
+            }
+            let Some(value) = parse_paste_cell(cell) else {
+                continue;
+            };
+            let idx = state.index_visual(row, col);
+            let current = state.values.get(idx).copied().unwrap_or(0.0);
+            if (current - value).abs() >= 1e-9 {
+                updates.push((idx, value));
+            }
+        }
+    }
+    updates
 }
 
 /// Список (linear_index, new_value) для записи в config.
@@ -453,5 +540,32 @@ mod tests {
         assert_eq!(updates.len(), 1);
         let storage_row = g.storage_row(1);
         assert_eq!(updates[0], (storage_row * g.cols + 1, 55.0));
+    }
+
+    #[test]
+    fn translate_selection_block() {
+        let mut g = sample_table();
+        g.anchor = CellPos { row: 0, col: 0 };
+        g.cursor = CellPos { row: 1, col: 1 };
+        assert!(g.translate_selection(NavDir::Right));
+        assert_eq!(g.anchor, CellPos { row: 0, col: 1 });
+        assert_eq!(g.cursor, CellPos { row: 1, col: 2 });
+        assert!(!g.translate_selection(NavDir::Right));
+    }
+
+    #[test]
+    fn copy_and_paste_tsv() {
+        let g = sample_table();
+        let rect = GridRect {
+            r0: 0,
+            r1: 1,
+            c0: 0,
+            c1: 1,
+        };
+        let tsv = copy_rect_to_tsv(&g, rect);
+        assert_eq!(tsv, "10\t20\n40\t50");
+        let updates = paste_tsv_at(&g, GridRect::single(CellPos { row: 2, col: 2 }), "1\t2\n3\t4");
+        assert_eq!(updates.len(), 1);
+        assert_eq!(updates[0], (2, 1.0));
     }
 }

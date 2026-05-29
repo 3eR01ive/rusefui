@@ -27,7 +27,8 @@ import { initIniResolution } from "../composables/useIniResolution";
 import ProjectMenu from "./ProjectMenu.vue";
 import { useAppFooter, setFooterLed, footerToggleProtocol } from "../composables/useAppFooter";
 import { useTabState } from "../composables/useTabState";
-import { useGlobalHotkeys, saveProjectCallback, openProjectCallback, burnCallback, undoCallback, redoCallback } from "../composables/useHotkeys";
+import { useKeyboardRouter } from "../composables/useKeyboardRouter";
+import { saveProjectCallback, openProjectCallback, burnCallback, undoCallback, redoCallback } from "../composables/useHotkeys";
 import { undoConfigChange, redoConfigChange } from "../composables/configCommands";
 import UnsavedChangesDialog from "../components/UnsavedChangesDialog.vue";
 import { useUnsavedChangesGuard } from "../composables/useUnsavedChangesGuard";
@@ -57,7 +58,7 @@ const iniMismatchActive = computed(
 
 const { activeTabId, setTab } = useTabState();
 const tabWorkspaceRef = useTemplateRef<{ tabs: { id: string; title: string }[] }>("tabWorkspace");
-useGlobalHotkeys();
+useKeyboardRouter();
 saveProjectCallback.value = () => onSaveProject();
 openProjectCallback.value = () => onOpenProject();
 burnCallback.value = () => { if (canBurn.value) void onBurn(); };
