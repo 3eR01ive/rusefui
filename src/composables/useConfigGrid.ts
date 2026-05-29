@@ -1,4 +1,4 @@
-import { computed, ref, watch, type ComputedRef } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch, type ComputedRef } from "vue";
 import type { ComponentInstance } from "../core/types";
 import { configCanEdit, initConfig, useConfig } from "./useConfig";
 import { useInstanceBind } from "./useInstanceBind";
@@ -119,6 +119,17 @@ export function useConfigGrid({ kind, instance, props }: UseConfigGridOptions) {
     },
     { immediate: true },
   );
+
+  onMounted(() => {
+    window.addEventListener("config-undo-redo", onConfigUndoRedo);
+  });
+  onBeforeUnmount(() => {
+    window.removeEventListener("config-undo-redo", onConfigUndoRedo);
+  });
+
+  function onConfigUndoRedo() {
+    if (snapshot.value.loaded) void reload();
+  }
 
   async function commitCell(row: number, col: number, raw: string) {
     if (disabled.value || !valueField.value) return;

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useRustComponent } from "../../composables/useRustComponent";
 import { useInstanceBind } from "../../composables/useInstanceBind";
 import { initConfig, useConfig } from "../../composables/useConfig";
+import { dispatchConfigTableWithHistory } from "../../composables/configTableDispatch";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -50,10 +51,34 @@ const { state, dispatch, ready, error } = useRustComponent(
   buildBindPayload,
 );
 
+const zField = computed(() => paramString("zBins") ?? "");
+const title = computed(() => String(state.value.title ?? propsRef.value.title ?? ""));
+
+async function dispatchWrite(
+  action: string,
+  payload: Record<string, unknown> = {},
+): Promise<void> {
+  await dispatchConfigTableWithHistory(
+    dispatch,
+    () => state.value,
+    zField.value,
+    title.value,
+    action,
+    payload,
+  );
+}
+
+function onConfigUndoRedo() {
+  if (ready.value) void dispatch("reload");
+}
+
+onMounted(() => {
+  window.addEventListener("config-undo-redo", onConfigUndoRedo);
+});
+
 const gridRef = ref<HTMLElement | null>(null);
 const isMouseSelecting = ref(false);
 
-const title = computed(() => String(state.value.title ?? propsRef.value.title ?? ""));
 const xLabel = computed(() => String(state.value.xLabel ?? propsRef.value.xLabel ?? "X"));
 const yLabel = computed(() => String(state.value.yLabel ?? propsRef.value.yLabel ?? "Y"));
 const xValues = computed(() => (state.value.xValues as number[] | undefined) ?? []);
@@ -189,20 +214,20 @@ function onGridKeydown(e: KeyboardEvent) {
   if (isTypeChar || isTypeControl) {
     if (isTypeControl) {
       const kind = key === "Backspace" ? "backspace" : key === "Enter" ? "commit" : "cancel";
-      void dispatch("type_key", { kind });
+      void dispatchWrite("type_key", { kind });
       return;
     }
     let ch = key;
     if (code === "NumpadDecimal" || key === "," || key === ".") ch = ".";
     if (code === "NumpadSubtract" || key === "-") ch = "-";
-    void dispatch("type_key", { kind: "char", ch });
+    void dispatchWrite("type_key", { kind: "char", ch });
     return;
   }
   if (isInterpolate) {
-    void dispatch("interpolate");
+    void dispatchWrite("interpolate");
     return;
   }
-  void dispatch("keydown", {
+  void dispatchWrite("keydown", {
     key,
     shift: e.shiftKey,
     ctrl: e.ctrlKey,
@@ -239,6 +264,7 @@ if (typeof window !== "undefined") {
 onBeforeUnmount(() => {
   if (typeof window !== "undefined") {
     window.removeEventListener("mouseup", onGlobalMouseUp);
+    window.removeEventListener("config-undo-redo", onConfigUndoRedo);
   }
 });
 
@@ -262,7 +288,7 @@ function onCellFocus(row: number, col: number, e: FocusEvent) {
           class="btn-interp"
           :disabled="disabled"
           title="Интерполировать (Ctrl+I)"
-          @click="dispatch('interpolate')"
+          @click="dispatchWrite('interpolate')"
         >
           Интерполировать
         </button>

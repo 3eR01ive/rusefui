@@ -3,6 +3,10 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { isConfigMergeBlocking } from "./useConfigDiff";
 import { workspaceSnapshot } from "./useWorkspaceState";
+import {
+  executeConfigCommand,
+  initConfigCommandHistory,
+} from "./configCommands";
 
 export interface ConfigSnapshot {
   connected: boolean;
@@ -56,10 +60,21 @@ const fieldsByName = shallowRef<Map<string, ConfigFieldInfo>>(new Map());
 let unlisten: UnlistenFn | null = null;
 let initPromise: Promise<void> | null = null;
 
+function applySnapshot(snap: ConfigSnapshot): void {
+  snapshot.value = snap;
+}
+
+/** Синхронное обновление снимка после undo/redo (до config-snapshot event). */
+export function patchConfigSnapshot(snap: ConfigSnapshot): void {
+  applySnapshot(snap);
+}
+
 export async function initConfig(): Promise<void> {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
+    await initConfigCommandHistory();
+
     try {
       snapshot.value = await invoke<ConfigSnapshot>("config_get_snapshot");
       const fields = await invoke<ConfigFieldInfo[]>("config_list_fields");
@@ -126,18 +141,32 @@ export async function setConfigScalar(
   field: string,
   value: number,
 ): Promise<void> {
-  snapshot.value = await invoke<ConfigSnapshot>("config_set_scalar", {
-    params: { field, value },
-  });
+  const old = snapshot.value.values[field];
+  if (old === undefined) {
+    snapshot.value = await invoke<ConfigSnapshot>("config_set_scalar", {
+      params: { field, value },
+    });
+    return;
+  }
+  if (old === value) return;
+
+  await executeConfigCommand(
+    { type: "scalar", field, oldValue: old, newValue: value },
+    applySnapshot,
+  );
 }
 
 export async function setConfigString(
   field: string,
   value: string,
 ): Promise<void> {
-  snapshot.value = await invoke<ConfigSnapshot>("config_set_string", {
-    params: { field, value },
-  });
+  const old = snapshot.value.stringValues?.[field] ?? "";
+  if (old === value) return;
+
+  await executeConfigCommand(
+    { type: "string", field, oldValue: old, newValue: value },
+    applySnapshot,
+  );
 }
 
 export async function getConfigArray(field: string): Promise<number[]> {
@@ -149,9 +178,18 @@ export async function setConfigArrayValue(
   index: number,
   value: number,
 ): Promise<void> {
-  snapshot.value = await invoke<ConfigSnapshot>("config_set_array_value", {
-    params: { field, index, value },
-  });
+  const arr = await getConfigArray(field);
+  const oldValue = arr[index];
+  if (oldValue === undefined || Math.abs(oldValue - value) < 1e-9) return;
+
+  await executeConfigCommand(
+    {
+      type: "array",
+      field,
+      updates: [{ index, oldValue, newValue: value }],
+    },
+    applySnapshot,
+  );
 }
 
 /** Запись текущего конфига page 0 во flash (команда `B`). */

@@ -8,6 +8,8 @@ export const tabOrder = { value: [] as string[] };
 export const saveProjectCallback = { value: null as (() => void) | null };
 export const openProjectCallback = { value: null as (() => void) | null };
 export const burnCallback = { value: null as (() => void) | null };
+export const undoCallback = { value: null as (() => void | Promise<void>) | null };
+export const redoCallback = { value: null as (() => void | Promise<void>) | null };
 
 /** Enter без модификаторов на активной вкладке — по tab id. */
 const tabEnterHandlers = new Map<string, () => void>();
@@ -36,6 +38,23 @@ export function useGlobalHotkeys() {
 
     if (e.ctrlKey || e.metaKey) {
       // e.code не зависит от раскладки клавиатуры
+      if (e.code === "KeyZ" && !e.shiftKey) {
+        if (!isEditableTarget(e.target)) {
+          e.preventDefault();
+          void undoCallback.value?.();
+        }
+        return;
+      }
+      if (e.code === "KeyZ" && e.shiftKey) {
+        e.preventDefault();
+        void redoCallback.value?.();
+        return;
+      }
+      if (e.code === "KeyY") {
+        e.preventDefault();
+        void redoCallback.value?.();
+        return;
+      }
       if (e.code === "KeyS") {
         e.preventDefault();
         saveProjectCallback.value?.();
