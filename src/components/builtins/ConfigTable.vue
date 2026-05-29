@@ -306,7 +306,6 @@ function onCellMouseDown(row: number, col: number, e: MouseEvent) {
   }
   isMouseSelecting.value = true;
   void dispatch("select_cell", { row, col, extend: e.shiftKey });
-  gridRef.value?.focus();
 }
 
 function onCellMouseEnter(row: number, col: number) {
@@ -330,29 +329,18 @@ function onCellFocus(row: number, col: number, e: FocusEvent) {
 
 <template>
   <div class="config-table">
-    <header v-if="title" class="grid-head">
-      <h4 class="grid-title">{{ title }}</h4>
-      <div class="grid-head-actions">
-        <button
-          type="button"
-          class="btn-interp"
-          :disabled="disabled"
-          title="Интерполировать (Ctrl+I)"
-          @click="dispatchWrite('interpolate')"
-        >
-          Интерполировать
-        </button>
-        <span class="grid-badge" :class="{ 'grid-badge--error': !!localError }">
-          {{ localError || statusText }}
-        </span>
-      </div>
+    <header v-if="title || localError || statusText" class="grid-head">
+      <h4 v-if="title" class="grid-title">{{ title }}</h4>
+      <span
+        v-if="localError || statusText"
+        class="grid-badge"
+        :class="{ 'grid-badge--error': !!localError }"
+      >
+        {{ localError || statusText }}
+      </span>
     </header>
 
-    <div
-      ref="gridRef"
-      class="grid-scroll"
-      tabindex="0"
-    >
+    <div ref="gridRef" class="grid-scroll">
       <table class="grid">
         <thead>
           <tr>
@@ -420,31 +408,10 @@ function onCellFocus(row: number, col: number, e: FocusEvent) {
   gap: 0.75rem;
 }
 
-.grid-head-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
 .grid-title {
   margin: 0;
   font-size: 0.92rem;
   font-weight: 600;
-}
-
-.btn-interp {
-  font-size: 0.72rem;
-  padding: 0.2rem 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-bg-muted);
-  color: var(--color-text);
-  cursor: pointer;
-}
-
-.btn-interp:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .grid-badge {
@@ -461,11 +428,6 @@ function onCellFocus(row: number, col: number, e: FocusEvent) {
   max-width: 100%;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  outline: none;
-}
-
-.grid-scroll:focus-visible {
-  box-shadow: 0 0 0 2px var(--color-accent, #3b82f6);
 }
 
 .grid {
@@ -535,25 +497,6 @@ function onCellFocus(row: number, col: number, e: FocusEvent) {
   pointer-events: none;
   -webkit-tap-highlight-color: transparent;
 }
-
-.cell-input:focus {
-  outline: none !important;
-  box-shadow: none !important;
-}
-
-.cell-input:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
-}
-
-.cell-input::selection {
-  background: transparent;
-}
-
-.cell-input::-moz-selection {
-  background: transparent;
-}
-
 
 .cell-input:disabled {
   color: var(--color-text-muted);

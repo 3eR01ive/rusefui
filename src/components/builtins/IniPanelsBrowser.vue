@@ -433,11 +433,6 @@ function toggleGroup(group: string): void {
   gap: 0.75rem;
 }
 
-.panel-btn:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 1px;
-}
-
 .group-title {
   display: flex;
   align-items: center;

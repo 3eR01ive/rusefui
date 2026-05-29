@@ -102,7 +102,7 @@ impl ConfigTableLogic {
         if !self.session.is_connected() && !snap.read_only {
             return "нет подключения".into();
         }
-        "таблица".into()
+        String::new()
     }
 
     fn infer_dims(x_len: usize, y_len: usize, z_len: usize) -> (usize, usize) {

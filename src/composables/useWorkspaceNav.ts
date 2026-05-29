@@ -16,7 +16,7 @@ export interface NavExtension {
 export const navMode = ref<NavMode>("select");
 /** Синяя рамка — выбранный узел (стрелки). */
 export const selectedPath = ref("");
-/** Зелёная рамка — активный компонент (перехватывает клавиатуру). */
+/** Активный компонент (перехватывает клавиатуру, без отдельной подсветки). */
 export const activePath = ref("");
 /** Leaf-пути текущей вкладки (depth-first). */
 export const navPaths = ref<string[]>([]);
@@ -49,20 +49,13 @@ export function isNavActivatablePath(path: string): boolean {
 
 export function navPresentation(path: string): {
   class: Record<string, boolean>;
-  "data-nav-active"?: "true";
 } {
-  const selected = navMode.value === "select" && selectedPath.value === path;
-  const active =
-    navMode.value === "active" &&
-    activePath.value === path &&
-    isNavActivatablePath(path);
+  const selected = selectedPath.value === path;
   return {
     class: {
       "nav-node": true,
       "nav-node--selected": selected,
-      "nav-node--active": active,
     },
-    ...(active ? { "data-nav-active": "true" as const } : {}),
   };
 }
 
@@ -163,18 +156,8 @@ export function deactivateComponent(): void {
 
 export function refreshNavDimming(): void {
   if (typeof document === "undefined") return;
-  const active = navMode.value === "active" ? activePath.value : "";
-  const activeEl = active
-    ? document.querySelector<HTMLElement>(
-        `[data-nav-path="${typeof CSS !== "undefined" && "escape" in CSS ? CSS.escape(active) : active}"]`,
-      )
-    : null;
-
-  for (const node of document.querySelectorAll<HTMLElement>("[data-nav-node]")) {
-    const path = node.dataset.navPath ?? "";
-    const isActive = !!active && path === active;
-    const wrapsActive = !!(activeEl && node !== activeEl && node.contains(activeEl));
-    node.classList.toggle("nav-node--dimmed", !!active && !isActive && !wrapsActive);
+  for (const node of document.querySelectorAll<HTMLElement>("[data-nav-node].nav-node--dimmed")) {
+    node.classList.remove("nav-node--dimmed");
   }
 }
 

@@ -2129,11 +2129,6 @@ watch(chartHeight, () => scheduleRedraw());
   overflow: hidden;
   cursor: grab;
   touch-action: none;
-  outline: none;
-}
-
-.canvas-wrap:focus-visible {
-  box-shadow: 0 0 0 2px var(--color-accent);
 }
 
 .canvas-wrap--dragging {

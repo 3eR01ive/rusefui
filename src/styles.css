@@ -48,10 +48,7 @@
 
   /* Навигация по компонентам вкладки */
   --nav-ring-selected: color-mix(in srgb, var(--color-accent) 50%, transparent);
-  --nav-ring-active: var(--color-accent);
   --nav-bg-selected: color-mix(in srgb, var(--color-accent) 7%, var(--color-bg-elevated));
-  --nav-bg-active: var(--color-bg-elevated);
-  --nav-dim-opacity: 0.38;
 
   /* Горизонтальный layout: ноутбук / широкое окно */
   --app-padding-x: clamp(1rem, 2.5vw, 2rem);
@@ -99,6 +96,39 @@ select {
 
 button {
   cursor: pointer;
+}
+
+/* Своя nav-подсветка — без штатных focus ring и tap-highlight браузера. */
+button:focus,
+button:focus-visible,
+input:focus,
+input:focus-visible,
+select:focus,
+select:focus-visible,
+textarea:focus,
+textarea:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+input,
+select,
+textarea,
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--color-accent);
+}
+
+input[type="checkbox"]:focus,
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus,
+input[type="radio"]:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 /* ---- Tab alerts (переиспользуемая подсветка кнопок табов) ---- */
@@ -164,14 +194,12 @@ button {
   background: var(--color-bg-accent-soft);
 }
 
-/* ---- Nav nodes (выбор / активация компонентов на вкладке) ---- */
+/* ---- Nav nodes (выбор компонентов на вкладке) ---- */
 .nav-node {
   border-radius: var(--radius-sm);
   transition:
     box-shadow 0.16s ease,
-    background-color 0.16s ease,
-    opacity 0.22s ease,
-    filter 0.22s ease;
+    background-color 0.16s ease;
 }
 
 .nav-node--selected {
@@ -179,25 +207,4 @@ button {
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--color-accent) 28%, var(--color-border)),
     0 0 0 3px var(--nav-ring-selected);
-}
-
-.nav-node--active {
-  background: var(--nav-bg-active);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--color-accent) 45%, var(--color-border)),
-    0 0 0 3px color-mix(in srgb, var(--nav-ring-active) 35%, transparent),
-    var(--shadow-card);
-  position: relative;
-  z-index: 3;
-}
-
-.nav-node--dimmed {
-  opacity: var(--nav-dim-opacity);
-  pointer-events: none;
-  user-select: none;
-}
-
-.nav-node[data-nav-active="true"] {
-  opacity: 1;
-  pointer-events: auto;
 }
