@@ -31,10 +31,15 @@ python generate_map.py examples/turbo_6g72tt_3000gt.json -c config/coefficients.
 
 ## Двигатели
 
-| Конфиг | Эталон |
-|--------|--------|
-| `examples/turbo_6g72tt_3000gt.json` | `reference/turbo_6g72tt_3000gt.csv` |
-| `examples/turbo_4g63t_1g_dsm.json` | `reference/turbo_4g63t_1g_dsm.csv` |
+Все карты на **единой сетке осей 3000GT**: RPM 600–8000 (16), MAP 15–320 kPa (17).
+
+| Конфиг | Эталон | Источник |
+|--------|--------|----------|
+| `examples/na_k20_honda.json` | `reference/na_k20_honda.csv` | K20 Hondata |
+| `examples/turbo_ej207_subaru.json` | `reference/turbo_ej207_subaru.csv` | EJ207 Link safe map |
+| `examples/turbo_4g63_evo8_stock.json` | `reference/turbo_4g63_evo8_stock.csv` | Evo VIII stock ROM |
+| `examples/turbo_6g72tt_3000gt.json` | `reference/turbo_6g72tt_3000gt.csv` | 3000GT TunerStudio |
+| `examples/turbo_4g63t_1g_dsm.json` | `reference/turbo_4g63t_1g_dsm.csv` | 1G DSM TunerStudio |
 
 ## Вход (JSON)
 
@@ -72,6 +77,7 @@ ignition-advance-static/
   generate_map.py            # генерация CSV
   compare_map.py             # модель vs эталон(ы)
   fit_coefficients.py        # подбор коэффициентов по всем эталонам
+  resample_references.py    # привести эталоны к осям 3000GT
   import_msq_reference.py    # эталон из TunerStudio .msq
   output/                    # результаты (не в git)
 ```
