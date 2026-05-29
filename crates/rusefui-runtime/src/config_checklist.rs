@@ -6,6 +6,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::config_conflicts::collect_conflict_items;
+use crate::config_vars::{ConflictConstants, VarBinding};
 use crate::sources::config::{ConfigFieldInfo, ConfigSnapshot, ConfigSource};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,6 +92,11 @@ pub struct ChecklistRules {
     pub groups: HashMap<String, GroupDefinition>,
     pub levels: HashMap<String, LevelDefinition>,
     pub checks: Vec<CheckDef>,
+    /// Логические переменные → источник + параметр INI (для конфликтов и прочей логики).
+    #[serde(default)]
+    pub vars: HashMap<String, VarBinding>,
+    #[serde(default)]
+    pub conflict_constants: ConflictConstants,
 }
 
 impl ChecklistRules {
@@ -624,6 +630,8 @@ mod tests {
                     min: 1.0,
                 },
             }],
+            vars: HashMap::new(),
+            conflict_constants: Default::default(),
         }
     }
 
@@ -644,6 +652,15 @@ mod tests {
             pin_usage: HashMap::new(),
             checklist: ChecklistSnapshot::default(),
         }
+    }
+
+    #[test]
+    fn checklist_yaml_includes_logic_vars() {
+        let yaml = include_str!("../../../public/config/checklist.yaml");
+        let rules = ChecklistRules::parse_yaml(yaml).expect("checklist.yaml");
+        assert!(rules.vars.contains_key("engine.cylinder_count"));
+        assert!(rules.vars.contains_key("ignition.output_pins"));
+        assert!(!rules.conflict_constants.trigger.types_needing_secondary.is_empty());
     }
 
     #[test]

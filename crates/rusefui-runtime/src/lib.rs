@@ -7,6 +7,7 @@ mod component;
 pub mod config_table_grid;
 mod config_checklist;
 mod config_conflicts;
+mod config_vars;
 mod config_diff;
 mod dyno;
 mod layout;
@@ -32,6 +33,9 @@ pub use config_table_grid::{
 pub use config_checklist::{
     evaluate_checklist, ChecklistEditor, ChecklistIssue, ChecklistItem, ChecklistLevelStatus,
     ChecklistRules, ChecklistSnapshot, FieldMapping, GroupDefinition, LevelDefinition,
+};
+pub use config_vars::{
+    logic as config_logic_var, ConflictConstants, ConfigVarResolver, VarBinding,
 };
 pub use config_diff::{
     compute_config_diff, ConfigDiffEntry, ConfigDiffSnapshot, ConfigDiffStore, DiffSide,

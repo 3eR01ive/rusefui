@@ -131,12 +131,57 @@ fields:
     panel: iatSensorDialog
     component: iat-resistance-1
 
+# Логические переменные для Rust (конфликты и прочая логика).
+# В коде — только ключи vars; parameter / prefix — имена полей INI.
+vars:
+  engine.cylinder_count:
+    source: config
+    parameter: cylindersCount
+  engine.firing_order:
+    source: config
+    parameter: firingOrder
+  ignition.enabled:
+    source: config
+    parameter: isIgnitionEnabled
+  ignition.mode:
+    source: config
+    parameter: ignitionMode
+  ignition.output_pins:
+    source: config
+    prefix: ignitionPins
+  fuel.injection_enabled:
+    source: config
+    parameter: isInjectionEnabled
+  fuel.injection_mode:
+    source: config
+    parameter: injectionMode
+  fuel.injector_pins:
+    source: config
+    prefix: injectionPins
+  trigger.type:
+    source: config
+    parameter: trigger_type
+  trigger.secondary_input:
+    source: config
+    parameter: triggerInputPins2
+
+conflict_constants:
+  ignition:
+    single_coil: 0
+    individual: 1
+  injection:
+    single_point: 3
+    sequential: 1
+    skip_cylinder_pin_check: [3]
+  trigger:
+    types_needing_secondary: [1, 3, 15, 16, 19, 25, 31, 35, 36, 37, 40, 49, 54, 63, 64]
+
 levels:
   conflicts:
     title: "Конфликты настроек"
     description: >
-      Взаимоисключающие назначения: дубли пинов, несогласованность цилиндров,
-      режимов зажигания/впрыска и входов триггера.
+      Взаимоисключающие назначения: дубли пинов, несогласованность цилиндров
+      и порядка зажигания, режимов зажигания/впрыска и входов триггера.
     severity: critical
   startup_minimum:
     title: "Минимум для запуска ДВС"

@@ -16,11 +16,12 @@ import {
   configCanView,
   initConfig,
   useConfig,
+  type ChecklistEditor,
+  type ChecklistLevelStatus,
   type ChecklistSnapshot,
 } from "../../composables/useConfig";
 import { initChecklist } from "../../composables/useChecklist";
 import { resolveChecklistEditors } from "../../composables/useChecklistEditor";
-import type { ChecklistEditor } from "../../composables/useConfig";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -40,6 +41,7 @@ const canShow = computed(() => configCanView(snapshot.value));
 
 const selectedId = ref<string>("");
 const showOnlyIncomplete = ref(false);
+const collapsedLevels = ref<Set<string>>(new Set());
 const editorInstances = shallowRef<ComponentInstance[]>([]);
 const editorLoading = ref(false);
 const editorError = ref<string | null>(null);
@@ -149,6 +151,7 @@ watch(
   selectedId,
   (id) => {
     const item = flatItems.value.find((i) => i.id === id);
+    if (item) expandLevel(item.level);
     if (!item) {
       editorInstances.value = [];
       return;
@@ -212,6 +215,37 @@ function levelSummary(levelId: string) {
   const done = list.filter((i) => i.ok).length;
   return { done, total: list.length };
 }
+
+function isLevelCollapsed(levelId: string): boolean {
+  return collapsedLevels.value.has(levelId);
+}
+
+function setLevelCollapsed(levelId: string, collapsed: boolean): void {
+  const next = new Set(collapsedLevels.value);
+  if (collapsed) next.add(levelId);
+  else next.delete(levelId);
+  collapsedLevels.value = next;
+}
+
+function toggleLevel(levelId: string): void {
+  setLevelCollapsed(levelId, !isLevelCollapsed(levelId));
+}
+
+function expandLevel(levelId: string): void {
+  if (isLevelCollapsed(levelId)) setLevelCollapsed(levelId, false);
+}
+
+function levelLedClass(level: ChecklistLevelStatus): string {
+  if (level.ok) return "level-led--ok";
+  switch (level.severity) {
+    case "critical":
+      return "level-led--critical";
+    case "warning":
+      return "level-led--warning";
+    default:
+      return "level-led--error";
+  }
+}
 </script>
 
 <template>
@@ -244,33 +278,58 @@ function levelSummary(levelId: string) {
           Все пункты выполнены.
         </p>
         <article v-for="level in visibleLevels" :key="level.id" class="level-block">
-          <header class="level-head">
+          <button
+            type="button"
+            class="level-head"
+            :aria-expanded="!isLevelCollapsed(level.id)"
+            @click="toggleLevel(level.id)"
+          >
+            <span
+              class="level-chevron"
+              :class="{ expanded: !isLevelCollapsed(level.id) }"
+              aria-hidden="true"
+            >›</span>
+            <span
+              class="level-led"
+              :class="levelLedClass(level)"
+              :title="level.severity"
+              aria-hidden="true"
+            />
             <h3 class="level-title">{{ level.title }}</h3>
-            <span class="level-count">{{ levelSummary(level.id).done }}/{{ levelSummary(level.id).total }}</span>
-          </header>
-          <p v-if="level.description" class="level-desc">{{ level.description }}</p>
+            <span class="level-count">
+              <template v-if="!level.ok && level.issueCount">
+                {{ level.issueCount }} ·
+              </template>
+              {{ levelSummary(level.id).done }}/{{ levelSummary(level.id).total }}
+            </span>
+          </button>
+          <p v-if="level.description && !isLevelCollapsed(level.id)" class="level-desc">
+            {{ level.description }}
+          </p>
 
-          <div v-for="group in groupsForLevel(level.id)" :key="group.id" class="group-block">
-            <h4 class="group-title">{{ group.title }}</h4>
-            <ul class="checklist">
-              <li v-for="item in group.items" :key="item.id">
-                <button
-                  type="button"
-                  class="check-row nav-node"
-                  :class="{
-                    'check-row--ok': item.ok,
-                    'check-row--fail': !item.ok,
-                  }"
-                  data-nav-node="1"
-                  :data-nav-path="menuItemPath(item.id)"
-                  @mousedown.prevent="selectItem(item.id)"
-                >
-                  <span class="check-icon" aria-hidden="true">{{ item.ok ? "✓" : "✗" }}</span>
-                  <span class="check-label">{{ item.label }}</span>
-                  <span class="check-value">{{ item.valueDisplay }}</span>
-                </button>
-              </li>
-            </ul>
+          <div v-show="!isLevelCollapsed(level.id)" class="level-body">
+            <div v-for="group in groupsForLevel(level.id)" :key="group.id" class="group-block">
+              <h4 class="group-title">{{ group.title }}</h4>
+              <ul class="checklist">
+                <li v-for="item in group.items" :key="item.id">
+                  <button
+                    type="button"
+                    class="check-row nav-node"
+                    :class="{
+                      'check-row--ok': item.ok,
+                      'check-row--fail': !item.ok,
+                    }"
+                    data-nav-node="1"
+                    :data-nav-path="menuItemPath(item.id)"
+                    @mousedown.prevent="selectItem(item.id)"
+                  >
+                    <span class="check-icon" aria-hidden="true">{{ item.ok ? "✓" : "✗" }}</span>
+                    <span class="check-label">{{ item.label }}</span>
+                    <span class="check-value">{{ item.valueDisplay }}</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
           </div>
         </article>
       </aside>
@@ -381,35 +440,112 @@ function levelSummary(levelId: string) {
 }
 
 .level-block + .level-block {
-  margin-top: 1rem;
-  padding-top: 0.75rem;
+  margin-top: 0.65rem;
+  padding-top: 0.65rem;
   border-top: 1px solid var(--color-border, rgba(255, 255, 255, 0.06));
 }
 
 .level-head {
   display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  align-items: baseline;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.3rem 0.35rem;
+  border: none;
+  border-radius: var(--radius-sm, 4px);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.level-head:hover {
+  background: var(--color-surface-2, rgba(255, 255, 255, 0.04));
+}
+
+.level-chevron {
+  flex-shrink: 0;
+  display: inline-block;
+  width: 0.65rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  transform: rotate(0deg);
+  transition: transform 0.15s ease;
+}
+
+.level-chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.level-led {
+  flex-shrink: 0;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 5px currentColor;
+}
+
+.level-led--ok {
+  color: var(--color-success, #6ecf8a);
+  opacity: 0.75;
+  box-shadow: none;
+}
+
+.level-led--error {
+  color: var(--color-danger, #f08080);
+}
+
+.level-led--critical {
+  color: #ff5c5c;
+  animation: checklist-led-pulse 1.8s ease-in-out infinite;
+}
+
+.level-led--warning {
+  color: #e6a817;
+  box-shadow: 0 0 4px currentColor;
+}
+
+@keyframes checklist-led-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 6px currentColor;
+  }
+  50% {
+    opacity: 0.45;
+    box-shadow: 0 0 2px currentColor;
+  }
 }
 
 .level-title {
   margin: 0;
-  font-size: 0.95rem;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
   font-weight: 600;
 }
 
 .level-count {
-  font-size: 0.78rem;
+  flex-shrink: 0;
+  font-size: 0.75rem;
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
 }
 
 .level-desc {
-  margin: 0.25rem 0 0.5rem;
-  font-size: 0.78rem;
+  margin: 0.15rem 0 0.45rem 1.5rem;
+  font-size: 0.76rem;
   color: var(--color-text-muted);
   line-height: 1.4;
+}
+
+.level-body {
+  margin-top: 0.35rem;
+  padding-left: 0.15rem;
 }
 
 .group-block + .group-block {

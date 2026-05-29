@@ -6,18 +6,10 @@ use crate::config_checklist::{
     field_labels_for, pin_label_for_value, resolve_editors, resolve_group, ChecklistEditor,
     ChecklistIssue, ChecklistItem, ChecklistRules, LevelDefinition,
 };
+use crate::config_vars::{logic as var, ConfigVarResolver};
 use crate::sources::config::{ConfigFieldInfo, ConfigSnapshot};
-use crate::sources::pin_allocation::PIN_NONE_VALUE;
 
 const CONFLICT_LEVEL: &str = "conflicts";
-
-/// Типы триггера, для которых в INI показан вторичный вход (`triggerInputPins2`).
-const TRIGGER_NEEDS_SECONDARY: &[u32] = &[
-    1, 3, 15, 16, 19, 25, 31, 35, 36, 37, 40, 49, 54, 63, 64,
-];
-
-const MAX_IGNITION_PINS: usize = 12;
-const MAX_INJECTION_PINS: usize = 12;
 
 struct ConflictDef {
     id: String,
@@ -36,12 +28,15 @@ pub fn collect_conflict_items(
     rules: &ChecklistRules,
     field_info: &HashMap<String, ConfigFieldInfo>,
 ) -> (Vec<ChecklistItem>, Vec<ChecklistIssue>) {
+    let vars = ConfigVarResolver::new(&rules.vars, &rules.conflict_constants, field_info);
+
     let mut defs = Vec::new();
     defs.extend(pin_pool_conflicts(snapshot, rules, field_info));
-    defs.extend(cylinder_pin_conflicts(snapshot));
-    defs.extend(ignition_mode_pin_conflicts(snapshot, field_info));
-    defs.extend(injection_mode_pin_conflicts(snapshot, field_info));
-    defs.extend(trigger_input_conflicts(snapshot, field_info));
+    defs.extend(cylinder_pin_conflicts(snapshot, &vars));
+    defs.extend(firing_order_cylinder_conflicts(snapshot, &vars));
+    defs.extend(ignition_mode_pin_conflicts(snapshot, &vars));
+    defs.extend(injection_mode_pin_conflicts(snapshot, &vars));
+    defs.extend(trigger_input_conflicts(snapshot, &vars));
 
     defs.sort_by(|a, b| a.id.cmp(&b.id));
 
@@ -131,17 +126,25 @@ fn pin_pool_conflicts(
     out
 }
 
-fn cylinder_pin_conflicts(snapshot: &ConfigSnapshot) -> Vec<ConflictDef> {
+fn cylinder_pin_conflicts(snapshot: &ConfigSnapshot, vars: &ConfigVarResolver<'_>) -> Vec<ConflictDef> {
     let mut out = Vec::new();
-    let cylinders = cylinder_count(snapshot);
+    let cylinders = vars.scalar_usize(snapshot, var::ENGINE_CYLINDER_COUNT);
     if cylinders == 0 {
         return out;
     }
 
-    if subsystem_enabled(snapshot, "isIgnitionEnabled") {
-        for i in (cylinders + 1)..=MAX_IGNITION_PINS {
-            let pin_field = format!("ignitionPins{i}");
-            if pin_is_assigned(snapshot, &pin_field) {
+    let cylinder_field = vars
+        .field_name(var::ENGINE_CYLINDER_COUNT)
+        .unwrap_or_default()
+        .to_string();
+
+    if vars.bool_enabled(snapshot, var::IGNITION_ENABLED) {
+        let max = vars.max_index(var::IGNITION_OUTPUT_PINS);
+        for i in (cylinders + 1)..=max {
+            let Some(pin_field) = vars.indexed_field_name(var::IGNITION_OUTPUT_PINS, i) else {
+                continue;
+            };
+            if vars.indexed_pin_assigned(snapshot, var::IGNITION_OUTPUT_PINS, i) {
                 out.push(ConflictDef {
                     id: format!("conflict_cyl_ignition_pin_{i}"),
                     group: "engine",
@@ -150,17 +153,24 @@ fn cylinder_pin_conflicts(snapshot: &ConfigSnapshot) -> Vec<ConflictDef> {
                         "Выход зажигания №{i} назначен, но цилиндров только {cylinders}"
                     ),
                     value_display: format!("{cylinders} цил., выход {i} занят"),
-                    fields: vec!["cylindersCount".to_string(), pin_field.clone()],
+                    fields: vec![cylinder_field.clone(), pin_field.clone()],
                     editor_fields: vec![pin_field],
                 });
             }
         }
     }
 
-    if subsystem_enabled(snapshot, "isInjectionEnabled") && injection_mode(snapshot) != 3 {
-        for i in (cylinders + 1)..=MAX_INJECTION_PINS {
-            let pin_field = format!("injectionPins{i}");
-            if pin_is_assigned(snapshot, &pin_field) {
+    let skip_modes = &vars.constants().injection.skip_cylinder_pin_check;
+    let injection_mode = vars.scalar_u32(snapshot, var::FUEL_INJECTION_MODE);
+    if vars.bool_enabled(snapshot, var::FUEL_INJECTION_ENABLED)
+        && !skip_modes.contains(&injection_mode)
+    {
+        let max = vars.max_index(var::FUEL_INJECTOR_PINS);
+        for i in (cylinders + 1)..=max {
+            let Some(pin_field) = vars.indexed_field_name(var::FUEL_INJECTOR_PINS, i) else {
+                continue;
+            };
+            if vars.indexed_pin_assigned(snapshot, var::FUEL_INJECTOR_PINS, i) {
                 out.push(ConflictDef {
                     id: format!("conflict_cyl_injection_pin_{i}"),
                     group: "engine",
@@ -169,7 +179,7 @@ fn cylinder_pin_conflicts(snapshot: &ConfigSnapshot) -> Vec<ConflictDef> {
                         "Выход форсунки №{i} назначен, но цилиндров только {cylinders}"
                     ),
                     value_display: format!("{cylinders} цил., выход {i} занят"),
-                    fields: vec!["cylindersCount".to_string(), pin_field.clone()],
+                    fields: vec![cylinder_field.clone(), pin_field.clone()],
                     editor_fields: vec![pin_field],
                 });
             }
@@ -179,23 +189,98 @@ fn cylinder_pin_conflicts(snapshot: &ConfigSnapshot) -> Vec<ConflictDef> {
     out
 }
 
+fn firing_order_cylinder_conflicts(
+    snapshot: &ConfigSnapshot,
+    vars: &ConfigVarResolver<'_>,
+) -> Vec<ConflictDef> {
+    let cylinders = vars.scalar_usize(snapshot, var::ENGINE_CYLINDER_COUNT);
+    if cylinders == 0 {
+        return Vec::new();
+    }
+
+    let firing_order = vars.scalar_u32(snapshot, var::ENGINE_FIRING_ORDER);
+    let Some(order_label) = vars.option_label(var::ENGINE_FIRING_ORDER, firing_order) else {
+        return Vec::new();
+    };
+
+    let Some(order_cylinders) = cylinder_count_from_firing_order_label(&order_label) else {
+        return Vec::new();
+    };
+
+    if order_cylinders == cylinders {
+        return Vec::new();
+    }
+
+    let cylinder_field = vars
+        .field_name(var::ENGINE_CYLINDER_COUNT)
+        .unwrap_or_default()
+        .to_string();
+    let firing_field = vars
+        .field_name(var::ENGINE_FIRING_ORDER)
+        .unwrap_or_default()
+        .to_string();
+
+    vec![ConflictDef {
+        id: "conflict_cylinders_firing_order".to_string(),
+        group: "engine",
+        label: "Цилиндры и порядок зажигания".to_string(),
+        message: format!(
+            "Порядок зажигания «{order_label}» рассчитан на {order_cylinders} цил., указано {cylinders}"
+        ),
+        value_display: format!("{cylinders} цил. · {order_label}"),
+        fields: vec![cylinder_field.clone(), firing_field.clone()],
+        editor_fields: vec![cylinder_field, firing_field],
+    }]
+}
+
+/// Число цилиндров по подписи enum firing order (максимальный номер в последовательности).
+fn cylinder_count_from_firing_order_label(label: &str) -> Option<usize> {
+    let trimmed = label.trim();
+    if trimmed.eq_ignore_ascii_case("One Cylinder") {
+        return Some(1);
+    }
+    if trimmed.eq_ignore_ascii_case("INVALID") || trimmed.starts_with("fo") {
+        return None;
+    }
+
+    let mut max = 0usize;
+    for part in trimmed.split(|c: char| !c.is_ascii_digit()) {
+        if part.is_empty() {
+            continue;
+        }
+        let n: usize = part.parse().ok()?;
+        max = max.max(n);
+    }
+
+    if max > 0 { Some(max) } else { None }
+}
+
 fn ignition_mode_pin_conflicts(
     snapshot: &ConfigSnapshot,
-    field_info: &HashMap<String, ConfigFieldInfo>,
+    vars: &ConfigVarResolver<'_>,
 ) -> Vec<ConflictDef> {
     let mut out = Vec::new();
-    if !subsystem_enabled(snapshot, "isIgnitionEnabled") {
+    if !vars.bool_enabled(snapshot, var::IGNITION_ENABLED) {
         return out;
     }
 
-    let mode = ignition_mode(snapshot);
-    let mode_label = scalar_option_label(field_info, "ignitionMode", mode)
+    let mode = vars.scalar_u32(snapshot, var::IGNITION_MODE);
+    let mode_label = vars
+        .option_label(var::IGNITION_MODE, mode)
         .unwrap_or_else(|| format!("режим {mode}"));
+    let mode_field = vars
+        .field_name(var::IGNITION_MODE)
+        .unwrap_or_default()
+        .to_string();
+    let constants = &vars.constants().ignition;
 
-    if mode == 0 {
-        for i in 2..=MAX_IGNITION_PINS {
-            let pin_field = format!("ignitionPins{i}");
-            if pin_is_assigned(snapshot, &pin_field) {
+    if mode == constants.single_coil {
+        let max = vars.max_index(var::IGNITION_OUTPUT_PINS);
+        for i in 2..=max {
+            let Some(pin_field) = vars.indexed_field_name(var::IGNITION_OUTPUT_PINS, i) else {
+                continue;
+            };
+            if vars.indexed_pin_assigned(snapshot, var::IGNITION_OUTPUT_PINS, i) {
                 out.push(ConflictDef {
                     id: format!("conflict_ignition_single_coil_{i}"),
                     group: "ignition",
@@ -204,18 +289,21 @@ fn ignition_mode_pin_conflicts(
                         "В режиме «{mode_label}» используется только выход катушки 1"
                     ),
                     value_display: mode_label.clone(),
-                    fields: vec!["ignitionMode".to_string(), pin_field.clone()],
+                    fields: vec![mode_field.clone(), pin_field.clone()],
                     editor_fields: vec![pin_field],
                 });
             }
         }
     }
 
-    if mode == 1 {
-        let cylinders = cylinder_count(snapshot);
-        for i in 1..=cylinders.min(MAX_IGNITION_PINS) {
-            let pin_field = format!("ignitionPins{i}");
-            if !pin_is_assigned(snapshot, &pin_field) {
+    if mode == constants.individual {
+        let cylinders = vars.scalar_usize(snapshot, var::ENGINE_CYLINDER_COUNT);
+        let max = vars.max_index(var::IGNITION_OUTPUT_PINS);
+        for i in 1..=cylinders.min(max) {
+            let Some(pin_field) = vars.indexed_field_name(var::IGNITION_OUTPUT_PINS, i) else {
+                continue;
+            };
+            if !vars.indexed_pin_assigned(snapshot, var::IGNITION_OUTPUT_PINS, i) {
                 out.push(ConflictDef {
                     id: format!("conflict_ignition_individual_missing_{i}"),
                     group: "ignition",
@@ -224,7 +312,7 @@ fn ignition_mode_pin_conflicts(
                         "В режиме «{mode_label}» нужен отдельный выход на каждый цилиндр"
                     ),
                     value_display: format!("цил. {i} без выхода"),
-                    fields: vec!["ignitionMode".to_string(), pin_field.clone()],
+                    fields: vec![mode_field.clone(), pin_field.clone()],
                     editor_fields: vec![pin_field],
                 });
             }
@@ -236,21 +324,30 @@ fn ignition_mode_pin_conflicts(
 
 fn injection_mode_pin_conflicts(
     snapshot: &ConfigSnapshot,
-    field_info: &HashMap<String, ConfigFieldInfo>,
+    vars: &ConfigVarResolver<'_>,
 ) -> Vec<ConflictDef> {
     let mut out = Vec::new();
-    if !subsystem_enabled(snapshot, "isInjectionEnabled") {
+    if !vars.bool_enabled(snapshot, var::FUEL_INJECTION_ENABLED) {
         return out;
     }
 
-    let mode = injection_mode(snapshot);
-    let mode_label = scalar_option_label(field_info, "injectionMode", mode)
+    let mode = vars.scalar_u32(snapshot, var::FUEL_INJECTION_MODE);
+    let mode_label = vars
+        .option_label(var::FUEL_INJECTION_MODE, mode)
         .unwrap_or_else(|| format!("режим {mode}"));
+    let mode_field = vars
+        .field_name(var::FUEL_INJECTION_MODE)
+        .unwrap_or_default()
+        .to_string();
+    let constants = &vars.constants().injection;
 
-    if mode == 3 {
-        for i in 2..=MAX_INJECTION_PINS {
-            let pin_field = format!("injectionPins{i}");
-            if pin_is_assigned(snapshot, &pin_field) {
+    if mode == constants.single_point {
+        let max = vars.max_index(var::FUEL_INJECTOR_PINS);
+        for i in 2..=max {
+            let Some(pin_field) = vars.indexed_field_name(var::FUEL_INJECTOR_PINS, i) else {
+                continue;
+            };
+            if vars.indexed_pin_assigned(snapshot, var::FUEL_INJECTOR_PINS, i) {
                 out.push(ConflictDef {
                     id: format!("conflict_injection_single_point_{i}"),
                     group: "fuel",
@@ -259,18 +356,21 @@ fn injection_mode_pin_conflicts(
                         "В режиме «{mode_label}» используется только выход форсунки 1"
                     ),
                     value_display: mode_label.clone(),
-                    fields: vec!["injectionMode".to_string(), pin_field.clone()],
+                    fields: vec![mode_field.clone(), pin_field.clone()],
                     editor_fields: vec![pin_field],
                 });
             }
         }
     }
 
-    if mode == 1 {
-        let cylinders = cylinder_count(snapshot);
-        for i in 1..=cylinders.min(MAX_INJECTION_PINS) {
-            let pin_field = format!("injectionPins{i}");
-            if !pin_is_assigned(snapshot, &pin_field) {
+    if mode == constants.sequential {
+        let cylinders = vars.scalar_usize(snapshot, var::ENGINE_CYLINDER_COUNT);
+        let max = vars.max_index(var::FUEL_INJECTOR_PINS);
+        for i in 1..=cylinders.min(max) {
+            let Some(pin_field) = vars.indexed_field_name(var::FUEL_INJECTOR_PINS, i) else {
+                continue;
+            };
+            if !vars.indexed_pin_assigned(snapshot, var::FUEL_INJECTOR_PINS, i) {
                 out.push(ConflictDef {
                     id: format!("conflict_injection_sequential_missing_{i}"),
                     group: "fuel",
@@ -279,7 +379,7 @@ fn injection_mode_pin_conflicts(
                         "В режиме «{mode_label}» нужен отдельный выход на каждый цилиндр"
                     ),
                     value_display: format!("цил. {i} без выхода"),
-                    fields: vec!["injectionMode".to_string(), pin_field.clone()],
+                    fields: vec![mode_field.clone(), pin_field.clone()],
                     editor_fields: vec![pin_field],
                 });
             }
@@ -291,34 +391,38 @@ fn injection_mode_pin_conflicts(
 
 fn trigger_input_conflicts(
     snapshot: &ConfigSnapshot,
-    field_info: &HashMap<String, ConfigFieldInfo>,
+    vars: &ConfigVarResolver<'_>,
 ) -> Vec<ConflictDef> {
     let mut out = Vec::new();
-    let trigger_type = scalar_u32(snapshot, "trigger_type");
-    let type_label = scalar_option_label(field_info, "trigger_type", trigger_type)
+    let trigger_type = vars.scalar_u32(snapshot, var::TRIGGER_TYPE);
+    let type_label = vars
+        .option_label(var::TRIGGER_TYPE, trigger_type)
         .unwrap_or_else(|| format!("тип {trigger_type}"));
+    let type_field = vars
+        .field_name(var::TRIGGER_TYPE)
+        .unwrap_or_default()
+        .to_string();
+    let secondary_field = vars
+        .field_name(var::TRIGGER_SECONDARY_INPUT)
+        .unwrap_or_default()
+        .to_string();
+    let needs_secondary = &vars.constants().trigger.types_needing_secondary;
 
-    if TRIGGER_NEEDS_SECONDARY.contains(&trigger_type)
-        && !pin_is_assigned(snapshot, "triggerInputPins2")
+    if needs_secondary.contains(&trigger_type) && !vars.pin_assigned(snapshot, var::TRIGGER_SECONDARY_INPUT)
     {
         out.push(ConflictDef {
             id: format!("conflict_trigger_secondary_missing_{trigger_type}"),
             group: "trigger",
             label: "Вторичный вход триггера".to_string(),
-            message: format!(
-                "Для «{type_label}» нужен вторичный вход (Secondary channel)"
-            ),
+            message: format!("Для «{type_label}» нужен вторичный вход (Secondary channel)"),
             value_display: type_label.clone(),
-            fields: vec![
-                "trigger_type".to_string(),
-                "triggerInputPins2".to_string(),
-            ],
-            editor_fields: vec!["triggerInputPins2".to_string()],
+            fields: vec![type_field.clone(), secondary_field.clone()],
+            editor_fields: vec![secondary_field.clone()],
         });
     }
 
-    if !TRIGGER_NEEDS_SECONDARY.contains(&trigger_type)
-        && pin_is_assigned(snapshot, "triggerInputPins2")
+    if !needs_secondary.contains(&trigger_type)
+        && vars.pin_assigned(snapshot, var::TRIGGER_SECONDARY_INPUT)
     {
         out.push(ConflictDef {
             id: "conflict_trigger_secondary_unused".to_string(),
@@ -328,69 +432,125 @@ fn trigger_input_conflicts(
                 "Для «{type_label}» вторичный вход не используется — сбросьте Secondary channel"
             ),
             value_display: type_label,
-            fields: vec![
-                "trigger_type".to_string(),
-                "triggerInputPins2".to_string(),
-            ],
-            editor_fields: vec!["triggerInputPins2".to_string()],
+            fields: vec![type_field, secondary_field.clone()],
+            editor_fields: vec![secondary_field],
         });
     }
 
     out
 }
 
-fn scalar_option_label(
-    field_info: &HashMap<String, ConfigFieldInfo>,
-    field: &str,
-    value: u32,
-) -> Option<String> {
-    let info = field_info.get(field)?;
-    let options = info.options.as_ref()?;
-    options
-        .iter()
-        .find(|o| o.value == value)
-        .map(|o| o.label.clone())
-}
-
-fn subsystem_enabled(snapshot: &ConfigSnapshot, field: &str) -> bool {
-    scalar_value(snapshot, field)
-        .map(|v| v >= 1.0)
-        .unwrap_or(false)
-}
-
-fn cylinder_count(snapshot: &ConfigSnapshot) -> usize {
-    scalar_value(snapshot, "cylindersCount")
-        .map(|v| v.round().max(0.0) as usize)
-        .unwrap_or(0)
-}
-
-fn ignition_mode(snapshot: &ConfigSnapshot) -> u32 {
-    scalar_u32(snapshot, "ignitionMode")
-}
-
-fn injection_mode(snapshot: &ConfigSnapshot) -> u32 {
-    scalar_u32(snapshot, "injectionMode")
-}
-
-fn scalar_u32(snapshot: &ConfigSnapshot, field: &str) -> u32 {
-    scalar_value(snapshot, field).map(|v| v as u32).unwrap_or(0)
-}
-
-fn pin_is_assigned(snapshot: &ConfigSnapshot, field: &str) -> bool {
-    scalar_value(snapshot, field)
-        .map(|v| v as u32 > PIN_NONE_VALUE)
-        .unwrap_or(false)
-}
-
-fn scalar_value(snapshot: &ConfigSnapshot, field: &str) -> Option<f64> {
-    snapshot.values.get(field).copied()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::config_checklist::{FieldMapping, GroupDefinition};
+    use crate::config_vars::{ConflictConstants, VarBinding};
     use std::collections::HashMap;
+
+    fn test_vars() -> HashMap<String, VarBinding> {
+        HashMap::from([
+            (
+                var::ENGINE_CYLINDER_COUNT.to_string(),
+                VarBinding {
+                    source: "config".to_string(),
+                    parameter: Some("cylindersCount".to_string()),
+                    prefix: None,
+                },
+            ),
+            (
+                var::ENGINE_FIRING_ORDER.to_string(),
+                VarBinding {
+                    source: "config".to_string(),
+                    parameter: Some("firingOrder".to_string()),
+                    prefix: None,
+                },
+            ),
+            (
+                var::IGNITION_ENABLED.to_string(),
+                VarBinding {
+                    source: "config".to_string(),
+                    parameter: Some("isIgnitionEnabled".to_string()),
+                    prefix: None,
+                },
+            ),
+            (
+                var::IGNITION_MODE.to_string(),
+                VarBinding {
+                    source: "config".to_string(),
+                    parameter: Some("ignitionMode".to_string()),
+                    prefix: None,
+                },
+            ),
+            (
+                var::IGNITION_OUTPUT_PINS.to_string(),
+                VarBinding {
+                    source: "config".to_string(),
+                    parameter: None,
+                    prefix: Some("ignitionPins".to_string()),
+                },
+            ),
+            (
+                var::FUEL_INJECTION_ENABLED.to_string(),
+                VarBinding {
+                    source: "config".to_string(),
+                    parameter: Some("isInjectionEnabled".to_string()),
+                    prefix: None,
+                },
+            ),
+            (
+                var::FUEL_INJECTION_MODE.to_string(),
+                VarBinding {
+                    source: "config".to_string(),
+                    parameter: Some("injectionMode".to_string()),
+                    prefix: None,
+                },
+            ),
+            (
+                var::FUEL_INJECTOR_PINS.to_string(),
+                VarBinding {
+                    source: "config".to_string(),
+                    parameter: None,
+                    prefix: Some("injectionPins".to_string()),
+                },
+            ),
+            (
+                var::TRIGGER_TYPE.to_string(),
+                VarBinding {
+                    source: "config".to_string(),
+                    parameter: Some("trigger_type".to_string()),
+                    prefix: None,
+                },
+            ),
+            (
+                var::TRIGGER_SECONDARY_INPUT.to_string(),
+                VarBinding {
+                    source: "config".to_string(),
+                    parameter: Some("triggerInputPins2".to_string()),
+                    prefix: None,
+                },
+            ),
+        ])
+    }
+
+    fn pin_field_info(prefix: &str, count: usize) -> HashMap<String, ConfigFieldInfo> {
+        let mut field_info = HashMap::new();
+        for i in 1..=count {
+            field_info.insert(
+                format!("{prefix}{i}"),
+                ConfigFieldInfo {
+                    name: format!("{prefix}{i}"),
+                    ty: "enum".to_string(),
+                    units: None,
+                    options: None,
+                    array_cols: None,
+                    array_rows: None,
+                    array_length: None,
+                    pin_pool: None,
+                },
+            );
+        }
+        field_info
+    }
 
     fn rules_with_fields(fields: HashMap<String, FieldMapping>) -> ChecklistRules {
         ChecklistRules {
@@ -411,6 +571,8 @@ mod tests {
                 },
             )]),
             checks: vec![],
+            vars: test_vars(),
+            conflict_constants: ConflictConstants::default(),
         }
     }
 
@@ -447,6 +609,20 @@ mod tests {
                 component: Some("cylinderscount".to_string()),
             },
         )]));
+        let mut field_info = pin_field_info("ignitionPins", 12);
+        field_info.insert(
+            "cylindersCount".to_string(),
+            ConfigFieldInfo {
+                name: "cylindersCount".to_string(),
+                ty: "scalar".to_string(),
+                units: None,
+                options: None,
+                array_cols: None,
+                array_rows: None,
+                array_length: None,
+                pin_pool: None,
+            },
+        );
         let snapshot = snap(
             HashMap::from([
                 ("cylindersCount".to_string(), 4.0),
@@ -455,7 +631,7 @@ mod tests {
             ]),
             HashMap::new(),
         );
-        let (items, issues) = collect_conflict_items(&snapshot, &rules, &HashMap::new());
+        let (items, issues) = collect_conflict_items(&snapshot, &rules, &field_info);
         let item = items
             .iter()
             .find(|i| i.id == "conflict_cyl_ignition_pin_5")
@@ -489,5 +665,65 @@ mod tests {
         assert_eq!(item.editors.len(), 2);
         assert!(item.editors.iter().any(|e| e.field == "fanPin"));
         assert!(item.editors.iter().any(|e| e.field == "vvtPins1"));
+    }
+
+    #[test]
+    fn cylinder_count_from_firing_order_label_parses_sequence() {
+        assert_eq!(
+            cylinder_count_from_firing_order_label("1-2-3-4-5-6"),
+            Some(6)
+        );
+        assert_eq!(
+            cylinder_count_from_firing_order_label("1-8-4-3-6-5-7-2"),
+            Some(8)
+        );
+        assert_eq!(cylinder_count_from_firing_order_label("One Cylinder"), Some(1));
+        assert!(cylinder_count_from_firing_order_label("INVALID").is_none());
+    }
+
+    #[test]
+    fn detects_cylinders_vs_firing_order_mismatch() {
+        use crate::sources::config::{ConfigEnumOption, ConfigFieldInfo};
+
+        let rules = rules_with_fields(HashMap::new());
+        let mut field_info = HashMap::new();
+        field_info.insert(
+            "firingOrder".to_string(),
+            ConfigFieldInfo {
+                name: "firingOrder".to_string(),
+                ty: "enum".to_string(),
+                units: None,
+                options: Some(vec![
+                    ConfigEnumOption {
+                        value: 9,
+                        label: "1-2-3-4-5-6".to_string(),
+                    },
+                    ConfigEnumOption {
+                        value: 1,
+                        label: "1-3-4-2".to_string(),
+                    },
+                ]),
+                array_cols: None,
+                array_rows: None,
+                array_length: None,
+                pin_pool: None,
+            },
+        );
+
+        let snapshot = snap(
+            HashMap::from([
+                ("cylindersCount".to_string(), 4.0),
+                ("firingOrder".to_string(), 9.0),
+            ]),
+            HashMap::new(),
+        );
+        let (items, _) = collect_conflict_items(&snapshot, &rules, &field_info);
+        let item = items
+            .iter()
+            .find(|i| i.id == "conflict_cylinders_firing_order")
+            .expect("firing order conflict");
+        assert_eq!(item.editors.len(), 2);
+        assert_eq!(item.editors[0].field, "cylindersCount");
+        assert_eq!(item.editors[1].field, "firingOrder");
     }
 }

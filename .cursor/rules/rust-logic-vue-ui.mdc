@@ -40,3 +40,7 @@ alwaysApply: true
 1. Расширить runtime source / snapshot в Rust.
 2. Пробросить через Tauri command + event.
 3. Vue только читает и рисует.
+
+## Имена полей config
+
+См. **`no-hardcoded-config-fields.mdc`** — в Rust/TS не литералы `"cylindersCount"` и т.д.; правила и конфликты из INI + декларативного YAML.

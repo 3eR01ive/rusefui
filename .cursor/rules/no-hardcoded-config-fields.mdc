@@ -1,0 +1,61 @@
+---
+description: Запрет хардкода имён полей rusEFI/INI в коде — только INI и декларативные правила.
+alwaysApply: true
+---
+
+# Не хардкодить имена полей config
+
+**В `.rs`, `.ts`, `.vue` (логика) запрещены литералы имён полей page 0** (`"cylindersCount"`, `"firingOrder"`, `"ignitionPins3"`, `"trigger_type"`, `"isInjectionEnabled"` и т.п.).
+
+Имена полей живут в **INI** и в **декларативных YAML** — не в коде.
+
+## Где имена полей допустимы
+
+| Место | Зачем |
+|-------|--------|
+| `public/config/checklist.yaml` | декларативные правила checklist, **`vars`** (логика → INI), **`conflict_constants`** |
+| `public/config/components/**/*.yaml` | UI bind (`field:`) |
+| `crates/rusefi-ini` парсер/тесты INI | работа с форматом INI |
+| Unit-тесты runtime | **минимальные** фикстуры; предпочитать фрагмент INI / `IniDocument` |
+
+## Откуда брать логику
+
+1. **`config_fields` / `IniDocument`** загруженного INI — обход ключей, `enum_define`, тип, options, offset.
+2. **Условия видимости из INI** (`{cylindersCount >= 4}`, `{injectionMode != 3}`) — парсить или генерировать из `../rusefi`, не копировать списки `trigger_type == 1,3,15…` в Rust.
+3. **Производные индексы** (`pin_usage`, префиксы массивов пинов) — строить по метаданным INI, не по зашитому `ignitionPins` / `MAX = 12`.
+4. **Новые проверки конфликтов** — сначала расширить **тип правила в YAML** + движок; код только интерпретирует rule spec, без имён полей.
+
+## Запрещено (типичные ошибки)
+
+```rust
+// ❌
+scalar_u32(snapshot, "firingOrder")
+fields: vec!["cylindersCount".into(), pin_field]
+const TRIGGER_NEEDS_SECONDARY: &[u32] = &[1, 3, 15, ...]; // без привязки к INI
+if subsystem_enabled(snapshot, "isIgnitionEnabled") { ... }
+```
+
+```rust
+// ✅ — логические id + маппинг из checklist.yaml vars
+vars.scalar_usize(snapshot, logic::ENGINE_CYLINDER_COUNT)
+vars.field_name(logic::IGNITION_MODE) // → parameter из YAML
+```
+
+```typescript
+// ❌ во фронте
+if (snap.values.ignitionMode === 1) { ... }
+
+// ✅
+snapshot.checklist // уже посчитано в Rust
+```
+
+## Перед коммитом (self-check)
+
+- `rg '"[a-z][A-Za-z0-9_]+"' crates/rusefui-runtime/src/config_*.rs` — нет имён полей ECU вне тестов.
+- Новая проверка описана в **YAML**, а не новым `if field == "..."` в Rust.
+- Если без имени поля никак — **остановиться** и добавить метаданные в INI-парсер / rule type, а не литерал.
+
+## Связанные правила
+
+- `rust-logic-vue-ui.mdc` — логика только в Rust.
+- `rusefi-local-repo.mdc` — эталон условий и полей в `../rusefi`.
