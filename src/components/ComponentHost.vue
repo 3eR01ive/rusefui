@@ -5,15 +5,11 @@ import { requireRegisteredComponent } from "../core/registry";
 import { resolveBinding } from "../core/data-context";
 import { childPath } from "../core/instance";
 import { resolveNavActivatable, resolveNavSelectable } from "../core/navFlags";
-import { navPresentation } from "../composables/useWorkspaceNav";
 import ComponentHost from "./ComponentHost.vue";
 
 const props = defineProps<{
   instance: ComponentInstance;
   path: string;
-  selectedPath?: string;
-  activePath?: string;
-  navMode?: "select" | "active";
 }>();
 const emit = defineEmits<{
   (e: "select-path", path: string): void;
@@ -55,11 +51,10 @@ function onNodeMouseDown(): void {
   </p>
   <div
     v-else-if="entry && isNavLeaf"
-    class="host-node"
+    class="host-node nav-node"
     data-nav-node="1"
     :data-nav-path="path"
     :data-nav-activatable="navActivatable ? undefined : 'false'"
-    v-bind="navPresentation(path)"
     tabindex="-1"
     @mousedown.stop="onNodeMouseDown"
   >
@@ -96,9 +91,6 @@ function onNodeMouseDown(): void {
         :key="child.id ?? `${path}-${index}`"
         :instance="child"
         :path="childPath(path, index, child)"
-        :selected-path="selectedPath"
-        :active-path="activePath"
-        :nav-mode="navMode"
         @select-path="emit('select-path', $event)"
         @activate-path="emit('activate-path', $event)"
       />

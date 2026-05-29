@@ -7,15 +7,13 @@ import { useTabEnterHandler } from "../../composables/useHotkeys";
 import { useComponentBinding } from "../../composables/useKeyboardRouter";
 import {
   activateComponent,
-  activePath,
   focusComponent,
   isNavActivatablePath,
-  navMode,
-  navPresentation,
   selectedPath,
   selectComponent,
   setNavExtension,
   setNavMenuPaths,
+  syncNavSelectionVisual,
 } from "../../composables/useWorkspaceNav";
 
 interface ManifestEntry {
@@ -259,6 +257,7 @@ watch(
   menuNavPaths,
   (paths) => {
     setNavMenuPaths(props.path, paths);
+    void nextTick(() => syncNavSelectionVisual(selectedPath.value));
   },
   { immediate: true },
 );
@@ -315,10 +314,9 @@ function toggleGroup(group: string): void {
         ref="filterInputRef"
         v-model="filter"
         type="search"
-        class="filter"
+        class="filter nav-node"
         data-nav-node="1"
         :data-nav-path="filterPath()"
-        v-bind="navPresentation(filterPath())"
         placeholder="Поиск панели…"
         autocomplete="off"
         @mousedown.stop="selectFilter()"
@@ -341,10 +339,9 @@ function toggleGroup(group: string): void {
               v-for="p in items"
               :key="p.id"
               type="button"
-              class="panel-btn"
+              class="panel-btn nav-node"
               data-nav-node="1"
               :data-nav-path="menuItemPath(p.id)"
-              v-bind="navPresentation(menuItemPath(p.id))"
               role="option"
               :aria-selected="p.id === selectedId"
               @mousedown.prevent="selectPanel(p.id)"
@@ -370,9 +367,6 @@ function toggleGroup(group: string): void {
         v-else-if="panelRoot"
         :instance="panelRoot"
         :path="`${path}/preview`"
-        :selected-path="selectedPath"
-        :active-path="activePath"
-        :nav-mode="navMode"
         @select-path="selectComponent"
         @activate-path="(p) => { if (isNavActivatablePath(p)) { activateComponent(p); focusComponent(p); } }"
       />

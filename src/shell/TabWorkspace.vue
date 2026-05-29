@@ -11,7 +11,6 @@ import {
 } from "../composables/useKeyboardRouter";
 import {
   activateComponent,
-  activePath,
   collectAllNavPaths,
   ensureSelectedInNav,
   focusComponent,
@@ -20,12 +19,11 @@ import {
   moveNavSelection,
   navExtensions,
   navMenuPaths,
-  navMode,
-  refreshNavDimming,
   resetWorkspaceNav,
-  selectedPath,
   selectComponent,
+  selectedPath,
   setNavPaths,
+  syncNavSelectionVisual,
 } from "../composables/useWorkspaceNav";
 
 const config = ref<LoadedAppConfig | null>(null);
@@ -54,7 +52,7 @@ function rebuildNavPaths(): void {
   }
   setNavPaths(collectAllNavPaths(tab.root, `tab/${tab.id}`));
   ensureSelectedInNav();
-  void nextTick(refreshNavDimming);
+  void nextTick(() => syncNavSelectionVisual(selectedPath.value));
 }
 
 watch(navExtensions, () => {
@@ -125,10 +123,6 @@ onUnmounted(() => {
 watch(activeTabId, () => {
   resetNavForTab();
 });
-
-watch([navMode, activePath], () => {
-  void nextTick(refreshNavDimming);
-});
 </script>
 
 <template>
@@ -148,9 +142,6 @@ watch([navMode, activePath], () => {
         <ComponentHost
           :instance="tab.root"
           :path="`tab/${tab.id}`"
-          :selected-path="selectedPath"
-          :active-path="activePath"
-          :nav-mode="navMode"
           @select-path="selectComponent"
           @activate-path="(path) => { if (isNavActivatablePath(path)) { activateComponent(path); focusComponent(path); } }"
         />

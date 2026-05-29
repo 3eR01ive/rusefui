@@ -47,16 +47,33 @@ export function isNavActivatablePath(path: string): boolean {
   return flags?.activatable ?? true;
 }
 
-export function navPresentation(path: string): {
-  class: Record<string, boolean>;
-} {
-  const selected = selectedPath.value === path;
-  return {
-    class: {
-      "nav-node": true,
-      "nav-node--selected": selected,
-    },
-  };
+let lastVisualSelectedPath = "";
+
+function escapeNavPath(path: string): string {
+  return typeof CSS !== "undefined" && "escape" in CSS ? CSS.escape(path) : path;
+}
+
+function navNodeEl(path: string): HTMLElement | null {
+  if (!path) return null;
+  return document.querySelector<HTMLElement>(`[data-nav-path="${escapeNavPath(path)}"]`);
+}
+
+/** Подсветка выбора — напрямую в DOM, без перерисовки всего дерева Vue. */
+export function syncNavSelectionVisual(nextPath: string): void {
+  if (typeof document === "undefined") return;
+  const prev = lastVisualSelectedPath;
+  if (prev === nextPath) return;
+  if (prev) navNodeEl(prev)?.classList.remove("nav-node--selected");
+  if (nextPath) navNodeEl(nextPath)?.classList.add("nav-node--selected");
+  lastVisualSelectedPath = nextPath;
+}
+
+export function clearNavSelectionVisual(): void {
+  if (typeof document === "undefined") return;
+  for (const node of document.querySelectorAll<HTMLElement>(".nav-node--selected")) {
+    node.classList.remove("nav-node--selected");
+  }
+  lastVisualSelectedPath = "";
 }
 
 export function setNavPaths(paths: string[]): void {
@@ -135,7 +152,7 @@ export function activateComponent(path: string): void {
   selectedPath.value = path;
   activePath.value = path;
   navMode.value = "active";
-  refreshNavDimming();
+  syncNavSelectionVisual(path);
 }
 
 export function selectComponent(path: string): void {
@@ -146,19 +163,12 @@ export function selectComponent(path: string): void {
     navSidebarAnchor.value = path;
   }
   selectedPath.value = path;
+  syncNavSelectionVisual(path);
 }
 
 export function deactivateComponent(): void {
   navMode.value = "select";
   activePath.value = "";
-  refreshNavDimming();
-}
-
-export function refreshNavDimming(): void {
-  if (typeof document === "undefined") return;
-  for (const node of document.querySelectorAll<HTMLElement>("[data-nav-node].nav-node--dimmed")) {
-    node.classList.remove("nav-node--dimmed");
-  }
 }
 
 export function resetWorkspaceNav(): void {
@@ -167,7 +177,7 @@ export function resetWorkspaceNav(): void {
   activePath.value = "";
   navSidebarAnchor.value = "";
   navPathFlags.value = new Map();
-  refreshNavDimming();
+  clearNavSelectionVisual();
 }
 
 export function navRegion(path: string): NavRegion {
@@ -296,10 +306,11 @@ export function moveNavSelection(key: NavArrowKey): void {
 export function ensureSelectedInNav(): void {
   if (!navPaths.value.length) {
     selectedPath.value = "";
+    clearNavSelectionVisual();
     return;
   }
   if (!navPaths.value.includes(selectedPath.value)) {
-    selectedPath.value = navPaths.value[0]!;
+    selectComponent(navPaths.value[0]!);
   }
 }
 

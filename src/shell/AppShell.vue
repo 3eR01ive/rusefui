@@ -350,6 +350,19 @@ async function onBurn() {
             <path d="M11 10v4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
             <path d="M8.5 14h5l-1.8 3h1.5L11 21l.6-4H8.5l2-3Z" fill="currentColor"/>
           </svg>
+          <!-- CHKLST: clipboard + checks -->
+          <svg v-else-if="tab.id === 'setup'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
+            <rect x="4" y="1.5" width="14" height="17" rx="2.5" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M7.5 6.5h7M7.5 10h7M7.5 13.5h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".35"/>
+            <path d="M5.8 6.3l1 1 1.8-2M5.8 9.8l1 1 1.8-2M5.8 13.3l1 1 1.8-2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <!-- Run: tachometer -->
+          <svg v-else-if="tab.id === 'run'" class="tab-icon" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+            <path d="M11 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Z" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M11 11V7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M11 11l3.5 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <circle cx="11" cy="11" r="1.3" fill="currentColor"/>
+          </svg>
           <!-- Config: horizontal sliders -->
           <svg v-else-if="tab.id === 'ini-preview'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
             <line x1="2" y1="4.5" x2="20" y2="4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".35"/>

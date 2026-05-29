@@ -1,18 +1,16 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, shallowRef, watch } from "vue";
+import { computed, nextTick, onUnmounted, ref, shallowRef, watch } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import ComponentHost from "../ComponentHost.vue";
 import {
   activateComponent,
-  activePath,
   focusComponent,
   isNavActivatablePath,
-  navMode,
-  navPresentation,
   selectedPath,
   selectComponent,
   setNavExtension,
   setNavMenuPaths,
+  syncNavSelectionVisual,
 } from "../../composables/useWorkspaceNav";
 import {
   configCanView,
@@ -155,6 +153,7 @@ watch(
   menuNavPaths,
   (paths) => {
     setNavMenuPaths(props.path, paths);
+    void nextTick(() => syncNavSelectionVisual(selectedPath.value));
   },
   { immediate: true },
 );
@@ -234,14 +233,13 @@ function levelSummary(levelId: string) {
               <li v-for="item in group.items" :key="item.id">
                 <button
                   type="button"
-                  class="check-row"
+                  class="check-row nav-node"
                   :class="{
                     'check-row--ok': item.ok,
                     'check-row--fail': !item.ok,
                   }"
                   data-nav-node="1"
                   :data-nav-path="menuItemPath(item.id)"
-                  v-bind="navPresentation(menuItemPath(item.id))"
                   @mousedown.prevent="selectItem(item.id)"
                 >
                   <span class="check-icon" aria-hidden="true">{{ item.ok ? "✓" : "✗" }}</span>
@@ -262,9 +260,6 @@ function levelSummary(levelId: string) {
           v-else
           :instance="editorInstance"
           :path="`${path}/editor`"
-          :selected-path="selectedPath"
-          :active-path="activePath"
-          :nav-mode="navMode"
           @select-path="selectComponent"
           @activate-path="(p) => { if (isNavActivatablePath(p)) { activateComponent(p); focusComponent(p); } }"
         />

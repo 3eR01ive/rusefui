@@ -197,9 +197,6 @@ input[type="radio"]:focus-visible {
 /* ---- Nav nodes (выбор компонентов на вкладке) ---- */
 .nav-node {
   border-radius: var(--radius-sm);
-  transition:
-    box-shadow 0.16s ease,
-    background-color 0.16s ease;
 }
 
 .nav-node--selected {
