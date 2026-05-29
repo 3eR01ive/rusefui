@@ -54,6 +54,7 @@ pub fn run() {
             runtime_cmds::config_burn,
             runtime_cmds::config_get_array,
             runtime_cmds::config_set_array_value,
+            runtime_cmds::config_set_array_values,
             runtime_cmds::ini_get_info,
             runtime_cmds::ini_get_resolution,
             runtime_cmds::ini_list_candidates,

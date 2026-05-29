@@ -9,7 +9,7 @@ import { initOutputChannels } from "../composables/useOutputChannels";
 import { initOutputTimeline } from "../composables/useOutputTimeline";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
-import { initConfig, useConfig } from "../composables/useConfig";
+import { initConfig, useConfig, patchConfigSnapshot } from "../composables/useConfig";
 import { useProtocolLog, useProtocolLogLifecycle } from "../composables/useProtocolLog";
 import { useEcuConnection } from "../composables/useEcuConnection";
 import { initProject, useProject } from "../composables/useProject";
@@ -25,7 +25,8 @@ import { initIniResolution } from "../composables/useIniResolution";
 import ProjectMenu from "./ProjectMenu.vue";
 import { useAppFooter, setFooterLed, footerToggleProtocol } from "../composables/useAppFooter";
 import { useTabState } from "../composables/useTabState";
-import { useGlobalHotkeys, saveProjectCallback, openProjectCallback, burnCallback } from "../composables/useHotkeys";
+import { useGlobalHotkeys, saveProjectCallback, openProjectCallback, burnCallback, undoCallback, redoCallback } from "../composables/useHotkeys";
+import { undoConfigChange, redoConfigChange } from "../composables/configCommands";
 import UnsavedChangesDialog from "../components/UnsavedChangesDialog.vue";
 import { useUnsavedChangesGuard } from "../composables/useUnsavedChangesGuard";
 
@@ -58,6 +59,8 @@ useGlobalHotkeys();
 saveProjectCallback.value = () => onSaveProject();
 openProjectCallback.value = () => onOpenProject();
 burnCallback.value = () => { if (canBurn.value) void onBurn(); };
+undoCallback.value = () => { void undoConfigChange(patchConfigSnapshot); };
+redoCallback.value = () => { void redoConfigChange(patchConfigSnapshot); };
 
 const burning = ref(false);
 const burnError = ref<string | null>(null);

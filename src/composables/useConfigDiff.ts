@@ -1,4 +1,5 @@
 import { computed, readonly, shallowRef } from "vue";
+import { clearConfigCommandHistory } from "./configCommands";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
@@ -81,11 +82,13 @@ export function useConfigDiff() {
   async function apply(): Promise<void> {
     await invoke("config_diff_apply");
     snapshot.value = await invoke<ConfigDiffSnapshot>("config_diff_get");
+    clearConfigCommandHistory();
   }
 
   async function dismiss(): Promise<void> {
     await invoke("config_diff_dismiss");
     snapshot.value = { active: false, entries: [], choices: {} };
+    clearConfigCommandHistory();
   }
 
   return {

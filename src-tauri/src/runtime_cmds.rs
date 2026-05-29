@@ -1467,6 +1467,78 @@ pub fn config_set_array_value(
     Ok(snap)
 }
 
+#[derive(Debug, Deserialize)]
+pub struct ConfigArrayValueUpdate {
+    pub index: usize,
+    pub value: f64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ConfigSetArrayValuesParams {
+    pub field: String,
+    pub updates: Vec<ConfigArrayValueUpdate>,
+}
+
+#[tauri::command]
+pub fn config_set_array_values(
+    params: ConfigSetArrayValuesParams,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<ConfigSnapshot, String> {
+    if params.updates.is_empty() {
+        return Ok(state.session.config().snapshot());
+    }
+
+    let pairs: Vec<(usize, f64)> = params
+        .updates
+        .iter()
+        .map(|u| (u.index, u.value))
+        .collect();
+
+    let snap = state.session.config().snapshot();
+    let wrote_live = state.session.is_connected() && snap.loaded && !snap.read_only;
+    if wrote_live {
+        state
+            .session
+            .config()
+            .write_array_values(&state.session, &params.field, &pairs)?;
+    } else if snap.loaded && snap.read_only {
+        state
+            .session
+            .config()
+            .set_array_values_local(&params.field, &pairs)?;
+        state
+            .project
+            .lock()
+            .unwrap()
+            .sync_ecu_config_from_session(&state.session)?;
+    } else if try_apply_project_config_for_edit(&state)? {
+        state
+            .session
+            .config()
+            .set_array_values_local(&params.field, &pairs)?;
+        state
+            .project
+            .lock()
+            .unwrap()
+            .sync_ecu_config_from_session(&state.session)?;
+    } else {
+        return Err(
+            "Нет config для редактирования — откройте проект с ecuConfig или подключите ECU".into(),
+        );
+    }
+
+    let snap = state.session.config().snapshot();
+    emit_config_update(&app, &snap);
+    if state.project.lock().unwrap().info().dirty {
+        emit_project(&app, &state);
+    }
+    if wrote_live {
+        set_burn_pending(&state, &app, true);
+    }
+    Ok(snap)
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IniInfo {
