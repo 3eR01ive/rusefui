@@ -1,21 +1,46 @@
 {
-  "fit_note": "coefficients.json подобран по всем эталонам (pooled RMSE)",
+  "fit_note": "coefficients.json — pooled weighted RMSE; оси всех эталонов = сетка 3000GT; advance < 0° исключены из обучения",
+  "standard_axes": {
+    "reference": "examples/turbo_6g72tt_3000gt.json",
+    "rpm": [600, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000],
+    "map_kpa": [15, 30, 45, 60, 70, 80, 90, 100, 110, 130, 160, 190, 210, 240, 270, 300, 320],
+    "resample": "bilinear, clamp at edges; исходники в reference/raw/"
+  },
   "files": {
+    "na_k20_honda.csv": {
+      "example": "examples/na_k20_honda.json",
+      "source": "Hondata K20 ignition map (screenshot)",
+      "raw": "reference/raw/na_k20_honda.csv",
+      "status": "production",
+      "engine_note": "Honda K20A NA, CR 11.0"
+    },
+    "turbo_ej207_subaru.csv": {
+      "example": "examples/turbo_ej207_subaru.json",
+      "source": "Link ECU EJ207 safe timing map (screenshot)",
+      "raw": "reference/raw/turbo_ej207_subaru.csv",
+      "status": "production",
+      "engine_note": "Subaru EJ207 turbo, CR 8.0"
+    },
+    "turbo_4g63_evo8_stock.csv": {
+      "example": "examples/turbo_4g63_evo8_stock.json",
+      "source": "Mitsubishi Evo VIII stock ROM 96420008 (screenshot)",
+      "raw": "reference/raw/turbo_4g63_evo8_stock.csv",
+      "status": "production",
+      "engine_note": "4G63T Evo VIII; raw axis Load % as kPa proxy"
+    },
     "turbo_4g63t_1g_dsm.csv": {
       "example": "examples/turbo_4g63t_1g_dsm.json",
       "source": "TunerStudioProjects/eclipse/CurrentTune.msq",
       "msq_path": "/home/guerrero/TunerStudioProjects/eclipse/CurrentTune.msq",
       "status": "production",
-      "engine_note": "4G63T 1G DSM (7-bolt, CR 8.5, 252/252 cam)",
-      "notes": "Строка 80 kPa интерполирована — в msq этого бина нет (70 → 90)"
+      "engine_note": "4G63T 1G DSM (native 3000GT grid)"
     },
     "turbo_6g72tt_3000gt.csv": {
       "example": "examples/turbo_6g72tt_3000gt.json",
       "source": "3000gt-release_2024-10-23_15.43.14.msq",
       "msq_path": "/home/guerrero/TunerStudioProjects/3000gt-backup/3000gt-release_2024-10-23_15.43.14.msq",
       "status": "production",
-      "engine_note": "Карта 3000GT (6G72/6G73)",
-      "notes": "Строка 80 kPa интерполирована — в msq этого бина нет (70 → 90)"
+      "engine_note": "Эталон осей (6G72TT 3000GT)"
     }
   }
 }

@@ -5,7 +5,7 @@
     "valves_per_cylinder": 4,
     "spark_location": "center",
     "chamber_type": "pentroof",
-    "burn_duration_ref_deg": 31.8883
+    "burn_duration_ref_deg": 28.0
   },
   "chamber_factors": {
     "pentroof": 1.0,
@@ -31,7 +31,7 @@
     "compression_exponent": 0.5
   },
   "flame_delay": {
-    "base_deg": 7.0502,
+    "base_deg": 9.8299,
     "cr_corrections": [
       {
         "min_cr": 13.0,
@@ -43,18 +43,18 @@
       }
     ]
   },
-  "peak_pressure_target_deg": 11.0922,
+  "peak_pressure_target_deg": 10.0,
   "rpm_correction": {
-    "factor": 7.3424,
+    "factor": 7.1579,
     "reference_rpm": 1000.0
   },
   "load_correction": {
     "reference_map_kpa": 100.0,
     "vacuum": {
-      "deg_per_10_kpa": 1.8305
+      "deg_per_10_kpa": 1.4023
     },
     "boost": {
-      "deg_per_0_1_bar": -1.4905,
+      "deg_per_0_1_bar": -1.2874,
       "aspiration_scale": {
         "naturally_aspirated": 0.0,
         "turbocharged": 1.0,
@@ -63,14 +63,14 @@
     }
   },
   "fuel_factors": {
-    "gasoline_92": 0.953,
+    "gasoline_92": 0.9967,
     "gasoline_95": 0.98,
-    "gasoline_98": 0.8528,
+    "gasoline_98": 0.8747,
     "e85": 1.08
   },
   "cam_timing": {
-    "stock_overlap_deg": 17.7102,
-    "overlap_retard_per_deg": 0.0986
+    "stock_overlap_deg": 22.0719,
+    "overlap_retard_per_deg": 0.15
   },
   "limits": {
     "min_advance_deg": 0.0,
