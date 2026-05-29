@@ -36,6 +36,10 @@ const snapshot = shallowRef<CompositeSnapshot>({
   events: [],
   totalEvents: 0,
   lastBatch: 0,
+  recordedSpanMs: 0,
+  lastChunkGapMs: 0,
+  chunksReceived: 0,
+  tdcCyclesTotal: 0,
 });
 
 let unlisten: UnlistenFn | null = null;

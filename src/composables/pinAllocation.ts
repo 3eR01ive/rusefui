@@ -1,5 +1,3 @@
-import type { ConfigSnapshot } from "./useConfig";
-
 /** Значение «пин не выбран» в rusEFI INI. */
 export const PIN_NONE_VALUE = 0;
 
@@ -10,16 +8,22 @@ export function isIniPlaceholderLabel(label: string): boolean {
 /** pool → pin value → имена полей config, которые его заняли. */
 export type PinUsageIndex = Map<string, Map<number, string[]>>;
 
+type PinUsageSnapshot = {
+  readonly [pool: string]: {
+    readonly [pin: string]: readonly string[];
+  };
+};
+
 /** Десериализованный `pinUsage` из Rust-снимка (ключи значений — строки в JSON). */
 export function pinUsageFromSnapshot(
-  pinUsage: ConfigSnapshot["pinUsage"],
+  pinUsage: PinUsageSnapshot | undefined,
 ): PinUsageIndex {
   const index: PinUsageIndex = new Map();
   if (!pinUsage) return index;
   for (const [pool, poolMap] of Object.entries(pinUsage)) {
     const inner = new Map<number, string[]>();
     for (const [valueKey, users] of Object.entries(poolMap)) {
-      inner.set(Number(valueKey), users);
+      inner.set(Number(valueKey), [...users]);
     }
     index.set(pool, inner);
   }

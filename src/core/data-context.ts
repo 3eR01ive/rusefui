@@ -1,5 +1,5 @@
 import { inject, provide, type InjectionKey, ref, type Ref } from "vue";
-import type { DataBinding, DataSourceId } from "./types";
+import type { DataBinding } from "./types";
 import type { ConnectionStatus } from "../types/connection";
 
 export interface DataContextState {

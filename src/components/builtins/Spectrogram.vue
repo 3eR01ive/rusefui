@@ -67,7 +67,7 @@ const spectrogramView = computed((): KnockSpectrogramView => {
     height: s?.height ?? 0,
     freqStartHz: s?.freqStartHz ?? 4000,
     freqStepHz: s?.freqStepHz ?? 0,
-    pixels: s?.pixels ?? [],
+    pixels: s?.pixels ? [...s.pixels] : [],
   };
 });
 
@@ -181,7 +181,7 @@ function ingestSnapshot(snap: typeof snapshot.value) {
     if (chunk.length > 0) {
       waveformRing.value = appendKnockWaveformRing(
         waveformRing.value,
-        chunk,
+        [...chunk],
         ringMaxSamples.value,
       );
     }

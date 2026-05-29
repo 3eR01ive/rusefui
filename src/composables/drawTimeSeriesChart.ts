@@ -327,7 +327,7 @@ export function drawLogPanelsChart(
   const panelH =
     (usable - PANEL_GAP * Math.max(0, panels.length - 1)) / panels.length;
 
-  if (crosshairT !== null) {
+  if (crosshair !== null && crosshairT !== null) {
     const cx = crosshair.x;
     const plotLeft = sharedMargins.left;
     const plotRight = width - sharedMargins.right;
