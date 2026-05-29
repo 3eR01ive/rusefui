@@ -3,6 +3,7 @@ app:
 
 tabs:
   - $tab: monitor
+  - $tab: setup
   - $tab: run
   - $tab: knock
   - $tab: simulation

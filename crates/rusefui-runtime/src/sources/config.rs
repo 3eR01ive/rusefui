@@ -14,6 +14,7 @@ use rusefi_ini::{
 use rusefi_protocol::{ProtocolError, TS_PAGE_SETTINGS, TS_RESPONSE_OUT_OF_RANGE};
 use serde::Serialize;
 
+use crate::config_checklist::{evaluate_checklist, ChecklistRules, ChecklistSnapshot};
 use crate::config_diff::{encode_scalar_into_page, encode_string_into_page};
 use crate::project::ProjectEcuConfig;
 use crate::session::EcuSession;
@@ -147,6 +148,9 @@ pub struct ConfigSnapshot {
     /// Занятость пинов по пулам INI (пересчитывается в Rust при каждом снимке).
     #[serde(default)]
     pub pin_usage: HashMap<String, HashMap<u32, Vec<String>>>,
+    /// Checklist (заполняется при emit снимка).
+    #[serde(default)]
+    pub checklist: ChecklistSnapshot,
 }
 
 impl ConfigSnapshot {
@@ -165,6 +169,7 @@ impl ConfigSnapshot {
             field_count: ini.config_fields.len(),
             last_error: None,
             pin_usage: HashMap::new(),
+            checklist: ChecklistSnapshot::default(),
         }
     }
 }
@@ -204,6 +209,15 @@ impl ConfigSource {
 
     pub fn snapshot(&self) -> ConfigSnapshot {
         self.snapshot.read().unwrap().clone()
+    }
+
+    /// Снимок с checklist (если rules заданы).
+    pub fn snapshot_with_checklist(&self, rules: Option<&ChecklistRules>) -> ConfigSnapshot {
+        let mut snap = self.snapshot();
+        if let Some(rules) = rules {
+            snap.checklist = evaluate_checklist(&snap, rules, self);
+        }
+        snap
     }
 
     /// Сырой образ основной страницы INI page 1 (legacy name: page 0).
@@ -784,6 +798,7 @@ impl ConfigSource {
                                 field_count,
                                 last_error: None,
                                 pin_usage: HashMap::new(),
+                                checklist: ChecklistSnapshot::default(),
                             };
                             apply_decoded_values(&mut loaded, &ini_ctx, values, string_values);
                             snap = loaded;

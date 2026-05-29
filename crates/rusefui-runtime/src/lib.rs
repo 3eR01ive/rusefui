@@ -5,6 +5,7 @@
 mod autoconnect;
 mod component;
 pub mod config_table_grid;
+mod config_checklist;
 mod config_diff;
 mod dyno;
 mod ini;
@@ -25,6 +26,10 @@ pub use component::{
 pub use config_table_grid::{
     build_grid_view, format_cell_value, interpolate_rect, nudge_rect_values, CellPos,
     GridRect, NavDir, TableGridState, TableGridView,
+};
+pub use config_checklist::{
+    evaluate_checklist, ChecklistEditor, ChecklistIssue, ChecklistItem, ChecklistLevelStatus,
+    ChecklistRules, ChecklistSnapshot, FieldMapping, GroupDefinition, LevelDefinition,
 };
 pub use config_diff::{
     compute_config_diff, ConfigDiffEntry, ConfigDiffSnapshot, ConfigDiffStore, DiffSide,

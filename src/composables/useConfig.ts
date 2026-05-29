@@ -8,6 +8,55 @@ import {
   initConfigCommandHistory,
 } from "./configCommands";
 
+export interface ChecklistEditor {
+  panel: string;
+  component?: string | null;
+  field: string;
+}
+
+export interface ChecklistItem {
+  id: string;
+  level: string;
+  group: string;
+  groupTitle: string;
+  groupOrder: number;
+  label: string;
+  ok: boolean;
+  message: string;
+  valueDisplay: string;
+  fields: string[];
+  fieldLabels: string[];
+  editor: ChecklistEditor;
+}
+
+export interface ChecklistIssue {
+  id: string;
+  level: string;
+  levelTitle: string;
+  severity: string;
+  message: string;
+  fields: string[];
+  fieldLabels: string[];
+}
+
+export interface ChecklistLevelStatus {
+  id: string;
+  title: string;
+  severity: string;
+  ok: boolean;
+  issueCount: number;
+  description?: string | null;
+}
+
+export interface ChecklistSnapshot {
+  rulesLoaded: boolean;
+  evaluated: boolean;
+  ok: boolean;
+  items: ChecklistItem[];
+  issues: ChecklistIssue[];
+  levels: ChecklistLevelStatus[];
+}
+
 export interface ConfigSnapshot {
   connected: boolean;
   loaded: boolean;
@@ -24,6 +73,8 @@ export interface ConfigSnapshot {
   lastError?: string | null;
   /** pool → pin value → поля config (считается в Rust). */
   pinUsage?: Record<string, Record<string, string[]>>;
+  /** Checklist конфигурации (считается в Rust). */
+  checklist?: ChecklistSnapshot;
 }
 
 export interface ConfigEnumOption {
@@ -61,6 +112,15 @@ let unlisten: UnlistenFn | null = null;
 let initPromise: Promise<void> | null = null;
 
 function applySnapshot(snap: ConfigSnapshot): void {
+  const prev = snapshot.value;
+  if (
+    snap.checklist &&
+    !snap.checklist.rulesLoaded &&
+    prev.checklist?.rulesLoaded
+  ) {
+    snapshot.value = { ...snap, checklist: prev.checklist };
+    return;
+  }
   snapshot.value = snap;
 }
 
@@ -197,11 +257,11 @@ export async function burnConfig(): Promise<void> {
   await invoke("config_burn");
 }
 
-export function configCanView(s: ConfigSnapshot): boolean {
+export function configCanView(s: { loaded: boolean; loading: boolean }): boolean {
   return s.loaded && !s.loading;
 }
 
-export function configCanEdit(s: ConfigSnapshot): boolean {
+export function configCanEdit(s: { loaded: boolean; loading: boolean }): boolean {
   if (isConfigMergeBlocking()) return false;
   if (!s.loaded || s.loading) return false;
   const caps = workspaceSnapshot.value.capabilities;

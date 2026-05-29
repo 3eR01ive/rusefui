@@ -10,6 +10,8 @@ import { initOutputTimeline } from "../composables/useOutputTimeline";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { initConfig, useConfig, patchConfigSnapshot } from "../composables/useConfig";
+import { initChecklist, useChecklistFooter, useChecklistTabAlert } from "../composables/useChecklist";
+import { tabAlertClasses } from "../composables/useTabAlerts";
 import { useProtocolLog, useProtocolLogLifecycle } from "../composables/useProtocolLog";
 import { useEcuConnection } from "../composables/useEcuConnection";
 import { initProject, useProject } from "../composables/useProject";
@@ -77,6 +79,8 @@ const {
 } = useUnsavedChangesGuard();
 
 const { setFooterStatus } = useAppFooter();
+useChecklistFooter();
+useChecklistTabAlert();
 const appShellRef = ref<HTMLElement | null>(null);
 const appHeaderRef = ref<HTMLElement | null>(null);
 let headerResizeObserver: ResizeObserver | null = null;
@@ -161,6 +165,7 @@ onMounted(async () => {
   await initWorkspaceState();
   await initIniResolution();
   await initConfig();
+  await initChecklist();
   void initOutputChannels();
   void initOutputTimeline();
 
@@ -311,17 +316,21 @@ async function onBurn() {
       </div>
       <div class="header-tabs-sep" aria-hidden="true" />
       <nav class="header-tabs" role="tablist" aria-label="Разделы">
-        <button
+        <div
           v-for="tab in (tabWorkspaceRef?.tabs ?? [])"
           :key="tab.id"
-          type="button"
-          role="tab"
-          class="header-tab-btn"
-          :class="{ active: tab.id === activeTabId }"
-          :aria-selected="tab.id === activeTabId"
-          :title="tab.title"
-          @click="setTab(tab.id)"
+          class="header-tab-slot"
+          :class="tabAlertClasses(tab.id)"
         >
+          <button
+            type="button"
+            role="tab"
+            class="header-tab-btn"
+            :class="{ active: tab.id === activeTabId }"
+            :aria-selected="tab.id === activeTabId"
+            :title="tab.title"
+            @click="setTab(tab.id)"
+          >
           <!-- Monitor: screen + ECG waveform -->
           <svg v-if="tab.id === 'monitor'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
             <rect x="1.5" y="1.5" width="19" height="13" rx="2.5" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.5"/>
@@ -354,7 +363,8 @@ async function onBurn() {
             <rect x="3" y="3" width="16" height="16" rx="2.5" fill="currentColor" opacity=".25" stroke="currentColor" stroke-width="1.3"/>
           </svg>
           <span class="header-tab-label">{{ tab.title }}</span>
-        </button>
+          </button>
+        </div>
       </nav>
 
       <div class="header-actions">
@@ -521,6 +531,14 @@ async function onBurn() {
   display: flex;
   align-items: center;
   gap: 0.3rem;
+}
+
+.header-tab-slot {
+  position: relative;
+  display: inline-flex;
+  border-radius: calc(var(--radius-md) + 2px);
+  padding: 2px;
+  flex-shrink: 0;
 }
 
 .header-tab-btn {

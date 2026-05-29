@@ -1,9 +1,10 @@
 use rusefui_runtime::{
     compute_config_diff, default_log_path, enumerate_local_candidates, parse_rusefi_signature,
-    AutoConnectManager, AutoConnectSnapshot, ComponentRuntime, CompositeEventJson, CompositeSnapshot,
+    evaluate_checklist, AutoConnectManager, AutoConnectSnapshot, ComponentRuntime, CompositeEventJson, CompositeSnapshot,
     ComputeTriggerWheelsParams, KnockScopeSnapshot, CompositeTimelineStatus, CompositeTimelineView,
     CompositeTimelineViewQuery, TriggerWheelsView, compute_trigger_wheels,
-    ConfigDiffSnapshot, ConfigDiffStore, ConfigFieldInfo, ConfigSnapshot, ConfigSource, DiffSide,
+    ConfigDiffSnapshot, ConfigDiffStore, ConfigFieldInfo, ConfigSnapshot, ConfigSource, ChecklistRules,
+    DiffSide,
     EcuSession, EcuSyncOnMount, IniCandidate, OnlineDownloadStatus, OutputFieldInfo,
     OutputSnapshot, OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl,
     PendingIniResolution, ProjectInfo, ProjectLogRef, ProjectStore, ProtocolLogEntry,
@@ -33,6 +34,8 @@ pub struct RuntimeState {
     last_ecu_connection_emit: Mutex<Option<EcuConnectionEvent>>,
     /// RAM ECU изменена, но ещё не записана во flash (B-команда).
     pub ram_dirty: Arc<AtomicBool>,
+    /// Правила checklist из checklist.yaml (загружаются с фронта).
+    pub checklist_rules: Mutex<Option<ChecklistRules>>,
 }
 
 impl RuntimeState {
@@ -50,6 +53,7 @@ impl RuntimeState {
             recent_projects: Mutex::new(RecentProjectsStore::new()),
             last_ecu_connection_emit: Mutex::new(None),
             ram_dirty: Arc::new(AtomicBool::new(false)),
+            checklist_rules: Mutex::new(None),
         }
     }
 }
@@ -272,9 +276,24 @@ fn emit_composite_timeline(app: &AppHandle, status: &CompositeTimelineStatus) {
     });
 }
 
-fn emit_config(app: &AppHandle, snapshot: &ConfigSnapshot) {
+fn enrich_config_snapshot(app: &AppHandle, mut snap: ConfigSnapshot) -> ConfigSnapshot {
+    if let Some(state) = app.try_state::<RuntimeState>() {
+        let rules = state.checklist_rules.lock().unwrap();
+        if let Some(rules) = rules.as_ref() {
+            let config = state.session.config();
+            snap.checklist = evaluate_checklist(&snap, rules, &config);
+        }
+    }
+    snap
+}
+
+fn config_snapshot_for_ui(app: &AppHandle, state: &RuntimeState) -> ConfigSnapshot {
+    enrich_config_snapshot(app, state.session.config().snapshot())
+}
+
+fn emit_config(app: &AppHandle, snapshot: ConfigSnapshot) {
     let app = app.clone();
-    let snapshot = snapshot.clone();
+    let snapshot = enrich_config_snapshot(&app, snapshot);
     tauri::async_runtime::spawn(async move {
         let _ = app.emit("config-snapshot", snapshot);
     });
@@ -429,7 +448,7 @@ fn emit_config_update(app: &AppHandle, snap: &ConfigSnapshot) {
             let _ = app.emit("config-progress", event);
         });
     } else {
-        emit_config(app, snap);
+        emit_config(app, snap.clone());
     }
 }
 
@@ -1081,8 +1100,20 @@ pub async fn pick_output_log_path() -> Option<String> {
 }
 
 #[tauri::command]
-pub fn config_get_snapshot(state: State<RuntimeState>) -> ConfigSnapshot {
-    state.session.config().snapshot()
+pub fn config_get_snapshot(state: State<RuntimeState>, app: AppHandle) -> ConfigSnapshot {
+    config_snapshot_for_ui(&app, &state)
+}
+
+#[tauri::command]
+pub fn checklist_load_rules(
+    yaml: String,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    let rules = ChecklistRules::parse_yaml(&yaml)?;
+    *state.checklist_rules.lock().unwrap() = Some(rules);
+    emit_config_update(&app, &state.session.config().snapshot());
+    Ok(())
 }
 
 #[tauri::command]
@@ -1092,7 +1123,7 @@ pub fn config_list_fields(state: State<RuntimeState>) -> Vec<ConfigFieldInfo> {
 
 #[tauri::command]
 pub fn config_start_listener(state: State<RuntimeState>, app: AppHandle) {
-    emit_config(&app, &state.session.config().snapshot());
+    emit_config(&app, state.session.config().snapshot());
     sync_ecu_data(&state, &app);
 }
 
@@ -1329,7 +1360,7 @@ pub fn config_set_scalar(
     if wrote_live {
         set_burn_pending(&state, &app, true);
     }
-    Ok(snap)
+    Ok(enrich_config_snapshot(&app, snap))
 }
 
 #[tauri::command]
@@ -1349,7 +1380,7 @@ pub fn config_set_string(
     if wrote_live {
         set_burn_pending(&state, &app, true);
     }
-    Ok(snap)
+    Ok(enrich_config_snapshot(&app, snap))
 }
 
 #[tauri::command]
@@ -1464,7 +1495,7 @@ pub fn config_set_array_value(
     if wrote_live {
         set_burn_pending(&state, &app, true);
     }
-    Ok(snap)
+    Ok(enrich_config_snapshot(&app, snap))
 }
 
 #[derive(Debug, Deserialize)]
@@ -1486,7 +1517,7 @@ pub fn config_set_array_values(
     app: AppHandle,
 ) -> Result<ConfigSnapshot, String> {
     if params.updates.is_empty() {
-        return Ok(state.session.config().snapshot());
+        return Ok(config_snapshot_for_ui(&app, &state));
     }
 
     let pairs: Vec<(usize, f64)> = params
@@ -1536,7 +1567,7 @@ pub fn config_set_array_values(
     if wrote_live {
         set_burn_pending(&state, &app, true);
     }
-    Ok(snap)
+    Ok(enrich_config_snapshot(&app, snap))
 }
 
 #[derive(Serialize)]

@@ -41,6 +41,7 @@ pub fn run() {
             runtime_cmds::output_timeline_load_file,
             runtime_cmds::pick_output_log_path,
             runtime_cmds::config_get_snapshot,
+            runtime_cmds::checklist_load_rules,
             runtime_cmds::config_list_fields,
             runtime_cmds::config_start_listener,
             runtime_cmds::workspace_get_state,
