@@ -1,0 +1,385 @@
+# Checklist: маппинг полей, группы, проверки.
+# panel / component — id из manifest.json / panel yaml (редактор справа).
+
+groups:
+  engine:
+    title: "Двигатель"
+    order: 10
+  trigger:
+    title: "Триггер"
+    order: 20
+  ignition:
+    title: "Зажигание"
+    order: 30
+  fuel:
+    title: "Топливо"
+    order: 40
+  sensors:
+    title: "Датчики"
+    order: 50
+
+fields:
+  cylindersCount:
+    label: "Число цилиндров"
+    panel: engineChars
+    component: cylinderscount
+  displacement:
+    label: "Рабочий объём"
+    panel: engineChars
+    component: displacement
+  firingOrder:
+    label: "Порядок зажигания"
+    panel: engineChars
+    component: firingorder
+  fuelAlgorithm:
+    label: "Стратегия топлива"
+    panel: engineChars
+    component: fuelalgorithm
+  trigger_type:
+    label: "Тип триггера"
+    panel: triggerConfiguration
+    component: trigger-type
+  triggerInputPins1:
+    label: "Вход триггера (crank)"
+    panel: triggerConfiguration
+    component: triggerinputpins1
+  isIgnitionEnabled:
+    label: "Зажигание включено"
+    panel: ignitionSettings
+    component: isignitionenabled
+  ignitionMode:
+    label: "Режим зажигания"
+    panel: ignitionSettings
+    component: ignitionmode
+  ignitionPinMode:
+    label: "Режим выхода катушек"
+    panel: ignitionSettings
+    component: ignitionpinmode
+  sparkDwellValues:
+    label: "Dwell (базовая кривая)"
+    panel: dwellSettings
+    component: dwellcorrection
+  ignitionPins1:
+    label: "Выход катушки 1"
+    panel: ignitionSettings
+    component: ignitionpins1
+  ignitionTable:
+    label: "Таблица зажигания"
+    panel: IgnitionTableDialog
+    component: ignitiontabletbl
+  isInjectionEnabled:
+    label: "Впрыск включён"
+    panel: injectorConfig
+    component: isinjectionenabled
+  injectionMode:
+    label: "Режим впрыска"
+    panel: injectorConfig
+    component: injectionmode
+  injector_flow:
+    label: "Производительность форсунок"
+    panel: injectorConfig
+    component: injector-flow
+  injectionPins1:
+    label: "Выход форсунки 1"
+    panel: injectionSettings
+    component: injectionpins1
+  veTable:
+    label: "Таблица VE"
+    panel: veTableDialog
+    component: vetabletbl
+  lambdaTable:
+    label: "Целевая смесь (λ/AFR)"
+    panel: lambdaTableDialog
+    component: lambdatabletbl
+  map_sensor_hwChannel:
+    label: "Вход MAP"
+    panel: mapSettings
+    component: map-sensor-hwchannel
+  map_sensor_type:
+    label: "Тип датчика MAP"
+    panel: mapSettings
+    component: map-sensor-type
+  mapLowValueVoltage:
+    label: "MAP: напряжение низкой точки"
+    panel: mapSettings
+    component: maplowvaluevoltage
+  mapHighValueVoltage:
+    label: "MAP: напряжение высокой точки"
+    panel: mapSettings
+    component: maphighvaluevoltage
+  clt_adcChannel:
+    label: "Вход CLT"
+    panel: cltSensor
+    component: clt-adcchannel
+  clt_resistance_1:
+    label: "CLT: сопротивление (низкая T)"
+    panel: cltSensor
+    component: clt-resistance-1
+  iat_adcChannel:
+    label: "Вход IAT"
+    panel: iatSensorDialog
+    component: iat-adcchannel
+  iat_resistance_1:
+    label: "IAT: сопротивление (низкая T)"
+    panel: iatSensorDialog
+    component: iat-resistance-1
+
+levels:
+  startup_minimum:
+    title: "Минимум для запуска ДВС"
+    description: >
+      Базовые калибровки, без которых ECU не сможет синхронизировать двигатель,
+      рассчитать топливо и зажигание.
+    severity: error
+
+checks:
+  - id: startup_cylinders_min
+    level: startup_minimum
+    group: engine
+    label: "Число цилиндров"
+    fields: [cylindersCount]
+    type: scalar_min
+    field: cylindersCount
+    min: 1
+    message: "Укажите число цилиндров ≥ 1"
+
+  - id: startup_displacement
+    level: startup_minimum
+    group: engine
+    label: "Рабочий объём"
+    fields: [displacement]
+    type: scalar_min_exclusive
+    field: displacement
+    min: 0
+    message: "Укажите рабочий объём двигателя"
+
+  - id: startup_firing_order
+    level: startup_minimum
+    group: engine
+    label: "Порядок зажигания"
+    fields: [firingOrder]
+    type: scalar_min
+    field: firingOrder
+    min: 0
+    message: "Выберите порядок зажигания"
+
+  - id: startup_fuel_algorithm
+    level: startup_minimum
+    group: engine
+    label: "Стратегия топлива"
+    fields: [fuelAlgorithm]
+    type: scalar_max
+    field: fuelAlgorithm
+    max: 3
+    message: "Выберите стратегию топлива"
+
+  - id: startup_trigger_type
+    level: startup_minimum
+    group: trigger
+    label: "Тип триггера"
+    fields: [trigger_type]
+    type: scalar_not_in
+    field: trigger_type
+    values: [4, 13, 17, 25]
+    message: "Выберите корректный тип триггера"
+
+  - id: startup_trigger_pin
+    level: startup_minimum
+    group: trigger
+    label: "Вход триггера"
+    fields: [triggerInputPins1]
+    type: scalar_min_exclusive
+    field: triggerInputPins1
+    min: 0
+    message: "Назначьте вход триггера на ECU"
+
+  - id: startup_ignition_enabled
+    level: startup_minimum
+    group: ignition
+    label: "Зажигание включено"
+    fields: [isIgnitionEnabled]
+    type: scalar_min
+    field: isIgnitionEnabled
+    min: 1
+    message: "Включите зажигание"
+
+  - id: startup_ignition_mode
+    level: startup_minimum
+    group: ignition
+    label: "Режим зажигания"
+    fields: [ignitionMode]
+    type: scalar_max
+    field: ignitionMode
+    max: 3
+    message: "Настройте режим зажигания (катушки)"
+
+  - id: startup_ignition_pin_mode
+    level: startup_minimum
+    group: ignition
+    label: "Режим выхода катушек"
+    fields: [ignitionPinMode]
+    type: scalar_max
+    field: ignitionPinMode
+    max: 3
+    message: "Укажите режим выхода зажигания"
+
+  - id: startup_ignition_dwell
+    level: startup_minimum
+    group: ignition
+    label: "Кривая dwell"
+    fields: [sparkDwellValues]
+    type: array_all_min_exclusive
+    field: sparkDwellValues
+    min: 0
+    message: "Заполните базовую кривую dwell"
+
+  - id: startup_ignition_pins
+    level: startup_minimum
+    group: ignition
+    label: "Пины катушек зажигания"
+    fields: [ignitionPins1, cylindersCount]
+    type: pins_assigned
+    prefix: ignitionPins
+    count_field: cylindersCount
+    min: 0
+    message: "Назначьте выходы катушек для всех цилиндров"
+
+  - id: startup_ignition_table
+    level: startup_minimum
+    group: ignition
+    label: "Таблица зажигания"
+    fields: [ignitionTable]
+    type: array_not_all_zero
+    field: ignitionTable
+    message: "Заполните таблицу зажигания"
+
+  - id: startup_injection_enabled
+    level: startup_minimum
+    group: fuel
+    label: "Впрыск включён"
+    fields: [isInjectionEnabled]
+    type: scalar_min
+    field: isInjectionEnabled
+    min: 1
+    message: "Включите впрыск"
+
+  - id: startup_injector_flow
+    level: startup_minimum
+    group: fuel
+    label: "Параметры форсунок"
+    fields: [injector_flow]
+    type: scalar_min_exclusive
+    field: injector_flow
+    min: 0
+    message: "Укажите производительность форсунок"
+
+  - id: startup_injection_mode
+    level: startup_minimum
+    group: fuel
+    label: "Режим впрыска"
+    fields: [injectionMode]
+    type: scalar_max
+    field: injectionMode
+    max: 3
+    message: "Выберите режим впрыска"
+
+  - id: startup_injection_pins
+    level: startup_minimum
+    group: fuel
+    label: "Пины форсунок"
+    fields: [injectionPins1, cylindersCount]
+    type: pins_assigned
+    prefix: injectionPins
+    count_field: cylindersCount
+    min: 0
+    message: "Назначьте выходы форсунок для всех цилиндров"
+
+  - id: startup_ve_table
+    level: startup_minimum
+    group: fuel
+    label: "Таблица VE"
+    fields: [veTable]
+    type: array_all_min_exclusive
+    field: veTable
+    min: 0
+    message: "Заполните таблицу VE (есть нулевые ячейки)"
+
+  - id: startup_lambda_table
+    level: startup_minimum
+    group: fuel
+    label: "Целевая смесь (λ/AFR)"
+    fields: [lambdaTable]
+    type: array_all_min_exclusive
+    field: lambdaTable
+    min: 0
+    message: "Заполните таблицу целевой смеси"
+
+  - id: startup_map_channel
+    level: startup_minimum
+    group: sensors
+    label: "Датчик MAP: вход"
+    fields: [map_sensor_hwChannel]
+    type: scalar_min_exclusive
+    field: map_sensor_hwChannel
+    min: 0
+    message: "Назначьте аналоговый вход MAP"
+
+  - id: startup_map_type
+    level: startup_minimum
+    group: sensors
+    label: "Датчик MAP: тип"
+    fields: [map_sensor_type]
+    type: scalar_max
+    field: map_sensor_type
+    max: 15
+    message: "Выберите тип датчика MAP"
+
+  - id: startup_map_calibration
+    level: startup_minimum
+    group: sensors
+    label: "Датчик MAP: калибровка"
+    fields: [mapHighValueVoltage]
+    type: scalar_min_exclusive
+    field: mapHighValueVoltage
+    min: 0
+    message: "Заполните калибровку MAP"
+
+  - id: startup_clt_channel
+    level: startup_minimum
+    group: sensors
+    label: "Датчик CLT: вход"
+    fields: [clt_adcChannel]
+    type: scalar_min_exclusive
+    field: clt_adcChannel
+    min: 0
+    message: "Назначьте вход CLT"
+
+  - id: startup_clt_calibration
+    level: startup_minimum
+    group: sensors
+    label: "Датчик CLT: калибровка"
+    fields: [clt_resistance_1]
+    type: scalar_min_exclusive
+    field: clt_resistance_1
+    min: 0
+    message: "Заполните калибровку CLT"
+
+  - id: startup_iat_channel
+    level: startup_minimum
+    group: sensors
+    label: "Датчик IAT: вход"
+    fields: [iat_adcChannel]
+    type: scalar_min_exclusive
+    field: iat_adcChannel
+    min: 0
+    message: "Назначьте вход IAT"
+
+  - id: startup_iat_calibration
+    level: startup_minimum
+    group: sensors
+    label: "Датчик IAT: калибровка"
+    fields: [iat_resistance_1]
+    type: scalar_min_exclusive
+    field: iat_resistance_1
+    min: 0
+    message: "Заполните калибровку IAT"

@@ -1,0 +1,5 @@
+tab:
+  id: setup
+  title: CHKLST
+root:
+  $component: setup.panel

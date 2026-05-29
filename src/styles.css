@@ -93,3 +93,66 @@ select {
 button {
   cursor: pointer;
 }
+
+/* ---- Tab alerts (переиспользуемая подсветка кнопок табов) ---- */
+@property --tab-alert-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+@keyframes tab-alert-spin {
+  to {
+    --tab-alert-angle: 360deg;
+  }
+}
+
+.header-tab-slot.tab-alert--spin-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  animation: tab-alert-spin 1.15s linear infinite;
+  pointer-events: none;
+}
+
+.header-tab-slot.tab-alert--spin-border.tab-alert--error::before {
+  background: conic-gradient(
+    from var(--tab-alert-angle),
+    transparent 0deg,
+    #f87171 50deg,
+    #ef4444 100deg,
+    #dc2626 135deg,
+    transparent 175deg
+  );
+}
+
+.header-tab-slot.tab-alert--spin-border.tab-alert--warn::before {
+  background: conic-gradient(
+    from var(--tab-alert-angle),
+    transparent 0deg,
+    #fbbf24 50deg,
+    #f97316 100deg,
+    transparent 175deg
+  );
+}
+
+.header-tab-slot.tab-alert--spin-border.tab-alert--info::before {
+  background: conic-gradient(
+    from var(--tab-alert-angle),
+    transparent 0deg,
+    #93c5fd 50deg,
+    #3b82f6 100deg,
+    transparent 175deg
+  );
+}
+
+.header-tab-slot.tab-alert .header-tab-btn {
+  position: relative;
+  z-index: 1;
+  background: var(--color-bg);
+}
+
+.header-tab-slot.tab-alert .header-tab-btn.active {
+  background: var(--color-bg-accent-soft);
+}

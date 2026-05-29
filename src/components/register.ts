@@ -17,6 +17,7 @@ import CompositeChart from "./builtins/CompositeChart.vue";
 import OutputValue from "./builtins/OutputValue.vue";
 import Dyno from "./builtins/Dyno.vue";
 import Spectrogram from "./builtins/Spectrogram.vue";
+import ConfigChecklist from "./builtins/ConfigChecklist.vue";
 
 let registered = false;
 
@@ -223,5 +224,16 @@ export function registerBuiltinComponents(): void {
       description: "Сырой knock scope с ECU (отдельный источник l+8/10, как composite)",
     },
     Spectrogram,
+  );
+
+  registerComponent(
+    {
+      type: "config-checklist",
+      label: "Config checklist",
+      mode: "display",
+      isContainer: false,
+      description: "Checklist готовности конфигурации ECU",
+    },
+    ConfigChecklist,
   );
 }
