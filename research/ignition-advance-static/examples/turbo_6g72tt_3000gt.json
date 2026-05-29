@@ -1,0 +1,22 @@
+{
+  "engine": {
+    "bore_mm": 91.1,
+    "stroke_mm": 76.0,
+    "rod_length_mm": 141.0,
+    "cylinder_count": 6,
+    "displacement_cc": 2972,
+    "compression_ratio": 8.0,
+    "valves_per_cylinder": 4,
+    "spark_location": "center",
+    "chamber_type": "pentroof",
+    "intake_duration_deg": 251,
+    "exhaust_duration_deg": 247,
+    "overlap_deg": 33,
+    "fuel": "gasoline_98",
+    "aspiration": "turbocharged"
+  },
+  "axes": {
+    "rpm": [600, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000],
+    "map_kpa": [15, 30, 45, 60, 70, 80, 90, 100, 110, 130, 160, 190, 210, 240, 270, 300, 320]
+  }
+}

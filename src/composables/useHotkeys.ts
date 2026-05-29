@@ -32,6 +32,8 @@ export function useTabEnterHandler(tabId: string, handler: () => void): void {
 
 export function useGlobalHotkeys() {
   function onKeydown(e: KeyboardEvent) {
+    if (e.defaultPrevented) return;
+
     if (e.ctrlKey || e.metaKey) {
       // e.code не зависит от раскладки клавиатуры
       if (e.code === "KeyS") {

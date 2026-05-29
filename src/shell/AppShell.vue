@@ -74,6 +74,17 @@ const {
 } = useUnsavedChangesGuard();
 
 const { setFooterStatus } = useAppFooter();
+const appShellRef = ref<HTMLElement | null>(null);
+const appHeaderRef = ref<HTMLElement | null>(null);
+let headerResizeObserver: ResizeObserver | null = null;
+
+function syncHeaderHeight() {
+  const shell = appShellRef.value;
+  const header = appHeaderRef.value;
+  if (!shell || !header) return;
+  const rect = header.getBoundingClientRect();
+  shell.style.setProperty("--app-header-h", `${Math.ceil(rect.height)}px`);
+}
 
 watchEffect(() => {
   if (!showMainUi.value) {
@@ -156,10 +167,20 @@ onMounted(async () => {
       if (proceed) void invoke("app_force_quit");
     })();
   });
+  await nextTick();
+  syncHeaderHeight();
+  window.addEventListener("resize", syncHeaderHeight);
+  if (typeof ResizeObserver !== "undefined" && appHeaderRef.value) {
+    headerResizeObserver = new ResizeObserver(() => syncHeaderHeight());
+    headerResizeObserver.observe(appHeaderRef.value);
+  }
 });
 
 onUnmounted(() => {
   unlistenCloseReq?.();
+  window.removeEventListener("resize", syncHeaderHeight);
+  headerResizeObserver?.disconnect();
+  headerResizeObserver = null;
 });
 
 async function runProjectAction(fn: () => Promise<void>): Promise<void> {
@@ -263,8 +284,8 @@ async function onBurn() {
   <ProjectGate v-if="!showMainUi && !iniMismatchActive" />
   <EcuIniMismatchScreen v-if="iniMismatchActive" />
 
-  <div v-if="showMainUi" class="app-shell">
-    <header class="app-header">
+  <div v-if="showMainUi" ref="appShellRef" class="app-shell">
+    <header ref="appHeaderRef" class="app-header">
       <ProjectMenu
         :project-name="projectInfo.name"
         :project-path="projectInfo.path"
@@ -424,7 +445,9 @@ async function onBurn() {
       @cancel="onUnsavedDialogCancel"
     />
 
-    <TabWorkspace ref="tabWorkspace" />
+    <main class="app-main">
+      <TabWorkspace ref="tabWorkspace" />
+    </main>
     <ProtocolLogSheet />
     <ConfigLoadOverlay />
     <ConfigDiffModal />
@@ -435,24 +458,38 @@ async function onBurn() {
 <style scoped>
 .app-shell {
   width: 100%;
-  max-width: var(--content-max);
+  max-width: none;
   margin: 0;
-  padding: var(--app-padding-y) var(--app-padding-x) 0.5rem;
-  min-height: 100vh;
+  padding: 0;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
+  overflow: hidden;
+  padding-top: calc(var(--app-header-h, 5.5rem) + 0.75rem);
 }
 
 .app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 400;
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
   gap: 0;
-  margin-bottom: 0.5rem;
-  padding-bottom: 1rem;
+  padding: var(--app-padding-y) var(--app-padding-x) 1rem;
+  background: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
+}
+
+.app-main {
+  position: relative;
+  height: calc(100vh - var(--app-header-h, 5.5rem) - var(--footer-height) - 0.75rem);
+  overflow: hidden;
+  padding: 0 var(--app-padding-x);
 }
 
 /* gap after ProjectMenu via its container */

@@ -1,0 +1,21 @@
+{
+  "fit_note": "coefficients.json подобран по всем эталонам (pooled RMSE)",
+  "files": {
+    "turbo_4g63t_1g_dsm.csv": {
+      "example": "examples/turbo_4g63t_1g_dsm.json",
+      "source": "TunerStudioProjects/eclipse/CurrentTune.msq",
+      "msq_path": "/home/guerrero/TunerStudioProjects/eclipse/CurrentTune.msq",
+      "status": "production",
+      "engine_note": "4G63T 1G DSM (7-bolt, CR 8.5, 252/252 cam)",
+      "notes": "Строка 80 kPa интерполирована — в msq этого бина нет (70 → 90)"
+    },
+    "turbo_6g72tt_3000gt.csv": {
+      "example": "examples/turbo_6g72tt_3000gt.json",
+      "source": "3000gt-release_2024-10-23_15.43.14.msq",
+      "msq_path": "/home/guerrero/TunerStudioProjects/3000gt-backup/3000gt-release_2024-10-23_15.43.14.msq",
+      "status": "production",
+      "engine_note": "Карта 3000GT (6G72/6G73)",
+      "notes": "Строка 80 kPa интерполирована — в msq этого бина нет (70 → 90)"
+    }
+  }
+}
