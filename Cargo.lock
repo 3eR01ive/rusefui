@@ -2934,7 +2934,7 @@ dependencies = [
 
 [[package]]
 name = "rusefi-ini"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -2944,7 +2944,7 @@ dependencies = [
 
 [[package]]
 name = "rusefi-protocol"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "crc32fast",
  "hex",
@@ -2955,7 +2955,7 @@ dependencies = [
 
 [[package]]
 name = "rusefui"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "rfd",
  "rusefi-protocol",
@@ -2970,7 +2970,7 @@ dependencies = [
 
 [[package]]
 name = "rusefui-runtime"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "base64 0.22.1",
  "dirs",
