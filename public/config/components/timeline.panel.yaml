@@ -1,0 +1,5 @@
+id: timeline.panel
+description: Общая временная шкала проекта
+children:
+  - type: project-timeline
+    navSelectable: false

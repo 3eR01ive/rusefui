@@ -338,6 +338,14 @@ async function onBurn() {
             <path d="M4 9.5L6.5 6.5l2.2 3.8 2.8-6.3L14 9.5l2-2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M8.5 14.5v2.5M13.5 14.5v2.5M6 17h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
           </svg>
+          <!-- Timeline: horizontal axis + markers -->
+          <svg v-else-if="tab.id === 'timeline'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
+            <line x1="2" y1="14" x2="20" y2="14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".35"/>
+            <circle cx="6" cy="14" r="2.2" fill="currentColor"/>
+            <circle cx="11" cy="14" r="2.2" fill="currentColor" opacity=".65"/>
+            <circle cx="16.5" cy="14" r="2.2" fill="currentColor" opacity=".45"/>
+            <path d="M4 4.5h14M4 8h10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".25"/>
+          </svg>
           <!-- Knock: waveform bars -->
           <svg v-else-if="tab.id === 'knock'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
             <rect x="2" y="2" width="18" height="16" rx="2.5" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.3"/>

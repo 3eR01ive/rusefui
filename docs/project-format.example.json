@@ -30,6 +30,21 @@
       "kind": "composite_csv"
     }
   ],
+  "timeline": {
+    "clips": [
+      {
+        "id": "tl-example",
+        "channel": "logs",
+        "startMs": 1730000002000,
+        "endMs": 1730003602000,
+        "label": "сессия output",
+        "record": {
+          "path": "/home/user/.local/share/rusefui/output_logs/session.csv",
+          "kind": "output_csv"
+        }
+      }
+    ]
+  },
   "ui": {
     "sections": {
       "composite-chart": {

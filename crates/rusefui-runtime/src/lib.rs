@@ -13,6 +13,7 @@ mod dyno;
 mod layout;
 mod ini;
 mod project;
+mod project_timeline;
 mod recent_projects;
 mod ui_persist;
 mod protocol_log;
@@ -50,6 +51,10 @@ pub use ini::{
 };
 pub use project::{
     ProjectEcuConfig, ProjectInfo, ProjectLogRef, ProjectStore, RusefuiProject, FORMAT_VERSION,
+};
+pub use project_timeline::{
+    channel as project_timeline_channel, ProjectTimeline, ProjectTimelineClip,
+    ProjectTimelineRecordRef,
 };
 pub use recent_projects::{RecentProjectEntry, RecentProjectsStore};
 pub use ui_persist::{

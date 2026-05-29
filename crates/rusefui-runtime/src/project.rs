@@ -14,6 +14,9 @@ use crate::config_diff::encode_scalar_into_page;
 use crate::ini::resolve_ini_for_signature;
 use crate::session::EcuSession;
 use crate::sources::config::{build_project_ecu_config, pages_from_project_ecu};
+use crate::project_timeline::{
+    channel, validate_channel, ProjectTimeline, ProjectTimelineClip, ProjectTimelineRecordRef,
+};
 use crate::ui_persist::{self, ProjectUi};
 
 pub const FORMAT_VERSION: u32 = 1;
@@ -38,6 +41,8 @@ pub struct RusefuiProject {
     pub ecu_config: Option<ProjectEcuConfig>,
     #[serde(default)]
     pub logs: Vec<ProjectLogRef>,
+    #[serde(default)]
+    pub timeline: ProjectTimeline,
     #[serde(default)]
     pub ui: ProjectUi,
 }
@@ -87,6 +92,7 @@ impl RusefuiProject {
             ini: None,
             ecu_config: None,
             logs: Vec::new(),
+            timeline: ProjectTimeline::default(),
             ui,
         }
     }
@@ -181,7 +187,7 @@ impl ProjectStore {
 
     pub fn load_from_path(&self, path: &Path) -> Result<(), String> {
         let text = fs::read_to_string(path).map_err(|e| e.to_string())?;
-        let doc: RusefuiProject = serde_json::from_str(&text)
+        let mut doc: RusefuiProject = serde_json::from_str(&text)
             .map_err(|e| format!("Некорректный JSON проекта: {e}"))?;
         if doc.format_version != FORMAT_VERSION {
             return Err(format!(
@@ -189,6 +195,7 @@ impl ProjectStore {
                 doc.format_version
             ));
         }
+        doc.timeline.migrate_legacy();
         *self.doc.lock().unwrap() = doc;
         *self.path.lock().unwrap() = Some(path.to_path_buf());
         *self.dirty.lock().unwrap() = false;
@@ -288,8 +295,53 @@ impl ProjectStore {
     pub fn remove_log(&self, path: &str) {
         let mut doc = self.doc.lock().unwrap();
         doc.logs.retain(|l| l.path != path);
+        doc.timeline.clips.retain(|c| c.record.path != path);
         doc.touch();
         *self.dirty.lock().unwrap() = true;
+    }
+
+    pub fn list_timeline_clips(&self) -> Vec<ProjectTimelineClip> {
+        let doc = self.doc.lock().unwrap();
+        let mut clips = doc.timeline.clips.clone();
+        for (idx, log) in doc.logs.iter().enumerate() {
+            if clips.iter().any(|c| c.record.path == log.path) {
+                continue;
+            }
+            if let Some(ch) = channel::from_log_kind(&log.kind) {
+                clips.push(ProjectTimelineClip {
+                    id: format!("log-{idx}"),
+                    channel: ch.to_string(),
+                    start_ms: log.added_at_ms,
+                    end_ms: None,
+                    record: ProjectTimelineRecordRef::new(
+                        log.path.clone(),
+                        Some(log.kind.clone()),
+                    ),
+                    label: log.label.clone(),
+                });
+            }
+        }
+        clips.sort_by_key(|c| c.start_ms);
+        clips
+    }
+
+    pub fn upsert_timeline_clip(&self, clip: ProjectTimelineClip) -> Result<(), String> {
+        validate_channel(&clip.channel)?;
+        if clip.record.path.trim().is_empty() {
+            return Err("Путь записи не может быть пустым".into());
+        }
+        if clip.end_ms.is_some_and(|end| end < clip.start_ms) {
+            return Err("Конец записи раньше начала".into());
+        }
+        let mut doc = self.doc.lock().unwrap();
+        if let Some(existing) = doc.timeline.clips.iter_mut().find(|c| c.id == clip.id) {
+            *existing = clip;
+        } else {
+            doc.timeline.clips.push(clip);
+        }
+        doc.touch();
+        *self.dirty.lock().unwrap() = true;
+        Ok(())
     }
 
     /// Скопировать текущий page 0 из сессии в `ecuConfig` проекта (offline-редактирование).
@@ -459,6 +511,7 @@ fn ini_page_size(ini_page: u8, ini: &crate::sources::output_channels::IniContext
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::project_timeline::{channel, ProjectTimelineRecordRef};
     use crate::ui_persist::{LogUiSettings, PERSIST_KEY_OUTPUT_CHART};
 
     #[test]
@@ -489,5 +542,23 @@ mod tests {
         )
         .unwrap();
         assert_eq!(loaded.zoom_step_pct, 12);
+    }
+
+    #[test]
+    fn timeline_clip_roundtrip_in_project() {
+        let store = ProjectStore::new();
+        store
+            .upsert_timeline_clip(ProjectTimelineClip {
+                id: "c1".into(),
+                channel: channel::LOGS.into(),
+                start_ms: 1000,
+                end_ms: Some(8000),
+                record: ProjectTimelineRecordRef::new("/tmp/a.csv", Some("output_csv".into())),
+                label: Some("run".into()),
+            })
+            .unwrap();
+        let list = store.list_timeline_clips();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].end_ms, Some(8000));
     }
 }

@@ -1,0 +1,6 @@
+tab:
+  id: timeline
+  title: TIMELINE
+
+root:
+  $component: timeline.panel

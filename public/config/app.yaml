@@ -3,6 +3,7 @@ app:
 
 tabs:
   - $tab: monitor
+  - $tab: timeline
   - $tab: setup
   - $tab: run
   - $tab: knock

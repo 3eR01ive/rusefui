@@ -19,6 +19,7 @@ import OutputValue from "./builtins/OutputValue.vue";
 import Dyno from "./builtins/Dyno.vue";
 import Spectrogram from "./builtins/Spectrogram.vue";
 import ConfigChecklist from "./builtins/ConfigChecklist.vue";
+import ProjectTimeline from "./builtins/ProjectTimeline.vue";
 
 let registered = false;
 
@@ -50,4 +51,5 @@ export function registerBuiltinComponents(): void {
   reg("dyno", Dyno);
   reg("spectrogram", Spectrogram);
   reg("config-checklist", ConfigChecklist);
+  reg("project-timeline", ProjectTimeline);
 }

@@ -7,7 +7,8 @@ use rusefui_runtime::{
     DiffSide,
     EcuSession, EcuSyncOnMount, IniCandidate, OnlineDownloadStatus, OutputFieldInfo,
     OutputSnapshot, OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl,
-    PendingIniResolution, ProjectInfo, ProjectLogRef, ProjectStore, ProtocolLogEntry,
+    PendingIniResolution, ProjectInfo, ProjectLogRef, ProjectStore, ProjectTimelineClip,
+    ProjectTimelineRecordRef, ProtocolLogEntry,
     ProtocolLogFilterSettings, ProtocolLogStore, RecentProjectEntry, RecentProjectsStore,
     RusefuiProject, WorkspaceFsm, WorkspaceInputs, WorkspacePhase, WorkspaceSnapshot,
 };
@@ -1842,6 +1843,11 @@ pub fn project_remove_log(path: String, state: State<RuntimeState>, app: AppHand
 #[tauri::command]
 pub fn project_list_logs(state: State<RuntimeState>) -> Vec<ProjectLogRef> {
     state.project.lock().unwrap().document().logs
+}
+
+#[tauri::command]
+pub fn project_timeline_list(state: State<RuntimeState>) -> Vec<ProjectTimelineClip> {
+    state.project.lock().unwrap().list_timeline_clips()
 }
 
 #[tauri::command]

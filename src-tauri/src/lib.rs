@@ -85,6 +85,7 @@ pub fn run() {
             runtime_cmds::project_add_log,
             runtime_cmds::project_remove_log,
             runtime_cmds::project_list_logs,
+            runtime_cmds::project_timeline_list,
             runtime_cmds::pick_project_open_path,
             runtime_cmds::pick_project_save_path,
             runtime_cmds::recent_projects_list,
