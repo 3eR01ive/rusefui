@@ -15,10 +15,13 @@ import {
   collectAllNavPaths,
   ensureSelectedInNav,
   focusComponent,
+  isFilterNavPath,
+  isNavActivatablePath,
   moveNavSelection,
   navExtensions,
   navMenuPaths,
   navMode,
+  refreshNavDimming,
   resetWorkspaceNav,
   selectedPath,
   selectComponent,
@@ -51,6 +54,7 @@ function rebuildNavPaths(): void {
   }
   setNavPaths(collectAllNavPaths(tab.root, `tab/${tab.id}`));
   ensureSelectedInNav();
+  void nextTick(refreshNavDimming);
 }
 
 watch(navExtensions, () => {
@@ -63,6 +67,12 @@ watch(navMenuPaths, () => {
 
 function activateSelection(): void {
   if (!selectedPath.value) return;
+  if (!isNavActivatablePath(selectedPath.value)) {
+    if (isFilterNavPath(selectedPath.value)) {
+      focusComponent(selectedPath.value);
+    }
+    return;
+  }
   activateComponent(selectedPath.value);
   focusComponent(selectedPath.value);
 }
@@ -115,6 +125,10 @@ onUnmounted(() => {
 watch(activeTabId, () => {
   resetNavForTab();
 });
+
+watch([navMode, activePath], () => {
+  void nextTick(refreshNavDimming);
+});
 </script>
 
 <template>
@@ -138,7 +152,7 @@ watch(activeTabId, () => {
           :active-path="activePath"
           :nav-mode="navMode"
           @select-path="selectComponent"
-          @activate-path="(path) => { activateComponent(path); focusComponent(path); }"
+          @activate-path="(path) => { if (isNavActivatablePath(path)) { activateComponent(path); focusComponent(path); } }"
         />
       </div>
     </template>

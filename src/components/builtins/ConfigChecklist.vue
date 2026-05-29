@@ -6,7 +6,9 @@ import {
   activateComponent,
   activePath,
   focusComponent,
+  isNavActivatablePath,
   navMode,
+  navPresentation,
   selectedPath,
   selectComponent,
   setNavExtension,
@@ -99,13 +101,6 @@ function menuItemPath(id: string): string {
 const menuNavPaths = computed(() =>
   visibleMenuItems.value.map((item) => menuItemPath(item.id)),
 );
-
-function menuNavClasses(path: string): Record<string, boolean> {
-  return {
-    "nav-target--selected": navMode.value === "select" && selectedPath.value === path,
-    "nav-target--active": navMode.value === "active" && activePath.value === path,
-  };
-}
 
 watch(
   flatItems,
@@ -240,13 +235,13 @@ function levelSummary(levelId: string) {
                 <button
                   type="button"
                   class="check-row"
-                  data-nav-node="1"
-                  :data-nav-path="menuItemPath(item.id)"
                   :class="{
                     'check-row--ok': item.ok,
                     'check-row--fail': !item.ok,
-                    ...menuNavClasses(menuItemPath(item.id)),
                   }"
+                  data-nav-node="1"
+                  :data-nav-path="menuItemPath(item.id)"
+                  v-bind="navPresentation(menuItemPath(item.id))"
                   @mousedown.prevent="selectItem(item.id)"
                 >
                   <span class="check-icon" aria-hidden="true">{{ item.ok ? "✓" : "✗" }}</span>
@@ -271,7 +266,7 @@ function levelSummary(levelId: string) {
           :active-path="activePath"
           :nav-mode="navMode"
           @select-path="selectComponent"
-          @activate-path="(p) => { activateComponent(p); focusComponent(p); }"
+          @activate-path="(p) => { if (isNavActivatablePath(p)) { activateComponent(p); focusComponent(p); } }"
         />
       </main>
     </div>
@@ -443,16 +438,6 @@ function levelSummary(levelId: string) {
 
 .check-row--fail .check-icon {
   color: var(--color-danger, #f08080);
-}
-
-.nav-target--selected {
-  outline: 2px solid rgba(59, 130, 246, 0.95);
-  outline-offset: 2px;
-}
-
-.nav-target--active {
-  outline: 2px solid rgba(22, 163, 74, 0.95);
-  outline-offset: 2px;
 }
 
 .check-label {

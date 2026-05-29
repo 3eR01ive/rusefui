@@ -4,6 +4,8 @@ import type { ComponentInstance } from "../core/types";
 import { requireRegisteredComponent } from "../core/registry";
 import { resolveBinding } from "../core/data-context";
 import { childPath } from "../core/instance";
+import { resolveNavActivatable, resolveNavSelectable } from "../core/navFlags";
+import { navPresentation } from "../composables/useWorkspaceNav";
 import ComponentHost from "./ComponentHost.vue";
 
 const props = defineProps<{
@@ -33,13 +35,13 @@ const entry = computed(() => {
 const binding = computed(() => resolveBinding(props.instance.bind));
 
 const childInstances = computed(() => props.instance.children ?? []);
-const isLeaf = computed(() => !!entry.value && !("error" in entry.value) && !entry.value.meta.isContainer);
-const navSelected = computed(
-  () => props.navMode === "select" && props.selectedPath === props.path,
-);
-const navActive = computed(
-  () => props.navMode === "active" && props.activePath === props.path,
-);
+const hasChildren = computed(() => childInstances.value.length > 0);
+const isLeaf = computed(() => !!entry.value && !("error" in entry.value) && !hasChildren.value);
+const isNavLeaf = computed(() => {
+  if (!isLeaf.value || !entry.value || "error" in entry.value) return false;
+  return resolveNavSelectable(props.instance);
+});
+const navActivatable = computed(() => resolveNavActivatable(props.instance));
 
 function onNodeMouseDown(): void {
   emit("select-path", props.path);
@@ -52,11 +54,12 @@ function onNodeMouseDown(): void {
     Компонент без type (проверьте $component в YAML — config-loader должен разрешить ссылку).
   </p>
   <div
-    v-else-if="entry && isLeaf"
+    v-else-if="entry && isNavLeaf"
     class="host-node"
-    :class="{ 'host-node--selected': navSelected, 'host-node--active': navActive }"
     data-nav-node="1"
     :data-nav-path="path"
+    :data-nav-activatable="navActivatable ? undefined : 'false'"
+    v-bind="navPresentation(path)"
     tabindex="-1"
     @mousedown.stop="onNodeMouseDown"
   >
@@ -70,6 +73,15 @@ function onNodeMouseDown(): void {
     />
   </div>
   <component
+    v-else-if="entry && isLeaf"
+    :is="entry.component"
+    :instance="instance"
+    :path="path"
+    :props="instance.props ?? {}"
+    :binding="binding"
+    :meta="entry.meta"
+  />
+  <component
     v-else-if="entry"
     :is="entry.component"
     :instance="instance"
@@ -78,7 +90,7 @@ function onNodeMouseDown(): void {
     :binding="binding"
     :meta="entry.meta"
   >
-    <template v-if="entry.meta.isContainer && childInstances.length">
+    <template v-if="hasChildren">
       <ComponentHost
         v-for="(child, index) in childInstances"
         :key="child.id ?? `${path}-${index}`"
@@ -107,15 +119,5 @@ function onNodeMouseDown(): void {
 
 .host-node {
   border-radius: var(--radius-sm);
-}
-
-.host-node--selected {
-  outline: 2px solid rgba(59, 130, 246, 0.95);
-  outline-offset: 2px;
-}
-
-.host-node--active {
-  outline: 2px solid rgba(22, 163, 74, 0.95);
-  outline-offset: 2px;
 }
 </style>

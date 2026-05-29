@@ -4,11 +4,14 @@ import { parse as parseYaml } from "yaml";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import ComponentHost from "../ComponentHost.vue";
 import { useTabEnterHandler } from "../../composables/useHotkeys";
+import { useComponentBinding } from "../../composables/useKeyboardRouter";
 import {
   activateComponent,
   activePath,
   focusComponent,
+  isNavActivatablePath,
   navMode,
+  navPresentation,
   selectedPath,
   selectComponent,
   setNavExtension,
@@ -57,13 +60,6 @@ function menuItemPath(id: string): string {
   return `${props.path}/menu/${id}`;
 }
 
-function menuNavClasses(path: string): Record<string, boolean> {
-  return {
-    "nav-target--selected": navMode.value === "select" && selectedPath.value === path,
-    "nav-target--active": navMode.value === "active" && activePath.value === path,
-  };
-}
-
 const groupedPanels = computed(() => {
   const list = manifest.value?.panels ?? [];
   const q = filter.value.trim().toLowerCase();
@@ -85,22 +81,18 @@ const groupedPanels = computed(() => {
   return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
 });
 
-/** Плоский список панелей с учётом фильтра (для ↑↓). */
-const filteredPanels = computed((): ManifestEntry[] => {
-  const list = manifest.value?.panels ?? [];
-  const q = filter.value.trim().toLowerCase();
-  if (!q) return list;
-  return list.filter(
-    (p) =>
-      p.title.toLowerCase().includes(q) ||
-      p.id.toLowerCase().includes(q) ||
-      p.menuPath.toLowerCase().includes(q),
-  );
+/** Плоский список панелей в порядке отображения sidebar (группы → пункты). */
+const visibleMenuPanels = computed((): ManifestEntry[] => {
+  const result: ManifestEntry[] = [];
+  for (const [, items] of groupedPanels.value) {
+    result.push(...items);
+  }
+  return result;
 });
 
 const menuNavPaths = computed((): string[] => {
   const paths = [filterPath()];
-  for (const p of filteredPanels.value) {
+  for (const p of visibleMenuPanels.value) {
     paths.push(menuItemPath(p.id));
   }
   return paths;
@@ -120,6 +112,69 @@ function selectPanel(id: string): void {
 
 function selectFilter(): void {
   selectComponent(filterPath());
+}
+
+function isFilterTypingKey(e: KeyboardEvent): boolean {
+  if (e.ctrlKey || e.metaKey || e.altKey) return false;
+  if (e.key === "Backspace" || e.key === "Delete") return true;
+  return e.key.length === 1;
+}
+
+function applyFilterKey(input: HTMLInputElement, e: KeyboardEvent): void {
+  const start = input.selectionStart ?? input.value.length;
+  const end = input.selectionEnd ?? input.value.length;
+  let next = input.value;
+  let caret = start;
+
+  if (e.key === "Backspace") {
+    if (start === end && start > 0) {
+      next = input.value.slice(0, start - 1) + input.value.slice(end);
+      caret = start - 1;
+    } else if (start !== end) {
+      next = input.value.slice(0, start) + input.value.slice(end);
+      caret = start;
+    } else {
+      return;
+    }
+  } else if (e.key === "Delete") {
+    if (start === end && start < input.value.length) {
+      next = input.value.slice(0, start) + input.value.slice(end + 1);
+      caret = start;
+    } else if (start !== end) {
+      next = input.value.slice(0, start) + input.value.slice(end);
+      caret = start;
+    } else {
+      return;
+    }
+  } else if (e.key.length === 1) {
+    next = input.value.slice(0, start) + e.key + input.value.slice(end);
+    caret = start + 1;
+  } else {
+    return;
+  }
+
+  filter.value = next;
+  void nextTick(() => input.setSelectionRange(caret, caret));
+}
+
+function onFilterKeydown(e: KeyboardEvent): boolean {
+  const input = filterInputRef.value;
+  if (!input || !isFilterTypingKey(e)) return false;
+  if (document.activeElement === input) return false;
+
+  input.focus({ preventScroll: true });
+  applyFilterKey(input, e);
+  return true;
+}
+
+useComponentBinding(filterPath(), onFilterKeydown);
+
+function focusFilterInput(): void {
+  void nextTick(() => {
+    const input = filterInputRef.value;
+    if (!input) return;
+    input.focus({ preventScroll: true });
+  });
 }
 
 async function loadManifest(): Promise<void> {
@@ -188,15 +243,17 @@ watch(selectedPath, (path) => {
   const menuPrefix = `${props.path}/menu/`;
   if (path.startsWith(menuPrefix)) {
     const id = path.slice(menuPrefix.length);
-    if (filteredPanels.value.some((p) => p.id === id) && selectedId.value !== id) {
+    const entry = manifest.value?.panels.find((p) => p.id === id);
+    if (entry && visibleMenuPanels.value.some((p) => p.id === id) && selectedId.value !== id) {
+      ensureGroupExpandedForEntry(entry);
       selectedId.value = id;
     }
     return;
   }
   if (path === filterPath()) {
-    void nextTick(() => filterInputRef.value?.focus());
+    focusFilterInput();
   }
-});
+}, { immediate: true });
 
 watch(
   menuNavPaths,
@@ -261,7 +318,7 @@ function toggleGroup(group: string): void {
         class="filter"
         data-nav-node="1"
         :data-nav-path="filterPath()"
-        :class="menuNavClasses(filterPath())"
+        v-bind="navPresentation(filterPath())"
         placeholder="Поиск панели…"
         autocomplete="off"
         @mousedown.stop="selectFilter()"
@@ -287,7 +344,7 @@ function toggleGroup(group: string): void {
               class="panel-btn"
               data-nav-node="1"
               :data-nav-path="menuItemPath(p.id)"
-              :class="menuNavClasses(menuItemPath(p.id))"
+              v-bind="navPresentation(menuItemPath(p.id))"
               role="option"
               :aria-selected="p.id === selectedId"
               @mousedown.prevent="selectPanel(p.id)"
@@ -317,7 +374,7 @@ function toggleGroup(group: string): void {
         :active-path="activePath"
         :nav-mode="navMode"
         @select-path="selectComponent"
-        @activate-path="(p) => { activateComponent(p); focusComponent(p); }"
+        @activate-path="(p) => { if (isNavActivatablePath(p)) { activateComponent(p); focusComponent(p); } }"
       />
       <p v-else class="state">Выберите панель слева</p>
     </main>
@@ -368,16 +425,6 @@ function toggleGroup(group: string): void {
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border-strong);
   background: var(--color-bg-muted);
-}
-
-.nav-target--selected {
-  outline: 2px solid rgba(59, 130, 246, 0.95);
-  outline-offset: 2px;
-}
-
-.nav-target--active {
-  outline: 2px solid rgba(22, 163, 74, 0.95);
-  outline-offset: 2px;
 }
 
 .panel-list {

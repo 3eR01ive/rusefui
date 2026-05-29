@@ -8,6 +8,7 @@ pub mod config_table_grid;
 mod config_checklist;
 mod config_diff;
 mod dyno;
+mod layout;
 mod ini;
 mod project;
 mod recent_projects;
@@ -76,6 +77,11 @@ pub use sources::output_data_log::output_logs_dir;
 pub use sources::output_timeline::{
     OutputTimeline, OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl,
     OutputTimelineViewQuery, TimelineFieldView, TimelineMode, TimelinePoint,
+};
+pub use layout::{
+    build_nav_paths, is_container, is_filter_nav_path, nav_region, resolve_nav_activatable,
+    resolve_nav_selectable, ComponentInstance, NavMode, NavPathEntry, NavRegion, NavSnapshot,
+    WorkspaceNav,
 };
 pub use workspace::{
     ConfigSource, WorkspaceCapabilities, WorkspaceFsm, WorkspaceInputs, WorkspacePhase,

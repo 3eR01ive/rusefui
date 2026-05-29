@@ -33,6 +33,10 @@ export interface ComponentInstance {
   bind?: DataBinding;
   /** Вложенные инстансы (для контейнеров и composite-файлов). */
   children?: ComponentInstance[];
+  /** false — не участвует в навигации стрелками (YAML). */
+  navSelectable?: boolean;
+  /** false — только выбор, без Enter/active (YAML). */
+  navActivatable?: boolean;
 }
 
 /**
@@ -90,7 +94,7 @@ export interface ComponentMeta {
   type: string;
   label: string;
   mode: ComponentMode;
-  /** Может содержать дочерние инстансы из конфига. */
+  /** Может содержать дочерние инстансы (есть `children` в YAML). */
   isContainer: boolean;
   description?: string;
 }

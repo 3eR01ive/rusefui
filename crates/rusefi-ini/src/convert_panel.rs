@@ -50,6 +50,8 @@ pub struct YamlNode {
     pub bind: Option<YamlBind>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub children: Option<Vec<YamlNode>>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "navSelectable")]
+    pub nav_selectable: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -316,6 +318,7 @@ fn config_table_node(table: &IniTableDef) -> YamlNode {
             &table.z_bins,
         )),
         children: None,
+        nav_selectable: None,
     }
 }
 
@@ -337,6 +340,7 @@ fn config_curve_node(curve: &IniCurveDef) -> YamlNode {
         props: Some(props),
         bind: Some(config_curve_bind(&curve.x_bins, &curve.y_bins)),
         children: None,
+        nav_selectable: None,
     }
 }
 
@@ -393,6 +397,7 @@ fn enum_node(field: &str, label: &str, options: &[EnumOption]) -> YamlNode {
             params: None,
         }),
         children: None,
+        nav_selectable: None,
     }
 }
 
@@ -419,6 +424,7 @@ fn string_node(field: &str, label: &str, max_length: u32) -> YamlNode {
             params: None,
         }),
         children: None,
+        nav_selectable: None,
     }
 }
 
@@ -441,6 +447,7 @@ fn scalar_node(field: &str, label: &str) -> YamlNode {
             params: None,
         }),
         children: None,
+        nav_selectable: None,
     }
 }
 
@@ -456,6 +463,7 @@ fn hint_node(text: &str) -> YamlNode {
         }),
         bind: None,
         children: None,
+        nav_selectable: Some(false),
     }
 }
 
@@ -474,6 +482,7 @@ fn section_node(title: &str, children: Vec<YamlNode>) -> YamlNode {
         } else {
             Some(children)
         },
+        nav_selectable: None,
     }
 }
 

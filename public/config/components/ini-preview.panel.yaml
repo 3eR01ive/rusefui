@@ -10,5 +10,6 @@ children:
 
   - type: ini-panels-browser
     id: browser
+    navSelectable: false
     props:
       manifestPath: /config/components/generated/manifest.json

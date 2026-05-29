@@ -1,16 +1,11 @@
 import type { ComponentInstance } from "./types";
-import { childPath } from "./instance";
-import { getRegisteredComponent } from "./registry";
+import { collectNavPathsFromTree, type NavPathFlags } from "./navFlags";
 
-/** Обход дерева: только leaf-компоненты (не isContainer), порядок depth-first. */
+/** @deprecated Используйте collectNavPathsFromTree с flags. */
 export function collectNavPaths(instance: ComponentInstance, path: string): string[] {
-  if (!instance.type) return [];
-  const entry = getRegisteredComponent(instance.type);
-  if (!entry) return [];
-  if (entry.meta.isContainer && instance.children?.length) {
-    return instance.children.flatMap((child, index) =>
-      collectNavPaths(child, childPath(path, index, child)),
-    );
-  }
-  return [path];
+  const paths: string[] = [];
+  collectNavPathsFromTree(instance, path, paths, new Map());
+  return paths;
 }
+
+export type { NavPathFlags };

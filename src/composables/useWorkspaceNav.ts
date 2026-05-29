@@ -1,6 +1,9 @@
 import { ref } from "vue";
 import type { ComponentInstance } from "../core/types";
-import { collectNavPaths } from "../core/workspaceNavTree";
+import {
+  collectNavPathsFromTree,
+  type NavPathFlags,
+} from "../core/navFlags";
 
 export type NavMode = "select" | "active";
 
@@ -26,6 +29,42 @@ export const navSidebarAnchor = ref("");
 
 export type NavArrowKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight";
 export type NavRegion = "sidebar" | "main" | "default";
+
+/** Флаги nav по path (из YAML + menu/filter). */
+export const navPathFlags = ref<Map<string, NavPathFlags>>(new Map());
+
+export function isFilterNavPath(path: string): boolean {
+  return path.endsWith("/filter");
+}
+
+/** Путь меню INI/checklist — activatable задаётся в navPathFlags. */
+export function isMenuNavPath(path: string): boolean {
+  return path.includes("/menu/");
+}
+
+export function isNavActivatablePath(path: string): boolean {
+  const flags = navPathFlags.value.get(path);
+  return flags?.activatable ?? true;
+}
+
+export function navPresentation(path: string): {
+  class: Record<string, boolean>;
+  "data-nav-active"?: "true";
+} {
+  const selected = navMode.value === "select" && selectedPath.value === path;
+  const active =
+    navMode.value === "active" &&
+    activePath.value === path &&
+    isNavActivatablePath(path);
+  return {
+    class: {
+      "nav-node": true,
+      "nav-node--selected": selected,
+      "nav-node--active": active,
+    },
+    ...(active ? { "data-nav-active": "true" as const } : {}),
+  };
+}
 
 export function setNavPaths(paths: string[]): void {
   navPaths.value = paths;
@@ -54,23 +93,44 @@ export function collectAllNavPaths(
   extensions: readonly NavExtension[] = navExtensions.value,
   menuPaths: ReadonlyMap<string, string[]> = navMenuPaths.value,
 ): string[] {
-  const staticPaths = collectNavPaths(tabRoot, tabPath);
-  const result: string[] = [];
-  for (const p of staticPaths) {
+  const paths: string[] = [];
+  const flags = new Map<string, NavPathFlags>();
+  collectNavPathsFromTree(tabRoot, tabPath, paths, flags);
+
+  const menuHostsUsed = new Set<string>();
+  for (const p of [...paths]) {
     const menu = menuPaths.get(p);
     if (menu?.length) {
-      result.push(...menu);
-    } else {
-      result.push(p);
+      const idx = paths.indexOf(p);
+      paths.splice(idx, 1);
+      flags.delete(p);
+      for (const mp of menu) {
+        paths.push(mp);
+        flags.set(mp, { selectable: true, activatable: false });
+      }
+      menuHostsUsed.add(p);
     }
   }
+
+  for (const [hostPath, menu] of menuPaths) {
+    if (!hostPath.startsWith(`${tabPath}/`) || menuHostsUsed.has(hostPath) || !menu.length) {
+      continue;
+    }
+    for (const mp of menu) {
+      paths.push(mp);
+      flags.set(mp, { selectable: true, activatable: false });
+    }
+  }
+
   const sorted = extensions
     .filter((e) => e.basePath.startsWith(`${tabPath}/`))
     .sort((a, b) => a.basePath.localeCompare(b.basePath));
   for (const ext of sorted) {
-    result.push(...collectNavPaths(ext.instance, ext.basePath));
+    collectNavPathsFromTree(ext.instance, ext.basePath, paths, flags);
   }
-  return result;
+
+  navPathFlags.value = flags;
+  return paths;
 }
 
 export function isComponentActive(path: string): boolean {
@@ -78,9 +138,11 @@ export function isComponentActive(path: string): boolean {
 }
 
 export function activateComponent(path: string): void {
+  if (!isNavActivatablePath(path)) return;
   selectedPath.value = path;
   activePath.value = path;
   navMode.value = "active";
+  refreshNavDimming();
 }
 
 export function selectComponent(path: string): void {
@@ -96,6 +158,24 @@ export function selectComponent(path: string): void {
 export function deactivateComponent(): void {
   navMode.value = "select";
   activePath.value = "";
+  refreshNavDimming();
+}
+
+export function refreshNavDimming(): void {
+  if (typeof document === "undefined") return;
+  const active = navMode.value === "active" ? activePath.value : "";
+  const activeEl = active
+    ? document.querySelector<HTMLElement>(
+        `[data-nav-path="${typeof CSS !== "undefined" && "escape" in CSS ? CSS.escape(active) : active}"]`,
+      )
+    : null;
+
+  for (const node of document.querySelectorAll<HTMLElement>("[data-nav-node]")) {
+    const path = node.dataset.navPath ?? "";
+    const isActive = !!active && path === active;
+    const wrapsActive = !!(activeEl && node !== activeEl && node.contains(activeEl));
+    node.classList.toggle("nav-node--dimmed", !!active && !isActive && !wrapsActive);
+  }
 }
 
 export function resetWorkspaceNav(): void {
@@ -103,6 +183,8 @@ export function resetWorkspaceNav(): void {
   selectedPath.value = "";
   activePath.value = "";
   navSidebarAnchor.value = "";
+  navPathFlags.value = new Map();
+  refreshNavDimming();
 }
 
 export function navRegion(path: string): NavRegion {

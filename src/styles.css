@@ -46,6 +46,13 @@
   --radius-lg: 12px;
   --shadow-card: 0 1px 3px rgba(58, 53, 48, 0.06), 0 4px 12px rgba(58, 53, 48, 0.04);
 
+  /* Навигация по компонентам вкладки */
+  --nav-ring-selected: color-mix(in srgb, var(--color-accent) 50%, transparent);
+  --nav-ring-active: var(--color-accent);
+  --nav-bg-selected: color-mix(in srgb, var(--color-accent) 7%, var(--color-bg-elevated));
+  --nav-bg-active: var(--color-bg-elevated);
+  --nav-dim-opacity: 0.38;
+
   /* Горизонтальный layout: ноутбук / широкое окно */
   --app-padding-x: clamp(1rem, 2.5vw, 2rem);
   --app-padding-y: clamp(1rem, 2vh, 1.5rem);
@@ -155,4 +162,42 @@ button {
 
 .header-tab-slot.tab-alert .header-tab-btn.active {
   background: var(--color-bg-accent-soft);
+}
+
+/* ---- Nav nodes (выбор / активация компонентов на вкладке) ---- */
+.nav-node {
+  border-radius: var(--radius-sm);
+  transition:
+    box-shadow 0.16s ease,
+    background-color 0.16s ease,
+    opacity 0.22s ease,
+    filter 0.22s ease;
+}
+
+.nav-node--selected {
+  background: var(--nav-bg-selected);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 28%, var(--color-border)),
+    0 0 0 3px var(--nav-ring-selected);
+}
+
+.nav-node--active {
+  background: var(--nav-bg-active);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 45%, var(--color-border)),
+    0 0 0 3px color-mix(in srgb, var(--nav-ring-active) 35%, transparent),
+    var(--shadow-card);
+  position: relative;
+  z-index: 3;
+}
+
+.nav-node--dimmed {
+  opacity: var(--nav-dim-opacity);
+  pointer-events: none;
+  user-select: none;
+}
+
+.nav-node[data-nav-active="true"] {
+  opacity: 1;
+  pointer-events: auto;
 }

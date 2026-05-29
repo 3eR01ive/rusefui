@@ -3,7 +3,9 @@ import { activeTabId } from "./useTabState";
 import {
   activePath,
   deactivateComponent,
+  isFilterNavPath,
   navMode,
+  selectedPath,
 } from "./useWorkspaceNav";
 import {
   burnCallback,
@@ -141,6 +143,28 @@ function blockKey(e: KeyboardEvent): void {
   e.stopPropagation();
 }
 
+function isFilterTypingKey(e: KeyboardEvent): boolean {
+  if (e.ctrlKey || e.metaKey || e.altKey) return false;
+  if (e.key === "Backspace" || e.key === "Delete") return true;
+  return e.key.length === 1;
+}
+
+function tryFilterTyping(e: KeyboardEvent, path: string): boolean {
+  if (!isFilterNavPath(path) || !isFilterTypingKey(e)) return false;
+  return componentBindings.get(path)?.(e) ?? false;
+}
+
+function filterNavNode(path: string): HTMLElement | null {
+  return document.querySelector<HTMLElement>(`[data-nav-path="${escapeNavPath(path)}"]`);
+}
+
+function isFilterInputFocused(path: string): boolean {
+  if (!isFilterNavPath(path)) return false;
+  const node = filterNavNode(path);
+  const active = document.activeElement;
+  return !!active && !!node?.contains(active) && isEditableTarget(active);
+}
+
 function onKeydownCapture(e: KeyboardEvent): void {
   if (e.defaultPrevented) return;
 
@@ -214,6 +238,22 @@ function onKeydownCapture(e: KeyboardEvent): void {
     return;
   }
 
+  if (navMode.value === "select" && isFilterNavPath(selectedPath.value)) {
+    if (isFilterInputFocused(selectedPath.value)) {
+      if (
+        isFilterTypingKey(e) ||
+        (hasNoModifiers(e) && (e.key === "ArrowLeft" || e.key === "ArrowRight"))
+      ) {
+        return;
+      }
+    } else if (isFilterTypingKey(e)) {
+      if (tryFilterTyping(e, selectedPath.value)) {
+        blockKey(e);
+      }
+      return;
+    }
+  }
+
   if (e.key === "Enter" && !e.altKey && !e.shiftKey && !(e.ctrlKey || e.metaKey)) {
     const handler = tabEnterHandlers.get(activeTabId.value);
     if (handler && !isEditableTarget(e.target)) {
@@ -236,6 +276,17 @@ function onKeydownCapture(e: KeyboardEvent): void {
   }
 }
 
+function onDocumentMouseDown(e: MouseEvent): void {
+  if (navMode.value !== "active" || !activePath.value) return;
+  const target = e.target;
+  if (!(target instanceof Node)) return;
+  const node = document.querySelector<HTMLElement>(
+    `[data-nav-path="${escapeNavPath(activePath.value)}"]`,
+  );
+  if (node?.contains(target)) return;
+  deactivateComponent();
+}
+
 /** Подписка компонента на клавиатуру, пока он активен (зелёная рамка). */
 export function useComponentBinding(path: string, handler: (e: KeyboardEvent) => boolean): void {
   onMounted(() => registerComponentBinding(path, handler));
@@ -243,6 +294,12 @@ export function useComponentBinding(path: string, handler: (e: KeyboardEvent) =>
 }
 
 export function useKeyboardRouter(): void {
-  onMounted(() => window.addEventListener("keydown", onKeydownCapture, true));
-  onUnmounted(() => window.removeEventListener("keydown", onKeydownCapture, true));
+  onMounted(() => {
+    window.addEventListener("keydown", onKeydownCapture, true);
+    window.addEventListener("mousedown", onDocumentMouseDown, true);
+  });
+  onUnmounted(() => {
+    window.removeEventListener("keydown", onKeydownCapture, true);
+    window.removeEventListener("mousedown", onDocumentMouseDown, true);
+  });
 }

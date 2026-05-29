@@ -1,3 +1,4 @@
+import type { Component } from "vue";
 import { registerComponent } from "../core/registry";
 import StackLayout from "./builtins/StackLayout.vue";
 import RowLayout from "./builtins/RowLayout.vue";
@@ -21,219 +22,32 @@ import ConfigChecklist from "./builtins/ConfigChecklist.vue";
 
 let registered = false;
 
-/**
- * Регистрация всех типов компонентов, реализованных в коде.
- * Только зарегистрированные типы можно использовать в YAML (`type: …`).
- */
+/** type → Vue SFC. Nav/container — в YAML инстанса panel. */
+function reg(type: string, component: Component): void {
+  registerComponent({ type, label: type, mode: "display", isContainer: false }, component);
+}
+
 export function registerBuiltinComponents(): void {
   if (registered) return;
   registered = true;
 
-  registerComponent(
-    {
-      type: "stack",
-      label: "Stack",
-      mode: "display",
-      isContainer: true,
-      description: "Вертикальная группа",
-    },
-    StackLayout,
-  );
-
-  registerComponent(
-    {
-      type: "row",
-      label: "Row",
-      mode: "display",
-      isContainer: true,
-      description: "Горизонтальная группа",
-    },
-    RowLayout,
-  );
-
-  registerComponent(
-    {
-      type: "section",
-      label: "Section",
-      mode: "display",
-      isContainer: true,
-      description: "Секция с заголовком",
-    },
-    SectionLayout,
-  );
-
-  registerComponent(
-    {
-      type: "composite",
-      label: "Composite",
-      mode: "display",
-      isContainer: true,
-      description: "Корень составного компонента из YAML-файла",
-    },
-    CompositeLayout,
-  );
-
-  registerComponent(
-    {
-      type: "text",
-      label: "Text",
-      mode: "display",
-      isContainer: false,
-    },
-    TextBlock,
-  );
-
-  registerComponent(
-    {
-      type: "connection",
-      label: "Connection",
-      mode: "display",
-      isContainer: false,
-      description: "Подключение к ECU по serial",
-    },
-    ConnectionPanel,
-  );
-
-  registerComponent(
-    {
-      type: "simulation",
-      label: "Simulation",
-      mode: "display",
-      isContainer: false,
-      description: "ECU trigger stimulator (RPM + cmd Z)",
-    },
-    SimulationPanel,
-  );
-
-  registerComponent(
-    {
-      type: "scalar-field",
-      label: "Scalar field",
-      mode: "edit",
-      isContainer: false,
-      description: "Поле калибровки (config page)",
-    },
-    ScalarField,
-  );
-
-  registerComponent(
-    {
-      type: "string-field",
-      label: "String field",
-      mode: "edit",
-      isContainer: false,
-      description: "Строковое поле калибровки (INI string, ASCII)",
-    },
-    StringField,
-  );
-
-  registerComponent(
-    {
-      type: "enum-field",
-      label: "Enum field",
-      mode: "edit",
-      isContainer: false,
-      description: "Перечисление config (bits/enum из INI)",
-    },
-    EnumField,
-  );
-
-  registerComponent(
-    {
-      type: "config-table",
-      label: "Config table",
-      mode: "edit",
-      isContainer: false,
-      description: "2D-таблица калибровки из INI",
-    },
-    ConfigTable,
-  );
-
-  registerComponent(
-    {
-      type: "curve",
-      label: "Config curve",
-      mode: "edit",
-      isContainer: false,
-      description: "1D-кривая калибровки из INI (xBins + yBins)",
-    },
-    ConfigCurve,
-  );
-
-  registerComponent(
-    {
-      type: "ini-panels-browser",
-      label: "INI panels browser",
-      mode: "display",
-      isContainer: false,
-      description: "Просмотр сконвертированных INI-панелей",
-    },
-    IniPanelsBrowser,
-  );
-
-  registerComponent(
-    {
-      type: "output-chart",
-      label: "Output chart",
-      mode: "display",
-      isContainer: false,
-      description: "Кривые output channels с автопромоткой",
-    },
-    OutputChart,
-  );
-
-  registerComponent(
-    {
-      type: "composite-chart",
-      label: "Trigger logger",
-      mode: "display",
-      isContainer: false,
-      description: "High-speed composite logger (триггер, sync, coil, inj)",
-    },
-    CompositeChart,
-  );
-
-  registerComponent(
-    {
-      type: "output-value",
-      label: "Output value",
-      mode: "display",
-      isContainer: false,
-      description: "Значение из outputChannels",
-    },
-    OutputValue,
-  );
-
-  registerComponent(
-    {
-      type: "dyno",
-      label: "Virtual Dyno",
-      mode: "display",
-      isContainer: false,
-      description: "Virtual dyno: HP/Torque vs RPM (расчёт в Rust, отрисовка canvas)",
-    },
-    Dyno,
-  );
-
-  registerComponent(
-    {
-      type: "spectrogram",
-      label: "Knock spectrogram",
-      mode: "display",
-      isContainer: false,
-      description: "Сырой knock scope с ECU (отдельный источник l+8/10, как composite)",
-    },
-    Spectrogram,
-  );
-
-  registerComponent(
-    {
-      type: "config-checklist",
-      label: "Config checklist",
-      mode: "display",
-      isContainer: false,
-      description: "Checklist готовности конфигурации ECU",
-    },
-    ConfigChecklist,
-  );
+  reg("stack", StackLayout);
+  reg("row", RowLayout);
+  reg("section", SectionLayout);
+  reg("composite", CompositeLayout);
+  reg("text", TextBlock);
+  reg("connection", ConnectionPanel);
+  reg("simulation", SimulationPanel);
+  reg("scalar-field", ScalarField);
+  reg("string-field", StringField);
+  reg("enum-field", EnumField);
+  reg("config-table", ConfigTable);
+  reg("curve", ConfigCurve);
+  reg("ini-panels-browser", IniPanelsBrowser);
+  reg("output-chart", OutputChart);
+  reg("composite-chart", CompositeChart);
+  reg("output-value", OutputValue);
+  reg("dyno", Dyno);
+  reg("spectrogram", Spectrogram);
+  reg("config-checklist", ConfigChecklist);
 }
