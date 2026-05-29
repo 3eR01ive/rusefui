@@ -52,7 +52,9 @@ export function useChecklistFooter(): void {
     if (!showMainUi.value || !configCanView(snap) || !c?.evaluated || c.ok) {
       return undefined;
     }
-    const hasError = c.issues.some((i) => i.severity === "error");
+    const hasError = c.issues.some(
+      (i) => i.severity === "error" || i.severity === "critical",
+    );
     return {
       warn: !hasError,
       error: hasError,
@@ -75,7 +77,8 @@ export function useChecklistTabAlert(): void {
       return null;
     }
     const hasErrorLevelFail = c.levels.some(
-      (level) => level.severity === "error" && !level.ok,
+      (level) =>
+        (level.severity === "error" || level.severity === "critical") && !level.ok,
     );
     if (!hasErrorLevelFail) return null;
     return { variant: "spin-border", severity: "error" };

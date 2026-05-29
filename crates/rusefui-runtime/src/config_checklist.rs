@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use serde::Deserialize;
 use serde::Serialize;
 
+use crate::config_conflicts::collect_conflict_items;
 use crate::sources::config::{ConfigFieldInfo, ConfigSnapshot, ConfigSource};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -122,6 +123,8 @@ pub struct ChecklistItem {
     pub fields: Vec<String>,
     pub field_labels: Vec<String>,
     pub editor: ChecklistEditor,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub editors: Vec<ChecklistEditor>,
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -217,6 +220,7 @@ pub fn evaluate_checklist(
             fields: fields.clone(),
             field_labels: field_labels.clone(),
             editor,
+            editors: Vec::new(),
         });
 
         if !ok {
@@ -241,6 +245,10 @@ pub fn evaluate_checklist(
         }
     }
 
+    let (conflict_items, conflict_issues) = collect_conflict_items(snapshot, rules, &field_info);
+    items.extend(conflict_items);
+    issues.extend(conflict_issues);
+
     ChecklistSnapshot {
         rules_loaded: true,
         evaluated: true,
@@ -251,7 +259,7 @@ pub fn evaluate_checklist(
     }
 }
 
-fn resolve_group(rules: &ChecklistRules, group: Option<&str>) -> (String, String, u32) {
+pub(crate) fn resolve_group(rules: &ChecklistRules, group: Option<&str>) -> (String, String, u32) {
     let id = group.unwrap_or("other").to_string();
     if let Some(def) = rules.groups.get(&id) {
         return (id, def.title.clone(), def.order);
@@ -262,13 +270,56 @@ fn resolve_group(rules: &ChecklistRules, group: Option<&str>) -> (String, String
     (id.clone(), id, 100)
 }
 
-fn resolve_editor(rules: &ChecklistRules, field: &str) -> ChecklistEditor {
-    let mapping = rules.fields.get(field);
+pub(crate) fn resolve_editor(rules: &ChecklistRules, field: &str) -> ChecklistEditor {
+    if let Some(mapping) = rules.fields.get(field) {
+        return ChecklistEditor {
+            panel: mapping.panel.clone().unwrap_or_default(),
+            component: mapping.component.clone(),
+            field: field.to_string(),
+        };
+    }
+    if let Some((panel, component)) = default_field_editor(field) {
+        return ChecklistEditor {
+            panel,
+            component: Some(component),
+            field: field.to_string(),
+        };
+    }
     ChecklistEditor {
-        panel: mapping.and_then(|m| m.panel.clone()).unwrap_or_default(),
-        component: mapping.and_then(|m| m.component.clone()),
+        panel: String::new(),
+        component: None,
         field: field.to_string(),
     }
+}
+
+pub(crate) fn resolve_editors(rules: &ChecklistRules, fields: &[String]) -> Vec<ChecklistEditor> {
+    fields.iter().map(|f| resolve_editor(rules, f)).collect()
+}
+
+fn default_field_editor(field: &str) -> Option<(String, String)> {
+    if field == "triggerInputPins2" {
+        return Some((
+            "triggerConfiguration".to_string(),
+            "triggerinputpins2".to_string(),
+        ));
+    }
+    if let Some(stem) = field.strip_prefix("ignitionPins") {
+        if !stem.is_empty() && stem.chars().all(|c| c.is_ascii_digit()) {
+            return Some((
+                "ignitionSettings".to_string(),
+                field.to_ascii_lowercase(),
+            ));
+        }
+    }
+    if let Some(stem) = field.strip_prefix("injectionPins") {
+        if !stem.is_empty() && stem.chars().all(|c| c.is_ascii_digit()) {
+            return Some((
+                "injectionSettings".to_string(),
+                field.to_ascii_lowercase(),
+            ));
+        }
+    }
+    None
 }
 
 fn level_statuses_from_issues(
@@ -299,7 +350,7 @@ fn level_statuses_from_issues(
     levels
 }
 
-fn field_labels_for(rules: &ChecklistRules, fields: &[String]) -> Vec<String> {
+pub(crate) fn field_labels_for(rules: &ChecklistRules, fields: &[String]) -> Vec<String> {
     fields
         .iter()
         .map(|name| {
@@ -509,6 +560,27 @@ fn approx_eq(a: f64, b: f64) -> bool {
     (a - b).abs() < 1e-9
 }
 
+pub(crate) fn pin_label_for_value(
+    field_info: &HashMap<String, ConfigFieldInfo>,
+    fields: &[String],
+    value: u32,
+) -> String {
+    for field in fields {
+        let Some(info) = field_info.get(field) else {
+            continue;
+        };
+        let Some(options) = &info.options else {
+            continue;
+        };
+        for opt in options {
+            if opt.value == value {
+                return opt.label.clone();
+            }
+        }
+    }
+    format!("pin {value}")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -586,5 +658,85 @@ mod tests {
         assert!(!result.items[0].ok);
         assert_eq!(result.items[0].group, "engine");
         assert_eq!(result.items[0].editor.panel, "engineChars");
+    }
+
+    #[test]
+    fn reports_duplicate_pin_assignments() {
+        let mut rules = sample_rules();
+        rules.levels.insert(
+            "conflicts".to_string(),
+            LevelDefinition {
+                title: "Конфликты".to_string(),
+                description: None,
+                severity: "error".to_string(),
+            },
+        );
+        rules.groups.insert(
+            "pins".to_string(),
+            GroupDefinition {
+                title: "Пины".to_string(),
+                order: 5,
+            },
+        );
+        rules.fields.insert(
+            "fanPin".to_string(),
+            FieldMapping {
+                label: "Вентилятор".to_string(),
+                hint: None,
+                panel: Some("fan".to_string()),
+                component: Some("fanpin".to_string()),
+            },
+        );
+        rules.fields.insert(
+            "vvtPins1".to_string(),
+            FieldMapping {
+                label: "VVT 1".to_string(),
+                hint: None,
+                panel: Some("vvt".to_string()),
+                component: Some("vvtpins1".to_string()),
+            },
+        );
+
+        let mut pin_usage = HashMap::new();
+        pin_usage.insert(
+            "output_pin_e_list".to_string(),
+            HashMap::from([(41, vec!["fanPin".to_string(), "vvtPins1".to_string()])]),
+        );
+
+        let snap = ConfigSnapshot {
+            connected: true,
+            loaded: true,
+            read_only: false,
+            loading: false,
+            progress: 1.0,
+            bytes_loaded: 100,
+            bytes_total: 100,
+            raw_len: 100,
+            values: HashMap::from([
+                ("cylindersCount".to_string(), 4.0),
+                ("fanPin".to_string(), 41.0),
+                ("vvtPins1".to_string(), 41.0),
+            ]),
+            string_values: HashMap::new(),
+            field_count: 3,
+            last_error: None,
+            pin_usage,
+            checklist: ChecklistSnapshot::default(),
+        };
+
+        let config = ConfigSource::new(IniContext::disconnected());
+        let result = evaluate_checklist(&snap, &rules, &config);
+        assert!(!result.ok);
+        let conflict = result
+            .items
+            .iter()
+            .find(|i| i.id == "pin_conflict_output_pin_e_list_41")
+            .expect("pin conflict item");
+        assert!(!conflict.ok);
+        assert_eq!(conflict.level, "conflicts");
+        assert_eq!(conflict.group, "pins");
+        assert_eq!(conflict.fields, vec!["fanPin", "vvtPins1"]);
+        assert_eq!(conflict.value_display, "Вентилятор, VVT 1");
+        assert_eq!(conflict.editors.len(), 2);
     }
 }

@@ -27,6 +27,8 @@ export interface ChecklistItem {
   fields: string[];
   fieldLabels: string[];
   editor: ChecklistEditor;
+  /** Редакторы всех связанных полей (конфликты — по одному на сторону). */
+  editors?: ChecklistEditor[];
 }
 
 export interface ChecklistIssue {

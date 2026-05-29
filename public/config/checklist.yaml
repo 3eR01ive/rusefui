@@ -2,6 +2,9 @@
 # panel / component — id из manifest.json / panel yaml (редактор справа).
 
 groups:
+  pins:
+    title: "Пины"
+    order: 5
   engine:
     title: "Двигатель"
     order: 10
@@ -43,6 +46,10 @@ fields:
     label: "Вход триггера (crank)"
     panel: triggerConfiguration
     component: triggerinputpins1
+  triggerInputPins2:
+    label: "Вторичный вход триггера"
+    panel: triggerConfiguration
+    component: triggerinputpins2
   isIgnitionEnabled:
     label: "Зажигание включено"
     panel: ignitionSettings
@@ -125,6 +132,12 @@ fields:
     component: iat-resistance-1
 
 levels:
+  conflicts:
+    title: "Конфликты настроек"
+    description: >
+      Взаимоисключающие назначения: дубли пинов, несогласованность цилиндров,
+      режимов зажигания/впрыска и входов триггера.
+    severity: critical
   startup_minimum:
     title: "Минимум для запуска ДВС"
     description: >

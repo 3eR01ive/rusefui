@@ -19,7 +19,8 @@ import {
   type ChecklistSnapshot,
 } from "../../composables/useConfig";
 import { initChecklist } from "../../composables/useChecklist";
-import { resolveChecklistEditor } from "../../composables/useChecklistEditor";
+import { resolveChecklistEditors } from "../../composables/useChecklistEditor";
+import type { ChecklistEditor } from "../../composables/useConfig";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -39,9 +40,21 @@ const canShow = computed(() => configCanView(snapshot.value));
 
 const selectedId = ref<string>("");
 const showOnlyIncomplete = ref(false);
-const editorInstance = shallowRef<ComponentInstance | null>(null);
+const editorInstances = shallowRef<ComponentInstance[]>([]);
 const editorLoading = ref(false);
 const editorError = ref<string | null>(null);
+
+/** Корень редактора справа: один leaf или composite — пути nav как у IniPanelsBrowser. */
+const editorRoot = computed((): ComponentInstance | null => {
+  const insts = editorInstances.value;
+  if (insts.length === 0) return null;
+  if (insts.length === 1) return insts[0]!;
+  return {
+    id: "checklist-conflict-editors",
+    type: "composite",
+    children: insts,
+  };
+});
 
 type ChecklistItemView = Readonly<ChecklistSnapshot["items"][number]>;
 
@@ -96,6 +109,13 @@ function menuItemPath(id: string): string {
   return `${props.path}/menu/${id}`;
 }
 
+/** Редакторы справа — только из текущего пункта checklist. */
+function editorTargets(item: ChecklistItemView): ChecklistEditor[] {
+  if (item.editors?.length) return [...item.editors];
+  if (item.editor) return [item.editor];
+  return [];
+}
+
 const menuNavPaths = computed(() =>
   visibleMenuItems.value.map((item) => menuItemPath(item.id)),
 );
@@ -108,7 +128,8 @@ watch(
       return;
     }
     if (!items.some((i) => i.id === selectedId.value)) {
-      const firstFail = items.find((i) => !i.ok);
+      const firstConflictFail = items.find((i) => i.level === "conflicts" && !i.ok);
+      const firstFail = firstConflictFail ?? items.find((i) => !i.ok);
       selectedId.value = (firstFail ?? items[0])!.id;
     }
   },
@@ -129,17 +150,18 @@ watch(
   (id) => {
     const item = flatItems.value.find((i) => i.id === id);
     if (!item) {
-      editorInstance.value = null;
+      editorInstances.value = [];
       return;
     }
+    const targets = editorTargets(item);
     editorLoading.value = true;
     editorError.value = null;
-    void resolveChecklistEditor({ ...item.editor })
-      .then((inst) => {
-        editorInstance.value = inst;
+    void resolveChecklistEditors(targets)
+      .then((insts) => {
+        editorInstances.value = insts;
       })
       .catch((e) => {
-        editorInstance.value = null;
+        editorInstances.value = [];
         editorError.value = e instanceof Error ? e.message : String(e);
       })
       .finally(() => {
@@ -159,9 +181,9 @@ watch(
 );
 
 watch(
-  editorInstance,
-  (inst) => {
-    setNavExtension(`${props.path}/editor`, inst);
+  editorRoot,
+  (root) => {
+    setNavExtension(`${props.path}/editor`, root);
   },
   { immediate: true },
 );
@@ -203,7 +225,8 @@ function levelSummary(levelId: string) {
         </label>
       </div>
       <p class="checklist-sub">
-        Минимальная готовность к запуску. Правила — <code>config/checklist.yaml</code>.
+        Готовность к запуску и конфликты настроек. Правила —
+        <code>config/checklist.yaml</code>.
       </p>
     </header>
 
@@ -255,10 +278,10 @@ function levelSummary(levelId: string) {
       <main class="checklist-editor">
         <p v-if="editorLoading" class="editor-state">Загрузка редактора…</p>
         <p v-else-if="editorError" class="editor-err">{{ editorError }}</p>
-        <p v-else-if="!editorInstance" class="editor-state">Выберите пункт checklist</p>
+        <p v-else-if="!editorRoot" class="editor-state">Выберите пункт checklist</p>
         <ComponentHost
           v-else
-          :instance="editorInstance"
+          :instance="editorRoot"
           :path="`${path}/editor`"
           @select-path="selectComponent"
           @activate-path="(p) => { if (isNavActivatablePath(p)) { activateComponent(p); focusComponent(p); } }"

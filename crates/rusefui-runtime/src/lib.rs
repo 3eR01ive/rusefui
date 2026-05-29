@@ -6,6 +6,7 @@ mod autoconnect;
 mod component;
 pub mod config_table_grid;
 mod config_checklist;
+mod config_conflicts;
 mod config_diff;
 mod dyno;
 mod layout;
