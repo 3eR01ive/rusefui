@@ -9,6 +9,12 @@ import ComponentHost from "./ComponentHost.vue";
 const props = defineProps<{
   instance: ComponentInstance;
   path: string;
+  selectedPath?: string;
+  activePath?: string;
+  navMode?: "select" | "active";
+}>();
+const emit = defineEmits<{
+  (e: "select-path", path: string): void;
 }>();
 
 const entry = computed(() => {
@@ -26,6 +32,13 @@ const entry = computed(() => {
 const binding = computed(() => resolveBinding(props.instance.bind));
 
 const childInstances = computed(() => props.instance.children ?? []);
+const isLeaf = computed(() => !!entry.value && !("error" in entry.value) && !entry.value.meta.isContainer);
+const navSelected = computed(
+  () => props.navMode === "select" && props.selectedPath === props.path,
+);
+const navActive = computed(
+  () => props.navMode === "active" && props.activePath === props.path,
+);
 </script>
 
 <template>
@@ -33,6 +46,24 @@ const childInstances = computed(() => props.instance.children ?? []);
   <p v-else-if="!instance.type" class="host-error">
     Компонент без type (проверьте $component в YAML — config-loader должен разрешить ссылку).
   </p>
+  <div
+    v-else-if="entry && isLeaf"
+    class="host-node"
+    :class="{ 'host-node--selected': navSelected, 'host-node--active': navActive }"
+    data-nav-node="1"
+    :data-nav-path="path"
+    tabindex="-1"
+    @mousedown.stop="emit('select-path', path)"
+  >
+    <component
+      :is="entry.component"
+      :instance="instance"
+      :path="path"
+      :props="instance.props ?? {}"
+      :binding="binding"
+      :meta="entry.meta"
+    />
+  </div>
   <component
     v-else-if="entry"
     :is="entry.component"
@@ -48,6 +79,10 @@ const childInstances = computed(() => props.instance.children ?? []);
         :key="child.id ?? `${path}-${index}`"
         :instance="child"
         :path="childPath(path, index, child)"
+        :selected-path="selectedPath"
+        :active-path="activePath"
+        :nav-mode="navMode"
+        @select-path="emit('select-path', $event)"
       />
     </template>
   </component>
@@ -62,5 +97,19 @@ const childInstances = computed(() => props.instance.children ?? []);
   background: var(--color-error-bg);
   border-radius: var(--radius-sm);
   border-left: 3px solid var(--color-accent);
+}
+
+.host-node {
+  border-radius: var(--radius-sm);
+}
+
+.host-node--selected {
+  outline: 2px solid rgba(59, 130, 246, 0.95);
+  outline-offset: 2px;
+}
+
+.host-node--active {
+  outline: 2px solid rgba(22, 163, 74, 0.95);
+  outline-offset: 2px;
 }
 </style>

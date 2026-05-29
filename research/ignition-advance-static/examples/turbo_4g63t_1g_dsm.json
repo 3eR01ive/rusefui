@@ -1,0 +1,22 @@
+{
+  "engine": {
+    "bore_mm": 85.0,
+    "stroke_mm": 88.0,
+    "rod_length_mm": 150.0,
+    "cylinder_count": 4,
+    "displacement_cc": 1997,
+    "compression_ratio": 8.5,
+    "valves_per_cylinder": 4,
+    "spark_location": "center",
+    "chamber_type": "pentroof",
+    "intake_duration_deg": 252,
+    "exhaust_duration_deg": 252,
+    "overlap_deg": 52,
+    "fuel": "gasoline_92",
+    "aspiration": "turbocharged"
+  },
+  "axes": {
+    "rpm": [600, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000],
+    "map_kpa": [15, 30, 45, 60, 70, 80, 90, 100, 110, 130, 160, 190, 210, 240, 270, 300, 320]
+  }
+}
