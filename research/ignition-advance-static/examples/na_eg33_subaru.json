@@ -1,0 +1,56 @@
+{
+  "engine": {
+    "bore_mm": 96.9,
+    "stroke_mm": 75.0,
+    "rod_length_mm": 130.5,
+    "cylinder_count": 6,
+    "displacement_cc": 3318,
+    "compression_ratio": 10.0,
+    "valves_per_cylinder": 4,
+    "spark_location": "center",
+    "chamber_type": "pentroof",
+    "intake_duration_deg": 248,
+    "exhaust_duration_deg": 240,
+    "overlap_deg": 22,
+    "fuel": "gasoline_98",
+    "aspiration": "naturally_aspirated"
+  },
+  "axes": {
+    "rpm": [
+      600,
+      800,
+      1200,
+      1600,
+      2000,
+      2400,
+      2800,
+      3200,
+      3600,
+      4000,
+      4400,
+      4800,
+      5200,
+      5600,
+      6000,
+      6400
+    ],
+    "map_kpa": [
+      12.5,
+      18.8,
+      23.4,
+      26.6,
+      31.2,
+      37.5,
+      43.8,
+      50.0,
+      53.1,
+      57.8,
+      64.1,
+      68.8,
+      75.0,
+      84.4,
+      90.6,
+      100.0
+    ]
+  }
+}

@@ -41,6 +41,13 @@
       "msq_path": "/home/guerrero/TunerStudioProjects/3000gt-backup/3000gt-release_2024-10-23_15.43.14.msq",
       "status": "production",
       "engine_note": "Эталон осей (6G72TT 3000GT)"
+    },
+    "na_eg33_subaru.csv": {
+      "example": "examples/na_eg33_subaru.json",
+      "source": "SVX EG33 reference ignition map (user CSV); load bins hex→dec, ×100/64 → kPa",
+      "raw": "reference/raw/na_eg33_subaru.csv",
+      "status": "compare_only",
+      "engine_note": "Subaru EG33 3.3L NA flat-6; 96.9×75 mm, CR 10:1; не участвует в fit_coefficients"
     }
   }
 }

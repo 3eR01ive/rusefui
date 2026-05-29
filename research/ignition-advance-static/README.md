@@ -40,6 +40,7 @@ python generate_map.py examples/turbo_6g72tt_3000gt.json -c config/coefficients.
 | `examples/turbo_4g63_evo8_stock.json` | `reference/turbo_4g63_evo8_stock.csv` | Evo VIII stock ROM |
 | `examples/turbo_6g72tt_3000gt.json` | `reference/turbo_6g72tt_3000gt.csv` | 3000GT TunerStudio |
 | `examples/turbo_4g63t_1g_dsm.json` | `reference/turbo_4g63t_1g_dsm.csv` | 1G DSM TunerStudio |
+| `examples/na_eg33_subaru.json` | `reference/na_eg33_subaru.csv` | SVX EG33 (compare only, своя сетка осей) |
 
 ## Вход (JSON)
 
