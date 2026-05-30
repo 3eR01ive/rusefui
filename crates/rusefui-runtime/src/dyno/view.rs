@@ -1,10 +1,13 @@
 use std::collections::HashMap;
 
-const DYNO_VIEW_WINDOW_SIZE: usize = 7;
-const DYNO_VIEW_WINDOW_SIZE_RPM: usize = 10;
+const DYNO_VIEW_WINDOW_SIZE: usize = 15;
+const DYNO_VIEW_WINDOW_SIZE_RPM: usize = 15;
+/// Минимум расчётов в tail перед первой точкой на графике (прогрев).
+const DYNO_EMIT_MIN_SAMPLES: usize = 8;
 const DYNO_VIEW_TPS_MIN_FOR_RUN: f64 = 30.0;
 const DYNO_VIEW_RPM_DIFF_SMOOTH: i32 = 30;
-const DYNO_VIEW_LOG_TIME_SMOOTH_SEC: f64 = 0.05;
+/// Output poll ~100 Hz + стимулятор: 50 ms даёт завышенное ускорение на первом интервале.
+const DYNO_VIEW_LOG_TIME_SMOOTH_SEC: f64 = 0.10;
 const DYNO_VIEW_TPS_DIFF_TO_RESET_RUN: f64 = 10.0;
 const DYNO_VIEW_RPM_FALL_TO_RESET_RUN: i32 = 60;
 
@@ -107,6 +110,21 @@ fn accumulate_window(size: usize, data: &[f64]) -> f64 {
         sum += data[size - i - 1];
     }
     sum / size as f64
+}
+
+/// Медиана по последним `size` значениям tail (tail[0] — новое); устойчивее к выбросам.
+fn smooth_window(size: usize, data: &[f64]) -> f64 {
+    if size <= 2 {
+        return accumulate_window(size, data);
+    }
+    let mut vals: Vec<f64> = (0..size).map(|i| data[size - i - 1]).collect();
+    vals.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let mid = size / 2;
+    if size % 2 == 0 {
+        (vals[mid - 1] + vals[mid]) / 2.0
+    } else {
+        vals[mid]
+    }
 }
 
 pub fn dyno_config_from_values(values: &HashMap<String, f64>) -> DynoConfig {
@@ -377,10 +395,15 @@ impl DynoView {
             }
 
             let accumulate_size = self.count.min(DYNO_VIEW_WINDOW_SIZE);
-            self.current_torque = accumulate_window(accumulate_size, &self.tail_torque);
-            self.current_hp = accumulate_window(accumulate_size, &self.tail_hp);
+            self.current_torque = smooth_window(accumulate_size, &self.tail_torque);
+            self.current_hp = smooth_window(accumulate_size, &self.tail_hp);
 
             self.point_prev = self.point;
+
+            if self.count < DYNO_EMIT_MIN_SAMPLES {
+                return None;
+            }
+
             return Some(DynoRunPoint {
                 rpm: self.point.rpm,
                 torque_nm: self.current_torque,
@@ -406,7 +429,20 @@ mod tests {
         });
 
         let mut last = None;
-        for (t, rpm) in [(0.0, 800), (0.2, 1500), (0.4, 2500), (0.6, 3500), (0.8, 4500)] {
+        for (t, rpm) in [
+            (0.0, 800),
+            (0.15, 950),
+            (0.30, 1100),
+            (0.45, 1250),
+            (0.60, 1400),
+            (0.75, 1550),
+            (0.90, 1700),
+            (1.05, 1850),
+            (1.20, 2000),
+            (1.35, 2200),
+            (1.50, 2500),
+            (1.65, 2800),
+        ] {
             if let Some(p) = view.on_rpm(rpm, t, 50.0) {
                 last = Some(p);
             }
@@ -416,5 +452,37 @@ mod tests {
         assert!(p.rpm > 0);
         assert!(p.torque_nm > 0.0);
         assert!(p.hp > 0.0);
+    }
+
+    /// Стимулятор: линейный ramp с шагом 50 RPM / 100 ms — первые точки не должны быть выбросом.
+    #[test]
+    fn on_rpm_stim_ramp_first_points_not_spikes() {
+        let mut view = DynoView::new(DEFAULT_DYNO_CONFIG);
+        view.set_run_options(DynoRunOptions {
+            ignore_tps_min: true,
+            min_rpm: 1000,
+        });
+
+        let mut emitted: Vec<DynoRunPoint> = Vec::new();
+        let mut t = 0.0;
+        let mut rpm = 1000;
+        while rpm <= 4500 {
+            if let Some(p) = view.on_rpm(rpm, t, 50.0) {
+                emitted.push(p);
+            }
+            t += 0.10;
+            rpm += 50;
+        }
+
+        assert!(emitted.len() >= 4, "expected several points, got {}", emitted.len());
+        let first = emitted.first().unwrap().torque_nm;
+        let peak = emitted
+            .iter()
+            .map(|p| p.torque_nm)
+            .fold(0.0_f64, f64::max);
+        assert!(
+            first <= peak * 1.35,
+            "first torque {first} too high vs peak {peak}"
+        );
     }
 }
