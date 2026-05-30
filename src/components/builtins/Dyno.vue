@@ -99,6 +99,9 @@ const recording = computed(() => Boolean(state.value.recording));
 const runPoints = computed(
   () => (state.value.runPoints as DynoRunPoint[] | undefined) ?? [],
 );
+const previousRunPoints = computed(
+  () => (state.value.previousRunPoints as DynoRunPoint[] | undefined) ?? [],
+);
 const currentTorque = computed(() => Number(state.value.currentTorque ?? 0));
 const currentHp = computed(() => Number(state.value.currentHp ?? 0));
 const message = computed(() => (state.value.message as string) ?? null);
@@ -110,6 +113,9 @@ const settingsOpen = ref(false);
 
 const chartPoints = computed(() =>
   smoothDynoPoints(runPoints.value, smoothStrength.value),
+);
+const chartPreviousPoints = computed(() =>
+  smoothDynoPoints(previousRunPoints.value, smoothStrength.value),
 );
 
 const connected = computed(
@@ -124,16 +130,29 @@ const peakTorque = computed(() =>
 );
 const peakHp = computed(() => chartPoints.value.reduce((m, p) => Math.max(m, p.hp), 0));
 
-const canStart = computed(
-  () =>
+const showRunPeaks = computed(
+  () => !recording.value && runPoints.value.length > 0,
+);
+
+const displayTorque = computed(() =>
+  showRunPeaks.value ? peakTorque.value : currentTorque.value,
+);
+const displayHp = computed(() => (showRunPeaks.value ? peakHp.value : currentHp.value));
+
+const canToggleRecord = computed(() => {
+  if (recording.value) return true;
+  return (
     ready.value &&
     connected.value &&
-    !recording.value &&
     configLoaded.value &&
-    hasLogic.value,
+    hasLogic.value
+  );
+});
+const canClear = computed(
+  () =>
+    !recording.value &&
+    (runPoints.value.length > 0 || previousRunPoints.value.length > 0),
 );
-const canStop = computed(() => recording.value);
-const canClear = computed(() => runPoints.value.length > 0 && !recording.value);
 
 const statusMode = computed(() => {
   if (recording.value) return "recording";
@@ -200,12 +219,12 @@ function onSmoothTrackKeydown(event: KeyboardEvent): void {
   scheduleSaveDynoUiToProject();
 }
 
-function startRun() {
-  return dispatch("start_run");
-}
-
-function stopRun() {
-  return dispatch("stop_run");
+function toggleRecording(): void {
+  if (recording.value) {
+    void dispatch("stop_run");
+  } else {
+    void dispatch("start_run");
+  }
 }
 
 function clearRun() {
@@ -315,7 +334,7 @@ function redraw(): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  drawDynoChart(ctx, w, h, chartPoints.value);
+  drawDynoChart(ctx, w, h, chartPoints.value, undefined, chartPreviousPoints.value);
 }
 
 let redrawRaf = 0;
@@ -365,7 +384,7 @@ watch(chartHeight, () => {
   scheduleRedraw();
 });
 
-watch([runPoints, chartPoints, canvasWidth], () => scheduleRedraw(), { deep: true });
+watch([runPoints, previousRunPoints, chartPoints, canvasWidth], () => scheduleRedraw(), { deep: true });
 
 watch(tabActive, (active, wasActive) => {
   if (active && !wasActive) scheduleRedraw();
@@ -433,39 +452,32 @@ onUnmounted(() => {
             {{ liveTps != null ? `${liveTps.toFixed(1)}%` : "—" }}
           </span>
         </div>
-        <div class="dyno-metric" :class="{ 'dyno-metric--live': recording || runPoints.length > 0 }">
+        <div class="dyno-metric" :class="{ 'dyno-metric--live': recording || showRunPeaks }">
           <span class="dyno-metric-label">Nm</span>
-          <span class="dyno-metric-value">{{ currentTorque.toFixed(1) }}</span>
+          <span class="dyno-metric-value">{{ displayTorque.toFixed(1) }}</span>
         </div>
-        <div class="dyno-metric" :class="{ 'dyno-metric--live': recording || runPoints.length > 0 }">
+        <div class="dyno-metric" :class="{ 'dyno-metric--live': recording || showRunPeaks }">
           <span class="dyno-metric-label">HP</span>
-          <span class="dyno-metric-value">{{ currentHp.toFixed(1) }}</span>
+          <span class="dyno-metric-value">{{ displayHp.toFixed(1) }}</span>
         </div>
       </div>
 
       <div ref="containerRef" class="dyno-chart-wrap">
         <canvas ref="canvasRef" class="dyno-canvas" />
-        <p v-if="runPoints.length === 0 && !recording" class="dyno-chart-empty">
+        <p v-if="runPoints.length === 0 && !recording && previousRunPoints.length === 0" class="dyno-chart-empty">
           Start → разгон → Stop
         </p>
       </div>
 
-      <div v-if="runPoints.length > 0" class="dyno-peaks">
-        <span>Пик <strong>{{ peakTorque.toFixed(1) }}</strong> Nm</span>
-        <span>Пик <strong>{{ peakHp.toFixed(1) }}</strong> HP</span>
-        <span>{{ runPoints.length }} точек</span>
-        <span v-if="smoothStrength > 0" class="dyno-peaks-note">пики по сглаженной кривой</span>
-      </div>
-
       <div class="dyno-actions">
-        <button type="button" class="dyno-btn dyno-btn--start" :disabled="!canStart" @click="startRun">
-          Start
-        </button>
-        <button type="button" class="dyno-btn dyno-btn--stop" :disabled="!canStop" @click="stopRun">
-          Stop
-        </button>
-        <button type="button" class="dyno-btn dyno-btn--clear" :disabled="!canClear" @click="clearRun">
-          Очистить
+        <button
+          type="button"
+          class="dyno-btn dyno-btn--toggle"
+          :class="{ 'dyno-btn--toggle-recording': recording }"
+          :disabled="!canToggleRecord"
+          @click="toggleRecording"
+        >
+          {{ recording ? "Stop" : "Start" }}
         </button>
       </div>
 
@@ -527,6 +539,15 @@ onUnmounted(() => {
               @change="onChartHeightChange"
             />
           </label>
+
+          <button
+            type="button"
+            class="dyno-link"
+            :disabled="!canClear"
+            @click="clearRun"
+          >
+            Очистить график
+          </button>
           </div>
 
           <div class="dyno-settings-block">
@@ -711,28 +732,13 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-.dyno-peaks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 1.25rem;
-  margin-bottom: 0.85rem;
-  font-size: 0.82rem;
-  color: var(--color-text-muted);
-}
-
-.dyno-peaks-note {
-  color: var(--color-text-subtle);
-  font-size: 0.78rem;
-}
-
 .dyno-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 0.5rem;
+  display: block;
 }
 
 .dyno-btn {
-  padding: 0.62rem 0.5rem;
+  width: 100%;
+  padding: 0.72rem 0.75rem;
   border-radius: var(--radius-md, 8px);
   border: 1px solid transparent;
   font-weight: 600;
@@ -750,20 +756,14 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-.dyno-btn--start {
+.dyno-btn--toggle {
   background: var(--color-accent);
   color: var(--color-on-accent);
 }
 
-.dyno-btn--stop {
+.dyno-btn--toggle-recording {
   background: var(--color-gray);
   color: var(--color-on-gray);
-}
-
-.dyno-btn--clear {
-  background: transparent;
-  border-color: var(--color-border-strong);
-  color: var(--color-text);
 }
 
 .dyno-settings {

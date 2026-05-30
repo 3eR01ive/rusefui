@@ -53,17 +53,33 @@ function drawSeries(
   toY: (v: number) => number,
   pickY: (p: DynoRunPoint) => number,
   color: string,
+  style: { dashed?: boolean; opacity?: number } = {},
 ): void {
   if (points.length < 2) return;
+  ctx.save();
   ctx.strokeStyle = color;
   ctx.lineWidth = 2;
   ctx.lineJoin = "round";
+  ctx.globalAlpha = style.opacity ?? 1;
+  if (style.dashed) {
+    ctx.setLineDash([6, 5]);
+  }
   ctx.beginPath();
   ctx.moveTo(toX(points[0]!.rpm), toY(pickY(points[0]!)));
   for (let i = 1; i < points.length; i += 1) {
     ctx.lineTo(toX(points[i]!.rpm), toY(pickY(points[i]!)));
   }
   ctx.stroke();
+  ctx.restore();
+}
+
+function validPoints(points: DynoRunPoint[]): DynoRunPoint[] {
+  return points.filter(
+    (p) =>
+      Number.isFinite(p.rpm) &&
+      Number.isFinite(p.torqueNm) &&
+      Number.isFinite(p.hp),
+  );
 }
 
 /** Кривая dyno: RPM по X, крутящий момент (слева) и мощность (справа). */
@@ -73,6 +89,7 @@ export function drawDynoChart(
   height: number,
   points: DynoRunPoint[],
   margins: ChartMargins = DEFAULT_MARGINS,
+  previousPoints: DynoRunPoint[] = [],
 ): void {
   ctx.clearRect(0, 0, width, height);
 
@@ -80,14 +97,11 @@ export function drawDynoChart(
   const plotH = height - margins.top - margins.bottom;
   if (plotW <= 0 || plotH <= 0) return;
 
-  const valid = points.filter(
-    (p) =>
-      Number.isFinite(p.rpm) &&
-      Number.isFinite(p.torqueNm) &&
-      Number.isFinite(p.hp),
-  );
+  const valid = validPoints(points);
+  const validPrev = validPoints(previousPoints);
+  const allValid = [...valid, ...validPrev];
 
-  if (valid.length === 0) {
+  if (allValid.length === 0) {
     ctx.font = FONT_AXIS;
     ctx.fillStyle = cssVar("--color-text-subtle", "#9c948a");
     ctx.textAlign = "center";
@@ -97,13 +111,15 @@ export function drawDynoChart(
   }
 
   const sorted = [...valid].sort((a, b) => a.rpm - b.rpm);
-  const rpmMinRaw = sorted[0]!.rpm;
-  const rpmMaxRaw = sorted[sorted.length - 1]!.rpm;
-  let tqMin = sorted[0]!.torqueNm;
-  let tqMax = sorted[0]!.torqueNm;
-  let hpMin = sorted[0]!.hp;
-  let hpMax = sorted[0]!.hp;
-  for (const p of sorted) {
+  const sortedPrev = [...validPrev].sort((a, b) => a.rpm - b.rpm);
+  const sortedAll = [...allValid].sort((a, b) => a.rpm - b.rpm);
+  const rpmMinRaw = sortedAll[0]!.rpm;
+  const rpmMaxRaw = sortedAll[sortedAll.length - 1]!.rpm;
+  let tqMin = sortedAll[0]!.torqueNm;
+  let tqMax = sortedAll[0]!.torqueNm;
+  let hpMin = sortedAll[0]!.hp;
+  let hpMax = sortedAll[0]!.hp;
+  for (const p of sortedAll) {
     tqMin = Math.min(tqMin, p.torqueNm);
     tqMax = Math.max(tqMax, p.torqueNm);
     hpMin = Math.min(hpMin, p.hp);
@@ -170,14 +186,29 @@ export function drawDynoChart(
 
   const torqueColor = cssVar("--color-accent", "#3d7ea6");
   const hpColor = cssVar("--color-success-text", "#2d6a4f");
+  const prevTorqueColor = cssVar("--color-text-muted", "#8a8278");
+  const prevHpColor = cssVar("--color-text-subtle", "#9c948a");
 
   ctx.save();
   ctx.beginPath();
   ctx.rect(margins.left, margins.top, plotW, plotH);
   ctx.clip();
 
-  drawSeries(ctx, sorted, toX, toTqY, (p) => p.torqueNm, torqueColor);
-  drawSeries(ctx, sorted, toX, toHpY, (p) => p.hp, hpColor);
+  if (sortedPrev.length >= 2) {
+    drawSeries(ctx, sortedPrev, toX, toTqY, (p) => p.torqueNm, prevTorqueColor, {
+      dashed: true,
+      opacity: 0.72,
+    });
+    drawSeries(ctx, sortedPrev, toX, toHpY, (p) => p.hp, prevHpColor, {
+      dashed: true,
+      opacity: 0.72,
+    });
+  }
+
+  if (sorted.length >= 2) {
+    drawSeries(ctx, sorted, toX, toTqY, (p) => p.torqueNm, torqueColor);
+    drawSeries(ctx, sorted, toX, toHpY, (p) => p.hp, hpColor);
+  }
 
   ctx.restore();
 
@@ -188,6 +219,10 @@ export function drawDynoChart(
   ctx.fillText("● Nm", margins.left + 8, margins.top + 6);
   ctx.fillStyle = hpColor;
   ctx.fillText("● HP", margins.left + 48, margins.top + 6);
+  if (sortedPrev.length >= 2) {
+    ctx.fillStyle = prevTorqueColor;
+    ctx.fillText("- - пр.", margins.left + 88, margins.top + 6);
+  }
 
   ctx.fillStyle = cssVar("--color-text-subtle", "#9c948a");
   ctx.textAlign = "center";

@@ -18,6 +18,7 @@ struct DynoViewState {
     config_loaded: bool,
     recording: bool,
     run_points: Vec<DynoRunPoint>,
+    previous_run_points: Vec<DynoRunPoint>,
     current_torque: f64,
     current_hp: f64,
     ignore_tps_min: bool,
@@ -32,6 +33,7 @@ pub struct DynoLogic {
     view: DynoView,
     recording: bool,
     run_points: Vec<DynoRunPoint>,
+    previous_run_points: Vec<DynoRunPoint>,
     run_options: DynoRunOptions,
     rpm_field: String,
     tps_field: String,
@@ -49,6 +51,7 @@ impl DynoLogic {
             view: DynoView::new(cfg),
             recording: false,
             run_points: Vec::new(),
+            previous_run_points: Vec::new(),
             run_options: DynoRunOptions::default(),
             rpm_field: DEFAULT_RPM_FIELD.into(),
             tps_field: DEFAULT_TPS_FIELD.into(),
@@ -70,6 +73,7 @@ impl DynoLogic {
             config_loaded: self.session.config().snapshot().loaded,
             recording: self.recording,
             run_points: self.run_points.clone(),
+            previous_run_points: self.previous_run_points.clone(),
             current_torque: self.view.current_torque,
             current_hp: self.view.current_hp,
             ignore_tps_min: self.run_options.ignore_tps_min,
@@ -208,7 +212,11 @@ impl ComponentLogic for DynoLogic {
                 self.reload_config();
                 self.view.set_run_options(self.run_options);
                 self.view.reset();
-                self.run_points.clear();
+                if !self.run_points.is_empty() {
+                    self.previous_run_points = std::mem::take(&mut self.run_points);
+                } else {
+                    self.run_points.clear();
+                }
                 self.time_offset_sec = self.session.output_timeline_live_sec();
                 self.last_sample_sec = -1.0;
                 self.recording = true;
@@ -235,6 +243,7 @@ impl ComponentLogic for DynoLogic {
             "clear" => {
                 self.view.reset();
                 self.run_points.clear();
+                self.previous_run_points.clear();
                 self.last_sample_sec = -1.0;
                 self.message = None;
                 self.dirty = true;
