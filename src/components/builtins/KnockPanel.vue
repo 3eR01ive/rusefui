@@ -34,6 +34,10 @@ import {
 import { useRustComponent } from "../../composables/useRustComponent";
 import { useInstanceBind } from "../../composables/useInstanceBind";
 import { useTabActivity, useTabFrozenDisplay } from "../../composables/useTabActivity";
+import {
+  measureChartWidth,
+  useChartCanvasLayout,
+} from "../../composables/useChartCanvasLayout";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -421,7 +425,6 @@ async function ensureKnockSettingsPanel(): Promise<void> {
 
 const thresholdCanvasRef = ref<HTMLCanvasElement | null>(null);
 const thresholdContainerRef = ref<HTMLDivElement | null>(null);
-const thresholdCanvasWidth = ref(640);
 let thresholdCanvasPixelW = 0;
 let thresholdCanvasPixelH = 0;
 const spectrogramCanvasRef = ref<HTMLCanvasElement | null>(null);
@@ -434,16 +437,16 @@ const spectrogramHeight = computed(() => {
 
 function redrawThresholdChart(): void {
   const canvas = thresholdCanvasRef.value;
-  if (!canvas) return;
+  const container = thresholdContainerRef.value;
+  if (!canvas || !container) return;
   const dpr = window.devicePixelRatio || 1;
-  const w = thresholdCanvasWidth.value;
+  const w = measureChartWidth(container);
   const h = chartHeight.value;
   const pixelW = Math.floor(w * dpr);
   const pixelH = Math.floor(h * dpr);
   if (pixelW !== thresholdCanvasPixelW || pixelH !== thresholdCanvasPixelH) {
     canvas.width = pixelW;
     canvas.height = pixelH;
-    canvas.style.width = `${w}px`;
     canvas.style.height = `${h}px`;
     thresholdCanvasPixelW = pixelW;
     thresholdCanvasPixelH = pixelH;
@@ -568,30 +571,12 @@ watch(settingsOpen, (open) => {
   if (open) void ensureKnockSettingsPanel();
 });
 
-let resizeObserver: ResizeObserver | undefined;
-
-function setupResizeObservers(): void {
-  resizeObserver?.disconnect();
-  if (typeof ResizeObserver === "undefined") return;
-  resizeObserver = new ResizeObserver((entries) => {
-    for (const entry of entries) {
-      if (entry.target === thresholdContainerRef.value) {
-        thresholdCanvasWidth.value = Math.max(280, entry.contentRect.width);
-        scheduleThresholdRedraw();
-      }
-      if (entry.target === spectrogramContainerRef.value) {
-        scheduleSpectrogramRedraw();
-      }
-    }
-  });
-  if (thresholdContainerRef.value) resizeObserver.observe(thresholdContainerRef.value);
-  if (spectrogramContainerRef.value) resizeObserver.observe(spectrogramContainerRef.value);
-}
+useChartCanvasLayout(thresholdContainerRef, scheduleThresholdRedraw);
+useChartCanvasLayout(spectrogramContainerRef, scheduleSpectrogramRedraw);
 
 watch([ready, thresholdContainerRef, spectrogramContainerRef], async () => {
   if (!ready.value) return;
   await nextTick();
-  setupResizeObservers();
   scheduleRedraw();
 });
 
@@ -604,7 +589,6 @@ onUnmounted(() => {
   cancelAnimationFrame(thresholdRedrawRaf);
   cancelAnimationFrame(spectrogramRedrawRaf);
   if (saveUiTimer !== 0) window.clearTimeout(saveUiTimer);
-  resizeObserver?.disconnect();
 });
 </script>
 
@@ -895,7 +879,8 @@ onUnmounted(() => {
 <style scoped>
 .knock-card {
   width: 100%;
-  max-width: 72rem;
+  max-width: none;
+  box-sizing: border-box;
   padding: 1.15rem 1.25rem 1.25rem;
   border-radius: var(--radius-lg, 12px);
   border: 1px solid var(--color-border);
@@ -905,7 +890,6 @@ onUnmounted(() => {
     var(--color-bg-subtle, var(--color-bg-elevated)) 100%
   );
   box-shadow: var(--shadow-card, 0 4px 24px rgba(0, 0, 0, 0.12));
-  box-sizing: border-box;
 }
 
 .knock-header {

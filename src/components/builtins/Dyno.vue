@@ -27,6 +27,10 @@ import {
 import { useRustComponent } from "../../composables/useRustComponent";
 import { useInstanceBind } from "../../composables/useInstanceBind";
 import { useTabActivity, useTabFrozenDisplay } from "../../composables/useTabActivity";
+import {
+  measureChartWidth,
+  useChartCanvasLayout,
+} from "../../composables/useChartCanvasLayout";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -319,17 +323,16 @@ function onChartHeightChange(event: Event): void {
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const containerRef = ref<HTMLDivElement | null>(null);
-const canvasWidth = ref(640);
 
 function redraw(): void {
   const canvas = canvasRef.value;
-  if (!canvas) return;
+  const container = containerRef.value;
+  if (!canvas || !container) return;
   const dpr = window.devicePixelRatio || 1;
-  const w = canvasWidth.value;
+  const w = measureChartWidth(container);
   const h = chartHeight.value;
   canvas.width = Math.floor(w * dpr);
   canvas.height = Math.floor(h * dpr);
-  canvas.style.width = `${w}px`;
   canvas.style.height = `${h}px`;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -344,7 +347,7 @@ function scheduleRedraw(): void {
   redrawRaf = requestAnimationFrame(redraw);
 }
 
-let resizeObserver: ResizeObserver | undefined;
+useChartCanvasLayout(containerRef, scheduleRedraw);
 
 watch(
   () => configSnapshot.value.values,
@@ -384,7 +387,7 @@ watch(chartHeight, () => {
   scheduleRedraw();
 });
 
-watch([runPoints, previousRunPoints, chartPoints, canvasWidth], () => scheduleRedraw(), { deep: true });
+watch([runPoints, previousRunPoints, chartPoints], () => scheduleRedraw(), { deep: true });
 
 watch(tabActive, (active, wasActive) => {
   if (active && !wasActive) scheduleRedraw();
@@ -397,23 +400,11 @@ watch(settingsOpen, (open) => {
 onMounted(async () => {
   await Promise.all([initOutputChannels(), initConfig(), initProject()]);
   scheduleRedraw();
-
-  const el = containerRef.value;
-  if (el && typeof ResizeObserver !== "undefined") {
-    resizeObserver = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (entry) {
-        canvasWidth.value = Math.max(280, entry.contentRect.width);
-      }
-    });
-    resizeObserver.observe(el);
-  }
 });
 
 onUnmounted(() => {
   cancelAnimationFrame(redrawRaf);
   if (saveDynoUiTimer !== 0) window.clearTimeout(saveDynoUiTimer);
-  resizeObserver?.disconnect();
 });
 </script>
 
@@ -586,8 +577,9 @@ onUnmounted(() => {
 
 <style scoped>
 .dyno-card {
-  width: 51rem;
-  max-width: 100%;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
   padding: 1.15rem 1.25rem 1.25rem;
   border-radius: var(--radius-lg, 12px);
   border: 1px solid var(--color-border);

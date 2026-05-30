@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import {
   computed,
-  onMounted,
-  onUnmounted,
   ref,
   watch,
 } from "vue";
@@ -12,6 +10,10 @@ import {
   drawConfigCurveChart,
   type CurvePoint,
 } from "../../composables/drawConfigCurveChart";
+import {
+  measureChartWidth,
+  useChartCanvasLayout,
+} from "../../composables/useChartCanvasLayout";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -59,17 +61,16 @@ const curvePoints = computed((): CurvePoint[] => {
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const containerRef = ref<HTMLDivElement | null>(null);
-const canvasWidth = ref(480);
 
 function redraw(): void {
   const canvas = canvasRef.value;
-  if (!canvas) return;
+  const container = containerRef.value;
+  if (!canvas || !container) return;
   const dpr = window.devicePixelRatio || 1;
-  const w = canvasWidth.value;
+  const w = measureChartWidth(container, 200);
   const h = chartHeight.value;
   canvas.width = Math.floor(w * dpr);
   canvas.height = Math.floor(h * dpr);
-  canvas.style.width = `${w}px`;
   canvas.style.height = `${h}px`;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -77,26 +78,9 @@ function redraw(): void {
   drawConfigCurveChart(ctx, w, h, curvePoints.value);
 }
 
-let resizeObserver: ResizeObserver | undefined;
+useChartCanvasLayout(containerRef, redraw);
 
-onMounted(() => {
-  redraw();
-  const el = containerRef.value;
-  if (!el || typeof ResizeObserver === "undefined") return;
-  resizeObserver = new ResizeObserver((entries) => {
-    const entry = entries[0];
-    if (entry) {
-      canvasWidth.value = Math.max(200, entry.contentRect.width);
-    }
-  });
-  resizeObserver.observe(el);
-});
-
-onUnmounted(() => {
-  resizeObserver?.disconnect();
-});
-
-watch([curvePoints, chartHeight, canvasWidth], () => redraw(), { deep: true });
+watch([curvePoints, chartHeight], () => redraw(), { deep: true });
 </script>
 
 <template>
@@ -110,7 +94,7 @@ watch([curvePoints, chartHeight, canvasWidth], () => redraw(), { deep: true });
 
     <div class="curve-chart-wrap">
       <div class="curve-axis-label curve-axis-label--y">{{ yLabel }}</div>
-      <div class="curve-chart-main">
+      <div ref="containerRef" class="curve-chart-main">
         <canvas ref="canvasRef" class="curve-canvas" />
         <div class="curve-axis-label curve-axis-label--x">{{ xLabel }}</div>
       </div>

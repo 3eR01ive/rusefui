@@ -111,8 +111,10 @@ function onNodeMouseDown(): void {
 
 .host-node {
   border-radius: var(--radius-sm);
-  align-self: flex-start;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
+  min-width: 0;
+  align-self: stretch;
+  box-sizing: border-box;
 }
 </style>
