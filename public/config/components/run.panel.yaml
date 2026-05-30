@@ -1,29 +1,14 @@
-# Virtual Dyno — разгон по output channels.
 id: run.panel
 description: Virtual Dyno run
 
 children:
-  - type: text
+  - type: dyno
+    id: dyno-main
     props:
-      text: "RPM и TPS из output channels; параметры авто — из config dynoChars. Start → разгон (TPS ≥ 30%) → Stop."
-      variant: hint
-
-  - type: section
-    props:
-      title: Dyno
-    children:
-      - type: dyno
-        id: dyno-main
-        props:
-          height: 360
-        bind:
-          source: outputChannels
-          params:
-            rpmField: RPMValue
-            tpsField: TPSValue
-
-  - type: section
-    props:
-      title: Настройки Virtual Dyno
-    children:
-      - $component: generated/dynochars.panel
+      height: 360
+      dynoCharsPanel: generated/dynochars.panel
+    bind:
+      source: outputChannels
+      params:
+        rpmField: RPMValue
+        tpsField: TPSValue

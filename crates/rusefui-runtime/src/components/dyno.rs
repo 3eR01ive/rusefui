@@ -154,7 +154,7 @@ impl ComponentLogic for DynoLogic {
     }
 
     fn ecu_sync_on_mount(&self) -> EcuSyncOnMount {
-        EcuSyncOnMount::OutputPollIfConfigLoaded
+        EcuSyncOnMount::None
     }
 
     fn state(&self) -> Value {

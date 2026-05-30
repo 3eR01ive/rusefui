@@ -16,6 +16,8 @@ pub struct DynoUiSettings {
     pub smooth_strength: u8,
     #[serde(default = "default_chart_height")]
     pub chart_height: u32,
+    #[serde(default)]
+    pub settings_open: bool,
 }
 
 fn default_chart_height() -> u32 {
@@ -29,6 +31,7 @@ impl Default for DynoUiSettings {
             min_rpm: 0,
             smooth_strength: 0,
             chart_height: default_chart_height(),
+            settings_open: false,
         }
     }
 }
@@ -70,6 +73,7 @@ mod tests {
             min_rpm: 2000,
             smooth_strength: 5,
             chart_height: 400,
+            settings_open: true,
         })
         .unwrap();
         let normalized = p.parse(raw).unwrap();
@@ -78,5 +82,6 @@ mod tests {
         assert_eq!(back.min_rpm, 2000);
         assert_eq!(back.smooth_strength, 5);
         assert_eq!(back.chart_height, 400);
+        assert!(back.settings_open);
     }
 }

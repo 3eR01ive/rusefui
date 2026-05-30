@@ -54,6 +54,7 @@ export interface DynoUiSettings {
   minRpm: number;
   smoothStrength: number;
   chartHeight: number;
+  settingsOpen: boolean;
 }
 
 export type SimulationRampCurve = "linear" | "smooth";
