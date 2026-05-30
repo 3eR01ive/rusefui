@@ -480,14 +480,14 @@ mod tests {
         };
         let mut menu = HashMap::new();
         menu.insert(
-            "tab/checklist/checklist".into(),
+            "tab/setup/checklist".into(),
             vec![
-                "tab/checklist/checklist/menu/a".into(),
-                "tab/checklist/checklist/menu/b".into(),
+                "tab/setup/checklist/menu/a".into(),
+                "tab/setup/checklist/menu/b".into(),
             ],
         );
-        let (paths, entries) = build_nav_paths(&root, "tab/checklist", &[], &menu);
-        assert!(!paths.contains(&"tab/checklist/checklist".to_string()));
+        let (paths, entries) = build_nav_paths(&root, "tab/setup", &[], &menu);
+        assert!(!paths.contains(&"tab/setup/checklist".to_string()));
         assert_eq!(paths.len(), 2);
         assert!(entries.iter().all(|e| !e.activatable));
     }

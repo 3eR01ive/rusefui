@@ -9,11 +9,9 @@ use rusefui_runtime::{
     OutputSnapshot, OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl,
     PendingIniResolution, ProjectInfo, ProjectLogRef, ProjectStore, ProjectTimelineClip,
     ProtocolLogEntry,
-    ProtocolLogFilterSettings, ProtocolLogStore, read_cached_manifest, read_cached_panel_yaml,
-    RecentProjectEntry, RecentProjectsStore,
+    ProtocolLogFilterSettings, ProtocolLogStore, RecentProjectEntry, RecentProjectsStore,
     RusefuiProject, WorkspaceFsm, WorkspaceInputs, WorkspacePhase, WorkspaceSnapshot,
 };
-use rusefui_runtime::PanelManifest;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -642,14 +640,6 @@ pub fn register_protocol_log_emitter(app: &AppHandle) {
         tauri::async_runtime::spawn(async move {
             emit_protocol_log(&app, &entry);
         });
-    }));
-}
-
-pub fn register_panels_emitter(app: &AppHandle) {
-    let handle = app.clone();
-    let state = app.state::<RuntimeState>();
-    state.session.set_panels_changed_hook(Arc::new(move |status| {
-        let _ = handle.emit("ini-panels-ready", status);
     }));
 }
 
@@ -1788,53 +1778,21 @@ pub fn project_ui_persist_keys(state: State<RuntimeState>) -> Vec<String> {
 #[tauri::command]
 pub fn project_create_new(
     path: String,
-    ini_path: String,
     name: Option<String>,
-    force: Option<bool>,
     state: State<RuntimeState>,
     app: AppHandle,
 ) -> Result<(), String> {
     let label = name.unwrap_or_else(|| "Новый проект".into());
     let path_ref = std::path::Path::new(&path);
-    let ini_ref = std::path::Path::new(&ini_path);
     let store = state.project.lock().unwrap();
-    store.create_with_ini(
-        label,
-        path_ref,
-        ini_ref,
-        &state.session,
-        force.unwrap_or(false),
-    )?;
-    state.session.reset_workspace_for_new_project();
-    store.apply_to_session(&state.session)?;
+    store.new_document(label);
+    store.save_to_path(path_ref)?;
     drop(store);
     record_recent_project(&state, path_ref);
-    if let Err(e) = state.session.ensure_ui_panels() {
-        state.session.log_panel_cache_error("project_create", e);
-    }
+    state.session.reset_workspace_for_new_project();
     clear_config_diff(&state, &app);
     emit_project(&app, &state);
-    emit_ini_resolution(&app, &state);
     emit_workspace_reset(&app, &state);
-    Ok(())
-}
-
-#[tauri::command]
-pub fn project_change_ini(
-    ini_path: String,
-    force: Option<bool>,
-    state: State<RuntimeState>,
-    app: AppHandle,
-) -> Result<(), String> {
-    let ini_ref = std::path::Path::new(&ini_path);
-    state
-        .project
-        .lock()
-        .unwrap()
-        .change_ini(&state.session, ini_ref, force.unwrap_or(false))?;
-    emit_project(&app, &state);
-    emit_ini_resolution(&app, &state);
-    schedule_ecu_notify(&app, true);
     Ok(())
 }
 
@@ -2151,41 +2109,4 @@ pub async fn ini_pick_file() -> Option<String> {
         .pick_file()
         .await?;
     Some(handle.path().display().to_string())
-}
-
-// --- UI panels cache (INI → generated YAML) ---
-
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PanelsManifestResponse {
-    pub source: String,
-    pub hash: Option<String>,
-    pub manifest: Option<PanelManifest>,
-}
-
-#[tauri::command]
-pub fn panels_get_manifest(state: State<RuntimeState>) -> PanelsManifestResponse {
-    if let Some(hash) = state.session.active_panel_hash() {
-        if let Ok(manifest) = read_cached_manifest(&hash) {
-            return PanelsManifestResponse {
-                source: "cache".into(),
-                hash: Some(hash),
-                manifest: Some(manifest),
-            };
-        }
-    }
-    PanelsManifestResponse {
-        source: "bundled".into(),
-        hash: None,
-        manifest: None,
-    }
-}
-
-#[tauri::command]
-pub fn panels_read_yaml(file: String, state: State<RuntimeState>) -> Result<String, String> {
-    let hash = state
-        .session
-        .active_panel_hash()
-        .ok_or_else(|| "Panel cache не активен — примените INI".to_string())?;
-    read_cached_panel_yaml(&hash, &file)
 }

@@ -1,8 +1,8 @@
 mod runtime_cmds;
 
 use runtime_cmds::{
-    register_config_burn_notify, register_knock_scope_emitter, register_panels_emitter,
-    register_protocol_log_emitter, start_autoconnect, RuntimeState,
+    register_config_burn_notify, register_knock_scope_emitter, register_protocol_log_emitter,
+    start_autoconnect, RuntimeState,
 };
 use tauri::Emitter;
 
@@ -15,7 +15,6 @@ pub fn run() {
             register_protocol_log_emitter(app.handle());
             register_config_burn_notify(app.handle());
             register_knock_scope_emitter(app.handle());
-            register_panels_emitter(app.handle());
             start_autoconnect(app.handle().clone());
             Ok(())
         })
@@ -70,8 +69,6 @@ pub fn run() {
             runtime_cmds::ini_apply_path,
             runtime_cmds::ini_retry_online_download,
             runtime_cmds::ini_pick_file,
-            runtime_cmds::panels_get_manifest,
-            runtime_cmds::panels_read_yaml,
             runtime_cmds::autoconnect_get_state,
             runtime_cmds::autoconnect_get_connection,
             runtime_cmds::autoconnect_set_offline_mode,
@@ -86,7 +83,6 @@ pub fn run() {
             runtime_cmds::project_ui_set,
             runtime_cmds::project_ui_persist_keys,
             runtime_cmds::project_create_new,
-            runtime_cmds::project_change_ini,
             runtime_cmds::project_load,
             runtime_cmds::project_close,
             runtime_cmds::project_save,

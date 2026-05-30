@@ -211,7 +211,7 @@ pub fn evaluate_checklist(
             &check.check,
             &primary,
         );
-        let (editor, editors) = resolve_item_editors(rules, snapshot, &check.check, &primary, ok);
+        let editor = resolve_editor(rules, &primary);
 
         items.push(ChecklistItem {
             id: check.id.clone(),
@@ -226,7 +226,7 @@ pub fn evaluate_checklist(
             fields: fields.clone(),
             field_labels: field_labels.clone(),
             editor,
-            editors,
+            editors: Vec::new(),
         });
 
         if !ok {
@@ -300,55 +300,6 @@ pub(crate) fn resolve_editor(rules: &ChecklistRules, field: &str) -> ChecklistEd
 
 pub(crate) fn resolve_editors(rules: &ChecklistRules, fields: &[String]) -> Vec<ChecklistEditor> {
     fields.iter().map(|f| resolve_editor(rules, f)).collect()
-}
-
-fn resolve_item_editors(
-    rules: &ChecklistRules,
-    snapshot: &ConfigSnapshot,
-    check: &CheckSpec,
-    primary: &str,
-    ok: bool,
-) -> (ChecklistEditor, Vec<ChecklistEditor>) {
-    if let CheckSpec::PinsAssigned {
-        prefix,
-        count_field,
-        min,
-    } = check
-    {
-        if !ok {
-            let unassigned = unassigned_pin_fields(snapshot, prefix, count_field, *min);
-            let editors = resolve_editors(rules, &unassigned);
-            let editor = editors
-                .first()
-                .cloned()
-                .unwrap_or_else(|| resolve_editor(rules, primary));
-            return (editor, editors);
-        }
-    }
-    (resolve_editor(rules, primary), Vec::new())
-}
-
-fn unassigned_pin_fields(
-    snapshot: &ConfigSnapshot,
-    prefix: &str,
-    count_field: &str,
-    min: f64,
-) -> Vec<String> {
-    let count = scalar_value(snapshot, count_field)
-        .map(|v| v.round().max(0.0) as usize)
-        .unwrap_or(0);
-    if count == 0 {
-        return Vec::new();
-    }
-    (1..=count)
-        .filter_map(|i| {
-            let name = format!("{prefix}{i}");
-            let assigned = scalar_value(snapshot, &name)
-                .map(|v| v > min)
-                .unwrap_or(false);
-            (!assigned).then_some(name)
-        })
-        .collect()
 }
 
 fn default_field_editor(field: &str) -> Option<(String, String)> {
@@ -724,54 +675,6 @@ mod tests {
         assert!(!result.items[0].ok);
         assert_eq!(result.items[0].group, "engine");
         assert_eq!(result.items[0].editor.panel, "engineChars");
-    }
-
-    #[test]
-    fn pins_assigned_opens_all_unassigned_editors() {
-        let mut rules = sample_rules();
-        rules.groups.insert(
-            "ignition".to_string(),
-            GroupDefinition {
-                title: "Зажигание".to_string(),
-                order: 30,
-            },
-        );
-        rules.checks.push(CheckDef {
-            id: "ignition_pins".to_string(),
-            level: "startup_minimum".to_string(),
-            group: Some("ignition".to_string()),
-            label: Some("Пины катушек".to_string()),
-            fields: vec!["ignitionPins1".to_string(), "cylindersCount".to_string()],
-            message: "assign pins".to_string(),
-            check: CheckSpec::PinsAssigned {
-                prefix: "ignitionPins".to_string(),
-                count_field: "cylindersCount".to_string(),
-                min: 0.0,
-            },
-        });
-
-        let snap = sample_snapshot(HashMap::from([
-            ("cylindersCount".to_string(), 4.0),
-            ("ignitionPins1".to_string(), 41.0),
-            ("ignitionPins2".to_string(), 0.0),
-            ("ignitionPins3".to_string(), 0.0),
-            ("ignitionPins4".to_string(), 0.0),
-        ]));
-        let config = ConfigSource::new(IniContext::disconnected());
-        let result = evaluate_checklist(&snap, &rules, &config);
-
-        let item = result
-            .items
-            .iter()
-            .find(|i| i.id == "ignition_pins")
-            .expect("ignition pins item");
-        assert!(!item.ok);
-        assert_eq!(item.value_display, "1/4");
-        assert_eq!(item.editors.len(), 3);
-        assert_eq!(item.editors[0].field, "ignitionPins2");
-        assert_eq!(item.editors[1].field, "ignitionPins3");
-        assert_eq!(item.editors[2].field, "ignitionPins4");
-        assert_eq!(item.editor.field, "ignitionPins2");
     }
 
     #[test]

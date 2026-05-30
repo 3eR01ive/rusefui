@@ -290,7 +290,7 @@ fn ignition_mode_pin_conflicts(
                     ),
                     value_display: mode_label.clone(),
                     fields: vec![mode_field.clone(), pin_field.clone()],
-                    editor_fields: vec![mode_field.clone(), pin_field],
+                    editor_fields: vec![pin_field],
                 });
             }
         }
@@ -313,7 +313,7 @@ fn ignition_mode_pin_conflicts(
                     ),
                     value_display: format!("цил. {i} без выхода"),
                     fields: vec![mode_field.clone(), pin_field.clone()],
-                    editor_fields: vec![pin_field.clone(), mode_field.clone()],
+                    editor_fields: vec![pin_field],
                 });
             }
         }
@@ -357,7 +357,7 @@ fn injection_mode_pin_conflicts(
                     ),
                     value_display: mode_label.clone(),
                     fields: vec![mode_field.clone(), pin_field.clone()],
-                    editor_fields: vec![mode_field.clone(), pin_field],
+                    editor_fields: vec![pin_field],
                 });
             }
         }
@@ -380,7 +380,7 @@ fn injection_mode_pin_conflicts(
                     ),
                     value_display: format!("цил. {i} без выхода"),
                     fields: vec![mode_field.clone(), pin_field.clone()],
-                    editor_fields: vec![pin_field.clone(), mode_field.clone()],
+                    editor_fields: vec![pin_field],
                 });
             }
         }
@@ -640,47 +640,6 @@ mod tests {
         assert_eq!(item.editors.len(), 1);
         assert_eq!(item.editors[0].field, "ignitionPins5");
         assert_eq!(issues[0].severity, "critical");
-    }
-
-    #[test]
-    fn single_coil_extra_pin_opens_mode_and_pin_editors() {
-        let rules = rules_with_fields(HashMap::from([
-            (
-                "ignitionMode".to_string(),
-                FieldMapping {
-                    label: "Режим зажигания".to_string(),
-                    hint: None,
-                    panel: Some("ignitionSettings".to_string()),
-                    component: Some("ignitionmode".to_string()),
-                },
-            ),
-            (
-                "ignitionPins2".to_string(),
-                FieldMapping {
-                    label: "Выход катушки 2".to_string(),
-                    hint: None,
-                    panel: Some("ignitionSettings".to_string()),
-                    component: Some("ignitionpins2".to_string()),
-                },
-            ),
-        ]));
-        let field_info = pin_field_info("ignitionPins", 12);
-        let snapshot = snap(
-            HashMap::from([
-                ("isIgnitionEnabled".to_string(), 1.0),
-                ("ignitionMode".to_string(), 0.0),
-                ("ignitionPins2".to_string(), 41.0),
-            ]),
-            HashMap::new(),
-        );
-        let (items, _) = collect_conflict_items(&snapshot, &rules, &field_info);
-        let item = items
-            .iter()
-            .find(|i| i.id == "conflict_ignition_single_coil_2")
-            .expect("single coil conflict");
-        assert_eq!(item.editors.len(), 2);
-        assert_eq!(item.editors[0].field, "ignitionMode");
-        assert_eq!(item.editors[1].field, "ignitionPins2");
     }
 
     #[test]

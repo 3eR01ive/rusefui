@@ -4,7 +4,6 @@ description: Virtual Dyno run
 children:
   - type: dyno
     id: dyno-main
-    navSelectable: false
     props:
       height: 360
       dynoCharsPanel: generated/dynochars.panel

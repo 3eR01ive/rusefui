@@ -1197,26 +1197,6 @@ fn pad_page_raw(raw: &mut Vec<u8>, page_size: u32) {
     }
 }
 
-/// Пустой снимок config по размерам страниц INI (offline-редактирование без ECU).
-pub(crate) fn build_default_ecu_config(ini: &IniContext) -> ProjectEcuConfig {
-    let page_sizes = if ini.page_sizes.is_empty() {
-        vec![ini.page_size]
-    } else {
-        ini.page_sizes.clone()
-    };
-
-    let mut pages = ConfigPageStore::new();
-    for (idx, &size) in page_sizes.iter().enumerate() {
-        let ini_page = (idx as u8) + 1;
-        pages.insert(ini_page, vec![0u8; size as usize]);
-    }
-
-    let owned: Vec<(u8, Vec<u8>)> = pages.iter().map(|(p, v)| (*p, v.clone())).collect();
-    let slices: Vec<(u8, &[u8])> = owned.iter().map(|(p, v)| (*p, v.as_slice())).collect();
-    let values = decode_config_fields_pages(&ini.config_fields, &slices);
-    build_project_ecu_config(&pages, ini, values)
-}
-
 pub(crate) fn build_project_ecu_config(
     pages: &ConfigPageStore,
     ini: &IniContext,

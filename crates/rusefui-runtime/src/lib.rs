@@ -42,15 +42,13 @@ pub use config_vars::{
 pub use config_diff::{
     compute_config_diff, ConfigDiffEntry, ConfigDiffSnapshot, ConfigDiffStore, DiffSide,
 };
-pub use rusefi_ini::PanelManifest;
 pub use runtime::ComponentRuntime;
 pub use session::{EcuSession, PendingIniResolution};
 pub use ini::{
     download_ini_for_signature, enumerate_local_candidates, explicit_ini_path,
     find_any_local_ini, ini_cache_dir, ini_download_target, load_ini_path, parse_rusefi_signature,
-    read_cached_manifest, read_cached_panel_yaml, resolve_ini_for_signature, search_directories,
-    signatures_match, ui_panels_cache_dir, IniCandidate, IniCandidateSource, IniResolveError,
-    OnlineDownloadStatus, PanelCacheStatus, ResolvedIni, RusEfiSignature,
+    resolve_ini_for_signature, search_directories, signatures_match, IniCandidate,
+    IniCandidateSource, IniResolveError, OnlineDownloadStatus, ResolvedIni, RusEfiSignature,
 };
 pub use project::{
     ProjectEcuConfig, ProjectInfo, ProjectLogRef, ProjectStore, RusefuiProject, FORMAT_VERSION,

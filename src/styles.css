@@ -206,12 +206,6 @@ input[type="radio"]:focus-visible {
     0 0 0 3px var(--nav-ring-selected);
 }
 
-/* Run tab: dyno на всю ширину вкладки (без узкой nav-оболочки). */
-.tab-panel[data-tab-id="run"] .dyno-card {
-  width: 100%;
-  max-width: none;
-}
-
 /* Knock tab: INI panel — sibling под knock-tuner, не внутри компонента */
 .tab-panel[data-tab-id="knock"] .composite-root > .composite-root {
   margin-top: 0.25rem;

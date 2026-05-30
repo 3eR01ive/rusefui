@@ -65,12 +65,12 @@ export function useChecklistFooter(): void {
   useFooterSlot("config:checklist", footerText, footerOpts);
 }
 
-/** Подсветка таба checklist при невыполненном уровня severity: error. */
+/** Подсветка таба setup при невыполненном checklist уровня severity: error. */
 export function useChecklistTabAlert(): void {
   const { snapshot } = useConfig();
   const { showMainUi } = useWorkspaceState();
 
-  useTabAlertBinding("checklist", () => {
+  useTabAlertBinding("setup", () => {
     const snap = snapshot.value;
     const c = snap.checklist;
     if (!showMainUi.value || !configCanView(snap) || !c?.evaluated) {

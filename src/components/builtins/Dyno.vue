@@ -25,7 +25,6 @@ import {
   type DynoUiSettings,
 } from "../../composables/useProject";
 import { useRustComponent } from "../../composables/useRustComponent";
-import { loadGeneratedPanelYaml } from "../../composables/useIniPanels";
 import { useInstanceBind } from "../../composables/useInstanceBind";
 import { useTabActivity, useTabFrozenDisplay } from "../../composables/useTabActivity";
 import {
@@ -295,9 +294,9 @@ async function ensureDynoCharsPanel(): Promise<void> {
   dynoCharsError.value = null;
   try {
     const panelId = paramStringOr("dynoCharsPanel", "generated/dynochars.panel");
-    const file = panelId.replace(/^generated\//, "").replace(/\.panel$/, ".panel.yaml");
-    const text = await loadGeneratedPanelYaml(file);
-    const doc = parseYaml(text) as { children?: ComponentInstance[] };
+    const res = await fetch(`/config/components/${panelId}.yaml`);
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    const doc = parseYaml(await res.text()) as { children?: ComponentInstance[] };
     dynoCharsChildren.value = doc.children ?? [];
     dynoCharsLoaded = true;
   } catch (e) {
@@ -323,18 +322,17 @@ function onChartHeightChange(event: Event): void {
 }
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
-const rootRef = ref<HTMLDivElement | null>(null);
+const containerRef = ref<HTMLDivElement | null>(null);
 
 function redraw(): void {
   const canvas = canvasRef.value;
-  if (!canvas) return;
+  const container = containerRef.value;
+  if (!canvas || !container) return;
   const dpr = window.devicePixelRatio || 1;
-  const w = measureChartWidth(rootRef.value, 1);
+  const w = measureChartWidth(container);
   const h = chartHeight.value;
-  if (w < 1) return;
   canvas.width = Math.floor(w * dpr);
   canvas.height = Math.floor(h * dpr);
-  canvas.style.width = "100%";
   canvas.style.height = `${h}px`;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -349,7 +347,7 @@ function scheduleRedraw(): void {
   redrawRaf = requestAnimationFrame(redraw);
 }
 
-useChartCanvasLayout(rootRef, scheduleRedraw);
+useChartCanvasLayout(containerRef, scheduleRedraw);
 
 watch(
   () => configSnapshot.value.values,
@@ -411,7 +409,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="rootRef" class="dyno-card">
+  <div class="dyno-card">
     <p v-if="mounting" class="dyno-hint">Подключение…</p>
 
     <template v-else-if="ready || !hasLogic">
@@ -455,7 +453,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div class="dyno-chart-wrap">
+      <div ref="containerRef" class="dyno-chart-wrap">
         <canvas ref="canvasRef" class="dyno-canvas" />
         <p v-if="runPoints.length === 0 && !recording && previousRunPoints.length === 0" class="dyno-chart-empty">
           Start → разгон → Stop
@@ -581,7 +579,6 @@ onUnmounted(() => {
 .dyno-card {
   width: 100%;
   max-width: none;
-  align-self: stretch;
   box-sizing: border-box;
   padding: 1.15rem 1.25rem 1.25rem;
   border-radius: var(--radius-lg, 12px);

@@ -13,9 +13,7 @@ use serde_json::Value;
 use crate::config_diff::encode_scalar_into_page;
 use crate::ini::resolve_ini_for_signature;
 use crate::session::EcuSession;
-use crate::sources::config::{
-    build_default_ecu_config, build_project_ecu_config, pages_from_project_ecu,
-};
+use crate::sources::config::{build_project_ecu_config, pages_from_project_ecu};
 use crate::project_timeline::{
     channel, clip_with_default_end, validate_channel, ProjectTimeline, ProjectTimelineClip,
     ProjectTimelineRecordRef,
@@ -114,8 +112,6 @@ pub struct ProjectInfo {
     pub log_count: usize,
     pub timeline_clip_count: usize,
     pub has_ecu_config: bool,
-    pub ini_signature: Option<String>,
-    pub ini_path: Option<String>,
 }
 
 pub struct ProjectStore {
@@ -150,8 +146,6 @@ impl ProjectStore {
             log_count: doc.logs.len(),
             timeline_clip_count: doc.timeline.clips.len(),
             has_ecu_config: doc.ecu_config.is_some(),
-            ini_signature: doc.ini.as_ref().and_then(|i| i.signature.clone()),
-            ini_path: doc.ini.as_ref().and_then(|i| i.path.clone()),
         }
     }
 
@@ -187,86 +181,6 @@ impl ProjectStore {
         *self.dirty.lock().unwrap() = false;
     }
 
-    fn ini_ref_is_valid(ini_ref: Option<&ProjectIniRef>) -> bool {
-        ini_ref.is_some_and(|r| {
-            r.path.as_deref().is_some_and(|p| !p.is_empty())
-                || r.signature.as_deref().is_some_and(|s| !s.is_empty())
-        })
-    }
-
-    /// Новый проект на диске с обязательной привязкой INI.
-    pub fn create_with_ini(
-        &self,
-        name: String,
-        project_path: &Path,
-        ini_path: &Path,
-        session: &EcuSession,
-        force: bool,
-    ) -> Result<(), String> {
-        session.apply_ini_with_options(ini_path, force)?;
-        let ini = session.ini_context();
-        let signature = ini.signature.clone();
-        let rel_ini = Self::ini_path_for_project_store(ini_path, Some(project_path));
-
-        let mut doc = RusefuiProject::new_named(name);
-        doc.ini = Some(ProjectIniRef {
-            path: Some(rel_ini),
-            signature: signature.clone(),
-        });
-        doc.ecu_config = Some(build_default_ecu_config(&ini));
-        Self::write_document_to_path(&doc, project_path)?;
-        *self.doc.lock().unwrap() = doc;
-        *self.path.lock().unwrap() = Some(project_path.to_path_buf());
-        *self.dirty.lock().unwrap() = false;
-        session.set_project_ini_signature(signature);
-        Ok(())
-    }
-
-    /// Сменить INI открытого проекта; при смене signature сбрасывает `ecuConfig`.
-    pub fn change_ini(
-        &self,
-        session: &EcuSession,
-        ini_path: &Path,
-        force: bool,
-    ) -> Result<(), String> {
-        let project_path = self
-            .saved_path()
-            .ok_or_else(|| "Нет открытого проекта".to_string())?;
-        let old_signature = self
-            .doc
-            .lock()
-            .unwrap()
-            .ini
-            .as_ref()
-            .and_then(|i| i.signature.clone());
-
-        session.apply_ini_with_options(ini_path, force)?;
-        let ini = session.ini_context();
-        let loaded = session
-            .loaded_ini_path()
-            .unwrap_or_else(|| ini_path.to_path_buf());
-        let rel = Self::ini_path_for_project_store(&loaded, Some(&project_path));
-        let signature_changed = old_signature.as_deref() != ini.signature.as_deref();
-
-        {
-            let mut doc = self.doc.lock().unwrap();
-            doc.ini = Some(ProjectIniRef {
-                path: Some(rel),
-                signature: ini.signature.clone(),
-            });
-            if signature_changed {
-                doc.ecu_config = None;
-            }
-            doc.touch();
-        }
-        *self.dirty.lock().unwrap() = true;
-        session.set_project_ini_signature(ini.signature.clone());
-        if signature_changed {
-            session.config().stop();
-        }
-        Ok(())
-    }
-
     pub fn set_name(&self, name: String) {
         let mut doc = self.doc.lock().unwrap();
         doc.name = name;
@@ -285,11 +199,6 @@ impl ProjectStore {
             ));
         }
         doc.timeline.migrate_legacy();
-        if !Self::ini_ref_is_valid(doc.ini.as_ref()) {
-            return Err(
-                "В проекте нет секции ini — создайте проект заново с выбором INI".into(),
-            );
-        }
         *self.doc.lock().unwrap() = doc;
         *self.path.lock().unwrap() = Some(path.to_path_buf());
         *self.dirty.lock().unwrap() = false;
@@ -562,19 +471,6 @@ impl ProjectStore {
             session.bootstrap_offline_ini_if_needed();
         }
 
-        let ecu_config = {
-            let mut doc = self.doc.lock().unwrap();
-            if doc.ecu_config.is_none() {
-                let ini = session.ini_context();
-                if !ini.config_fields.is_empty() {
-                    doc.ecu_config = Some(build_default_ecu_config(&ini));
-                    doc.touch();
-                    *self.dirty.lock().unwrap() = true;
-                }
-            }
-            doc.ecu_config.clone()
-        };
-
         if let Some(ecu) = ecu_config {
             session
                 .config()
@@ -635,9 +531,6 @@ impl ProjectStore {
                 )
             })?;
             session.apply_ini(resolved);
-            if let Err(e) = session.ensure_ui_panels() {
-                session.log_panel_cache_error("project_load", e);
-            }
             return Ok(());
         }
 
