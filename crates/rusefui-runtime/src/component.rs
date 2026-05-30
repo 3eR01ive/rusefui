@@ -7,6 +7,7 @@ pub enum LogicComponentType {
     Connection,
     Simulation,
     Dyno,
+    Knock,
     ConfigTable,
 }
 
@@ -16,6 +17,7 @@ impl LogicComponentType {
             "connection" => Some(Self::Connection),
             "simulation" => Some(Self::Simulation),
             "dyno" => Some(Self::Dyno),
+            "knock" => Some(Self::Knock),
             "config-table" => Some(Self::ConfigTable),
             _ => None,
         }
@@ -26,6 +28,7 @@ impl LogicComponentType {
             Self::Connection => "connection",
             Self::Simulation => "simulation",
             Self::Dyno => "dyno",
+            Self::Knock => "knock",
             Self::ConfigTable => "config-table",
         }
     }
@@ -72,6 +75,14 @@ pub trait ComponentLogic: Send {
 
     /// Обработка live output (Virtual Dyno и др.). `None` — состояние не менялось.
     fn feed_output(&mut self, _snap: &crate::sources::output_channels::OutputSnapshot) -> Option<Value> {
+        None
+    }
+
+    /// Knock scope FFT (autotune частоты). `None` — состояние не менялось.
+    fn feed_knock_scope(
+        &mut self,
+        _snap: &crate::sources::knock_scope::KnockScopeSnapshot,
+    ) -> Option<Value> {
         None
     }
 }

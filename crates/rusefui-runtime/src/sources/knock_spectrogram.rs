@@ -174,6 +174,29 @@ fn spectrum_column(scratch: &[Complex<f32>], start_bin: usize) -> Vec<u8> {
     col
 }
 
+/// Частота пика по heatmap (максимальная амплитуда среди всех колонок).
+pub fn peak_frequency_hz(view: &KnockSpectrogramView) -> Option<f32> {
+    if view.width == 0 || view.height == 0 || view.pixels.is_empty() {
+        return None;
+    }
+    let mut best_val = 0u8;
+    let mut best_row = 0usize;
+    for col in 0..view.width {
+        for row in 0..view.height {
+            let idx = col * view.height + row;
+            let v = *view.pixels.get(idx)?;
+            if v > best_val {
+                best_val = v;
+                best_row = row;
+            }
+        }
+    }
+    if best_val == 0 {
+        return None;
+    }
+    Some(view.freq_start_hz + best_row as f32 * view.freq_step_hz)
+}
+
 fn amplitude_to_db(amplitude: f32) -> u8 {
     let v = amplitude.max(1e-12);
     let db = 200.0 * (v * v).log10() + 40.0;

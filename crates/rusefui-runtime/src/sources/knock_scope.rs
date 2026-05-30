@@ -82,6 +82,7 @@ pub struct KnockScopeSource {
     scope_enabled_on_ecu: Arc<AtomicBool>,
     scope_started_at: Mutex<Option<Instant>>,
     thread: Mutex<Option<JoinHandle<()>>>,
+    tick_hook: Arc<Mutex<Option<Arc<dyn Fn(KnockScopeSnapshot) + Send + Sync>>>>,
 }
 
 fn parse_samples(bytes: &[u8]) -> (Vec<f32>, f32, f32) {
@@ -175,7 +176,16 @@ impl KnockScopeSource {
             scope_enabled_on_ecu: Arc::new(AtomicBool::new(false)),
             scope_started_at: Mutex::new(None),
             thread: Mutex::new(None),
+            tick_hook: Arc::new(Mutex::new(None)),
         }
+    }
+
+    /// Глобальный колбэк (emit во фронт). Вызывается на каждый захват вместе с `on_tick` из `start`.
+    pub fn set_tick_hook<F>(&self, f: F)
+    where
+        F: Fn(KnockScopeSnapshot) + Send + Sync + 'static,
+    {
+        *self.tick_hook.lock().unwrap() = Some(Arc::new(f));
     }
 
     pub fn snapshot(&self) -> KnockScopeSnapshot {
@@ -269,6 +279,7 @@ impl KnockScopeSource {
         let running = Arc::clone(&self.running);
         let snapshot = Arc::clone(&self.snapshot);
         let spectrogram = Arc::clone(&self.spectrogram);
+        let tick_hook = Arc::clone(&self.tick_hook);
         let scope_started_at = Arc::new(Mutex::new(Some(Instant::now())));
         let on_tick = Arc::new(on_tick);
 
@@ -280,6 +291,7 @@ impl KnockScopeSource {
                     running,
                     snapshot,
                     spectrogram,
+                    tick_hook,
                     scope_started_at,
                     on_tick,
                 )
@@ -296,9 +308,16 @@ fn poll_loop(
     running: Arc<AtomicBool>,
     snapshot: Arc<RwLock<KnockScopeSnapshot>>,
     spectrogram: Arc<Mutex<Option<KnockSpectrogramEngine>>>,
+    tick_hook: Arc<Mutex<Option<Arc<dyn Fn(KnockScopeSnapshot) + Send + Sync>>>>,
     scope_started_at: Arc<Mutex<Option<Instant>>>,
     on_tick: Arc<dyn Fn(KnockScopeSnapshot) + Send + Sync>,
 ) {
+    let emit = |snap: &KnockScopeSnapshot| {
+        on_tick(snap.clone());
+        if let Some(hook) = tick_hook.lock().unwrap().as_ref() {
+            hook(snap.clone());
+        }
+    };
     let mut last_status_emit = Instant::now();
     let mut not_ready_since: Option<Instant> = None;
 
@@ -362,7 +381,7 @@ fn poll_loop(
                         status_hint(snap.capture_count, true, config_enable, waiting_for);
                     let out = snap.clone();
                     drop(snap);
-                    on_tick(out);
+                    emit(&out);
                     not_ready_since = None;
                     did_work = true;
                     thread::sleep(REARM_AFTER_CAPTURE);
@@ -400,7 +419,7 @@ fn poll_loop(
                 status_hint(0, knock_ready, config_enable, waiting_for);
             let out = snap.clone();
             drop(snap);
-            on_tick(out);
+            emit(&out);
             last_status_emit = Instant::now();
             did_work = true;
         }
@@ -416,7 +435,7 @@ fn poll_loop(
                 status_hint(snap.capture_count, knock_ready, config_enable, waiting_for);
             let out = snap.clone();
             drop(snap);
-            on_tick(out);
+            emit(&out);
             last_status_emit = Instant::now();
             did_work = true;
         }

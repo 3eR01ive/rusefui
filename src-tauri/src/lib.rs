@@ -1,6 +1,9 @@
 mod runtime_cmds;
 
-use runtime_cmds::{register_protocol_log_emitter, start_autoconnect, RuntimeState};
+use runtime_cmds::{
+    register_config_burn_notify, register_knock_scope_emitter, register_protocol_log_emitter,
+    start_autoconnect, RuntimeState,
+};
 use tauri::Emitter;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -10,6 +13,8 @@ pub fn run() {
         .manage(RuntimeState::default())
         .setup(|app| {
             register_protocol_log_emitter(app.handle());
+            register_config_burn_notify(app.handle());
+            register_knock_scope_emitter(app.handle());
             start_autoconnect(app.handle().clone());
             Ok(())
         })

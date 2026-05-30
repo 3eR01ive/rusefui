@@ -240,7 +240,35 @@ fn convert_dialog_items(
             }
         }
     }
+    inject_rusefui_extra_fields(dialog_id, config_fields, &mut out);
     out
+}
+
+/// Поля есть в INI/config, но не добавлены в TunerStudio dialog (softwareKnockCfg).
+fn inject_rusefui_extra_fields(
+    dialog_id: &str,
+    config_fields: &HashMap<String, ConfigFieldKind>,
+    out: &mut Vec<YamlNode>,
+) {
+    if dialog_id != "softwareKnockCfg" || !config_fields.contains_key("enableKnockScope") {
+        return;
+    }
+    if out.iter().any(|n| n.bind.as_ref().and_then(|b| b.field.as_deref()) == Some("enableKnockScope")) {
+        return;
+    }
+    let node = field_node(
+        config_fields,
+        "enableKnockScope",
+        "Knock scope (FFT on host, rusefui)",
+    );
+    if let Some(pos) = out
+        .iter()
+        .position(|n| n.bind.as_ref().and_then(|b| b.field.as_deref()) == Some("enableKnockSpectrogram"))
+    {
+        out.insert(pos + 1, node);
+    } else {
+        out.push(node);
+    }
 }
 
 fn convert_panel_ref(

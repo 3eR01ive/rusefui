@@ -87,6 +87,9 @@ export async function initWorkspaceState(): Promise<void> {
       unlisten = await listen<WorkspaceSnapshot>("workspace-state", (ev) => {
         snapshot.value = ev.payload;
       });
+      await listen<boolean>("burn-pending", (ev) => {
+        snapshot.value = { ...snapshot.value, burnPending: ev.payload };
+      });
       await listen("workspace-reset", async () => {
         try {
           snapshot.value = await invoke<WorkspaceSnapshot>("workspace_get_state");

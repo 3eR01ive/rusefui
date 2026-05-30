@@ -464,6 +464,14 @@ fn sync_output_poll_session(session: &Arc<EcuSession>, app: &AppHandle) {
             let state = app.state::<RuntimeState>();
             if let Ok(mut rt) = state.runtime.lock() {
                 for (instance_id, st) in rt.feed_output(&snap) {
+                    if st
+                        .get("configUpdated")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false)
+                    {
+                        emit_config_update(&app, &state.session.config().snapshot());
+                        persist_config_after_table_edit(&state, &app);
+                    }
                     emit_state(&app, &instance_id, &st);
                 }
             }
@@ -579,6 +587,31 @@ fn protocol_log_emit_now_ms() -> u64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
         .unwrap_or(0)
+}
+
+pub fn register_config_burn_notify(app: &AppHandle) {
+    let handle = app.clone();
+    let state = app.state::<RuntimeState>();
+    state.session.config().set_live_ram_dirty_hook(move || {
+        if let Some(state) = handle.try_state::<RuntimeState>() {
+            set_burn_pending(&state, &handle, true);
+        }
+    });
+}
+
+pub fn register_knock_scope_emitter(app: &AppHandle) {
+    let handle = app.clone();
+    let state = app.state::<RuntimeState>();
+    state.session.knock_scope().set_tick_hook(move |snap| {
+        if let Some(state) = handle.try_state::<RuntimeState>() {
+            if let Ok(mut rt) = state.runtime.lock() {
+                for (instance_id, st) in rt.feed_knock_scope(&snap) {
+                    emit_state(&handle, &instance_id, &st);
+                }
+            }
+        }
+        emit_knock_scope(&handle, &snap);
+    });
 }
 
 pub fn register_protocol_log_emitter(app: &AppHandle) {
@@ -750,7 +783,7 @@ fn component_dispatch_inner(
         None
     };
 
-    let may_write_config = config_table_action_may_write(action, &params.payload);
+    let may_write_config = component_action_may_write_config(action, &params.payload);
 
     let snapshot = {
         let mut rt = state.runtime.lock().map_err(|e| e.to_string())?;
@@ -770,6 +803,7 @@ fn component_dispatch_inner(
     emit_state(&app, &params.instance_id, &snapshot);
 
     if may_write_config {
+        emit_config_update(&app, &state.session.config().snapshot());
         persist_config_after_table_edit(&state, &app);
     }
 
@@ -788,6 +822,20 @@ fn config_table_action_may_write(action: &str, payload: &Value) -> bool {
             let key = payload.get("key").and_then(|v| v.as_str()).unwrap_or("");
             ctrl && matches!(key, "ArrowUp" | "ArrowDown")
         }
+        _ => false,
+    }
+}
+
+fn component_action_may_write_config(action: &str, payload: &Value) -> bool {
+    if config_table_action_may_write(action, payload) {
+        return true;
+    }
+    match action {
+        "stop_run" => payload
+            .get("applyThreshold")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(true),
+        "apply_frequency" => true,
         _ => false,
     }
 }
@@ -931,12 +979,9 @@ pub fn knock_scope_set_enabled(
         if state.session.config().snapshot().loading {
             return Err("Дождитесь окончания загрузки config".into());
         }
-        let app_emit = app.clone();
         let session = Arc::clone(&state.session);
         let window_ms = window_ms.unwrap_or(500);
-        state.session.knock_scope().start(session, window_ms, move |snap| {
-            emit_knock_scope(&app_emit, &snap);
-        })?;
+        state.session.knock_scope().start(session, window_ms, |_| {})?;
         emit_composite(&app, &state.session.composite().snapshot());
         emit_composite_timeline(&app, &state.session.composite_timeline_status());
     } else {

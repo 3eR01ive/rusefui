@@ -7,6 +7,7 @@ use crate::component::{requires_rust_logic, ComponentLogic, EcuSyncOnMount, Logi
 use crate::components::config_table::ConfigTableLogic;
 use crate::components::connection::ConnectionLogic;
 use crate::components::dyno::DynoLogic;
+use crate::components::knock::KnockLogic;
 use crate::components::simulation::SimulationLogic;
 use crate::sources::output_channels::OutputSnapshot;
 use crate::session::EcuSession;
@@ -59,6 +60,9 @@ impl ComponentRuntime {
             Some(LogicComponentType::Dyno) => {
                 Box::new(DynoLogic::new(Arc::clone(&self.session)))
             }
+            Some(LogicComponentType::Knock) => {
+                Box::new(KnockLogic::new(Arc::clone(&self.session)))
+            }
             Some(LogicComponentType::ConfigTable) => {
                 Box::new(ConfigTableLogic::new(Arc::clone(&self.session)))
             }
@@ -110,6 +114,7 @@ impl ComponentRuntime {
             LogicComponentType::Connection.as_str(),
             LogicComponentType::Simulation.as_str(),
             LogicComponentType::Dyno.as_str(),
+            LogicComponentType::Knock.as_str(),
             LogicComponentType::ConfigTable.as_str(),
         ]
     }
@@ -133,6 +138,20 @@ impl ComponentRuntime {
         let mut updates = Vec::new();
         for (id, logic) in &mut self.instances {
             if let Some(state) = logic.feed_output(snap) {
+                updates.push((id.clone(), state));
+            }
+        }
+        updates
+    }
+
+    /// Knock scope FFT → компонент knock tuning.
+    pub fn feed_knock_scope(
+        &mut self,
+        snap: &crate::sources::knock_scope::KnockScopeSnapshot,
+    ) -> Vec<(String, Value)> {
+        let mut updates = Vec::new();
+        for (id, logic) in &mut self.instances {
+            if let Some(state) = logic.feed_knock_scope(snap) {
                 updates.push((id.clone(), state));
             }
         }

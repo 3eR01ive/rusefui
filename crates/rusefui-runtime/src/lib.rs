@@ -10,6 +10,7 @@ mod config_conflicts;
 mod config_vars;
 mod config_diff;
 mod dyno;
+mod knock;
 mod layout;
 mod ini;
 mod project;
@@ -58,8 +59,8 @@ pub use project_timeline::{
 };
 pub use recent_projects::{RecentProjectEntry, RecentProjectsStore};
 pub use ui_persist::{
-    CompositeChartUiSettings, DynoUiSettings, LogGraphGroupJson, LogRangeInputJson, LogUiSettings,
-    ProjectUi, PERSIST_KEY_COMPOSITE_CHART, PERSIST_KEY_DYNO, PERSIST_KEY_OUTPUT_CHART,
+    CompositeChartUiSettings, DynoUiSettings, KnockUiSettings, LogGraphGroupJson, LogRangeInputJson, LogUiSettings,
+    ProjectUi, PERSIST_KEY_COMPOSITE_CHART, PERSIST_KEY_DYNO, PERSIST_KEY_KNOCK, PERSIST_KEY_OUTPUT_CHART,
 };
 pub use ui_persist::{ComponentUiPersist, persist_keys as ui_persist_keys};
 pub use protocol_log::{

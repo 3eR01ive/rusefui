@@ -6,6 +6,7 @@ import { computed, readonly, ref, shallowRef } from "vue";
 export const PERSIST_KEY_OUTPUT_CHART = "output-chart";
 export const PERSIST_KEY_COMPOSITE_CHART = "composite-chart";
 export const PERSIST_KEY_DYNO = "dyno";
+export const PERSIST_KEY_KNOCK = "knock";
 export const PERSIST_KEY_SIMULATION = "simulation";
 
 export type CrankEdgeMode = "both" | "rise" | "fall";
@@ -53,6 +54,23 @@ export interface DynoUiSettings {
   ignoreTpsMin: boolean;
   minRpm: number;
   smoothStrength: number;
+  chartHeight: number;
+  settingsOpen: boolean;
+}
+
+export interface KnockUiSettings {
+  ignoreTpsMin: boolean;
+  minRpm: number;
+  cutoffRpm: number;
+  thresholdGapDb: number;
+  tempTargetLambda: number;
+  tempIgnitionRetardDeg: number;
+  momentumSafeRpmMin: number;
+  momentumSafeRpmMax: number;
+  momentumMinLoad: number;
+  momentumAdvanceAddDeg: number;
+  momentumDurationMs: number;
+  spectrogramWindowMs: number;
   chartHeight: number;
   settingsOpen: boolean;
 }

@@ -2,6 +2,7 @@
 
 mod composite_chart;
 mod dyno;
+mod knock;
 mod output_chart;
 mod simulation;
 
@@ -14,6 +15,7 @@ pub use composite_chart::{
     CompositeChartUiSettings, PERSIST_KEY_COMPOSITE_CHART,
 };
 pub use dyno::{DynoUiSettings, PERSIST_KEY_DYNO};
+pub use knock::{KnockUiSettings, PERSIST_KEY_KNOCK};
 pub use output_chart::{
     LogGraphGroupJson, LogRangeInputJson, LogUiSettings, PERSIST_KEY_OUTPUT_CHART,
 };
@@ -38,6 +40,7 @@ fn registry() -> &'static [&'static dyn ComponentUiPersist] {
         &output_chart::OutputChartUiPersist,
         &composite_chart::CompositeChartUiPersist,
         &dyno::DynoUiPersist,
+        &knock::KnockUiPersist,
         &simulation::SimulationUiPersist,
     ];
     ENTRIES

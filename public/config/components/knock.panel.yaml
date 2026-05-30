@@ -1,21 +1,17 @@
 id: knock.panel
-description: Knock spectrogram / raw ADC scope
+description: Knock tuning — threshold autotune, спектр частоты, momentum knock
 
 children:
-  - type: text
+  - type: knock
+    id: knock-main
     props:
-      text: "Сырой поток KNOCK_ADC с ECU (knock_scope). В tune: enableKnockScope. INI с полем knockScopeReady."
-      variant: hint
-
-  - type: section
-    props:
-      title: Spectrogram (preview)
-    children:
-      - type: spectrogram
-        id: knock-spectrogram
-        props:
-          height: 240
-          spectrogramHeight: 220
-          windowMs: 500
-        bind:
-          source: knockScope
+      height: 360
+      knockSettingsPanel: generated/softwareknock.panel
+    bind:
+      source: outputChannels
+      params:
+        rpmField: RPMValue
+        knockLevelField: m_knockLevel
+        knockThresholdField: m_knockThreshold
+        loadField: ignitionLoad
+        advanceField: ignitionAdvanceCyl1

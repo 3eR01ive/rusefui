@@ -77,6 +77,18 @@ children:
         source: config
         field: enableKnockSpectrogram
     - type: enum-field
+      id: enableknockscope
+      props:
+        label: Knock scope (FFT на хосте, rusefui)
+        options:
+        - value: 0
+          label: no
+        - value: 1
+          label: yes
+      bind:
+        source: config
+        field: enableKnockScope
+    - type: enum-field
       id: enableknockspectrogramfilter
       props:
         options:

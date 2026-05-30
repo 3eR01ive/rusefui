@@ -2,10 +2,10 @@ app:
   title: rusefui
 
 tabs:
-  - $tab: monitor
-  - $tab: timeline
-  - $tab: setup
-  - $tab: run
+  #- $tab: monitor
+  #- $tab: timeline
+  #- $tab: setup
+  #- $tab: run
   - $tab: knock
   - $tab: simulation
-  - $tab: ini-preview
+  #- $tab: ini-preview

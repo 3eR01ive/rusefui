@@ -3,6 +3,7 @@ const RUST_LOGIC_TYPES = new Set([
   "connection",
   "simulation",
   "dyno",
+  "knock",
   "config-table",
 ]);
 

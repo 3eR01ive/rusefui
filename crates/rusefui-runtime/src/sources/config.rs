@@ -194,6 +194,7 @@ pub struct ConfigSource {
     snapshot: Arc<RwLock<ConfigSnapshot>>,
     loading: Arc<AtomicBool>,
     thread: Mutex<Option<JoinHandle<()>>>,
+    live_ram_dirty_hook: Arc<Mutex<Option<Arc<dyn Fn() + Send + Sync>>>>,
 }
 
 impl ConfigSource {
@@ -204,6 +205,29 @@ impl ConfigSource {
             snapshot: Arc::new(RwLock::new(ConfigSnapshot::disconnected(&ini))),
             loading: Arc::new(AtomicBool::new(false)),
             thread: Mutex::new(None),
+            live_ram_dirty_hook: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    /// Колбэк из Tauri: RAM ECU изменён, нужен Burn во flash.
+    pub fn set_live_ram_dirty_hook<F>(&self, hook: F)
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
+        *self.live_ram_dirty_hook.lock().unwrap() = Some(Arc::new(hook));
+    }
+
+    pub fn is_live_ecu_editing(&self) -> bool {
+        let snap = self.snapshot.read().unwrap();
+        snap.connected && snap.loaded && !snap.read_only
+    }
+
+    fn notify_live_ram_dirty(&self) {
+        if !self.is_live_ecu_editing() {
+            return;
+        }
+        if let Some(hook) = self.live_ram_dirty_hook.lock().unwrap().as_ref() {
+            hook();
         }
     }
 
@@ -585,6 +609,17 @@ impl ConfigSource {
         Ok(())
     }
 
+    fn finish_live_array_write(&self) -> Result<(), String> {
+        let ini = self.ini.lock().unwrap().clone();
+        let (values, string_values) = self.decode_snapshot_maps(&ini);
+        let mut snap = self.snapshot.write().unwrap();
+        apply_decoded_values(&mut snap, &ini, values, string_values);
+        snap.last_error = None;
+        drop(snap);
+        self.notify_live_ram_dirty();
+        Ok(())
+    }
+
     /// Пакетная запись элементов массива в RAM (один пересчёт снимка).
     pub fn set_array_values_local(
         &self,
@@ -594,6 +629,37 @@ impl ConfigSource {
         if updates.is_empty() {
             return Ok(());
         }
+        self.patch_array_pages(name, updates)?;
+        let ini = self.ini.lock().unwrap().clone();
+        self.refresh_snapshot_from_pages(&ini, true);
+        Ok(())
+    }
+
+    /// Обновить элементы массива в RAM, сохранив connected/read_only снимка (live ECU).
+    pub fn patch_array_values_snapshot(
+        &self,
+        name: &str,
+        updates: &[(usize, f64)],
+    ) -> Result<(), String> {
+        if updates.is_empty() {
+            return Ok(());
+        }
+        self.patch_array_pages(name, updates)?;
+        let ini = self.ini.lock().unwrap().clone();
+        let (values, string_values) = self.decode_snapshot_maps(&ini);
+        let mut snap = self.snapshot.write().unwrap();
+        let read_only = snap.read_only;
+        let connected = snap.connected;
+        apply_decoded_values(&mut snap, &ini, values, string_values);
+        snap.read_only = read_only;
+        snap.connected = connected;
+        snap.last_error = None;
+        drop(snap);
+        self.notify_live_ram_dirty();
+        Ok(())
+    }
+
+    fn patch_array_pages(&self, name: &str, updates: &[(usize, f64)]) -> Result<(), String> {
         let ini = self.ini.lock().unwrap().clone();
         let field = ini
             .config_fields
@@ -616,8 +682,6 @@ impl ConfigSource {
             }
             raw[off..off + encoded.len()].copy_from_slice(&encoded);
         }
-        drop(pages);
-        self.refresh_snapshot_from_pages(&ini, true);
         Ok(())
     }
 
@@ -632,12 +696,7 @@ impl ConfigSource {
             self.write_array_value(session, name, index, value)?;
             sleep(Duration::from_millis(INTER_WRITE_DELAY_MS));
         }
-        let ini = self.ini.lock().unwrap().clone();
-        let (values, string_values) = self.decode_snapshot_maps(&ini);
-        let mut snap = self.snapshot.write().unwrap();
-        apply_decoded_values(&mut snap, &ini, values, string_values);
-        snap.last_error = None;
-        Ok(())
+        self.finish_live_array_write()
     }
 
     pub fn stop(&self) {
@@ -891,6 +950,7 @@ impl ConfigSource {
             snap.last_error = None;
         }
 
+        self.notify_live_ram_dirty();
         Ok(())
     }
 
@@ -946,6 +1006,7 @@ impl ConfigSource {
             snap.last_error = None;
         }
 
+        self.notify_live_ram_dirty();
         Ok(())
     }
 

@@ -17,6 +17,7 @@ import OutputChart from "./builtins/OutputChart.vue";
 import CompositeChart from "./builtins/CompositeChart.vue";
 import OutputValue from "./builtins/OutputValue.vue";
 import Dyno from "./builtins/Dyno.vue";
+import KnockPanel from "./builtins/KnockPanel.vue";
 import Spectrogram from "./builtins/Spectrogram.vue";
 import ConfigChecklist from "./builtins/ConfigChecklist.vue";
 import ProjectTimeline from "./builtins/ProjectTimeline.vue";
@@ -49,6 +50,7 @@ export function registerBuiltinComponents(): void {
   reg("composite-chart", CompositeChart);
   reg("output-value", OutputValue);
   reg("dyno", Dyno);
+  reg("knock", KnockPanel);
   reg("spectrogram", Spectrogram);
   reg("config-checklist", ConfigChecklist);
   reg("project-timeline", ProjectTimeline);
