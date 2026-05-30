@@ -900,7 +900,7 @@ onUnmounted(() => {
 <style scoped>
 .knock-card {
   width: 100%;
-  max-width: 51rem;
+  max-width: none;
   box-sizing: border-box;
   padding: 1.15rem 1.25rem 1.25rem;
   border-radius: var(--radius-lg, 12px);
