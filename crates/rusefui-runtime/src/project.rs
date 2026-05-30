@@ -13,7 +13,9 @@ use serde_json::Value;
 use crate::config_diff::encode_scalar_into_page;
 use crate::ini::resolve_ini_for_signature;
 use crate::session::EcuSession;
-use crate::sources::config::{build_project_ecu_config, pages_from_project_ecu};
+use crate::sources::config::{
+    build_default_ecu_config, build_project_ecu_config, pages_from_project_ecu,
+};
 use crate::project_timeline::{
     channel, clip_with_default_end, validate_channel, ProjectTimeline, ProjectTimelineClip,
     ProjectTimelineRecordRef,
@@ -202,7 +204,8 @@ impl ProjectStore {
         force: bool,
     ) -> Result<(), String> {
         session.apply_ini_with_options(ini_path, force)?;
-        let signature = session.ini_context().signature.clone();
+        let ini = session.ini_context();
+        let signature = ini.signature.clone();
         let rel_ini = Self::ini_path_for_project_store(ini_path, Some(project_path));
 
         let mut doc = RusefuiProject::new_named(name);
@@ -210,6 +213,7 @@ impl ProjectStore {
             path: Some(rel_ini),
             signature: signature.clone(),
         });
+        doc.ecu_config = Some(build_default_ecu_config(&ini));
         Self::write_document_to_path(&doc, project_path)?;
         *self.doc.lock().unwrap() = doc;
         *self.path.lock().unwrap() = Some(project_path.to_path_buf());
@@ -557,6 +561,19 @@ impl ProjectStore {
         } else {
             session.bootstrap_offline_ini_if_needed();
         }
+
+        let ecu_config = {
+            let mut doc = self.doc.lock().unwrap();
+            if doc.ecu_config.is_none() {
+                let ini = session.ini_context();
+                if !ini.config_fields.is_empty() {
+                    doc.ecu_config = Some(build_default_ecu_config(&ini));
+                    doc.touch();
+                    *self.dirty.lock().unwrap() = true;
+                }
+            }
+            doc.ecu_config.clone()
+        };
 
         if let Some(ecu) = ecu_config {
             session

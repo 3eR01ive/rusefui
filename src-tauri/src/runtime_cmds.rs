@@ -1805,9 +1805,10 @@ pub fn project_create_new(
         &state.session,
         force.unwrap_or(false),
     )?;
+    state.session.reset_workspace_for_new_project();
+    store.apply_to_session(&state.session)?;
     drop(store);
     record_recent_project(&state, path_ref);
-    state.session.reset_workspace_for_new_project();
     if let Err(e) = state.session.ensure_ui_panels() {
         state.session.log_panel_cache_error("project_create", e);
     }
