@@ -46,6 +46,11 @@ function resolveDialog(result: DialogResult): void {
   pendingResolve = null;
 }
 
+/** Модальное окно несохранённых изменений перехватывает клавиатуру. */
+export function isUnsavedDialogVisible(): boolean {
+  return dialogState.value !== null;
+}
+
 /**
  * Последовательно спрашивает про несохранённый проект и burn (если нужно).
  * @returns true — можно продолжать (выход / смена проекта)

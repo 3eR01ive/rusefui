@@ -19,6 +19,10 @@ import {
   measureChartWidth,
   useChartCanvasLayout,
 } from "../../composables/useChartCanvasLayout";
+import { useComponentBinding } from "../../composables/useKeyboardRouter";
+import { activePath, navMode } from "../../composables/useWorkspaceNav";
+
+type CurveAxis = "x" | "y";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -40,7 +44,6 @@ const {
   xEditable,
   fmt,
   cellValue,
-  commitCell,
   commitRowValue,
   commitXValue,
   setRowPreview,
@@ -48,7 +51,6 @@ const {
   xValueAt,
   statusText,
   localError,
-  xValues,
 } = useConfigGrid({ kind: "curve", instance: instanceRef, props: propsRef });
 
 const chartHeight = computed(() => {
@@ -56,15 +58,22 @@ const chartHeight = computed(() => {
   return h >= 140 ? h : 220;
 });
 
+const isActive = computed(
+  () => navMode.value === "active" && activePath.value === props.path,
+);
+
 const dragRow = ref<number | null>(null);
 const hoverRow = ref<number | null>(null);
 const dragStartY = ref<number | null>(null);
 
 const rootRef = ref<HTMLDivElement | null>(null);
+const gridRef = ref<HTMLDivElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 
-const yEditBuffers = ref<Record<number, string>>({});
-const xEditBuffers = ref<Record<number, string>>({});
+const cursorAxis = ref<CurveAxis>("y");
+const cursorCol = ref(0);
+const editBuffer = ref("");
+const editStartValue = ref<number | null>(null);
 
 function displayY(col: number): number | null {
   return cellValue(col, 0);
@@ -76,39 +85,206 @@ function displayX(col: number): number | null {
   return col;
 }
 
-function yBufferFor(col: number): string {
-  if (yEditBuffers.value[col] !== undefined) return yEditBuffers.value[col]!;
+function axisEditable(axis: CurveAxis): boolean {
+  return axis === "x" ? xEditable.value : !disabled.value;
+}
+
+function cellDisplay(axis: CurveAxis, col: number): string {
+  const isCursor = isActive.value && cursorAxis.value === axis && cursorCol.value === col;
+  if (isCursor && editBuffer.value !== "") {
+    return editBuffer.value;
+  }
+  if (axis === "x") {
+    const v = displayX(col);
+    return v === null ? "" : fmt(v);
+  }
   const v = displayY(col);
   return v === null ? "" : fmt(v);
 }
 
-function xBufferFor(col: number): string {
-  if (xEditBuffers.value[col] !== undefined) return xEditBuffers.value[col]!;
-  const v = displayX(col);
-  return v === null ? "" : fmt(v);
+function isCursorCell(axis: CurveAxis, col: number): boolean {
+  return isActive.value && cursorAxis.value === axis && cursorCol.value === col;
 }
 
-function setYBuffer(col: number, raw: string): void {
-  yEditBuffers.value = { ...yEditBuffers.value, [col]: raw };
+function selectCell(axis: CurveAxis, col: number): void {
+  cursorAxis.value = axis;
+  cursorCol.value = col;
+  editBuffer.value = "";
+  editStartValue.value = null;
+  scrollCursorIntoView();
 }
 
-function setXBuffer(col: number, raw: string): void {
-  xEditBuffers.value = { ...xEditBuffers.value, [col]: raw };
+function scrollCursorIntoView(): void {
+  void nextTick(() => {
+    const el = gridRef.value?.querySelector(".grid-cell--cursor");
+    el?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  });
 }
 
-function clearYBuffer(col: number): void {
-  if (yEditBuffers.value[col] === undefined) return;
-  const next = { ...yEditBuffers.value };
-  delete next[col];
-  yEditBuffers.value = next;
+function revertPreview(): void {
+  if (editStartValue.value === null) return;
+  const value = editStartValue.value;
+  if (cursorAxis.value === "x") {
+    setXPreview(cursorCol.value, value);
+  } else {
+    setRowPreview(cursorCol.value, 0, value);
+  }
+  redraw();
 }
 
-function clearXBuffer(col: number): void {
-  if (xEditBuffers.value[col] === undefined) return;
-  const next = { ...xEditBuffers.value };
-  delete next[col];
-  xEditBuffers.value = next;
+function applyBufferPreview(): void {
+  const parsed = Number(editBuffer.value.trim().replace(",", "."));
+  if (!Number.isFinite(parsed)) return;
+  if (cursorAxis.value === "x") {
+    setXPreview(cursorCol.value, parsed);
+  } else {
+    setRowPreview(cursorCol.value, 0, parsed);
+  }
+  redraw();
 }
+
+async function commitEditBuffer(): Promise<void> {
+  if (!editBuffer.value) return;
+  const parsed = Number(editBuffer.value.trim().replace(",", "."));
+  if (!Number.isFinite(parsed)) {
+    revertPreview();
+    editBuffer.value = "";
+    editStartValue.value = null;
+    return;
+  }
+  if (cursorAxis.value === "x") {
+    await commitXValue(cursorCol.value, parsed);
+  } else {
+    await commitRowValue(cursorCol.value, 0, parsed);
+  }
+  editBuffer.value = "";
+  editStartValue.value = null;
+}
+
+async function cancelEditBuffer(): Promise<void> {
+  if (editBuffer.value) {
+    revertPreview();
+  }
+  editBuffer.value = "";
+  editStartValue.value = null;
+}
+
+async function onCellMouseDown(axis: CurveAxis, col: number, event: MouseEvent): Promise<void> {
+  if (event.button !== 0) return;
+  event.preventDefault();
+  await commitEditBuffer();
+  selectCell(axis, col);
+}
+
+async function handleArrow(key: string): Promise<void> {
+  await commitEditBuffer();
+  const last = rowIndices.value.length - 1;
+  if (last < 0) return;
+
+  let axis = cursorAxis.value;
+  let col = cursorCol.value;
+
+  if (key === "ArrowLeft") {
+    col = Math.max(0, col - 1);
+  } else if (key === "ArrowRight") {
+    col = Math.min(last, col + 1);
+  } else if (key === "ArrowUp") {
+    if (axis === "y" && xEditable.value) axis = "x";
+  } else if (key === "ArrowDown") {
+    if (axis === "x") axis = "y";
+  }
+
+  selectCell(axis, col);
+}
+
+function handleTypeChar(key: string, code: string): void {
+  if (!axisEditable(cursorAxis.value)) return;
+
+  if (editBuffer.value === "") {
+    const current =
+      cursorAxis.value === "x" ? displayX(cursorCol.value) : displayY(cursorCol.value);
+    editStartValue.value = current;
+  }
+
+  let ch = key;
+  if (code === "NumpadDecimal" || key === "," || key === ".") ch = ".";
+  if (code === "NumpadSubtract" || key === "-") ch = "-";
+
+  if (/^[0-9]$/.test(ch)) {
+    editBuffer.value += ch;
+  } else if (ch === ".") {
+    if (!editBuffer.value.includes(".")) {
+      if (!editBuffer.value) editBuffer.value = "0";
+      editBuffer.value += ".";
+    }
+  } else if (ch === "-") {
+    if (!editBuffer.value) editBuffer.value = "-";
+  } else {
+    return;
+  }
+
+  applyBufferPreview();
+}
+
+async function handleTypeControl(key: string): Promise<void> {
+  if (key === "Backspace") {
+    editBuffer.value = editBuffer.value.slice(0, -1);
+    if (editBuffer.value === "") {
+      revertPreview();
+      editStartValue.value = null;
+    } else {
+      applyBufferPreview();
+    }
+    return;
+  }
+  if (key === "Enter") {
+    await commitEditBuffer();
+    return;
+  }
+  if (key === "Escape") {
+    await cancelEditBuffer();
+  }
+}
+
+function onComponentKeydown(event: KeyboardEvent): boolean {
+  if (!isActive.value) return false;
+
+  const key = event.key;
+  const code = event.code;
+  const isArrow = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key);
+  const isTypeChar =
+    (!event.ctrlKey && !event.metaKey && !event.altKey && /^[0-9]$/.test(key)) ||
+    code === "NumpadDecimal" ||
+    code === "NumpadSubtract" ||
+    key === "." ||
+    key === "," ||
+    key === "-";
+  const isTypeControl = key === "Backspace" || key === "Enter" || key === "Escape";
+
+  if (!isArrow && !isTypeChar && !isTypeControl) return false;
+
+  if (isArrow && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    void handleArrow(key);
+    return true;
+  }
+
+  if (isTypeControl) {
+    if ((key === "Enter" || key === "Escape") && !editBuffer.value) {
+      return false;
+    }
+    void handleTypeControl(key);
+    return true;
+  }
+
+  if (isTypeChar) {
+    handleTypeChar(key, code);
+    return true;
+  }
+
+  return false;
+}
+
+useComponentBinding(props.path, onComponentKeydown);
 
 const curvePoints = computed((): CurvePoint[] => {
   const pts: CurvePoint[] = [];
@@ -144,7 +320,7 @@ function redraw(): void {
   if (!ctx) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   drawConfigCurveChart(ctx, w, h, curvePoints.value, undefined, {
-    activeRow: dragRow.value,
+    activeRow: dragRow.value ?? (isActive.value ? cursorCol.value : null),
     hoverRow: hoverRow.value,
   });
 }
@@ -180,6 +356,7 @@ function onCanvasMouseDown(event: MouseEvent): void {
   const row = hitTestCurvePoint(layout, pt.x, pt.y);
   if (row === null) return;
   event.preventDefault();
+  void commitEditBuffer().then(() => selectCell("y", row));
   dragRow.value = row;
   dragStartY.value = displayY(row);
   window.addEventListener("mousemove", onWindowMouseMove);
@@ -212,7 +389,7 @@ function onWindowMouseMove(event: MouseEvent): void {
   if (!pt || !layout) return;
   const nextY = clampY(layout.fromY(pt.y));
   setRowPreview(dragRow.value, 0, nextY);
-  setYBuffer(dragRow.value, fmt(nextY));
+  editBuffer.value = "";
   redraw();
 }
 
@@ -235,64 +412,9 @@ async function onWindowMouseUp(): Promise<void> {
     return;
   }
   await commitRowValue(row, 0, nextY);
-  clearYBuffer(row);
+  editBuffer.value = "";
+  editStartValue.value = null;
   redraw();
-}
-
-function yStep(event: KeyboardEvent): number {
-  return event.shiftKey ? 0.001 : 0.01;
-}
-
-function xStep(event: KeyboardEvent): number {
-  return event.shiftKey ? 1 : 10;
-}
-
-function onYKeydown(col: number, event: KeyboardEvent): void {
-  const current = displayY(col);
-  if (current === null) return;
-  if (event.key === "ArrowUp") {
-    event.preventDefault();
-    void commitRowValue(col, 0, current + yStep(event));
-    clearYBuffer(col);
-  } else if (event.key === "ArrowDown") {
-    event.preventDefault();
-    void commitRowValue(col, 0, Math.max(0, current - yStep(event)));
-    clearYBuffer(col);
-  } else if (event.key === "Enter") {
-    event.preventDefault();
-    void commitYInput(col, (event.target as HTMLInputElement).value);
-  }
-}
-
-function onXKeydown(col: number, event: KeyboardEvent): void {
-  const current = displayX(col);
-  if (current === null) return;
-  if (event.key === "ArrowUp") {
-    event.preventDefault();
-    void commitXValue(col, current + xStep(event));
-    clearXBuffer(col);
-  } else if (event.key === "ArrowDown") {
-    event.preventDefault();
-    void commitXValue(col, current - xStep(event));
-    clearXBuffer(col);
-  } else if (event.key === "Enter") {
-    event.preventDefault();
-    void commitXInput(col, (event.target as HTMLInputElement).value);
-  }
-}
-
-async function commitYInput(col: number, raw: string): Promise<void> {
-  await commitCell(col, 0, raw);
-  clearYBuffer(col);
-}
-
-async function commitXInput(col: number, raw: string): Promise<void> {
-  const parsed = Number(raw.trim().replace(",", "."));
-  if (!Number.isFinite(parsed)) {
-    return;
-  }
-  await commitXValue(col, parsed);
-  clearXBuffer(col);
 }
 
 function scheduleInitialRedraw(): void {
@@ -306,12 +428,24 @@ function scheduleInitialRedraw(): void {
 
 useChartCanvasLayout(rootRef, redraw);
 
-watch([curvePoints, chartHeight, dragRow, hoverRow], () => redraw(), { deep: true });
+watch([curvePoints, chartHeight, dragRow, hoverRow, cursorAxis, cursorCol, editBuffer, isActive], () =>
+  redraw(),
+);
 
-watch(rowIndices, () => {
-  yEditBuffers.value = {};
-  xEditBuffers.value = {};
+watch(rowIndices, (cols) => {
+  editBuffer.value = "";
+  editStartValue.value = null;
+  if (cols.length === 0) return;
+  cursorCol.value = Math.min(cursorCol.value, cols.length - 1);
   scheduleInitialRedraw();
+});
+
+watch(isActive, (active) => {
+  if (active && rowIndices.value.length > 0) {
+    selectCell("y", Math.min(cursorCol.value, rowIndices.value.length - 1));
+  } else {
+    void commitEditBuffer();
+  }
 });
 
 onMounted(() => {
@@ -352,11 +486,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <p class="curve-hint">
-      Перетащите точку на графике или отредактируйте {{ xLabel }} / {{ yLabel }} в таблице.
-    </p>
-
-    <div class="grid-scroll">
+    <div ref="gridRef" class="grid-scroll">
       <table class="grid grid--horizontal">
         <tbody>
           <tr>
@@ -364,20 +494,22 @@ onBeforeUnmount(() => {
             <td
               v-for="col in rowIndices"
               :key="`x-${col}`"
+              class="grid-cell"
               :class="{
-                'grid-cell--active': dragRow === col,
-                'grid-cell--hover': hoverRow === col,
+                'grid-cell--cursor': isCursorCell('x', col),
+                'grid-cell--hover': hoverRow === col || (isActive && cursorCol === col && cursorAxis === 'y'),
               }"
+              @mousedown="onCellMouseDown('x', col, $event)"
             >
               <input
                 type="text"
                 class="cell-input"
-                inputmode="decimal"
+                readonly
+                tabindex="-1"
+                spellcheck="false"
+                autocomplete="off"
                 :disabled="!xEditable"
-                :value="xBufferFor(col)"
-                @input="setXBuffer(col, ($event.target as HTMLInputElement).value)"
-                @keydown="onXKeydown(col, $event)"
-                @blur="commitXInput(col, ($event.target as HTMLInputElement).value)"
+                :value="cellDisplay('x', col)"
               />
             </td>
           </tr>
@@ -386,26 +518,32 @@ onBeforeUnmount(() => {
             <td
               v-for="col in rowIndices"
               :key="`y-${col}`"
+              class="grid-cell"
               :class="{
-                'grid-cell--active': dragRow === col,
-                'grid-cell--hover': hoverRow === col,
+                'grid-cell--cursor': isCursorCell('y', col),
+                'grid-cell--hover': hoverRow === col || (isActive && cursorCol === col && cursorAxis === 'x'),
               }"
+              @mousedown="onCellMouseDown('y', col, $event)"
             >
               <input
                 type="text"
                 class="cell-input"
-                inputmode="decimal"
+                readonly
+                tabindex="-1"
+                spellcheck="false"
+                autocomplete="off"
                 :disabled="disabled"
-                :value="yBufferFor(col)"
-                @input="setYBuffer(col, ($event.target as HTMLInputElement).value)"
-                @keydown="onYKeydown(col, $event)"
-                @blur="commitYInput(col, ($event.target as HTMLInputElement).value)"
+                :value="cellDisplay('y', col)"
               />
             </td>
           </tr>
         </tbody>
       </table>
     </div>
+
+    <p class="curve-hint">
+      Enter — активировать · ↑↓←→ — ячейка · цифры — новое значение · график — перетаскивание Y
+    </p>
   </div>
 </template>
 
@@ -497,7 +635,7 @@ onBeforeUnmount(() => {
 
 .curve-hint {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--color-text-muted);
 }
 
@@ -537,7 +675,12 @@ onBeforeUnmount(() => {
   z-index: 1;
 }
 
-.grid-cell--active,
+.grid-cell--cursor {
+  outline: 2px solid var(--color-accent, #3b82f6);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
 .grid-cell--hover {
   background: color-mix(in srgb, var(--color-accent) 8%, transparent);
 }
@@ -551,16 +694,15 @@ onBeforeUnmount(() => {
   color: var(--color-text);
   text-align: center;
   font-variant-numeric: tabular-nums;
+  user-select: none;
+  pointer-events: none;
 }
 
-.cell-input:focus {
-  outline: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
-  outline-offset: -2px;
-  background: var(--color-bg);
+.grid-cell--cursor .cell-input {
+  font-weight: 600;
 }
 
 .cell-input:disabled {
-  background: var(--color-bg-muted);
   color: var(--color-text-muted);
 }
 </style>

@@ -247,5 +247,6 @@ export function useConfigGrid({ kind, instance, props }: UseConfigGridOptions) {
     xValues,
     yAxisValues,
     zValues,
+    reload,
   };
 }

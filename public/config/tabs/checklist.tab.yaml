@@ -1,0 +1,5 @@
+tab:
+  id: checklist
+  title: CHKLST
+root:
+  $component: checklist.panel

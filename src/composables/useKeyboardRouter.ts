@@ -16,6 +16,7 @@ import {
   tabOrder,
   undoCallback,
 } from "./useHotkeys";
+import { isUnsavedDialogVisible } from "./useUnsavedChangesGuard";
 
 export type KeyboardHandler = (e: KeyboardEvent) => boolean;
 
@@ -167,6 +168,10 @@ function isFilterInputFocused(path: string): boolean {
 
 function onKeydownCapture(e: KeyboardEvent): void {
   if (e.defaultPrevented) return;
+
+  if (isUnsavedDialogVisible()) {
+    return;
+  }
 
   if (isGlobalBinding(e) && handleGlobalBinding(e)) {
     return;

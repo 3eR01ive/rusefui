@@ -323,17 +323,18 @@ function onChartHeightChange(event: Event): void {
 }
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
-const containerRef = ref<HTMLDivElement | null>(null);
+const rootRef = ref<HTMLDivElement | null>(null);
 
 function redraw(): void {
   const canvas = canvasRef.value;
-  const container = containerRef.value;
-  if (!canvas || !container) return;
+  if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
-  const w = measureChartWidth(container);
+  const w = measureChartWidth(rootRef.value, 1);
   const h = chartHeight.value;
+  if (w < 1) return;
   canvas.width = Math.floor(w * dpr);
   canvas.height = Math.floor(h * dpr);
+  canvas.style.width = "100%";
   canvas.style.height = `${h}px`;
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
@@ -348,7 +349,7 @@ function scheduleRedraw(): void {
   redrawRaf = requestAnimationFrame(redraw);
 }
 
-useChartCanvasLayout(containerRef, scheduleRedraw);
+useChartCanvasLayout(rootRef, scheduleRedraw);
 
 watch(
   () => configSnapshot.value.values,
@@ -410,7 +411,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="dyno-card">
+  <div ref="rootRef" class="dyno-card">
     <p v-if="mounting" class="dyno-hint">Подключение…</p>
 
     <template v-else-if="ready || !hasLogic">
@@ -454,7 +455,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div ref="containerRef" class="dyno-chart-wrap">
+      <div class="dyno-chart-wrap">
         <canvas ref="canvasRef" class="dyno-canvas" />
         <p v-if="runPoints.length === 0 && !recording && previousRunPoints.length === 0" class="dyno-chart-empty">
           Start → разгон → Stop
@@ -580,6 +581,7 @@ onUnmounted(() => {
 .dyno-card {
   width: 100%;
   max-width: none;
+  align-self: stretch;
   box-sizing: border-box;
   padding: 1.15rem 1.25rem 1.25rem;
   border-radius: var(--radius-lg, 12px);

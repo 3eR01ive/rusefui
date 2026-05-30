@@ -1,4 +1,4 @@
-id: setup.panel
+id: checklist.panel
 description: Проверка готовности конфигурации ECU к запуску
 children:
   - type: config-checklist
