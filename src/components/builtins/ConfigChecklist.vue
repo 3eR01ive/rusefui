@@ -226,6 +226,7 @@ onUnmounted(() => {
 function selectItem(id: string): void {
   selectedId.value = id;
   selectComponent(menuItemPath(id));
+  void loadEditorForSelection(id);
 }
 
 function levelSummary(levelId: string) {

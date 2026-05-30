@@ -131,7 +131,7 @@ impl EcuSession {
         let status = ensure_panels_for_ini(&path, &signature)?;
         *self.active_panel_hash.lock().unwrap() = Some(status.hash.clone());
 
-        if prev.as_deref() != Some(status.hash.as_str()) {
+        if prev.as_deref() != Some(status.hash.as_str()) || status.generated {
             if let Some(hook) = self.panels_changed_hook.lock().unwrap().as_ref() {
                 hook(status.clone());
             }

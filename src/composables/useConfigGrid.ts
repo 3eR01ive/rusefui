@@ -120,6 +120,23 @@ export function useConfigGrid({ kind, instance, props }: UseConfigGridOptions) {
     { immediate: true },
   );
 
+  watch(
+    () =>
+      [
+        snapshot.value.rawLen,
+        snapshot.value.loading,
+        snapshot.value.readOnly,
+      ] as const,
+    ([, loading], prev) => {
+      if (loading || !snapshot.value.loaded) return;
+      const changed =
+        !prev ||
+        prev[0] !== snapshot.value.rawLen ||
+        prev[2] !== snapshot.value.readOnly;
+      if (changed) void reload();
+    },
+  );
+
   onMounted(() => {
     window.addEventListener("config-undo-redo", onConfigUndoRedo);
   });
@@ -138,6 +155,11 @@ export function useConfigGrid({ kind, instance, props }: UseConfigGridOptions) {
       localError.value = "некорректное число";
       return;
     }
+    await commitRowValue(row, col, parsed);
+  }
+
+  async function commitRowValue(row: number, col: number, parsed: number) {
+    if (disabled.value || !valueField.value) return;
     const idx = cellIndex(row, col);
     const current = cellValue(row, col);
     if (current !== null && Math.abs(current - parsed) < 1e-9) return;
@@ -154,6 +176,46 @@ export function useConfigGrid({ kind, instance, props }: UseConfigGridOptions) {
       saving.value = false;
     }
   }
+
+  function setRowPreview(row: number, col: number, value: number): void {
+    const idx = cellIndex(row, col);
+    if (zValues.value[idx] === value) return;
+    const next = zValues.value.slice();
+    next[idx] = value;
+    zValues.value = next;
+  }
+
+  function xValueAt(index: number): number | null {
+    const v = xValues.value[index];
+    return v === undefined ? null : v;
+  }
+
+  function setXPreview(index: number, value: number): void {
+    if (xValues.value[index] === value) return;
+    const next = xValues.value.slice();
+    next[index] = value;
+    xValues.value = next;
+  }
+
+  async function commitXValue(index: number, parsed: number) {
+    if (disabled.value || !xField.value) return;
+    const current = xValueAt(index);
+    if (current !== null && Math.abs(current - parsed) < 1e-9) return;
+
+    saving.value = true;
+    localError.value = null;
+    try {
+      await setArrayValue(xField.value, index, parsed);
+      setXPreview(index, parsed);
+    } catch (e) {
+      localError.value = e instanceof Error ? e.message : String(e);
+      await reload();
+    } finally {
+      saving.value = false;
+    }
+  }
+
+  const xEditable = computed(() => Boolean(xField.value) && !disabled.value);
 
   const statusText = computed(() => {
     if (localError.value) return localError.value;
@@ -174,6 +236,12 @@ export function useConfigGrid({ kind, instance, props }: UseConfigGridOptions) {
     fmt,
     cellValue,
     commitCell,
+    commitRowValue,
+    commitXValue,
+    setRowPreview,
+    setXPreview,
+    xValueAt,
+    xEditable,
     statusText,
     localError,
     xValues,

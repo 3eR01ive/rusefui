@@ -4,14 +4,22 @@ import type { ChecklistEditor } from "./useConfig";
 import {
   initIniPanels,
   invalidateIniPanelsCache,
+  loadBundledPanelsManifest,
   loadGeneratedPanelYaml,
   loadPanelsManifest,
+  readBundledPanelYaml,
   registerIniPanelsChangedHandler,
 } from "./useIniPanels";
 
 interface ManifestEntry {
   id: string;
   file: string;
+}
+
+interface ManifestLayer {
+  id: "active" | "bundled";
+  entries: ManifestEntry[];
+  readYaml: (file: string) => Promise<string>;
 }
 
 const panelChildrenCache = new Map<string, ComponentInstance[]>();
@@ -23,20 +31,42 @@ export function invalidateChecklistEditorCache(): void {
   invalidateIniPanelsCache();
 }
 
-async function loadManifestEntries(): Promise<ManifestEntry[]> {
+async function manifestLayers(): Promise<ManifestLayer[]> {
   await initIniPanels();
+  const layers: ManifestLayer[] = [];
+
   const response = await loadPanelsManifest();
-  return response.manifest?.panels ?? [];
+  const active = response.manifest?.panels ?? [];
+  if (active.length) {
+    layers.push({
+      id: "active",
+      entries: active,
+      readYaml: loadGeneratedPanelYaml,
+    });
+  }
+
+  layers.push({
+    id: "bundled",
+    entries: (await loadBundledPanelsManifest()).panels ?? [],
+    readYaml: readBundledPanelYaml,
+  });
+
+  return layers;
 }
 
-async function loadPanelChildren(file: string): Promise<ComponentInstance[]> {
-  const cached = panelChildrenCache.get(file);
+function panelChildrenCacheKey(layerId: string, file: string): string {
+  return `${layerId}\0${file}`;
+}
+
+async function loadPanelChildren(layer: ManifestLayer, file: string): Promise<ComponentInstance[]> {
+  const cacheKey = panelChildrenCacheKey(layer.id, file);
+  const cached = panelChildrenCache.get(cacheKey);
   if (cached) return cached;
 
-  const text = await loadGeneratedPanelYaml(file);
+  const text = await layer.readYaml(file);
   const doc = parseYaml(text) as { children?: ComponentInstance[] };
   const children = doc.children ?? [];
-  panelChildrenCache.set(file, children);
+  panelChildrenCache.set(cacheKey, children);
   return children;
 }
 
@@ -79,14 +109,15 @@ async function findFieldComponentInManifest(
     return hit ? structuredClone(hit) : null;
   }
 
-  const panels = await loadManifestEntries();
-  for (const entry of panels) {
-    const children = await loadPanelChildren(entry.file);
-    const found =
-      findInTree(children, field, componentId) ?? findInTree(children, field, null);
-    if (found) {
-      fieldLocationCache.set(key, found);
-      return structuredClone(found);
+  for (const layer of await manifestLayers()) {
+    for (const entry of layer.entries) {
+      const children = await loadPanelChildren(layer, entry.file);
+      const found =
+        findInTree(children, field, componentId) ?? findInTree(children, field, null);
+      if (found) {
+        fieldLocationCache.set(key, found);
+        return structuredClone(found);
+      }
     }
   }
 
@@ -118,10 +149,10 @@ async function resolveSingleChecklistEditor(
   editor: ChecklistEditor | Readonly<ChecklistEditor>,
 ): Promise<ComponentInstance | null> {
   if (editor.panel) {
-    const panels = await loadManifestEntries();
-    const entry = panels.find((p) => p.id === editor.panel);
-    if (entry) {
-      const children = await loadPanelChildren(entry.file);
+    for (const layer of await manifestLayers()) {
+      const entry = layer.entries.find((p) => p.id === editor.panel);
+      if (!entry) continue;
+      const children = await loadPanelChildren(layer, entry.file);
       const found =
         findInTree(children, editor.field, editor.component) ??
         findInTree(children, editor.field, null);

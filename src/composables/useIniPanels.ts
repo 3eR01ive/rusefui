@@ -95,10 +95,20 @@ export async function loadGeneratedPanelYaml(file: string): Promise<string> {
   try {
     return await invoke<string>("panels_read_yaml", { file });
   } catch {
-    const res = await fetch(`${BUNDLED_PANELS_BASE}/${file}`);
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    return res.text();
+    return readBundledPanelYaml(file);
   }
+}
+
+/** Bundled manifest из репозитория (полный набор панелей для fallback). */
+export async function loadBundledPanelsManifest(): Promise<PanelsManifest> {
+  return fetchBundledManifest();
+}
+
+/** YAML bundled-панели (когда cache INI не содержит нужный dialog). */
+export async function readBundledPanelYaml(file: string): Promise<string> {
+  const res = await fetch(`${BUNDLED_PANELS_BASE}/${file}`);
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.text();
 }
 
 export async function initIniPanels(): Promise<void> {

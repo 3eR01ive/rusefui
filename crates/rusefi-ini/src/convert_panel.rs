@@ -19,6 +19,9 @@ pub struct PanelManifest {
     pub ini_hash: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub generated_at_ms: Option<u64>,
+    /// Версия генератора panel cache; при смене — пересоздание user cache.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub generator_version: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -173,6 +176,7 @@ pub fn convert_menu_panels(
         ini_signature: None,
         ini_hash: None,
         generated_at_ms: None,
+        generator_version: None,
     };
 
     ConvertResult { manifest, files }
