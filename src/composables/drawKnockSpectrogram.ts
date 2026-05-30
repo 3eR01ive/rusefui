@@ -19,11 +19,34 @@ function dbToColor(db: number): [number, number, number] {
 let cacheCanvas: HTMLCanvasElement | null = null;
 let cacheWidth = 0;
 let cacheHeight = 0;
+let cachedPixelLength = 0;
+
+let cachedTheme: {
+  bg: string;
+  textMuted: string;
+  border: string;
+  text: string;
+} | null = null;
+
+function themeColors(canvas: HTMLCanvasElement) {
+  if (!cachedTheme) {
+    const cs = getComputedStyle(canvas);
+    cachedTheme = {
+      bg: cs.getPropertyValue("--color-bg-panel").trim() || "#1a1d24",
+      textMuted: cs.getPropertyValue("--color-text-muted").trim() || "#889",
+      border: cs.getPropertyValue("--color-border").trim() || "#3a3f4a",
+      text: cs.getPropertyValue("--color-text").trim() || "#e8eaed",
+    };
+  }
+  return cachedTheme;
+}
 
 export function resetKnockSpectrogramDrawCache(): void {
   cacheCanvas = null;
   cacheWidth = 0;
   cacheHeight = 0;
+  cachedPixelLength = 0;
+  cachedTheme = null;
 }
 
 function ensureCache(width: number, height: number): CanvasRenderingContext2D | null {
@@ -34,6 +57,7 @@ function ensureCache(width: number, height: number): CanvasRenderingContext2D | 
     cacheCanvas.height = height;
     cacheWidth = width;
     cacheHeight = height;
+    cachedPixelLength = 0;
     const ctx = cacheCanvas.getContext("2d");
     if (ctx) {
       ctx.fillStyle = "#1a1d24";
@@ -68,6 +92,63 @@ function fillCacheFromPixels(
   ctx.putImageData(img, 0, 0);
 }
 
+function appendColumnsToCache(
+  ctx: CanvasRenderingContext2D,
+  height: number,
+  pixels: Uint8Array | number[],
+  startCol: number,
+  colCount: number,
+): void {
+  const img = ctx.createImageData(colCount, height);
+  for (let ci = 0; ci < colCount; ci++) {
+    const col = startCol + ci;
+    for (let row = 0; row < height; row++) {
+      const db = pixelAt(pixels, col, row, height);
+      const [r, g, b] = dbToColor(db);
+      const di = (row * colCount + ci) * 4;
+      img.data[di] = r;
+      img.data[di + 1] = g;
+      img.data[di + 2] = b;
+      img.data[di + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, startCol, 0);
+}
+
+/** Обновляет offscreen-cache: полный rebuild только при смене размера / scroll. */
+function syncDataCache(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  pixels: Uint8Array | number[],
+): void {
+  if (width !== cacheWidth || height !== cacheHeight) {
+    fillCacheFromPixels(ctx, width, height, pixels);
+    cachedPixelLength = pixels.length;
+    return;
+  }
+
+  if (pixels.length < cachedPixelLength) {
+    fillCacheFromPixels(ctx, width, height, pixels);
+    cachedPixelLength = pixels.length;
+    return;
+  }
+
+  if (pixels.length === cachedPixelLength) return;
+
+  const newBytes = pixels.length - cachedPixelLength;
+  if (newBytes % height !== 0) {
+    fillCacheFromPixels(ctx, width, height, pixels);
+    cachedPixelLength = pixels.length;
+    return;
+  }
+
+  const startCol = cachedPixelLength / height;
+  const colCount = newBytes / height;
+  appendColumnsToCache(ctx, height, pixels, startCol, colCount);
+  cachedPixelLength = pixels.length;
+}
+
 export function drawKnockSpectrogram(
   canvas: HTMLCanvasElement,
   view: KnockSpectrogramView,
@@ -76,26 +157,26 @@ export function drawKnockSpectrogram(
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
 
+  const theme = themeColors(canvas);
   const dpr = window.devicePixelRatio || 1;
   const w = canvas.clientWidth;
   const h = canvas.clientHeight;
   if (w < 8 || h < 8) return;
 
-  canvas.width = Math.round(w * dpr);
-  canvas.height = Math.round(h * dpr);
+  const pixelW = Math.round(w * dpr);
+  const pixelH = Math.round(h * dpr);
+  if (canvas.width !== pixelW || canvas.height !== pixelH) {
+    canvas.width = pixelW;
+    canvas.height = pixelH;
+  }
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  const bg =
-    getComputedStyle(canvas).getPropertyValue("--color-bg-panel").trim() ||
-    "#1a1d24";
-  ctx.fillStyle = bg;
+  ctx.fillStyle = theme.bg;
   ctx.fillRect(0, 0, w, h);
 
   const { width, height, pixels, freqStartHz, freqStepHz } = view;
   if (width < 1 || height < 1 || pixels.length < width * height) {
-    ctx.fillStyle =
-      getComputedStyle(canvas).getPropertyValue("--color-text-muted").trim() ||
-      "#889";
+    ctx.fillStyle = theme.textMuted;
     ctx.font = "13px system-ui, sans-serif";
     ctx.fillText("Спектрограмма (ждём FFT-столбцы…)", 12, 28);
     return;
@@ -103,11 +184,7 @@ export function drawKnockSpectrogram(
 
   const cacheCtx = ensureCache(width, height);
   if (!cacheCtx) return;
-  if (cacheWidth !== width || cacheHeight !== height) {
-    fillCacheFromPixels(cacheCtx, width, height, pixels);
-  } else {
-    fillCacheFromPixels(cacheCtx, width, height, pixels);
-  }
+  syncDataCache(cacheCtx, width, height, pixels);
 
   const margin = { top: 16, right: 12, bottom: 28, left: 52 };
   const plotW = w - margin.left - margin.right;
@@ -116,24 +193,18 @@ export function drawKnockSpectrogram(
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(cacheCanvas!, 0, 0, width, height, margin.left, margin.top, plotW, plotH);
 
-  ctx.strokeStyle =
-    getComputedStyle(canvas).getPropertyValue("--color-border").trim() ||
-    "#3a3f4a";
+  ctx.strokeStyle = theme.border;
   ctx.lineWidth = 1;
   ctx.strokeRect(margin.left, margin.top, plotW, plotH);
 
   const fTop = freqStartHz + freqStepHz * (height - 1);
-  ctx.fillStyle =
-    getComputedStyle(canvas).getPropertyValue("--color-text-muted").trim() ||
-    "#aab";
+  ctx.fillStyle = theme.textMuted;
   ctx.font = "10px ui-monospace, Menlo, monospace";
   ctx.fillText(`${Math.round(freqStartHz)} Hz`, 4, margin.top + plotH);
   ctx.fillText(`${Math.round(fTop)} Hz`, 4, margin.top + 10);
 
   if (opts.title) {
-    ctx.fillStyle =
-      getComputedStyle(canvas).getPropertyValue("--color-text").trim() ||
-      "#e8eaed";
+    ctx.fillStyle = theme.text;
     ctx.font = "11px system-ui, sans-serif";
     ctx.fillText(opts.title, margin.left, 12);
   }

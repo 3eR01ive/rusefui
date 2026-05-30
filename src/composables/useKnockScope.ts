@@ -1,6 +1,7 @@
 import { shallowRef, readonly } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { resetKnockSpectrogramDrawCache } from "./drawKnockSpectrogram";
 
 export interface KnockSpectrogramView {
   width: number;
@@ -137,6 +138,7 @@ function resetSpectrogramBuffer(): void {
   spectrogramFreqStart = 4000;
   spectrogramFreqStep = 0;
   resetWaveformRing();
+  resetKnockSpectrogramDrawCache();
   syncSpectrogramViewRef();
 }
 
@@ -179,6 +181,7 @@ function loadFullSpectrogram(
     resetSpectrogramBuffer();
     return;
   }
+  resetKnockSpectrogramDrawCache();
   spectrogramWidth = spec.width;
   spectrogramHeight = spec.height;
   spectrogramFreqStart = spec.freqStartHz;

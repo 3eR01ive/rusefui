@@ -30,10 +30,6 @@ import {
 import { useRustComponent } from "../../composables/useRustComponent";
 import { useInstanceBind } from "../../composables/useInstanceBind";
 import { useTabActivity, useTabFrozenDisplay } from "../../composables/useTabActivity";
-import {
-  measureChartWidth,
-  useChartCanvasLayout,
-} from "../../composables/useChartCanvasLayout";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -421,15 +417,20 @@ let thresholdCanvasPixelH = 0;
 const spectrogramCanvasRef = ref<HTMLCanvasElement | null>(null);
 const spectrogramContainerRef = ref<HTMLDivElement | null>(null);
 
-const spectrogramHeight = computed(() => chartHeight.value);
+function chartWidthPx(container: HTMLElement | null | undefined): number {
+  if (!container) return 0;
+  const w = container.clientWidth;
+  return w > 0 ? Math.floor(w) : 0;
+}
 
 function redrawThresholdChart(): void {
   const canvas = thresholdCanvasRef.value;
   const container = thresholdContainerRef.value;
   if (!canvas || !container) return;
   const dpr = window.devicePixelRatio || 1;
-  const w = measureChartWidth(container);
+  const w = chartWidthPx(container);
   const h = chartHeight.value;
+  if (w < 1 || h < 1) return;
   const pixelW = Math.floor(w * dpr);
   const pixelH = Math.floor(h * dpr);
   if (pixelW !== thresholdCanvasPixelW || pixelH !== thresholdCanvasPixelH) {
@@ -458,8 +459,8 @@ function redrawThresholdChart(): void {
 
 function redrawSpectrogramChart(): void {
   const canvas = spectrogramCanvasRef.value;
-  if (!canvas) return;
-  canvas.style.height = `${spectrogramHeight.value}px`;
+  const container = spectrogramContainerRef.value;
+  if (!canvas || !container || chartWidthPx(container) < 1) return;
   drawKnockSpectrogram(canvas, spectrogramView.value, {
     title: detectedHz.value != null ? `Пик ~${Math.round(Number(detectedHz.value))} Hz` : undefined,
   });
@@ -468,6 +469,10 @@ function redrawSpectrogramChart(): void {
 let thresholdRedrawRaf = 0;
 let lastThresholdDrawMs = 0;
 const THRESHOLD_REDRAW_MIN_MS = 50;
+
+let spectrogramRedrawRaf = 0;
+let lastSpectrogramDrawMs = 0;
+const SPECTROGRAM_REDRAW_MIN_MS = 50;
 
 function scheduleThresholdRedraw(): void {
   if (!tabActive.value) return;
@@ -485,16 +490,29 @@ function scheduleThresholdRedraw(): void {
   thresholdRedrawRaf = requestAnimationFrame(tick);
 }
 
-let spectrogramRedrawRaf = 0;
 function scheduleSpectrogramRedraw(): void {
   if (!tabActive.value) return;
-  cancelAnimationFrame(spectrogramRedrawRaf);
-  spectrogramRedrawRaf = requestAnimationFrame(redrawSpectrogramChart);
+  if (spectrogramRedrawRaf !== 0) return;
+  const tick = () => {
+    spectrogramRedrawRaf = 0;
+    const now = performance.now();
+    if (now - lastSpectrogramDrawMs < SPECTROGRAM_REDRAW_MIN_MS) {
+      spectrogramRedrawRaf = requestAnimationFrame(tick);
+      return;
+    }
+    lastSpectrogramDrawMs = now;
+    redrawSpectrogramChart();
+  };
+  spectrogramRedrawRaf = requestAnimationFrame(tick);
 }
+
+const spectrogramDirty = computed(
+  () => recordingSpectrum.value || spectrogramView.value.width > 0,
+);
 
 function scheduleRedraw(): void {
   scheduleThresholdRedraw();
-  scheduleSpectrogramRedraw();
+  if (spectrogramDirty.value) scheduleSpectrogramRedraw();
 }
 
 watch(ready, (r) => {
@@ -504,9 +522,6 @@ watch(projectUiEpoch, () => void applyUiFromProject());
 watch(workspaceResetEpoch, () => void applyUiFromProject());
 watch(configLoaded, (loaded) => {
   if (loaded) void reloadConfigThresholdCurve();
-});
-watch(configSnapshot, (snap) => {
-  if (snap.loaded) void reloadConfigThresholdCurve();
 });
 watch(recordingThreshold, (rec, wasRec) => {
   if (wasRec && !rec) void reloadConfigThresholdCurve();
@@ -536,32 +551,53 @@ watch(
 
 watch(
   [
-    () => state.value.runPeakCurve,
-    () => state.value.previousRunPeakCurve,
-    () => state.value.previewThresholdCurve,
-    configThresholdCurve,
+    liveLevel,
+    liveRpm,
+    thresholdChartCurve,
+    knockLevelChartPoints,
     chartHeight,
     recordingThreshold,
+    configThresholdCurve,
   ],
   () => scheduleThresholdRedraw(),
 );
-watch([liveLevel, liveRpm], () => scheduleThresholdRedraw());
-watch(thresholdChartCurve, () => scheduleThresholdRedraw());
-watch([spectrogramView, detectedHz, spectrogramHeight], () => scheduleSpectrogramRedraw());
-watch(
-  () => knockScopeSnapshot.value.captureCount,
-  () => scheduleSpectrogramRedraw(),
-);
-watch(tabActive, (active, was) => {
-  if (active && !was) scheduleRedraw();
-});
-useChartCanvasLayout(thresholdContainerRef, scheduleThresholdRedraw);
-useChartCanvasLayout(spectrogramContainerRef, scheduleSpectrogramRedraw);
 
-watch([ready, thresholdContainerRef, spectrogramContainerRef], async () => {
+watch(
+  [() => knockScopeSnapshot.value.captureCount, detectedHz, chartHeight, spectrogramDirty],
+  () => {
+    if (spectrogramDirty.value) scheduleSpectrogramRedraw();
+  },
+);
+
+watch(tabActive, (active, was) => {
+  if (active && !was) void nextTick(() => scheduleRedraw());
+});
+
+let resizeObserver: ResizeObserver | undefined;
+
+function setupResizeObserver(): void {
+  resizeObserver?.disconnect();
+  resizeObserver = undefined;
+  const el = thresholdContainerRef.value;
+  if (!el || typeof ResizeObserver === "undefined") return;
+  let lastW = 0;
+  resizeObserver = new ResizeObserver(() => {
+    if (!tabActive.value) return;
+    const w = el.clientWidth;
+    if (w < 1) return;
+    if (Math.abs(w - lastW) < 1) return;
+    lastW = w;
+    scheduleThresholdRedraw();
+    if (spectrogramDirty.value) scheduleSpectrogramRedraw();
+  });
+  resizeObserver.observe(el);
+}
+
+watch([ready, thresholdContainerRef], async () => {
   if (!ready.value) return;
   await nextTick();
-  scheduleRedraw();
+  setupResizeObserver();
+  scheduleThresholdRedraw();
 });
 
 onMounted(async () => {
@@ -572,6 +608,7 @@ onMounted(async () => {
 onUnmounted(() => {
   cancelAnimationFrame(thresholdRedrawRaf);
   cancelAnimationFrame(spectrogramRedrawRaf);
+  resizeObserver?.disconnect();
   if (saveUiTimer !== 0) window.clearTimeout(saveUiTimer);
 });
 </script>
@@ -863,7 +900,7 @@ onUnmounted(() => {
 <style scoped>
 .knock-card {
   width: 100%;
-  max-width: none;
+  max-width: 51rem;
   box-sizing: border-box;
   padding: 1.15rem 1.25rem 1.25rem;
   border-radius: var(--radius-lg, 12px);
