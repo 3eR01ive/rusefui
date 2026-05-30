@@ -9,6 +9,7 @@ defineProps<{
   canCaptureConfig: boolean;
   hasOpenProject: boolean;
   timelineClipCount: number;
+  iniSignature: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -17,6 +18,7 @@ const emit = defineEmits<{
   closeProject: [];
   saveProject: [];
   saveProjectAs: [];
+  changeIni: [];
   captureConfig: [];
   copyProjectWithoutTimeline: [];
   clearTimeline: [];
@@ -102,6 +104,9 @@ onUnmounted(() => {
           {{ projectName }}
         </span>
         <span v-if="projectDirty" class="project-dropdown-unsaved">несохранён</span>
+        <span v-if="iniSignature" class="project-dropdown-ini" :title="iniSignature">
+          INI: {{ iniSignature.split(".").pop() ?? iniSignature }}
+        </span>
       </div>
 
       <div class="project-dropdown-sep" />
@@ -172,6 +177,19 @@ onUnmounted(() => {
           <svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="currentColor" opacity=".15"/><rect x="2" y="2" width="12" height="12" rx="1.5" stroke="currentColor" stroke-width="1.2"/><rect x="5" y="2" width="6" height="4" rx=".5" fill="currentColor" opacity=".5"/><rect x="4" y="9" width="8" height="4" rx=".75" fill="currentColor" opacity=".4"/><path d="M11 11l2 2M11 13l2-2" stroke="white" stroke-width="1.1" stroke-linecap="round"/></svg>
         </span>
         Сохранить как…
+      </button>
+
+      <button
+        type="button"
+        role="menuitem"
+        class="menu-item"
+        :disabled="projectBusy || !hasOpenProject"
+        @click="action(() => emit('changeIni'))"
+      >
+        <span class="menu-item-icon">
+          <svg viewBox="0 0 16 16" fill="none"><path d="M3 4.5h10M3 8h10M3 11.5h6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M12.5 10.5l1.5 1.5-1.5 1.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        Сменить INI…
       </button>
 
       <div class="project-dropdown-sep" />
@@ -304,6 +322,17 @@ onUnmounted(() => {
   padding: 0.1rem 0.35rem;
   border-radius: var(--radius-sm);
   flex-shrink: 0;
+}
+
+.project-dropdown-ini {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  font-size: 0.68rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .project-dropdown-sep {

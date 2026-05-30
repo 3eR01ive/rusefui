@@ -2,20 +2,26 @@
 
 use std::collections::{HashMap, HashSet};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::menu::{DialogItem, IniMenu, MenuEntry};
 use crate::model::{ConfigFieldKind, EnumOption, IniCurveDef, IniTableDef};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PanelManifest {
     pub ini_source: String,
     pub panel_count: usize,
     pub panels: Vec<PanelManifestEntry>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ini_signature: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ini_hash: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub generated_at_ms: Option<u64>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PanelManifestEntry {
     pub id: String,
@@ -112,6 +118,23 @@ pub struct ConvertResult {
     pub files: HashMap<String, String>,
 }
 
+/// Прочитать INI с диска и сконвертировать menu → YAML панелей.
+pub fn convert_ini_path(path: &std::path::Path) -> Result<ConvertResult, crate::IniError> {
+    let text = std::fs::read_to_string(path).map_err(|e| crate::IniError::Io {
+        path: path.display().to_string(),
+        source: e,
+    })?;
+    let menu = crate::parse_menu_section(&text)?;
+    let ini = crate::parse_ini(&text)?;
+    Ok(convert_menu_panels(
+        &menu,
+        &ini.config_fields,
+        &ini.tables,
+        &ini.curves,
+        &path.display().to_string(),
+    ))
+}
+
 pub fn convert_menu_panels(
     menu: &IniMenu,
     config_fields: &HashMap<String, ConfigFieldKind>,
@@ -147,6 +170,9 @@ pub fn convert_menu_panels(
         ini_source: ini_source.to_string(),
         panel_count: manifest_entries.len(),
         panels: manifest_entries,
+        ini_signature: None,
+        ini_hash: None,
+        generated_at_ms: None,
     };
 
     ConvertResult { manifest, files }

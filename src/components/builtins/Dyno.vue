@@ -25,6 +25,7 @@ import {
   type DynoUiSettings,
 } from "../../composables/useProject";
 import { useRustComponent } from "../../composables/useRustComponent";
+import { loadGeneratedPanelYaml } from "../../composables/useIniPanels";
 import { useInstanceBind } from "../../composables/useInstanceBind";
 import { useTabActivity, useTabFrozenDisplay } from "../../composables/useTabActivity";
 import {
@@ -294,9 +295,9 @@ async function ensureDynoCharsPanel(): Promise<void> {
   dynoCharsError.value = null;
   try {
     const panelId = paramStringOr("dynoCharsPanel", "generated/dynochars.panel");
-    const res = await fetch(`/config/components/${panelId}.yaml`);
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    const doc = parseYaml(await res.text()) as { children?: ComponentInstance[] };
+    const file = panelId.replace(/^generated\//, "").replace(/\.panel$/, ".panel.yaml");
+    const text = await loadGeneratedPanelYaml(file);
+    const doc = parseYaml(text) as { children?: ComponentInstance[] };
     dynoCharsChildren.value = doc.children ?? [];
     dynoCharsLoaded = true;
   } catch (e) {

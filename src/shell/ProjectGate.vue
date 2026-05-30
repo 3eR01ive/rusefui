@@ -131,12 +131,13 @@ onMounted(async () => {
       <div class="project-gate-panel">
         <h2 id="project-gate-title" class="project-gate-title">Проект rusefui</h2>
         <p class="project-gate-lead">
-          Работа с ECU, настройками и логами ведётся внутри проекта. Создайте новый файл
-          проекта или откройте существующий (<code>.json</code>).
+          Работа с ECU, настройками и логами ведётся внутри проекта. При создании нужно
+          выбрать INI (контракт полей и UI). Откройте существующий файл проекта
+          (<code>.json</code>) или создайте новый.
         </p>
         <div class="project-gate-actions">
           <button type="button" class="btn primary" :disabled="busy" @click="onCreate">
-            Создать проект…
+            Создать проект (INI + файл)…
           </button>
           <button type="button" class="btn secondary" :disabled="busy" @click="onOpen">
             Открыть проект…

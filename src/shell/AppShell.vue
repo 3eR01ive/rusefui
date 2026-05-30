@@ -24,6 +24,7 @@ import ProjectGate from "./ProjectGate.vue";
 import EcuConnectionModal from "./EcuConnectionModal.vue";
 import EcuIniMismatchScreen from "./EcuIniMismatchScreen.vue";
 import { initIniResolution } from "../composables/useIniResolution";
+import { initIniPanels } from "../composables/useIniPanels";
 import ProjectMenu from "./ProjectMenu.vue";
 import { useAppFooter, setFooterLed, footerToggleProtocol } from "../composables/useAppFooter";
 import { useTabState } from "../composables/useTabState";
@@ -45,6 +46,7 @@ const {
   info: projectInfo,
   hasOpenProject,
   createNewProject,
+  changeProjectIni,
   openProject,
   closeProject,
   saveProject,
@@ -168,6 +170,7 @@ onMounted(async () => {
   await initProject();
   await initWorkspaceState();
   await initIniResolution();
+  await initIniPanels();
   await initConfig();
   await initChecklist();
   void initOutputChannels();
@@ -205,6 +208,30 @@ async function runProjectAction(fn: () => Promise<void>): Promise<void> {
   } finally {
     projectBusy.value = false;
   }
+}
+
+function onChangeProjectIni(): void {
+  void runProjectAction(async () => {
+    if (projectInfo.value.hasEcuConfig) {
+      const ok = window.confirm(
+        "Смена INI удалит сохранённый снимок config в проекте (ecuConfig). Продолжить?",
+      );
+      if (!ok) return;
+    }
+    try {
+      await changeProjectIni(false);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes("signature не совпадает")) {
+        const force = window.confirm(
+          `${msg}\n\nПрименить INI принудительно (force)?`,
+        );
+        if (force) await changeProjectIni(true);
+      } else {
+        throw e;
+      }
+    }
+  });
 }
 
 function onNewProject(): void {
@@ -320,11 +347,13 @@ async function onBurn() {
         :can-capture-config="dataCtx.connection.value.connected"
         :has-open-project="hasOpenProject"
         :timeline-clip-count="projectInfo.timelineClipCount"
+        :ini-signature="projectInfo.iniSignature"
         @new-project="onNewProject"
         @open-project="onOpenProject"
         @close-project="onCloseProject"
         @save-project="onSaveProject"
         @save-project-as="onSaveProjectAs"
+        @change-ini="onChangeProjectIni"
         @capture-config="onCaptureConfigToProject"
         @copy-project-without-timeline="onCopyProjectWithoutTimeline"
         @clear-timeline="onClearTimeline"

@@ -10,8 +10,9 @@ use rusefi_protocol::{ConnectionInfo, ProtocolError, SerialLink, DEFAULT_IO_TIME
 use serde::Serialize;
 
 use crate::ini::{
-    download_ini_for_signature, find_any_local_ini, load_ini_path, resolve_ini_for_signature,
-    IniResolveError, OnlineDownloadStatus, ResolvedIni,
+    download_ini_for_signature, ensure_panels_for_ini, find_any_local_ini, load_ini_path,
+    resolve_ini_for_signature, IniResolveError, OnlineDownloadStatus, PanelCacheStatus,
+    ResolvedIni,
 };
 use crate::protocol_log::ProtocolLogStore;
 use crate::sources::composite_data_log::CompositeDataLogWriter;
@@ -73,6 +74,9 @@ pub struct EcuSession {
     log_viewport_linked: AtomicBool,
     /// Signature из открытого проекта (`project.ini`) — для сравнения при connect.
     project_ini_signature: Mutex<Option<String>>,
+    /// Hash signature активного panel-cache (`4139280449`).
+    active_panel_hash: Mutex<Option<String>>,
+    panels_changed_hook: Mutex<Option<Arc<dyn Fn(PanelCacheStatus) + Send + Sync>>>,
 }
 
 impl EcuSession {
@@ -97,7 +101,48 @@ impl EcuSession {
             composite_timeline: Mutex::new(CompositeTimeline::default()),
             log_viewport_linked: AtomicBool::new(false),
             project_ini_signature: Mutex::new(None),
+            active_panel_hash: Mutex::new(None),
+            panels_changed_hook: Mutex::new(None),
         })
+    }
+
+    pub fn set_panels_changed_hook(&self, hook: Arc<dyn Fn(PanelCacheStatus) + Send + Sync>) {
+        *self.panels_changed_hook.lock().unwrap() = Some(hook);
+    }
+
+    pub fn active_panel_hash(&self) -> Option<String> {
+        self.active_panel_hash.lock().unwrap().clone()
+    }
+
+    /// Panel-cache для текущего INI (cache miss → генерация). Не вызывать из offline bootstrap.
+    pub fn ensure_ui_panels(&self) -> Result<Option<PanelCacheStatus>, String> {
+        let signature = self
+            .ini_context()
+            .signature
+            .ok_or_else(|| "INI без signature — нельзя построить panel cache".to_string())?;
+        let path = self
+            .loaded_ini_path
+            .lock()
+            .unwrap()
+            .clone()
+            .ok_or_else(|| "INI path не задан — нельзя построить panel cache".to_string())?;
+
+        let prev = self.active_panel_hash.lock().unwrap().clone();
+        let status = ensure_panels_for_ini(&path, &signature)?;
+        *self.active_panel_hash.lock().unwrap() = Some(status.hash.clone());
+
+        if prev.as_deref() != Some(status.hash.as_str()) {
+            if let Some(hook) = self.panels_changed_hook.lock().unwrap().as_ref() {
+                hook(status.clone());
+            }
+            return Ok(Some(status));
+        }
+        Ok(None)
+    }
+
+    pub fn log_panel_cache_error(&self, context: &str, err: String) {
+        self.protocol_log
+            .log_info(&format!("UI panels cache ({context}): {err}"));
     }
 
     pub fn set_project_ini_signature(&self, signature: Option<String>) {
@@ -244,6 +289,7 @@ impl EcuSession {
 
     /// Пустой рабочий стол: config, timeline, лог сессии (без отключения ECU).
     pub fn reset_workspace_for_new_project(&self) {
+        *self.active_panel_hash.lock().unwrap() = None;
         self.config().stop();
         self.composite().stop();
         self.knock_scope().stop();
@@ -418,6 +464,9 @@ impl EcuSession {
             ));
         }
         self.apply_ini(resolved);
+        if let Err(e) = self.ensure_ui_panels() {
+            self.log_panel_cache_error("load_ini_from_path", e);
+        }
         Ok(())
     }
 
@@ -483,6 +532,9 @@ impl EcuSession {
             file,
         };
         self.apply_ini(resolved);
+        if let Err(e) = self.ensure_ui_panels() {
+            self.log_panel_cache_error("apply_ini_with_options", e);
+        }
 
         // Если link был в pending — финализируем подключение.
         let mut finalize = None;
@@ -698,6 +750,9 @@ impl EcuSession {
         let ini_path = resolved.path.clone();
         drop(guard);
         self.apply_ini(resolved);
+        if let Err(e) = self.ensure_ui_panels() {
+            self.log_panel_cache_error("connect", e);
+        }
         let ini_ctx = self.ini_context();
 
         let mut guard = self

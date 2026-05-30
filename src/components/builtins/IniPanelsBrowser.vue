@@ -16,19 +16,13 @@ import {
   syncNavSelectionVisual,
 } from "../../composables/useWorkspaceNav";
 import { useTabActivity } from "../../composables/useTabActivity";
-
-interface ManifestEntry {
-  id: string;
-  file: string;
-  title: string;
-  menuPath: string;
-}
-
-interface Manifest {
-  iniSource: string;
-  panelCount: number;
-  panels: ManifestEntry[];
-}
+import {
+  initIniPanels,
+  loadGeneratedPanelYaml,
+  loadPanelsManifest,
+  registerIniPanelsChangedHandler,
+  type PanelsManifest,
+} from "../../composables/useIniPanels";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -40,11 +34,10 @@ const props = defineProps<{
 
 const { isActive: tabActive } = useTabActivity();
 
-const manifestPath = computed(
-  () => String(props.props.manifestPath ?? "/config/components/generated/manifest.json"),
-);
+type ManifestEntry = PanelsManifest["panels"][number];
 
-const manifest = shallowRef<Manifest | null>(null);
+const manifest = shallowRef<PanelsManifest | null>(null);
+const panelsSource = ref<string>("bundled");
 const loadError = ref<string | null>(null);
 const filter = ref("");
 const filterInputRef = ref<HTMLInputElement | null>(null);
@@ -181,9 +174,11 @@ function focusFilterInput(): void {
 async function loadManifest(): Promise<void> {
   loadError.value = null;
   try {
-    const res = await fetch(manifestPath.value);
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    manifest.value = (await res.json()) as Manifest;
+    await initIniPanels();
+    const response = await loadPanelsManifest();
+    panelsSource.value = response.source;
+    if (!response.manifest) throw new Error("manifest недоступен");
+    manifest.value = response.manifest;
     if (manifest.value.panels.length && !selectedId.value) {
       const first = manifest.value.panels[0]!;
       selectedId.value = first.id;
@@ -203,10 +198,8 @@ async function loadPanel(id: string): Promise<void> {
   panelLoading.value = true;
   panelError.value = null;
   try {
-    const url = `/config/components/generated/${entry.file}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    const doc = parseYaml(await res.text()) as {
+    const text = await loadGeneratedPanelYaml(entry.file);
+    const doc = parseYaml(text) as {
       id: string;
       children: ComponentInstance[];
     };
@@ -229,6 +222,9 @@ useTabEnterHandler("ini-preview", () => {
 });
 
 onMounted(() => {
+  registerIniPanelsChangedHandler(() => {
+    void loadManifest();
+  });
   void loadManifest();
 });
 
@@ -318,7 +314,9 @@ function toggleGroup(group: string): void {
       <div class="sidebar-head">
         <h3 class="sidebar-title">INI панели</h3>
         <p v-if="manifest" class="sidebar-meta">
-          {{ manifest.panelCount }} из {{ manifest.iniSource.split("/").pop() }}
+          {{ manifest.panelCount }}
+          <span v-if="panelsSource === 'cache'"> (cache)</span>
+          · {{ manifest.iniSource.split("/").pop() }}
         </p>
       </div>
       <input

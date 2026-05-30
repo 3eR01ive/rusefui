@@ -1,39 +1,40 @@
 import { parse as parseYaml } from "yaml";
 import type { ComponentInstance, DataBinding } from "../core/types";
 import type { ChecklistEditor } from "./useConfig";
+import {
+  initIniPanels,
+  invalidateIniPanelsCache,
+  loadGeneratedPanelYaml,
+  loadPanelsManifest,
+  registerIniPanelsChangedHandler,
+} from "./useIniPanels";
 
 interface ManifestEntry {
   id: string;
   file: string;
 }
 
-interface Manifest {
-  panels: ManifestEntry[];
-}
-
-const MANIFEST_PATH = "/config/components/generated/manifest.json";
 const panelChildrenCache = new Map<string, ComponentInstance[]>();
 const fieldLocationCache = new Map<string, ComponentInstance | null>();
-let manifestPromise: Promise<Manifest> | null = null;
 
-async function loadManifest(): Promise<Manifest> {
-  if (!manifestPromise) {
-    manifestPromise = (async () => {
-      const res = await fetch(MANIFEST_PATH);
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      return (await res.json()) as Manifest;
-    })();
-  }
-  return manifestPromise;
+export function invalidateChecklistEditorCache(): void {
+  panelChildrenCache.clear();
+  fieldLocationCache.clear();
+  invalidateIniPanelsCache();
+}
+
+async function loadManifestEntries(): Promise<ManifestEntry[]> {
+  await initIniPanels();
+  const response = await loadPanelsManifest();
+  return response.manifest?.panels ?? [];
 }
 
 async function loadPanelChildren(file: string): Promise<ComponentInstance[]> {
   const cached = panelChildrenCache.get(file);
   if (cached) return cached;
 
-  const res = await fetch(`/config/components/generated/${file}`);
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  const doc = parseYaml(await res.text()) as { children?: ComponentInstance[] };
+  const text = await loadGeneratedPanelYaml(file);
+  const doc = parseYaml(text) as { children?: ComponentInstance[] };
   const children = doc.children ?? [];
   panelChildrenCache.set(file, children);
   return children;
@@ -78,8 +79,8 @@ async function findFieldComponentInManifest(
     return hit ? structuredClone(hit) : null;
   }
 
-  const manifest = await loadManifest();
-  for (const entry of manifest.panels) {
+  const panels = await loadManifestEntries();
+  for (const entry of panels) {
     const children = await loadPanelChildren(entry.file);
     const found =
       findInTree(children, field, componentId) ?? findInTree(children, field, null);
@@ -117,8 +118,8 @@ async function resolveSingleChecklistEditor(
   editor: ChecklistEditor | Readonly<ChecklistEditor>,
 ): Promise<ComponentInstance | null> {
   if (editor.panel) {
-    const manifest = await loadManifest();
-    const entry = manifest.panels.find((p) => p.id === editor.panel);
+    const panels = await loadManifestEntries();
+    const entry = panels.find((p) => p.id === editor.panel);
     if (entry) {
       const children = await loadPanelChildren(entry.file);
       const found =
@@ -130,3 +131,8 @@ async function resolveSingleChecklistEditor(
 
   return findFieldComponentInManifest(editor.field, editor.component);
 }
+
+registerIniPanelsChangedHandler(() => {
+  panelChildrenCache.clear();
+  fieldLocationCache.clear();
+});

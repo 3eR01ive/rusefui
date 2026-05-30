@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { computed, readonly, ref, shallowRef } from "vue";
+import { pickIniFile } from "./useIniResolution";
 
 /** Ключ в реестре `ui_persist` (Rust). */
 export const PERSIST_KEY_OUTPUT_CHART = "output-chart";
@@ -28,6 +29,8 @@ export interface ProjectInfo {
   logCount: number;
   timelineClipCount: number;
   hasEcuConfig: boolean;
+  iniSignature: string | null;
+  iniPath: string | null;
 }
 
 export interface LogGraphGroupJson {
@@ -115,6 +118,8 @@ const info = shallowRef<ProjectInfo>({
   logCount: 0,
   timelineClipCount: 0,
   hasEcuConfig: false,
+  iniSignature: null,
+  iniPath: null,
 });
 
 /** `initProject()` завершён — можно показывать экран выбора проекта. */
@@ -151,17 +156,35 @@ export function useProject() {
   const hasPath = hasOpenProject;
 
   /**
-   * Новый проект: выбрать файл, создать и сбросить UI.
-   * Проверку несохранённого проекта / burn выполняет вызывающий код.
-   * @returns false если пользователь отменил диалог файла
+   * Новый проект: выбрать INI, затем файл проекта.
+   * @returns false если пользователь отменил диалог
    */
   async function createNewProject(): Promise<boolean> {
+    const iniPath = await pickIniFile();
+    if (!iniPath) return false;
+
     const path = await invoke<string | null>("pick_project_save_path", {
       defaultName: "Новый проект",
     });
     if (!path) return false;
 
-    await invoke("project_create_new", { path, name: null });
+    await invoke("project_create_new", {
+      path,
+      iniPath,
+      name: null,
+      force: false,
+    });
+    return true;
+  }
+
+  /**
+   * Сменить INI открытого проекта.
+   * @param force — применить INI даже при несовпадении signature с ECU
+   */
+  async function changeProjectIni(force = false): Promise<boolean> {
+    const iniPath = await pickIniFile();
+    if (!iniPath) return false;
+    await invoke("project_change_ini", { iniPath, force });
     return true;
   }
 
@@ -262,6 +285,7 @@ export function useProject() {
     projectUiEpoch: readonly(projectUiEpoch),
     refreshInfo,
     createNewProject,
+    changeProjectIni,
     openProject,
     openProjectAtPath,
     listRecentProjects,

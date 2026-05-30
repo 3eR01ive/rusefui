@@ -10,7 +10,9 @@ mod model;
 mod parse;
 mod tables;
 
-pub use convert_panel::{convert_menu_panels, ConvertResult, PanelManifest, PanelManifestEntry};
+pub use convert_panel::{
+    convert_ini_path, convert_menu_panels, ConvertResult, PanelManifest, PanelManifestEntry,
+};
 pub use decode::{
     decode_array, decode_config_at, decode_config_fields, decode_config_fields_pages,
     decode_config_scalars, decode_config_strings_pages,
