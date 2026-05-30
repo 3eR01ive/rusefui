@@ -1,20 +1,10 @@
-# ECU stimulator — triggerSimulatorRpm + cmd_enable_self_stim / cmd_disable_self_stim
 id: simulation.panel
 description: Внутренняя стимуляция триггера (RPM)
 
 children:
-  - type: section
-    props:
-      title: ECU Stimulator
-    children:
-      - type: text
-        props:
-          text: "Старт/стоп: E + disable/enable self_stimulation. Смена RPM при работе и «Разгон» — только E + rpm N."
-          variant: hint
-
-      - type: simulation
-        id: ecu-simulator
-        bind:
-          source: outputChannels
-          params:
-            rpmField: RPMValue
+  - type: simulation
+    id: ecu-simulator
+    bind:
+      source: outputChannels
+      params:
+        rpmField: RPMValue

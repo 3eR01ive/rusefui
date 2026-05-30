@@ -6,6 +6,7 @@ import { computed, readonly, ref, shallowRef } from "vue";
 export const PERSIST_KEY_OUTPUT_CHART = "output-chart";
 export const PERSIST_KEY_COMPOSITE_CHART = "composite-chart";
 export const PERSIST_KEY_DYNO = "dyno";
+export const PERSIST_KEY_SIMULATION = "simulation";
 
 export type CrankEdgeMode = "both" | "rise" | "fall";
 
@@ -53,6 +54,18 @@ export interface DynoUiSettings {
   minRpm: number;
   smoothStrength: number;
   chartHeight: number;
+}
+
+export type SimulationRampCurve = "linear" | "smooth";
+
+export interface SimulationUiSettings {
+  targetRpm: number;
+  idleRpm: number;
+  peakRpm: number;
+  rampUpSec: number;
+  rampDownSec: number;
+  rampCurve: SimulationRampCurve;
+  settingsOpen: boolean;
 }
 
 export interface ProjectLogRef {

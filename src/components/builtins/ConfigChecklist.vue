@@ -115,7 +115,10 @@ function menuItemPath(id: string): string {
 }
 
 /** Редакторы справа — только из текущего пункта checklist. */
-function editorTargets(item: ChecklistItemView): ChecklistEditor[] {
+function editorTargets(item: {
+  editor?: ChecklistEditor;
+  editors?: readonly ChecklistEditor[];
+}): ChecklistEditor[] {
   if (item.editors?.length) return [...item.editors];
   if (item.editor) return [item.editor];
   return [];
@@ -150,29 +153,29 @@ watch(showOnlyIncomplete, (on) => {
   }
 });
 
+async function loadEditorForSelection(id: string): Promise<void> {
+  const item = flatItems.value.find((i) => i.id === id);
+  if (item) expandLevel(item.level);
+  if (!item) {
+    editorInstances.value = [];
+    return;
+  }
+  editorLoading.value = true;
+  editorError.value = null;
+  try {
+    editorInstances.value = await resolveChecklistEditors(editorTargets(item));
+  } catch (e) {
+    editorInstances.value = [];
+    editorError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    editorLoading.value = false;
+  }
+}
+
 watch(
   selectedId,
   (id) => {
-    const item = flatItems.value.find((i) => i.id === id);
-    if (item) expandLevel(item.level);
-    if (!item) {
-      editorInstances.value = [];
-      return;
-    }
-    const targets = editorTargets(item);
-    editorLoading.value = true;
-    editorError.value = null;
-    void resolveChecklistEditors(targets)
-      .then((insts) => {
-        editorInstances.value = insts;
-      })
-      .catch((e) => {
-        editorInstances.value = [];
-        editorError.value = e instanceof Error ? e.message : String(e);
-      })
-      .finally(() => {
-        editorLoading.value = false;
-      });
+    void loadEditorForSelection(id);
   },
   { immediate: true },
 );
@@ -199,7 +202,11 @@ watch(
 watch(tabActive, (active) => {
   if (!active) return;
   setNavMenuPaths(props.path, menuNavPaths.value);
-  setNavExtension(`${props.path}/editor`, editorRoot.value);
+  if (editorRoot.value) {
+    setNavExtension(`${props.path}/editor`, editorRoot.value);
+  } else if (selectedId.value) {
+    void loadEditorForSelection(selectedId.value);
+  }
 });
 
 watch(selectedPath, (path) => {

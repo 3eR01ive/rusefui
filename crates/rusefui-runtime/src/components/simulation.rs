@@ -137,7 +137,8 @@ impl ComponentLogic for SimulationLogic {
     }
 
     fn ecu_sync_on_mount(&self) -> EcuSyncOnMount {
-        EcuSyncOnMount::OutputPollIfConfigLoaded
+        // Output poll уже крутится глобально (AppShell); mount не должен блокировать UI.
+        EcuSyncOnMount::None
     }
 
     fn state(&self) -> Value {

@@ -3,6 +3,7 @@
 mod composite_chart;
 mod dyno;
 mod output_chart;
+mod simulation;
 
 use std::collections::HashMap;
 
@@ -16,6 +17,7 @@ pub use dyno::{DynoUiSettings, PERSIST_KEY_DYNO};
 pub use output_chart::{
     LogGraphGroupJson, LogRangeInputJson, LogUiSettings, PERSIST_KEY_OUTPUT_CHART,
 };
+pub use simulation::{RampCurveKind, SimulationUiSettings, PERSIST_KEY_SIMULATION};
 
 /// Секции UI в JSON проекта: ключ = [`ComponentUiPersist::persist_key`].
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -36,6 +38,7 @@ fn registry() -> &'static [&'static dyn ComponentUiPersist] {
         &output_chart::OutputChartUiPersist,
         &composite_chart::CompositeChartUiPersist,
         &dyno::DynoUiPersist,
+        &simulation::SimulationUiPersist,
     ];
     ENTRIES
 }

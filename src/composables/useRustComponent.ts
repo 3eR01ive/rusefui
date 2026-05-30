@@ -25,11 +25,46 @@ export function useRustComponent(
   const instanceId = resolveInstanceId(instance, path);
   const state = shallowRef<ComponentViewState>({});
   const ready = ref(false);
+  const mounting = ref(false);
   const error = ref<string | null>(null);
 
   let unlisten: UnlistenFn | null = null;
+  let mounted = false;
 
   const hasLogic = computed(() => requiresRustLogic(instance.type));
+
+  async function mountLogic(): Promise<void> {
+    if (!hasLogic.value || mounted || mounting.value) return;
+    mounting.value = true;
+    try {
+      if (!unlisten) {
+        unlisten = await listen<{ instance_id: string; state: ComponentViewState }>(
+          "component-state",
+          (event) => {
+            if (event.payload.instance_id === instanceId) {
+              state.value = event.payload.state;
+            }
+          },
+        );
+      }
+      const payload = mountPayload?.();
+      const snapshot = await invoke<ComponentViewState>("component_mount", {
+        params: {
+          instance_id: instanceId,
+          component_type: instance.type,
+          payload: payload ?? {},
+        },
+      });
+      state.value = snapshot;
+      ready.value = true;
+      mounted = true;
+      error.value = null;
+    } catch (e) {
+      error.value = String(e);
+    } finally {
+      mounting.value = false;
+    }
+  }
 
   async function dispatch(action: string, payload: Record<string, unknown> = {}) {
     if (!hasLogic.value || !ready.value) return;
@@ -49,37 +84,16 @@ export function useRustComponent(
     }
   }
 
-  onMounted(async () => {
+  onMounted(() => {
     if (!hasLogic.value) return;
-
-    unlisten = await listen<{ instance_id: string; state: ComponentViewState }>(
-      "component-state",
-      (event) => {
-        if (event.payload.instance_id === instanceId) {
-          state.value = event.payload.state;
-        }
-      },
-    );
-
-    try {
-      const payload = mountPayload?.();
-      const snapshot = await invoke<ComponentViewState>("component_mount", {
-        params: {
-          instance_id: instanceId,
-          component_type: instance.type,
-          payload: payload ?? {},
-        },
-      });
-      state.value = snapshot;
-      ready.value = true;
-    } catch (e) {
-      error.value = String(e);
-    }
+    requestAnimationFrame(() => {
+      void mountLogic();
+    });
   });
 
   onUnmounted(() => {
     unlisten?.();
-    if (hasLogic.value) {
+    if (hasLogic.value && mounted) {
       invoke("component_unmount", { instance_id: instanceId }).catch(() => {});
     }
   });
@@ -88,6 +102,7 @@ export function useRustComponent(
     instanceId,
     state,
     ready,
+    mounting,
     error,
     dispatch,
     hasLogic,
