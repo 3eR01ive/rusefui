@@ -71,6 +71,8 @@ export interface KnockUiSettings {
   momentumAdvanceAddDeg: number;
   momentumDurationMs: number;
   spectrogramWindowMs: number;
+  spectrogramAutocontrast: boolean;
+  spectrogramGainPercent: number;
   chartHeight: number;
   settingsOpen: boolean;
 }

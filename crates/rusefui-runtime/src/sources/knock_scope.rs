@@ -12,8 +12,8 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 
 use super::knock_spectrogram::{
-    encode_knock_spectrogram_gpu_patch_b64, KnockSpectrogramEngine, KnockSpectrogramPatch,
-    KnockSpectrogramView, NUM_BINS,
+    encode_knock_spectrogram_gpu_patch_b64, spectrogram_height_bins, KnockSpectrogramEngine,
+    KnockSpectrogramPatch, KnockSpectrogramView,
 };
 use crate::session::EcuSession;
 
@@ -454,14 +454,14 @@ fn poll_loop(
             {
                 Ok(bytes) if !bytes.is_empty() => {
                     let (samples, min_v, max_v) = parse_samples(&bytes);
-                    let (spec_w, spec_h, spec_f0, spec_fs, peak_hz) = {
+                    let (spec_w, spec_h, peak_hz) = {
                         let mut guard = spectrogram.lock().unwrap();
                         if let Some(eng) = guard.as_mut() {
                             eng.push_samples(&samples);
-                            let (w, h, f0, fs) = eng.spectrogram_meta();
-                            (w, h, f0, fs, eng.peak_frequency_hz())
+                            let (w, h) = eng.spectrogram_meta();
+                            (w, h, eng.peak_frequency_hz())
                         } else {
-                            (0, NUM_BINS, 0.0, 0.0, None)
+                            (0, spectrogram_height_bins(KNOCK_ADC_HZ as f32), None)
                         }
                     };
                     let waveform = downsample_waveform(&samples, WAVEFORM_CHUNK_MAX);
@@ -477,8 +477,6 @@ fn poll_loop(
                         snap.samples.clear();
                         snap.spectrogram.width = spec_w;
                         snap.spectrogram.height = spec_h;
-                        snap.spectrogram.freq_start_hz = spec_f0;
-                        snap.spectrogram.freq_step_hz = spec_fs;
                         snap.spectrogram.pixels.clear();
                         snap.spectrogram_peak_hz = peak_hz;
                         snap.sample_count = samples.len();

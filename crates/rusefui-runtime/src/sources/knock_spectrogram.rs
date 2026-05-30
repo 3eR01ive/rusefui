@@ -13,19 +13,23 @@ pub const KNOCK_ADC_SAMPLE_RATE_HZ: f32 = 218_750.0;
 
 pub const FFT_SIZE: usize = 1024;
 pub const HOP: usize = 256;
-pub const START_FREQ_HZ: f32 = 4000.0;
-pub const NUM_BINS: usize = 64;
+/// Верхняя частота heatmap (Гц); отображение и шкала — на стороне UI.
+pub const SPECTROGRAM_MAX_FREQ_HZ: f32 = 20_000.0;
 const ADC_RATIO: f32 = 3.3 / 4095.0;
 const SENSITIVITY: f32 = 1.0;
+const DBFS_MIN: f32 = -100.0;
+const DBFS_MAX: f32 = -20.0;
+/// Опорная амплитуда FFT для u8 → dBFS; поднята, чтобы типичный knock не клиповал в 255.
+const DBFS_REF_AMPLITUDE: f32 = 8.0;
+/// Не учитывать DC и самую низкую полосу при поиске пика (шум/утечка после AC).
+const MIN_PEAK_BIN: usize = 2;
 
 #[derive(Debug, Clone, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct KnockSpectrogramView {
     pub width: usize,
     pub height: usize,
-    pub freq_start_hz: f32,
-    pub freq_step_hz: f32,
-    /// column-major: index = time_col * height + freq_bin
+    /// column-major: index = time_col * height + freq_bin (bin 0 = DC)
     pub pixels: Vec<u8>,
 }
 
@@ -35,15 +39,13 @@ pub struct KnockSpectrogramView {
 pub struct KnockSpectrogramPatch {
     pub width: usize,
     pub height: usize,
-    pub freq_start_hz: f32,
-    pub freq_step_hz: f32,
     /// Сколько столбцов убрано слева (deque на max_columns).
     pub shift_left: usize,
     /// column-major новые столбцы: `new_column_count * height` байт.
     pub new_columns: Vec<u8>,
 }
 
-/// Заголовок GPU-пакета (LE): width, height, freq_start_hz, freq_step_hz — по 4 байта.
+/// Заголовок GPU-пакета (LE): width, height — по 4 байта; bytes 8–15 зарезервированы (0).
 pub const KNOCK_SPECTROGRAM_GPU_HEADER: usize = 16;
 
 /// Row-major u8 heatmap + заголовок для WebGL (`texImage2D`).
@@ -53,8 +55,8 @@ pub fn encode_knock_spectrogram_gpu(view: &KnockSpectrogramView) -> Vec<u8> {
     let mut buf = Vec::with_capacity(KNOCK_SPECTROGRAM_GPU_HEADER + w * h);
     buf.extend_from_slice(&(w as u32).to_le_bytes());
     buf.extend_from_slice(&(h as u32).to_le_bytes());
-    buf.extend_from_slice(&view.freq_start_hz.to_le_bytes());
-    buf.extend_from_slice(&view.freq_step_hz.to_le_bytes());
+    buf.extend_from_slice(&0u32.to_le_bytes());
+    buf.extend_from_slice(&0u32.to_le_bytes());
     if w == 0 || h == 0 {
         return buf;
     }
@@ -82,8 +84,8 @@ pub fn encode_knock_spectrogram_gpu_patch(patch: &KnockSpectrogramPatch) -> Vec<
         Vec::with_capacity(KNOCK_SPECTROGRAM_GPU_PATCH_HEADER + patch.new_columns.len());
     buf.extend_from_slice(&(w as u32).to_le_bytes());
     buf.extend_from_slice(&(patch.height as u32).to_le_bytes());
-    buf.extend_from_slice(&patch.freq_start_hz.to_le_bytes());
-    buf.extend_from_slice(&patch.freq_step_hz.to_le_bytes());
+    buf.extend_from_slice(&0u32.to_le_bytes());
+    buf.extend_from_slice(&0u32.to_le_bytes());
     buf.extend_from_slice(&(patch.shift_left as u32).to_le_bytes());
     buf.extend_from_slice(&(new_col_count as u32).to_le_bytes());
     buf.extend_from_slice(&patch.new_columns);
@@ -94,8 +96,19 @@ pub fn encode_knock_spectrogram_gpu_patch_b64(patch: &KnockSpectrogramPatch) -> 
     STANDARD.encode(encode_knock_spectrogram_gpu_patch(patch))
 }
 
+pub fn spectrogram_height_bins(sample_rate_hz: f32) -> usize {
+    let max_bin =
+        ((SPECTROGRAM_MAX_FREQ_HZ * FFT_SIZE as f32) / sample_rate_hz).floor() as usize;
+    max_bin.min(FFT_SIZE / 2 - 1) + 1
+}
+
+pub fn bin_to_frequency_hz(bin: usize, sample_rate_hz: f32) -> f32 {
+    bin as f32 * sample_rate_hz / FFT_SIZE as f32
+}
+
 pub struct KnockSpectrogramEngine {
-    _sample_rate_hz: f32,
+    sample_rate_hz: f32,
+    height_bins: usize,
     max_columns: usize,
     fft: Arc<dyn Fft<f32>>,
     window: Vec<f32>,
@@ -103,9 +116,6 @@ pub struct KnockSpectrogramEngine {
     stream: Vec<f32>,
     stream_offset: usize,
     columns: VecDeque<Vec<u8>>,
-    start_bin: usize,
-    freq_start_hz: f32,
-    freq_step_hz: f32,
     pending_new_columns: Vec<u8>,
     popped_since_emit: usize,
 }
@@ -113,13 +123,14 @@ pub struct KnockSpectrogramEngine {
 impl KnockSpectrogramEngine {
     pub fn new(sample_rate_hz: f32, window_ms: u32) -> Self {
         let max_columns = max_columns_for_window(window_ms, sample_rate_hz);
+        let height_bins = spectrogram_height_bins(sample_rate_hz);
         let mut planner = rustfft::FftPlanner::new();
         let fft = planner.plan_fft_forward(FFT_SIZE);
         let window = blackman_harris(FFT_SIZE, true);
-        let (start_bin, freq_start_hz, freq_step_hz) = spectrogram_bin_layout(sample_rate_hz);
 
         Self {
-            _sample_rate_hz: sample_rate_hz,
+            sample_rate_hz,
+            height_bins,
             max_columns,
             fft,
             window,
@@ -127,9 +138,6 @@ impl KnockSpectrogramEngine {
             stream: Vec::new(),
             stream_offset: 0,
             columns: VecDeque::new(),
-            start_bin,
-            freq_start_hz,
-            freq_step_hz,
             pending_new_columns: Vec::new(),
             popped_since_emit: 0,
         }
@@ -145,12 +153,10 @@ impl KnockSpectrogramEngine {
 
     /// Забрать накопленные столбцы для UI (не копирует всю heatmap).
     pub fn take_ui_patch(&mut self) -> KnockSpectrogramPatch {
-        let height = NUM_BINS;
+        let height = self.height_bins;
         let patch = KnockSpectrogramPatch {
             width: self.columns.len(),
             height,
-            freq_start_hz: self.freq_start_hz,
-            freq_step_hz: self.freq_step_hz,
             shift_left: self.popped_since_emit,
             new_columns: std::mem::take(&mut self.pending_new_columns),
         };
@@ -164,13 +170,8 @@ impl KnockSpectrogramEngine {
         self.trim_stream();
     }
 
-    pub fn spectrogram_meta(&self) -> (usize, usize, f32, f32) {
-        (
-            self.columns.len(),
-            NUM_BINS,
-            self.freq_start_hz,
-            self.freq_step_hz,
-        )
+    pub fn spectrogram_meta(&self) -> (usize, usize) {
+        (self.columns.len(), self.height_bins)
     }
 
     /// Пик по heatmap без копирования всех pixels.
@@ -179,9 +180,9 @@ impl KnockSpectrogramEngine {
             return None;
         }
         let mut best_val = 0u8;
-        let mut best_row = 0usize;
+        let mut best_row = MIN_PEAK_BIN;
         for col in &self.columns {
-            for (row, &v) in col.iter().enumerate() {
+            for (row, &v) in col.iter().enumerate().skip(MIN_PEAK_BIN) {
                 if v > best_val {
                     best_val = v;
                     best_row = row;
@@ -191,18 +192,16 @@ impl KnockSpectrogramEngine {
         if best_val == 0 {
             return None;
         }
-        Some(self.freq_start_hz + best_row as f32 * self.freq_step_hz)
+        Some(bin_to_frequency_hz(best_row, self.sample_rate_hz))
     }
 
     pub fn view(&self) -> KnockSpectrogramView {
-        let height = NUM_BINS;
+        let height = self.height_bins;
         let width = self.columns.len();
         if width == 0 {
             return KnockSpectrogramView {
                 width: 0,
                 height,
-                freq_start_hz: self.freq_start_hz,
-                freq_step_hz: self.freq_step_hz,
                 pixels: Vec::new(),
             };
         }
@@ -215,8 +214,6 @@ impl KnockSpectrogramEngine {
         KnockSpectrogramView {
             width,
             height,
-            freq_start_hz: self.freq_start_hz,
-            freq_step_hz: self.freq_step_hz,
             pixels,
         }
     }
@@ -237,7 +234,7 @@ impl KnockSpectrogramEngine {
 
             self.fft.process(&mut self.scratch);
 
-            let col = spectrum_column(&self.scratch, self.start_bin);
+            let col = spectrum_column(&self.scratch, self.height_bins);
             self.pending_new_columns.extend_from_slice(&col);
             self.columns.push_back(col);
             while self.columns.len() > self.max_columns {
@@ -262,47 +259,29 @@ pub fn max_columns_for_window(window_ms: u32, sample_rate_hz: f32) -> usize {
     (samples / HOP).max(32) + 4
 }
 
-fn spectrogram_bin_layout(sample_rate_hz: f32) -> (usize, f32, f32) {
-    let mut best_i = 0usize;
-    let mut best_diff = f32::MAX;
-    let half = FFT_SIZE / 2;
-    for i in 0..half {
-        let freq = i as f32 * sample_rate_hz / FFT_SIZE as f32;
-        let diff = (freq - START_FREQ_HZ).abs();
-        if diff < best_diff {
-            best_diff = diff;
-            best_i = i;
+fn spectrum_column(scratch: &[Complex<f32>], bin_count: usize) -> Vec<u8> {
+    let mut col = Vec::with_capacity(bin_count);
+    for bin in 0..bin_count {
+        if bin == 0 {
+            col.push(0);
+            continue;
         }
-    }
-    let freq_start = best_i as f32 * sample_rate_hz / FFT_SIZE as f32;
-    let next_freq = (best_i + 1) as f32 * sample_rate_hz / FFT_SIZE as f32;
-    (best_i, freq_start, next_freq - freq_start)
-}
-
-fn spectrum_column(scratch: &[Complex<f32>], start_bin: usize) -> Vec<u8> {
-    let mut col = Vec::with_capacity(NUM_BINS);
-    for i in 0..NUM_BINS {
-        let idx = start_bin + i * 4;
-        let mut peak = 0.0f32;
-        for k in 0..4 {
-            let c = &scratch[idx + k];
-            let amp = (c.re * c.re + c.im * c.im).sqrt();
-            peak = peak.max(amp);
-        }
-        col.push(amplitude_to_db(peak));
+        let c = &scratch[bin];
+        let amp = (c.re * c.re + c.im * c.im).sqrt();
+        col.push(amplitude_to_dbfs_u8(amp));
     }
     col
 }
 
 /// Частота пика по heatmap (максимальная амплитуда среди всех колонок).
-pub fn peak_frequency_hz(view: &KnockSpectrogramView) -> Option<f32> {
+pub fn peak_frequency_hz(view: &KnockSpectrogramView, sample_rate_hz: f32) -> Option<f32> {
     if view.width == 0 || view.height == 0 || view.pixels.is_empty() {
         return None;
     }
     let mut best_val = 0u8;
-    let mut best_row = 0usize;
+    let mut best_row = MIN_PEAK_BIN;
     for col in 0..view.width {
-        for row in 0..view.height {
+        for row in MIN_PEAK_BIN..view.height {
             let idx = col * view.height + row;
             let v = *view.pixels.get(idx)?;
             if v > best_val {
@@ -314,13 +293,17 @@ pub fn peak_frequency_hz(view: &KnockSpectrogramView) -> Option<f32> {
     if best_val == 0 {
         return None;
     }
-    Some(view.freq_start_hz + best_row as f32 * view.freq_step_hz)
+    Some(bin_to_frequency_hz(best_row, sample_rate_hz))
 }
 
-fn amplitude_to_db(amplitude: f32) -> u8 {
-    let v = amplitude.max(1e-12);
-    let db = 200.0 * (v * v).log10() + 40.0;
-    db.clamp(0.0, 255.0) as u8
+fn amplitude_to_dbfs_u8(amplitude: f32) -> u8 {
+    let dbfs = 20.0 * (amplitude.max(1e-20) / DBFS_REF_AMPLITUDE).log10();
+    dbfs_to_u8(dbfs)
+}
+
+fn dbfs_to_u8(dbfs: f32) -> u8 {
+    let t = (dbfs - DBFS_MIN) / (DBFS_MAX - DBFS_MIN);
+    (t.clamp(0.0, 1.0) * 255.0) as u8
 }
 
 /// Blackman–Harris (как `fft::blackmanharris`, `sflag=true`).
@@ -343,11 +326,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn bin_layout_near_4khz() {
-        let (start, f0, step) = spectrogram_bin_layout(KNOCK_ADC_SAMPLE_RATE_HZ);
-        assert!(start > 0);
-        assert!((f0 - START_FREQ_HZ).abs() < 500.0);
-        assert!(step > 0.0);
+    fn height_bins_covers_zero_to_20khz() {
+        let h = spectrogram_height_bins(KNOCK_ADC_SAMPLE_RATE_HZ);
+        assert!(h > 32);
+        let top_hz = bin_to_frequency_hz(h - 1, KNOCK_ADC_SAMPLE_RATE_HZ);
+        assert!(top_hz <= SPECTROGRAM_MAX_FREQ_HZ);
+        assert!(top_hz > 19_000.0);
     }
 
     #[test]
@@ -363,7 +347,7 @@ mod tests {
         eng.push_samples(&buf);
         let view = eng.view();
         assert!(view.width >= 1);
-        assert_eq!(view.pixels.len(), view.width * NUM_BINS);
+        assert_eq!(view.pixels.len(), view.width * view.height);
     }
 
     #[test]
@@ -371,8 +355,6 @@ mod tests {
         let view = KnockSpectrogramView {
             width: 2,
             height: 2,
-            freq_start_hz: 4000.0,
-            freq_step_hz: 100.0,
             pixels: vec![1, 2, 3, 4],
         };
         let buf = encode_knock_spectrogram_gpu(&view);

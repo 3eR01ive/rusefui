@@ -17,6 +17,9 @@ import {
 } from "../../composables/drawKnockChart";
 import {
   b64ToArrayBuffer,
+  KNOCK_SPECTROGRAM_DBFS_MAX,
+  KNOCK_SPECTROGRAM_DBFS_MIN,
+  knockSpectrogramU8ToDbfs,
   mountKnockSpectrogramGl,
   type KnockSpectrogramGl,
 } from "../../composables/knockSpectrogramGl";
@@ -238,14 +241,39 @@ const spectrogramDebugLine = computed(() => {
   }
   parts.push(`rustMax=${spectrogramPatchPixelMax.value}`);
   if (g.uploads > 0) {
-    parts.push(`GL ${g.packetKind} payloadMax=${g.payloadMax} tex=${g.texW}×${g.texH}`);
-    parts.push(`px ${g.pixelMin}…${g.pixelMax} nz=${g.nonzeroPixels}${g.fullSynced ? " sync" : ""}`);
+    parts.push(`${g.packetKind} px=${g.pixelMin}…${g.pixelMax}`);
+    parts.push(`disp ${g.displayMinU8}…${g.displayMaxU8} ×${g.displayGainScale.toFixed(2)}`);
+    parts.push(`dBFS ${Math.round(knockSpectrogramU8ToDbfs(g.pixelMin))}…${Math.round(knockSpectrogramU8ToDbfs(g.pixelMax))}`);
+    if (g.texW > 0) parts.push(`tex=${g.texW}×${g.texH} nz=${g.nonzeroPixels}`);
   }
   if (spectrogramPeakHz.value != null) {
     parts.push(`FFT-пик ${Math.round(spectrogramPeakHz.value)} Hz`);
   }
   return parts.join(" · ");
 });
+
+const spectrogramColorbarDbMin = computed(() => {
+  if (!spectrogramAutocontrast.value) return KNOCK_SPECTROGRAM_DBFS_MIN;
+  return Math.round(knockSpectrogramU8ToDbfs(spectrogramGlStats.value.displayMinU8));
+});
+
+const spectrogramColorbarDbMax = computed(() => {
+  if (!spectrogramAutocontrast.value) return KNOCK_SPECTROGRAM_DBFS_MAX;
+  return Math.round(knockSpectrogramU8ToDbfs(spectrogramGlStats.value.displayMaxU8));
+});
+
+function pushSpectrogramDisplay(): void {
+  spectrogramGl?.setDisplay({
+    autocontrast: spectrogramAutocontrast.value,
+    gainPercent: spectrogramGainPercent.value,
+  });
+}
+
+function redrawSpectrogramNow(): void {
+  pushSpectrogramDisplay();
+  if (!spectrogramContainerRef.value || chartWidthPx(spectrogramContainerRef.value) < 1) return;
+  spectrogramGl?.draw();
+}
 
 const recordingThreshold = computed(
   () => recording.value && mode.value === "thresholdAutotune",
@@ -270,6 +298,8 @@ const momentumMinLoad = ref(40);
 const momentumAdvanceAddDeg = ref(6);
 const momentumDurationMs = ref(800);
 const spectrogramWindowMs = ref(500);
+const spectrogramAutocontrast = ref(true);
+const spectrogramGainPercent = ref(100);
 const settingsOpen = ref(false);
 
 const connected = computed(
@@ -340,6 +370,8 @@ function buildUiSettings(): KnockUiSettings {
     momentumAdvanceAddDeg: momentumAdvanceAddDeg.value,
     momentumDurationMs: Math.round(momentumDurationMs.value),
     spectrogramWindowMs: Math.round(spectrogramWindowMs.value),
+    spectrogramAutocontrast: spectrogramAutocontrast.value,
+    spectrogramGainPercent: Math.round(spectrogramGainPercent.value),
     chartHeight: chartHeight.value,
     settingsOpen: settingsOpen.value,
   };
@@ -379,8 +411,11 @@ async function applyUiFromProject(): Promise<void> {
     momentumAdvanceAddDeg.value = ui.momentumAdvanceAddDeg;
     momentumDurationMs.value = ui.momentumDurationMs;
     spectrogramWindowMs.value = ui.spectrogramWindowMs;
+    spectrogramAutocontrast.value = ui.spectrogramAutocontrast ?? true;
+    spectrogramGainPercent.value = ui.spectrogramGainPercent ?? 100;
     chartSizeOverride.height = ui.chartHeight > CHART_HEIGHT_MIN ? ui.chartHeight : null;
     settingsOpen.value = ui.settingsOpen;
+    pushSpectrogramDisplay();
   } catch {
     ignoreTpsMin.value = Boolean(state.value.ignoreTpsMin);
     minRpm.value = Number(state.value.minRpm ?? 800);
@@ -453,10 +488,12 @@ function bindSpectrogramGl(): void {
   spectrogramGl?.destroy();
   const canvas = spectrogramCanvasRef.value;
   spectrogramGl = canvas ? mountKnockSpectrogramGl(canvas) : null;
+  pushSpectrogramDisplay();
 }
 
 function applySpectrogramGpuB64(b64: string): void {
   if (!spectrogramGl) return;
+  pushSpectrogramDisplay();
   spectrogramGl.applyBuffer(b64ToArrayBuffer(b64));
   spectrogramGl.draw();
 }
@@ -588,6 +625,12 @@ watch(
     scheduleSaveUiToProject();
   },
 );
+
+watch([spectrogramAutocontrast, spectrogramGainPercent], () => {
+  if (applyingProjectUi) return;
+  scheduleSaveUiToProject();
+  redrawSpectrogramNow();
+});
 
 watch(
   [
@@ -782,6 +825,18 @@ onUnmounted(() => {
             :style="{ height: `${chartHeight}px` }"
           >
             <canvas ref="spectrogramCanvasRef" class="knock-canvas knock-canvas--spectrogram" />
+            <div class="knock-spectrogram-labels" aria-hidden="true">
+              <span class="knock-spectrogram-label knock-spectrogram-label--y">Frequency (kHz)</span>
+              <span class="knock-spectrogram-label knock-spectrogram-label--x">Time (s)</span>
+              <span class="knock-spectrogram-label knock-spectrogram-label--db">dBFS</span>
+              <span class="knock-spectrogram-label knock-spectrogram-label--hz0">DC</span>
+              <span class="knock-spectrogram-label knock-spectrogram-label--hz5">5</span>
+              <span class="knock-spectrogram-label knock-spectrogram-label--hz10">10</span>
+              <span class="knock-spectrogram-label knock-spectrogram-label--hz15">15</span>
+              <span class="knock-spectrogram-label knock-spectrogram-label--hz20">20</span>
+              <span class="knock-spectrogram-label knock-spectrogram-label--db100">{{ spectrogramColorbarDbMin }}</span>
+              <span class="knock-spectrogram-label knock-spectrogram-label--db20">{{ spectrogramColorbarDbMax }}</span>
+            </div>
             <p v-if="spectrogramHint" class="knock-chart-overlay">{{ spectrogramHint }}</p>
           </div>
           <p v-if="recordingSpectrum || spectrogramWidth > 0" class="knock-spectrogram-debug">
@@ -947,6 +1002,31 @@ onUnmounted(() => {
                     "
                   />
                 </label>
+                <label class="knock-field knock-field--check">
+                  <span>Автоконтраст спектрограммы</span>
+                  <input v-model="spectrogramAutocontrast" type="checkbox" />
+                </label>
+                <label class="knock-field">
+                  <span>Яркость, %</span>
+                  <input
+                    v-model.number="spectrogramGainPercent"
+                    type="range"
+                    min="1"
+                    max="400"
+                    step="1"
+                  />
+                  <span class="knock-field-hint">{{ spectrogramGainPercent }}%</span>
+                </label>
+                <label class="knock-field">
+                  <span>Яркость (точно)</span>
+                  <input
+                    v-model.number="spectrogramGainPercent"
+                    type="number"
+                    min="1"
+                    max="400"
+                    step="1"
+                  />
+                </label>
                 <div class="knock-settings-tools">
                   <button type="button" class="knock-link" :disabled="!canClear" @click="dispatch('clear')">
                     Очистить график
@@ -1078,6 +1158,57 @@ onUnmounted(() => {
 
 .knock-chart-wrap--spectrogram {
   min-height: 0;
+  background: #000;
+}
+
+.knock-canvas--spectrogram {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.knock-spectrogram-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font: 11px ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #fff;
+}
+
+.knock-spectrogram-label {
+  position: absolute;
+}
+
+.knock-spectrogram-label--y {
+  left: 6px;
+  top: 50%;
+  transform: rotate(-90deg) translateX(-50%);
+  transform-origin: left center;
+}
+
+.knock-spectrogram-label--x {
+  left: 52px;
+  right: 56px;
+  bottom: 4px;
+  text-align: center;
+}
+
+.knock-spectrogram-label--db {
+  right: 8px;
+  bottom: 18px;
+}
+
+.knock-spectrogram-label--hz0 { left: 38px; bottom: 36px; }
+.knock-spectrogram-label--hz5 { left: 38px; bottom: calc(36px + 25%); }
+.knock-spectrogram-label--hz10 { left: 34px; bottom: calc(36px + 50%); }
+.knock-spectrogram-label--hz15 { left: 34px; bottom: calc(36px + 75%); }
+.knock-spectrogram-label--hz20 { left: 34px; top: 16px; }
+
+.knock-spectrogram-label--db100 { right: 34px; bottom: 36px; }
+.knock-spectrogram-label--db20 { right: 34px; top: 16px; }
+
+.knock-canvas {
+  display: block;
 }
 
 .knock-spectrogram-debug {
@@ -1087,12 +1218,6 @@ onUnmounted(() => {
   color: var(--color-text-muted);
   line-height: 1.4;
   word-break: break-word;
-}
-
-.knock-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
 }
 
 .knock-chart-overlay {

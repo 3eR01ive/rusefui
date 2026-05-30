@@ -1,57 +1,123 @@
 import { ref } from "vue";
 
-/** WebGL heatmap: Rust → ArrayBuffer → texture. Full init (16 B hdr) или patch (24 B hdr). */
+/** Спектрограмма: один WebGL2 canvas — heatmap, colorbar, рамки. */
 
 export const KNOCK_SPECTROGRAM_GPU_HEADER = 16;
 export const KNOCK_SPECTROGRAM_GPU_PATCH_HEADER = 24;
-/** FFT hop=256 @ 218.75 kHz → столбцов на секунду данных. */
-export const KNOCK_SPECTROGRAM_COLS_PER_SEC = 218_750 / 256;
+export const KNOCK_SPECTROGRAM_SAMPLE_RATE_HZ = 218_750;
+export const KNOCK_SPECTROGRAM_HOP = 256;
+export const KNOCK_SPECTROGRAM_COLS_PER_SEC = KNOCK_SPECTROGRAM_SAMPLE_RATE_HZ / KNOCK_SPECTROGRAM_HOP;
 
-const VS = `
-attribute vec2 aPos;
-varying vec2 vUv;
+export const KNOCK_SPECTROGRAM_FREQ_MIN_HZ = 0;
+export const KNOCK_SPECTROGRAM_FREQ_MAX_HZ = 20_000;
+export const KNOCK_SPECTROGRAM_DBFS_MIN = -100;
+export const KNOCK_SPECTROGRAM_DBFS_MAX = -20;
+
+/** Автоконтраст и яркость отображения (не меняют Rust/dBFS на проводе). */
+export type KnockSpectrogramDisplay = {
+  autocontrast: boolean;
+  /** 1…400 %, 100 = без изменений */
+  gainPercent: number;
+};
+
+export const SPECTROGRAM_MARGINS = {
+  left: 52,
+  right: 56,
+  top: 12,
+  bottom: 32,
+} as const;
+
+const VS = `#version 300 es
+in vec2 aPos;
+out vec2 vUv;
 void main() {
   vUv = aPos * 0.5 + 0.5;
   gl_Position = vec4(aPos, 0.0, 1.0);
 }`;
 
-const FS = `
+const FS = `#version 300 es
 precision mediump float;
-uniform sampler2D uTex;
-uniform float uPeak;
-uniform float uTexCols;
-uniform float uColsPerSec;
-varying vec2 vUv;
-vec3 heat(float t) {
-  t = clamp(t, 0.0, 1.0);
-  return vec3(
-    (20.0 + 180.0 * t) / 255.0,
-    (30.0 + 90.0 * (1.0 - abs(t - 0.55) * 2.0)) / 255.0,
-    (80.0 + 120.0 * (1.0 - t)) / 255.0
-  );
-}
-void main() {
-  vec2 uv = vec2(vUv.x, 1.0 - vUv.y);
-  float v = texture2D(uTex, uv).r;
-  float t = v / max(uPeak, 1.0 / 255.0);
-  vec3 color = heat(t);
 
-  if (uTexCols > 1.0) {
-    float col = uv.x * uTexCols;
-    float sec = max(uColsPerSec, 1.0);
-    float phase = mod(col, sec);
-    if (phase < 1.25) {
-      color = mix(color, vec3(0.95, 0.92, 0.35), 0.9);
-    }
-    if (col >= uTexCols - 1.25) {
-      color = mix(color, vec3(0.25, 0.95, 1.0), 0.92);
-    }
+uniform sampler2D uTex;
+uniform vec2 uCanvas;
+uniform vec4 uPlot;
+uniform vec4 uBar;
+uniform float uHasTex;
+uniform float uAutoContrast;
+uniform float uDispMin;
+uniform float uDispMax;
+uniform float uGainScale;
+
+in vec2 vUv;
+out vec4 outColor;
+
+vec3 inferno(float t) {
+  t = clamp(t, 0.0, 1.0);
+  vec3 c;
+  if (t < 0.13) {
+    c = mix(vec3(0.0, 0.0, 0.016), vec3(0.157, 0.043, 0.271), t / 0.13);
+  } else if (t < 0.25) {
+    c = mix(vec3(0.157, 0.043, 0.271), vec3(0.388, 0.094, 0.4), (t - 0.13) / 0.12);
+  } else if (t < 0.38) {
+    c = mix(vec3(0.388, 0.094, 0.4), vec3(0.588, 0.157, 0.314), (t - 0.25) / 0.13);
+  } else if (t < 0.5) {
+    c = mix(vec3(0.588, 0.157, 0.314), vec3(0.784, 0.235, 0.196), (t - 0.38) / 0.12);
+  } else if (t < 0.63) {
+    c = mix(vec3(0.784, 0.235, 0.196), vec3(0.902, 0.392, 0.118), (t - 0.5) / 0.13);
+  } else if (t < 0.75) {
+    c = mix(vec3(0.902, 0.392, 0.118), vec3(0.961, 0.627, 0.157), (t - 0.63) / 0.12);
+  } else if (t < 0.88) {
+    c = mix(vec3(0.961, 0.627, 0.157), vec3(0.98, 0.863, 0.471), (t - 0.75) / 0.13);
+  } else {
+    c = mix(vec3(0.98, 0.863, 0.471), vec3(1.0, 1.0, 1.0), (t - 0.88) / 0.12);
+  }
+  return c;
+}
+
+bool inRect(vec2 p, vec4 r) {
+  return p.x >= r.x && p.x <= r.x + r.z && p.y >= r.y && p.y <= r.y + r.w;
+}
+
+float mapDisplay(float v) {
+  float t;
+  if (uAutoContrast > 0.5) {
+    float span = max(uDispMax - uDispMin, 1.0 / 255.0);
+    t = clamp((v - uDispMin) / span, 0.0, 1.0);
+  } else {
+    t = clamp(v, 0.0, 1.0);
+  }
+  return clamp(t * uGainScale, 0.0, 1.0);
+}
+
+void main() {
+  // vUv: WebGL origin снизу → переводим в CSS (y вниз).
+  vec2 px = vec2(vUv.x * uCanvas.x, (1.0 - vUv.y) * uCanvas.y);
+  vec3 color = vec3(0.0);
+
+  if (inRect(px, uBar)) {
+    float t = 1.0 - (px.y - uBar.y) / uBar.w;
+    color = inferno(mapDisplay(mix(uDispMin, uDispMax, t)));
+  } else if (inRect(px, uPlot) && uHasTex > 0.5) {
+    vec2 rel = (px - uPlot.xy) / uPlot.zw;
+    vec2 tuv = vec2(clamp(rel.x, 0.0, 1.0), clamp(1.0 - rel.y, 0.0, 1.0));
+    float v = texture(uTex, tuv).r;
+    color = inferno(mapDisplay(v));
   }
 
-  gl_FragColor = vec4(color, 1.0);
+  vec4 plotB = vec4(uPlot.x - 0.5, uPlot.y - 0.5, uPlot.z + 1.0, uPlot.w + 1.0);
+  vec4 barB = vec4(uBar.x - 0.5, uBar.y - 0.5, uBar.z + 1.0, uBar.w + 1.0);
+  float onPlotEdge =
+    (inRect(px, plotB) && !inRect(px, uPlot)) ? 1.0 : 0.0;
+  float onBarEdge =
+    (inRect(px, barB) && !inRect(px, uBar)) ? 1.0 : 0.0;
+  if (onPlotEdge + onBarEdge > 0.0) {
+    color = vec3(1.0);
+  }
+
+  outColor = vec4(color, 1.0);
 }`;
 
-function compileShader(gl: WebGLRenderingContext, type: number, src: string): WebGLShader {
+function compileShader(gl: WebGL2RenderingContext, type: number, src: string): WebGLShader {
   const sh = gl.createShader(type)!;
   gl.shaderSource(sh, src);
   gl.compileShader(sh);
@@ -61,7 +127,7 @@ function compileShader(gl: WebGLRenderingContext, type: number, src: string): We
   return sh;
 }
 
-function linkProgram(gl: WebGLRenderingContext, vs: WebGLShader, fs: WebGLShader): WebGLProgram {
+function linkProgram(gl: WebGL2RenderingContext, vs: WebGLShader, fs: WebGLShader): WebGLProgram {
   const prog = gl.createProgram()!;
   gl.attachShader(prog, vs);
   gl.attachShader(prog, fs);
@@ -80,6 +146,12 @@ export function b64ToArrayBuffer(b64: string): ArrayBuffer {
   return buf;
 }
 
+/** u8 из Rust → dBFS (Rust: dbfs_to_u8, диапазон -100…-20). */
+export function knockSpectrogramU8ToDbfs(u8: number): number {
+  const t = u8 / 255;
+  return KNOCK_SPECTROGRAM_DBFS_MIN + t * (KNOCK_SPECTROGRAM_DBFS_MAX - KNOCK_SPECTROGRAM_DBFS_MIN);
+}
+
 function scanBytes(bytes: Uint8Array): { min: number; max: number; nz: number } {
   if (bytes.length === 0) return { min: 0, max: 0, nz: 0 };
   let min = 255;
@@ -94,42 +166,49 @@ function scanBytes(bytes: Uint8Array): { min: number; max: number; nz: number } 
   return { min, max, nz };
 }
 
-function rowMajorToRgba(gray: Uint8Array): Uint8Array {
-  const rgba = new Uint8Array(gray.length * 4);
-  for (let i = 0; i < gray.length; i += 1) {
-    const v = gray[i]!;
-    const j = i * 4;
-    rgba[j] = v;
-    rgba[j + 1] = v;
-    rgba[j + 2] = v;
-    rgba[j + 3] = 255;
+/** Min/max u8 для автоконтраста (2–98 перцентиль среди ненулевых). */
+function displayRangeU8(bytes: Uint8Array): { min: number; max: number } {
+  const vals: number[] = [];
+  for (let i = 0; i < bytes.length; i += 1) {
+    const v = bytes[i]!;
+    if (v > 0) vals.push(v);
   }
-  return rgba;
+  if (vals.length === 0) return { min: 0, max: 255 };
+  vals.sort((a, b) => a - b);
+  const pick = (pct: number) => vals[Math.floor((vals.length - 1) * pct)]!;
+  let min = pick(0.02);
+  let max = pick(0.98);
+  if (max <= min) max = Math.min(255, min + 1);
+  return { min, max };
 }
 
-function uploadRowMajor(
-  ctx: WebGLRenderingContext,
-  tex: WebGLTexture,
-  texW: number,
-  texH: number,
-  pixels: Uint8Array,
-): boolean {
-  ctx.bindTexture(ctx.TEXTURE_2D, tex);
-  if (pixels.length !== texW * texH) return false;
-  const rgba = rowMajorToRgba(pixels);
-  ctx.texImage2D(
-    ctx.TEXTURE_2D,
-    0,
-    ctx.RGBA,
-    texW,
-    texH,
-    0,
-    ctx.RGBA,
-    ctx.UNSIGNED_BYTE,
-    rgba,
-  );
-  return true;
+function gainPercentToScale(gainPercent: number): number {
+  return Math.max(1, Math.min(400, gainPercent)) / 100;
 }
+
+type PlotLayout = {
+  cssW: number;
+  cssH: number;
+  plot: { x: number; y: number; w: number; h: number };
+  bar: { x: number; y: number; w: number; h: number };
+};
+
+function computeLayout(cssW: number, cssH: number): PlotLayout {
+  const m = SPECTROGRAM_MARGINS;
+  const plot = {
+    x: m.left,
+    y: m.top,
+    w: Math.max(1, cssW - m.left - m.right),
+    h: Math.max(1, cssH - m.top - m.bottom),
+  };
+  const bar = {
+    x: plot.x + plot.w + 10,
+    y: plot.y,
+    w: 14,
+    h: plot.h,
+  };
+  return { cssW, cssH, plot, bar };
+};
 
 export type KnockSpectrogramGlStats = {
   packetKind: "none" | "full" | "patch";
@@ -141,6 +220,9 @@ export type KnockSpectrogramGlStats = {
   newCols: number;
   pixelMin: number;
   pixelMax: number;
+  displayMinU8: number;
+  displayMaxU8: number;
+  displayGainScale: number;
   nonzeroPixels: number;
   uploads: number;
   fullSynced: boolean;
@@ -156,6 +238,9 @@ export const knockSpectrogramGlStats = ref<KnockSpectrogramGlStats>({
   newCols: 0,
   pixelMin: 0,
   pixelMax: 0,
+  displayMinU8: 0,
+  displayMaxU8: 255,
+  displayGainScale: 1,
   nonzeroPixels: 0,
   uploads: 0,
   fullSynced: false,
@@ -180,6 +265,9 @@ export function resetKnockSpectrogramGlStats(): void {
     newCols: 0,
     pixelMin: 0,
     pixelMax: 0,
+    displayMinU8: 0,
+    displayMaxU8: 255,
+    displayGainScale: 1,
     nonzeroPixels: 0,
     uploads: 0,
     fullSynced: false,
@@ -189,6 +277,7 @@ export function resetKnockSpectrogramGlStats(): void {
 export type KnockSpectrogramGl = {
   applyBuffer: (buf: ArrayBuffer) => void;
   draw: () => void;
+  setDisplay: (display: KnockSpectrogramDisplay) => void;
   reset: () => void;
   destroy: () => void;
 };
@@ -221,84 +310,119 @@ function ensureCpuTex(
   return next;
 }
 
-function createKnockSpectrogramGl(
-  ctx: WebGLRenderingContext,
-  canvas: HTMLCanvasElement,
-): KnockSpectrogramGl {
+function createKnockSpectrogramGl(gl: WebGL2RenderingContext, canvas: HTMLCanvasElement): KnockSpectrogramGl {
   let prog: WebGLProgram | null = null;
   let aPos = -1;
   let uTex: WebGLUniformLocation | null = null;
-  let uPeak: WebGLUniformLocation | null = null;
-  let uTexCols: WebGLUniformLocation | null = null;
-  let uColsPerSec: WebGLUniformLocation | null = null;
-  let vbo: WebGLBuffer | null = null;
+  let uCanvas: WebGLUniformLocation | null = null;
+  let uPlot: WebGLUniformLocation | null = null;
+  let uBar: WebGLUniformLocation | null = null;
+  let uHasTex: WebGLUniformLocation | null = null;
+  let uAutoContrast: WebGLUniformLocation | null = null;
+  let uDispMin: WebGLUniformLocation | null = null;
+  let uDispMax: WebGLUniformLocation | null = null;
+  let uGainScale: WebGLUniformLocation | null = null;
+  let vao: WebGLVertexArrayObject | null = null;
   let tex: WebGLTexture | null = null;
+
+  let display: KnockSpectrogramDisplay = { autocontrast: true, gainPercent: 100 };
+  let lastGainScale = 1;
 
   let texW = 0;
   let texH = 0;
   let cpuTex: Uint8Array | null = null;
-  let texPeak = 0;
+  let texDirty = false;
   let fullSynced = false;
   let fullLoadInFlight = false;
   const pendingPatches: ArrayBuffer[] = [];
+  let displayMinU8 = 0;
+  let displayMaxU8 = 255;
 
-  function initGlResources(): void {
-    if (prog) {
-      ctx.deleteProgram(prog);
-      if (vbo) ctx.deleteBuffer(vbo);
-      if (tex) ctx.deleteTexture(tex);
-    }
-    prog = linkProgram(
-      ctx,
-      compileShader(ctx, ctx.VERTEX_SHADER, VS),
-      compileShader(ctx, ctx.FRAGMENT_SHADER, FS),
-    );
-    ctx.useProgram(prog);
-    aPos = ctx.getAttribLocation(prog, "aPos");
-    uTex = ctx.getUniformLocation(prog, "uTex");
-    uPeak = ctx.getUniformLocation(prog, "uPeak");
-    uTexCols = ctx.getUniformLocation(prog, "uTexCols");
-    uColsPerSec = ctx.getUniformLocation(prog, "uColsPerSec");
-
-    vbo = ctx.createBuffer()!;
-    ctx.bindBuffer(ctx.ARRAY_BUFFER, vbo);
-    ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), ctx.STATIC_DRAW);
-    ctx.enableVertexAttribArray(aPos);
-    ctx.vertexAttribPointer(aPos, 2, ctx.FLOAT, false, 0, 0);
-
-    tex = ctx.createTexture()!;
-    ctx.activeTexture(ctx.TEXTURE0);
-    ctx.bindTexture(ctx.TEXTURE_2D, tex);
-    ctx.uniform1i(uTex, 0);
-    ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_MIN_FILTER, ctx.NEAREST);
-    ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_MAG_FILTER, ctx.NEAREST);
-    ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_S, ctx.CLAMP_TO_EDGE);
-    ctx.texParameteri(ctx.TEXTURE_2D, ctx.TEXTURE_WRAP_T, ctx.CLAMP_TO_EDGE);
-  }
-
-  function refreshPeak(): void {
+  function refreshDisplayRange(): void {
     if (!cpuTex || cpuTex.length === 0) {
-      texPeak = 0;
+      displayMinU8 = 0;
+      displayMaxU8 = 255;
       return;
     }
-    texPeak = scanBytes(cpuTex).max;
+    const { autocontrast } = display;
+    if (!autocontrast) {
+      displayMinU8 = 0;
+      displayMaxU8 = 255;
+      return;
+    }
+    const r = displayRangeU8(cpuTex);
+    displayMinU8 = r.min;
+    displayMaxU8 = r.max;
+  }
+
+  function initGlResources(): void {
+    if (vao) gl.deleteVertexArray(vao);
+    if (prog) gl.deleteProgram(prog);
+    if (tex) gl.deleteTexture(tex);
+
+    prog = linkProgram(
+      gl,
+      compileShader(gl, gl.VERTEX_SHADER, VS),
+      compileShader(gl, gl.FRAGMENT_SHADER, FS),
+    );
+    gl.useProgram(prog);
+    aPos = gl.getAttribLocation(prog, "aPos");
+    uTex = gl.getUniformLocation(prog, "uTex");
+    uCanvas = gl.getUniformLocation(prog, "uCanvas");
+    uPlot = gl.getUniformLocation(prog, "uPlot");
+    uBar = gl.getUniformLocation(prog, "uBar");
+    uHasTex = gl.getUniformLocation(prog, "uHasTex");
+    uAutoContrast = gl.getUniformLocation(prog, "uAutoContrast");
+    uDispMin = gl.getUniformLocation(prog, "uDispMin");
+    uDispMax = gl.getUniformLocation(prog, "uDispMax");
+    uGainScale = gl.getUniformLocation(prog, "uGainScale");
+
+    const vbo = gl.createBuffer()!;
+    gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+
+    vao = gl.createVertexArray()!;
+    gl.bindVertexArray(vao);
+    gl.enableVertexAttribArray(aPos);
+    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+    gl.bindVertexArray(null);
+
+    tex = gl.createTexture()!;
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.uniform1i(uTex, 0);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   }
 
   function syncTexture(): void {
-    if (!cpuTex || texW < 1 || texH < 1 || !tex) return;
-    uploadRowMajor(ctx, tex, texW, texH, cpuTex);
+    if (!texDirty || !cpuTex || texW < 1 || texH < 1 || !tex) return;
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    const rgba = new Uint8Array(cpuTex.length * 4);
+    for (let i = 0; i < cpuTex.length; i += 1) {
+      const v = cpuTex[i]!;
+      const j = i * 4;
+      rgba[j] = v;
+      rgba[j + 1] = v;
+      rgba[j + 2] = v;
+      rgba[j + 3] = 255;
+    }
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texW, texH, 0, gl.RGBA, gl.UNSIGNED_BYTE, rgba);
+    texDirty = false;
   }
 
   function flushPendingPatches(): void {
-    const batch = pendingPatches.splice(0, pendingPatches.length);
-    for (const buf of batch) applyPatchNow(buf);
+    for (const buf of pendingPatches.splice(0, pendingPatches.length)) {
+      applyPatchNow(buf);
+    }
   }
 
-  function requestFullSync(onDone?: () => void): void {
-    if (fullSynced || fullLoadInFlight || !fullBufferFetcher) {
-      onDone?.();
-      return;
-    }
+  function requestFullSync(): void {
+    if (fullSynced || fullLoadInFlight || !fullBufferFetcher) return;
     fullLoadInFlight = true;
     void fullBufferFetcher()
       .then((buf) => {
@@ -310,11 +434,17 @@ function createKnockSpectrogramGl(
       })
       .finally(() => {
         fullLoadInFlight = false;
-        onDone?.();
       });
   }
 
   initGlResources();
+
+  function setDisplay(next: KnockSpectrogramDisplay): void {
+    display = {
+      autocontrast: next.autocontrast,
+      gainPercent: Math.max(1, Math.min(400, next.gainPercent)),
+    };
+  }
 
   function applyFullNow(buf: ArrayBuffer): void {
     if (buf.byteLength < KNOCK_SPECTROGRAM_GPU_HEADER) return;
@@ -328,8 +458,8 @@ function createKnockSpectrogramGl(
     texH = h;
     cpuTex = pixels.slice();
     fullSynced = true;
-    refreshPeak();
-    syncTexture();
+    texDirty = true;
+    refreshDisplayRange();
     const scan = scanBytes(cpuTex);
     recordStats({
       packetKind: "full",
@@ -341,6 +471,9 @@ function createKnockSpectrogramGl(
       newCols: w,
       pixelMin: scan.min,
       pixelMax: scan.max,
+      displayMinU8: displayMinU8,
+      displayMaxU8: displayMaxU8,
+      displayGainScale: gainPercentToScale(display.gainPercent),
       nonzeroPixels: scan.nz,
       fullSynced: true,
     });
@@ -379,8 +512,8 @@ function createKnockSpectrogramGl(
         cpuTex[row * w + startCol + c] = payload[colOff + row]!;
       }
     }
-    refreshPeak();
-    syncTexture();
+    texDirty = true;
+    refreshDisplayRange();
     const scan = scanBytes(cpuTex);
     recordStats({
       packetKind: "patch",
@@ -392,13 +525,12 @@ function createKnockSpectrogramGl(
       newCols,
       pixelMin: scan.min,
       pixelMax: scan.max,
+      displayMinU8: displayMinU8,
+      displayMaxU8: displayMaxU8,
+      displayGainScale: gainPercentToScale(display.gainPercent),
       nonzeroPixels: scan.nz,
       fullSynced,
     });
-  }
-
-  function applyFull(buf: ArrayBuffer): void {
-    applyFullNow(buf);
   }
 
   function applyPatch(buf: ArrayBuffer): void {
@@ -416,7 +548,7 @@ function createKnockSpectrogramGl(
       const w = dv.getUint32(0, true);
       const h = dv.getUint32(4, true);
       if (w >= 1 && h >= 1 && buf.byteLength === KNOCK_SPECTROGRAM_GPU_HEADER + w * h) {
-        applyFull(buf);
+        applyFullNow(buf);
         return;
       }
     }
@@ -435,31 +567,62 @@ function createKnockSpectrogramGl(
         buf.byteLength === expected
       ) {
         applyPatch(buf);
-        return;
       }
     }
   }
 
   function draw(): void {
     const dpr = window.devicePixelRatio || 1;
-    const w = Math.max(1, Math.floor(canvas.clientWidth * dpr));
-    const h = Math.max(1, Math.floor(canvas.clientHeight * dpr));
-    if (canvas.width !== w || canvas.height !== h) {
-      canvas.width = w;
-      canvas.height = h;
+    const cssW = Math.max(1, canvas.clientWidth);
+    const cssH = Math.max(1, canvas.clientHeight);
+    const pixelW = Math.max(1, Math.floor(cssW * dpr));
+    const pixelH = Math.max(1, Math.floor(cssH * dpr));
+    if (canvas.width !== pixelW || canvas.height !== pixelH) {
+      canvas.width = pixelW;
+      canvas.height = pixelH;
       initGlResources();
-      syncTexture();
+      texDirty = true;
     }
-    if (!prog || !uPeak || !uTexCols || !uColsPerSec) return;
-    ctx.useProgram(prog);
-    ctx.viewport(0, 0, w, h);
-    ctx.clearColor(0.1, 0.11, 0.14, 1);
-    ctx.clear(ctx.COLOR_BUFFER_BIT);
-    if (texW > 0 && texH > 0 && cpuTex) {
-      ctx.uniform1f(uPeak, texPeak > 0 ? texPeak / 255 : 1 / 255);
-      ctx.uniform1f(uTexCols, texW);
-      ctx.uniform1f(uColsPerSec, KNOCK_SPECTROGRAM_COLS_PER_SEC);
-      ctx.drawArrays(ctx.TRIANGLE_STRIP, 0, 4);
+
+    const layout = computeLayout(cssW, cssH);
+
+    if (!prog || !vao || !tex) return;
+
+    syncTexture();
+    refreshDisplayRange();
+
+    const dispMinN = display.autocontrast ? displayMinU8 / 255 : 0;
+    const dispMaxN = display.autocontrast ? displayMaxU8 / 255 : 1;
+    lastGainScale = gainPercentToScale(display.gainPercent);
+
+    gl.viewport(0, 0, pixelW, pixelH);
+    gl.clearColor(0, 0, 0, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    gl.useProgram(prog);
+    gl.bindVertexArray(vao);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+
+    if (uCanvas) gl.uniform2f(uCanvas, cssW, cssH);
+    if (uPlot) gl.uniform4f(uPlot, layout.plot.x, layout.plot.y, layout.plot.w, layout.plot.h);
+    if (uBar) gl.uniform4f(uBar, layout.bar.x, layout.bar.y, layout.bar.w, layout.bar.h);
+    if (uHasTex) gl.uniform1f(uHasTex, texW > 0 && cpuTex ? 1 : 0);
+    if (uAutoContrast) gl.uniform1f(uAutoContrast, display.autocontrast ? 1 : 0);
+    if (uDispMin) gl.uniform1f(uDispMin, dispMinN);
+    if (uDispMax) gl.uniform1f(uDispMax, dispMaxN);
+    if (uGainScale) gl.uniform1f(uGainScale, lastGainScale);
+
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.bindVertexArray(null);
+
+    const prev = knockSpectrogramGlStats.value;
+    if (
+      prev.displayMinU8 !== displayMinU8 ||
+      prev.displayMaxU8 !== displayMaxU8 ||
+      prev.displayGainScale !== lastGainScale
+    ) {
+      knockSpectrogramGlStats.value = { ...prev, displayMinU8, displayMaxU8, displayGainScale: lastGainScale };
     }
   }
 
@@ -467,7 +630,7 @@ function createKnockSpectrogramGl(
     texW = 0;
     texH = 0;
     cpuTex = null;
-    texPeak = 0;
+    texDirty = false;
     fullSynced = false;
     fullLoadInFlight = false;
     pendingPatches.length = 0;
@@ -476,21 +639,22 @@ function createKnockSpectrogramGl(
 
   function destroy(): void {
     reset();
-    if (prog) ctx.deleteProgram(prog);
-    if (vbo) ctx.deleteBuffer(vbo);
-    if (tex) ctx.deleteTexture(tex);
+    if (vao) gl.deleteVertexArray(vao);
+    if (prog) gl.deleteProgram(prog);
+    if (tex) gl.deleteTexture(tex);
+    vao = null;
     prog = null;
-    vbo = null;
     tex = null;
   }
 
-  return { applyBuffer, draw, reset, destroy };
+  return { applyBuffer, draw, setDisplay, reset, destroy };
 }
 
+/** Один WebGL2 canvas: heatmap + colorbar. */
 export function mountKnockSpectrogramGl(canvas: HTMLCanvasElement): KnockSpectrogramGl | null {
-  const ctx = canvas.getContext("webgl", { alpha: false, antialias: false });
-  if (!ctx) return null;
-  return createKnockSpectrogramGl(ctx, canvas);
+  const gl = canvas.getContext("webgl2", { alpha: false, antialias: false });
+  if (!gl) return null;
+  return createKnockSpectrogramGl(gl, canvas);
 }
 
 export async function fetchKnockSpectrogramFullBuffer(): Promise<ArrayBuffer | null> {

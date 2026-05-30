@@ -611,7 +611,8 @@ pub fn register_knock_scope_emitter(app: &AppHandle) {
     let state = app.state::<RuntimeState>();
     state.session.knock_scope().set_tick_hook(move |snap, ui| {
         if let Some(state) = handle.try_state::<RuntimeState>() {
-            if let Ok(mut rt) = state.runtime.lock() {
+            // try_lock: poll-поток не блокируется, если UI держит lock в stop_run (join иначе зависает).
+            if let Ok(mut rt) = state.runtime.try_lock() {
                 for (instance_id, st) in rt.feed_knock_scope(&snap) {
                     emit_state(&handle, &instance_id, &st);
                 }
@@ -809,6 +810,10 @@ fn component_dispatch_inner(
 
     emit_state(&app, &params.instance_id, &snapshot);
 
+    if action == "stop_run" {
+        emit_knock_scope_reset(&app);
+    }
+
     if may_write_config {
         emit_config_update(&app, &state.session.config().snapshot());
         persist_config_after_table_edit(&state, &app);
@@ -997,8 +1002,8 @@ pub fn knock_scope_set_enabled(
         emit_composite(&app, &state.session.composite().snapshot());
         emit_composite_timeline(&app, &state.session.composite_timeline_status());
     } else {
-        state.session.knock_scope().disable_on_ecu(&state.session);
         state.session.knock_scope().stop();
+        state.session.knock_scope().disable_on_ecu(&state.session);
         emit_knock_scope_reset(&app);
     }
     Ok(state.session.knock_scope_snapshot())

@@ -57,7 +57,6 @@ const spectrogramRef = ref<HTMLCanvasElement | null>(null);
 const {
   snapshot,
   spectrogramWidth,
-  spectrogramHeight: spectrogramTexHeight,
   waveformRing,
   setScopeEnabled,
   setWaveformWindowMs,
@@ -76,12 +75,9 @@ if (bindSource.value && bindSource.value !== "knockScope") {
 }
 
 const spectrogramTitle = computed(() => {
-  const sg = snapshot.value.spectrogram;
   const w = spectrogramWidth.value;
-  if (w < 1 || !sg) return "Спектрограмма (FFT, Rust)";
-  const h = sg.height || spectrogramTexHeight.value;
-  const fEnd = sg.freqStartHz + sg.freqStepHz * Math.max(0, h - 1);
-  return `Спектрограмма · ${w} cols · ${Math.round(sg.freqStartHz)}–${Math.round(fEnd)} Hz`;
+  if (w < 1) return "Спектрограмма (0–20 kHz, dBFS)";
+  return `Спектрограмма · ${w} cols · 0–20 kHz`;
 });
 
 const connected = computed(() => snapshot.value.connected);
@@ -296,11 +292,9 @@ async function toggleScope() {
       :style="{ height: `${chartHeight}px` }"
     />
     <p class="spectrogram-heatmap-title">{{ spectrogramTitle }}</p>
-    <canvas
-      ref="spectrogramRef"
-      class="spectrogram-canvas spectrogram-heatmap"
-      :style="{ height: `${spectrogramHeight}px` }"
-    />
+    <div class="spectrogram-heatmap-wrap" :style="{ height: `${spectrogramHeight}px` }">
+      <canvas ref="spectrogramRef" class="spectrogram-canvas spectrogram-canvas--gl" />
+    </div>
   </div>
 </template>
 
@@ -336,7 +330,24 @@ async function toggleScope() {
   color: var(--color-text-muted);
 }
 
+.spectrogram-heatmap-wrap {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: #000;
+}
+
+.spectrogram-canvas--gl {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
 .spectrogram-canvas {
+  display: block;
   width: 100%;
   border-radius: 6px;
   border: 1px solid var(--color-border);

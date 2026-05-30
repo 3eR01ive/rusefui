@@ -82,8 +82,6 @@ export interface KnockScopeSnapshot extends KnockScopeUiTick {
   spectrogram?: {
     width: number;
     height: number;
-    freqStartHz: number;
-    freqStepHz: number;
     pixels?: number[];
   };
 }

@@ -32,6 +32,10 @@ pub struct KnockUiSettings {
     pub momentum_duration_ms: u32,
     #[serde(default = "default_spectrogram_window")]
     pub spectrogram_window_ms: u32,
+    #[serde(default = "default_spectrogram_autocontrast")]
+    pub spectrogram_autocontrast: bool,
+    #[serde(default = "default_spectrogram_gain")]
+    pub spectrogram_gain_percent: u32,
     #[serde(default = "default_chart_height")]
     pub chart_height: u32,
     #[serde(default)]
@@ -75,6 +79,12 @@ fn default_momentum_duration() -> u32 {
 fn default_spectrogram_window() -> u32 {
     500
 }
+fn default_spectrogram_autocontrast() -> bool {
+    true
+}
+fn default_spectrogram_gain() -> u32 {
+    100
+}
 fn default_chart_height() -> u32 {
     360
 }
@@ -94,6 +104,8 @@ impl Default for KnockUiSettings {
             momentum_advance_add_deg: default_momentum_advance(),
             momentum_duration_ms: default_momentum_duration(),
             spectrogram_window_ms: default_spectrogram_window(),
+            spectrogram_autocontrast: default_spectrogram_autocontrast(),
+            spectrogram_gain_percent: default_spectrogram_gain(),
             chart_height: default_chart_height(),
             settings_open: false,
         }
@@ -123,6 +135,11 @@ impl ComponentUiPersist for KnockUiPersist {
         }
         if s.spectrogram_window_ms < 50 {
             s.spectrogram_window_ms = default_spectrogram_window();
+        }
+        if s.spectrogram_gain_percent < 1 {
+            s.spectrogram_gain_percent = default_spectrogram_gain();
+        } else if s.spectrogram_gain_percent > 400 {
+            s.spectrogram_gain_percent = 400;
         }
         serde_json::to_value(s).map_err(|e| format!("{PERSIST_KEY_KNOCK}: {e}"))
     }
