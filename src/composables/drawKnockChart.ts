@@ -20,6 +20,29 @@ export interface ChartMargins {
 const FONT_AXIS = "10px Segoe UI, system-ui, sans-serif";
 const DEFAULT_MARGINS: ChartMargins = { top: 24, right: 20, bottom: 36, left: 52 };
 
+let cachedTheme: {
+  grid: string;
+  text: string;
+  level: string;
+  thr: string;
+  prev: string;
+  surface: string;
+} | null = null;
+
+function themeColors() {
+  if (!cachedTheme) {
+    cachedTheme = {
+      grid: cssVar("--color-border-subtle", "rgba(255,255,255,0.08)"),
+      text: cssVar("--color-text-muted", "#888"),
+      level: cssVar("--color-accent", "#5b9cf5"),
+      thr: cssVar("--color-warning", "#e6a23c"),
+      prev: cssVar("--color-text-muted", "#666"),
+      surface: cssVar("--color-surface-2", "#1a1d24"),
+    };
+  }
+  return cachedTheme;
+}
+
 function cssVar(name: string, fallback: string): string {
   return (
     getComputedStyle(document.documentElement).getPropertyValue(name).trim() ||
@@ -56,6 +79,13 @@ function validRpmPoints(points: KnockRpmValuePoint[]): KnockRpmValuePoint[] {
   );
 }
 
+function isSortedByRpm(points: KnockRpmValuePoint[]): boolean {
+  for (let i = 1; i < points.length; i += 1) {
+    if (points[i]!.rpm < points[i - 1]!.rpm) return false;
+  }
+  return true;
+}
+
 function drawRpmSeries(
   ctx: CanvasRenderingContext2D,
   points: KnockRpmValuePoint[],
@@ -64,8 +94,9 @@ function drawRpmSeries(
   color: string,
   style: { dashed?: boolean; opacity?: number; lineWidth?: number } = {},
 ): void {
-  const sorted = [...validRpmPoints(points)].sort((a, b) => a.rpm - b.rpm);
-  if (sorted.length === 0) return;
+  const valid = validRpmPoints(points);
+  if (valid.length === 0) return;
+  const sorted = isSortedByRpm(valid) ? valid : [...valid].sort((a, b) => a.rpm - b.rpm);
 
   ctx.save();
   ctx.strokeStyle = color;
@@ -153,16 +184,12 @@ export function drawKnockThresholdChart(
   const toX = (rpm: number) => margins.left + ((rpm - xMin) / (xMax - xMin)) * plotW;
   const toY = (v: number) => margins.top + plotH - ((v - yMin) / (yMax - yMin)) * plotH;
 
-  const grid = cssVar("--color-border-subtle", "rgba(255,255,255,0.08)");
-  const text = cssVar("--color-text-muted", "#888");
-  const levelColor = cssVar("--color-accent", "#5b9cf5");
-  const thrColor = cssVar("--color-warning", "#e6a23c");
-  const prevColor = cssVar("--color-text-muted", "#666");
+  const colors = themeColors();
 
-  ctx.fillStyle = cssVar("--color-surface-2", "#1a1d24");
+  ctx.fillStyle = colors.surface;
   ctx.fillRect(margins.left, margins.top, plotW, plotH);
 
-  ctx.strokeStyle = grid;
+  ctx.strokeStyle = colors.grid;
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i += 1) {
     const y = margins.top + (plotH * i) / 4;
@@ -172,21 +199,21 @@ export function drawKnockThresholdChart(
     ctx.stroke();
   }
 
-  drawRpmSeries(ctx, basePts, toX, toY, prevColor, { dashed: true, opacity: 0.35, lineWidth: 1.5 });
-  drawRpmSeries(ctx, cfgPts, toX, toY, thrColor, { dashed: true, lineWidth: 2.5 });
-  drawRpmSeries(ctx, prevPts, toX, toY, prevColor, { dashed: true, opacity: 0.55 });
-  drawRpmSeries(ctx, runPts, toX, toY, levelColor);
+  drawRpmSeries(ctx, basePts, toX, toY, colors.prev, { dashed: true, opacity: 0.35, lineWidth: 1.5 });
+  drawRpmSeries(ctx, cfgPts, toX, toY, colors.thr, { dashed: true, lineWidth: 2.5 });
+  drawRpmSeries(ctx, prevPts, toX, toY, colors.prev, { dashed: true, opacity: 0.55 });
+  drawRpmSeries(ctx, runPts, toX, toY, colors.level);
 
   if (liveRpm != null && liveLevel != null && Number.isFinite(liveRpm) && Number.isFinite(liveLevel)) {
     ctx.save();
-    ctx.fillStyle = levelColor;
+    ctx.fillStyle = colors.level;
     ctx.beginPath();
     ctx.arc(toX(liveRpm), toY(liveLevel), 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
 
-  ctx.fillStyle = text;
+  ctx.fillStyle = colors.text;
   ctx.font = FONT_AXIS;
   ctx.textAlign = "right";
   ctx.textBaseline = "middle";
@@ -214,25 +241,25 @@ export function drawKnockThresholdChart(
 
   ctx.font = "11px Segoe UI, system-ui, sans-serif";
   ctx.textAlign = "left";
-  ctx.fillStyle = thrColor;
+  ctx.fillStyle = colors.thr;
   ctx.fillText("- - threshold (autotune)", margins.left + 8, margins.top + 14);
   if (basePts.length > 0) {
-    ctx.fillStyle = prevColor;
+    ctx.fillStyle = colors.prev;
     ctx.fillText("- - knockBaseNoise (было)", margins.left + 168, margins.top + 14);
-    ctx.fillStyle = levelColor;
+    ctx.fillStyle = colors.level;
     ctx.fillText("● knock level", margins.left + 320, margins.top + 14);
   } else {
-    ctx.fillStyle = levelColor;
+    ctx.fillStyle = colors.level;
     ctx.fillText("● knock level (прогон)", margins.left + 168, margins.top + 14);
   }
 
   if (cfgPts.length === 0 && runPts.length === 0 && prevPts.length === 0) {
-    ctx.fillStyle = text;
+    ctx.fillStyle = colors.text;
     ctx.textAlign = "center";
     ctx.font = "13px Segoe UI, system-ui, sans-serif";
     ctx.fillText("Загрузите config и запустите прогон", width / 2, height / 2);
   } else if (cfgPts.length === 0) {
-    ctx.fillStyle = text;
+    ctx.fillStyle = colors.text;
     ctx.textAlign = "center";
     ctx.font = "12px Segoe UI, system-ui, sans-serif";
     ctx.fillText("Кривая knockBaseNoise — загрузите config", width / 2, margins.top + 36);

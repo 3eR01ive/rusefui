@@ -4,7 +4,6 @@ import {
   onMounted,
   onUnmounted,
   ref,
-  shallowRef,
   watch,
 } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
@@ -15,13 +14,12 @@ import {
 } from "../../composables/useKnockScope";
 import { useTabActivity } from "../../composables/useTabActivity";
 import {
-  appendKnockWaveformRing,
   downsampleMinMax,
   drawKnockWaveform,
 } from "../../composables/drawKnockWaveform";
 import {
   drawKnockSpectrogram,
-  type KnockSpectrogramView,
+  resetKnockSpectrogramDrawCache,
 } from "../../composables/drawKnockSpectrogram";
 
 const yamlProps = defineProps<{
@@ -53,8 +51,11 @@ const windowMs = computed(() => {
 
 const chartRef = ref<HTMLCanvasElement | null>(null);
 const spectrogramRef = ref<HTMLCanvasElement | null>(null);
-const { snapshot, setScopeEnabled } = useKnockScope();
+const { snapshot, spectrogramView, waveformRing, setScopeEnabled, setWaveformWindowMs } =
+  useKnockScope();
 const { isActive: tabActive } = useTabActivity();
+
+let redrawRaf = 0;
 
 if (bindSource.value && bindSource.value !== "knockScope") {
   console.warn(
@@ -62,27 +63,12 @@ if (bindSource.value && bindSource.value !== "knockScope") {
   );
 }
 
-const spectrogramView = computed((): KnockSpectrogramView => {
-  const s = snapshot.value.spectrogram;
-  return {
-    width: s?.width ?? 0,
-    height: s?.height ?? 0,
-    freqStartHz: s?.freqStartHz ?? 4000,
-    freqStepHz: s?.freqStepHz ?? 0,
-    pixels: s?.pixels ? [...s.pixels] : [],
-  };
-});
-
 const spectrogramTitle = computed(() => {
   const v = spectrogramView.value;
   if (v.width < 1) return "Спектрограмма (FFT, Rust)";
   const fEnd = v.freqStartHz + v.freqStepHz * Math.max(0, v.height - 1);
   return `Спектрограмма · ${v.width} cols · ${Math.round(v.freqStartHz)}–${Math.round(fEnd)} Hz`;
 });
-
-/** Непрерывная лента сэмплов (склеенные захваты). */
-const waveformRing = shallowRef<number[]>([]);
-let lastCaptureCount = 0;
 
 const connected = computed(() => snapshot.value.connected);
 const scopeEnabled = computed(() => snapshot.value.scopeEnabled);
@@ -96,10 +82,6 @@ const statusMessage = computed(() => snapshot.value.statusMessage ?? null);
 const lastError = computed(() => snapshot.value.lastError ?? null);
 const polling = computed(() => snapshot.value.polling);
 
-const ringMaxSamples = computed(() =>
-  Math.max(4096, Math.round((sampleRateHz.value * windowMs.value) / 1000)),
-);
-
 const ringDurationMs = computed(() =>
   waveformRing.value.length > 0
     ? (waveformRing.value.length / sampleRateHz.value) * 1000
@@ -108,10 +90,10 @@ const ringDurationMs = computed(() =>
 
 const displaySamples = computed(() => {
   const ring = waveformRing.value;
-  if (ring.length < 2) return ring;
+  if (ring.length < 2) return [...ring];
   const w = chartRef.value?.clientWidth ?? 800;
   const target = Math.max(200, Math.min(ring.length, w * 2));
-  return downsampleMinMax(ring, target);
+  return downsampleMinMax([...ring], target);
 });
 
 function ringMinMax(ring: number[]): { min: number; max: number } {
@@ -126,8 +108,8 @@ function ringMinMax(ring: number[]): { min: number; max: number } {
   return { min, max };
 }
 
-const displayMin = computed(() => ringMinMax(waveformRing.value).min);
-const displayMax = computed(() => ringMinMax(waveformRing.value).max);
+const displayMin = computed(() => ringMinMax([...waveformRing.value]).min);
+const displayMax = computed(() => ringMinMax([...waveformRing.value]).max);
 
 const statusLine = computed(() => {
   const parts: string[] = [];
@@ -167,37 +149,6 @@ const hint = computed(() => {
   return null;
 });
 
-function clearRing() {
-  waveformRing.value = [];
-  lastCaptureCount = 0;
-}
-
-function ingestSnapshot(snap: typeof snapshot.value) {
-  if (!snap.scopeEnabled) return;
-  if (snap.captureCount === 0) {
-    clearRing();
-    return;
-  }
-  if (snap.captureCount > lastCaptureCount) {
-    const chunk = snap.samples ?? [];
-    if (chunk.length > 0) {
-      waveformRing.value = appendKnockWaveformRing(
-        waveformRing.value,
-        [...chunk],
-        ringMaxSamples.value,
-      );
-    }
-    lastCaptureCount = snap.captureCount;
-  }
-}
-
-watch(() => snapshot.value, (snap) => {
-  if (!tabActive.value) return;
-  ingestSnapshot(snap);
-}, { flush: "sync" });
-
-let redrawRaf = 0;
-
 function scheduleRedraw() {
   if (!tabActive.value) return;
   if (redrawRaf !== 0) return;
@@ -230,60 +181,41 @@ function redraw() {
   redrawSpectrogram();
 }
 
+watch(
+  () => snapshot.value.captureCount,
+  () => {
+    if (tabActive.value) scheduleRedraw();
+  },
+);
+watch(spectrogramView, () => {
+  if (tabActive.value) scheduleRedraw();
+});
 watch([displaySamples, displayMin, displayMax], () => scheduleRedraw());
-watch(waveformRing, () => scheduleRedraw());
-watch(spectrogramView, () => scheduleRedraw(), { deep: true });
 
 let resizeObs: ResizeObserver | null = null;
-let liveRedrawRaf = 0;
-
-function startLiveRedraw() {
-  const tick = () => {
-    if (!scopeEnabled.value || !tabActive.value) {
-      liveRedrawRaf = 0;
-      return;
-    }
-    scheduleRedraw();
-    liveRedrawRaf = requestAnimationFrame(tick);
-  };
-  if (liveRedrawRaf === 0) {
-    liveRedrawRaf = requestAnimationFrame(tick);
-  }
-}
-
-function stopLiveRedraw() {
-  if (liveRedrawRaf !== 0) {
-    cancelAnimationFrame(liveRedrawRaf);
-    liveRedrawRaf = 0;
-  }
-}
 
 watch(scopeEnabled, (on) => {
-  if (on) {
-    startLiveRedraw();
-  } else {
-    clearRing();
-    stopLiveRedraw();
+  if (!on) {
+    resetKnockSpectrogramDrawCache();
   }
+});
+
+watch(windowMs, (ms) => {
+  setWaveformWindowMs(ms);
 });
 
 watch(tabActive, (active, wasActive) => {
   if (active && !wasActive) {
-    ingestSnapshot(snapshot.value);
     scheduleRedraw();
-    if (scopeEnabled.value) startLiveRedraw();
-  } else if (!active) {
-    stopLiveRedraw();
   }
 });
 
 const panelRef = ref<HTMLElement | null>(null);
 
 onMounted(async () => {
+  setWaveformWindowMs(windowMs.value);
   await initKnockScope();
-  ingestSnapshot(snapshot.value);
   scheduleRedraw();
-  if (scopeEnabled.value) startLiveRedraw();
   const observeTarget = panelRef.value ?? chartRef.value;
   if (observeTarget) {
     resizeObs = new ResizeObserver(() => scheduleRedraw());
@@ -296,7 +228,6 @@ onMounted(async () => {
 
 onUnmounted(() => {
   resizeObs?.disconnect();
-  stopLiveRedraw();
   if (redrawRaf !== 0) cancelAnimationFrame(redrawRaf);
   if (scopeEnabled.value) {
     void setScopeEnabled(false);
@@ -304,9 +235,7 @@ onUnmounted(() => {
 });
 
 async function toggleScope() {
-  if (scopeEnabled.value) {
-    clearRing();
-  }
+  setWaveformWindowMs(windowMs.value);
   await setScopeEnabled(!scopeEnabled.value, windowMs.value);
 }
 </script>

@@ -1,11 +1,11 @@
-/** Только отрисовка heatmap; FFT — в Rust (`knock_spectrogram.rs`). */
+/** Отрисовка heatmap; FFT — в Rust (`knock_spectrogram.rs`). */
 
 export interface KnockSpectrogramView {
   width: number;
   height: number;
   freqStartHz: number;
   freqStepHz: number;
-  pixels: number[];
+  pixels: Uint8Array | number[];
 }
 
 function dbToColor(db: number): [number, number, number] {
@@ -14,6 +14,58 @@ function dbToColor(db: number): [number, number, number] {
   const g = Math.round(30 + 90 * (1 - Math.abs(t - 0.55) * 2));
   const b = Math.round(80 + 120 * (1 - t));
   return [r, g, b];
+}
+
+let cacheCanvas: HTMLCanvasElement | null = null;
+let cacheWidth = 0;
+let cacheHeight = 0;
+
+export function resetKnockSpectrogramDrawCache(): void {
+  cacheCanvas = null;
+  cacheWidth = 0;
+  cacheHeight = 0;
+}
+
+function ensureCache(width: number, height: number): CanvasRenderingContext2D | null {
+  if (width < 1 || height < 1) return null;
+  if (!cacheCanvas || cacheWidth !== width || cacheHeight !== height) {
+    cacheCanvas = document.createElement("canvas");
+    cacheCanvas.width = width;
+    cacheCanvas.height = height;
+    cacheWidth = width;
+    cacheHeight = height;
+    const ctx = cacheCanvas.getContext("2d");
+    if (ctx) {
+      ctx.fillStyle = "#1a1d24";
+      ctx.fillRect(0, 0, width, height);
+    }
+  }
+  return cacheCanvas.getContext("2d");
+}
+
+function pixelAt(pixels: Uint8Array | number[], col: number, row: number, height: number): number {
+  return pixels[col * height + row] ?? 0;
+}
+
+function fillCacheFromPixels(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  pixels: Uint8Array | number[],
+): void {
+  const img = ctx.createImageData(width, height);
+  for (let col = 0; col < width; col++) {
+    for (let row = 0; row < height; row++) {
+      const db = pixelAt(pixels, col, row, height);
+      const [r, g, b] = dbToColor(db);
+      const di = (row * width + col) * 4;
+      img.data[di] = r;
+      img.data[di + 1] = g;
+      img.data[di + 2] = b;
+      img.data[di + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
 }
 
 export function drawKnockSpectrogram(
@@ -49,32 +101,20 @@ export function drawKnockSpectrogram(
     return;
   }
 
+  const cacheCtx = ensureCache(width, height);
+  if (!cacheCtx) return;
+  if (cacheWidth !== width || cacheHeight !== height) {
+    fillCacheFromPixels(cacheCtx, width, height, pixels);
+  } else {
+    fillCacheFromPixels(cacheCtx, width, height, pixels);
+  }
+
   const margin = { top: 16, right: 12, bottom: 28, left: 52 };
   const plotW = w - margin.left - margin.right;
   const plotH = h - margin.top - margin.bottom;
 
-  const img = ctx.createImageData(width, height);
-  for (let col = 0; col < width; col++) {
-    for (let row = 0; row < height; row++) {
-      const db = pixels[col * height + row] ?? 0;
-      const [r, g, b] = dbToColor(db);
-      const di = (row * width + col) * 4;
-      img.data[di] = r;
-      img.data[di + 1] = g;
-      img.data[di + 2] = b;
-      img.data[di + 3] = 255;
-    }
-  }
-
-  const off = document.createElement("canvas");
-  off.width = width;
-  off.height = height;
-  const offCtx = off.getContext("2d");
-  if (!offCtx) return;
-  offCtx.putImageData(img, 0, 0);
-
   ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(off, 0, 0, width, height, margin.left, margin.top, plotW, plotH);
+  ctx.drawImage(cacheCanvas!, 0, 0, width, height, margin.left, margin.top, plotW, plotH);
 
   ctx.strokeStyle =
     getComputedStyle(canvas).getPropertyValue("--color-border").trim() ||

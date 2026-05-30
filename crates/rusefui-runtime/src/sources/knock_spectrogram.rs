@@ -28,6 +28,20 @@ pub struct KnockSpectrogramView {
     pub pixels: Vec<u8>,
 }
 
+/// Инкремент для UI: новые FFT-столбцы + сдвиг скользящего окна (без полной heatmap).
+#[derive(Debug, Clone, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct KnockSpectrogramPatch {
+    pub width: usize,
+    pub height: usize,
+    pub freq_start_hz: f32,
+    pub freq_step_hz: f32,
+    /// Сколько столбцов убрано слева (deque на max_columns).
+    pub shift_left: usize,
+    /// column-major новые столбцы: `new_column_count * height` байт.
+    pub new_columns: Vec<u8>,
+}
+
 pub struct KnockSpectrogramEngine {
     _sample_rate_hz: f32,
     max_columns: usize,
@@ -40,6 +54,8 @@ pub struct KnockSpectrogramEngine {
     start_bin: usize,
     freq_start_hz: f32,
     freq_step_hz: f32,
+    pending_new_columns: Vec<u8>,
+    popped_since_emit: usize,
 }
 
 impl KnockSpectrogramEngine {
@@ -62,6 +78,8 @@ impl KnockSpectrogramEngine {
             start_bin,
             freq_start_hz,
             freq_step_hz,
+            pending_new_columns: Vec::new(),
+            popped_since_emit: 0,
         }
     }
 
@@ -69,6 +87,23 @@ impl KnockSpectrogramEngine {
         self.stream.clear();
         self.stream_offset = 0;
         self.columns.clear();
+        self.pending_new_columns.clear();
+        self.popped_since_emit = 0;
+    }
+
+    /// Забрать накопленные столбцы для UI (не копирует всю heatmap).
+    pub fn take_ui_patch(&mut self) -> KnockSpectrogramPatch {
+        let height = NUM_BINS;
+        let patch = KnockSpectrogramPatch {
+            width: self.columns.len(),
+            height,
+            freq_start_hz: self.freq_start_hz,
+            freq_step_hz: self.freq_step_hz,
+            shift_left: self.popped_since_emit,
+            new_columns: std::mem::take(&mut self.pending_new_columns),
+        };
+        self.popped_since_emit = 0;
+        patch
     }
 
     pub fn push_samples(&mut self, samples: &[f32]) {
@@ -120,9 +155,11 @@ impl KnockSpectrogramEngine {
             self.fft.process(&mut self.scratch);
 
             let col = spectrum_column(&self.scratch, self.start_bin);
+            self.pending_new_columns.extend_from_slice(&col);
             self.columns.push_back(col);
             while self.columns.len() > self.max_columns {
                 self.columns.pop_front();
+                self.popped_since_emit += 1;
             }
 
             self.stream_offset += HOP;

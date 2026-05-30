@@ -24,6 +24,19 @@ const DEFAULT_ADVANCE_FIELD: &str = "ignitionAdvanceCyl1";
 const KNOCK_RPM_BINS_FIELD: &str = "knockNoiseRpmBins";
 const KNOCK_BASE_NOISE_FIELD: &str = "knockBaseNoise";
 const KNOCK_FREQUENCY_FIELD: &str = "knockFrequency";
+const UI_EMIT_MIN: Duration = Duration::from_millis(50);
+
+fn peaks_changed(prev: &[f64], new: &[f64]) -> bool {
+    if prev.len() != new.len() {
+        return true;
+    }
+    for (a, b) in prev.iter().zip(new.iter()) {
+        if (*a - *b).abs() > 0.05 {
+            return true;
+        }
+    }
+    false
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -119,6 +132,8 @@ pub struct KnockLogic {
     preview_threshold_curve: Vec<ThresholdCurvePoint>,
     run_peak_curve: Vec<ThresholdCurvePoint>,
     previous_run_peak_curve: Vec<ThresholdCurvePoint>,
+    last_ui_emit: Option<Instant>,
+    last_emitted_bin_peaks: Vec<f64>,
 }
 
 impl KnockLogic {
@@ -165,7 +180,31 @@ impl KnockLogic {
             preview_threshold_curve: Vec::new(),
             run_peak_curve: Vec::new(),
             previous_run_peak_curve: Vec::new(),
+            last_ui_emit: None,
+            last_emitted_bin_peaks: Vec::new(),
         }
+    }
+
+    fn is_recording(&self) -> bool {
+        self.recorder.as_ref().is_some_and(|r| r.is_active())
+    }
+
+    fn mark_dirty(&mut self) {
+        self.dirty = true;
+        self.last_ui_emit = Some(Instant::now());
+    }
+
+    /// Не чаще ~20 Hz — live-метрики и кривые на прогоне.
+    fn mark_dirty_live(&mut self) {
+        let now = Instant::now();
+        if self
+            .last_ui_emit
+            .is_some_and(|t| now.duration_since(t) < UI_EMIT_MIN)
+        {
+            return;
+        }
+        self.last_ui_emit = Some(now);
+        self.dirty = true;
     }
 
     fn refresh_run_peak_curve(&mut self, rpm_bins: &[f64], bin_peaks: &[f64]) {
@@ -197,7 +236,11 @@ impl KnockLogic {
             config_loaded: self.config().snapshot().loaded,
             mode: self.mode,
             recording: self.recorder.as_ref().is_some_and(|r| r.is_active()),
-            run_points: self.run_points.clone(),
+            run_points: if self.is_recording() {
+                Vec::new()
+            } else {
+                self.run_points.clone()
+            },
             previous_run_points: self.previous_run_points.clone(),
             live_knock_level: self.live_knock_level,
             live_threshold: self.live_threshold,
@@ -241,10 +284,6 @@ impl KnockLogic {
         } else {
             None
         }
-    }
-
-    fn mark_dirty(&mut self) {
-        self.dirty = true;
     }
 
     fn set_options_from_payload(&mut self, payload: &Value) {
@@ -505,6 +544,8 @@ impl KnockLogic {
         if mode == KnockRunMode::ThresholdAutotune {
             self.preview_threshold_curve.clear();
         }
+        self.last_emitted_bin_peaks.clear();
+        self.last_ui_emit = None;
 
         if mode == KnockRunMode::SpectrumCapture {
             self.start_scope()?;
@@ -686,11 +727,13 @@ impl KnockLogic {
         }
 
         let (Some(rpm), Some(level)) = (rpm, level) else {
+            self.mark_dirty_live();
             return false;
         };
 
         // TPS нужен только если включена проверка газа.
         if !self.run_options.ignore_tps_min && tps.is_none() {
+            self.mark_dirty_live();
             return false;
         }
         let tps = tps.unwrap_or(100.0);
@@ -699,32 +742,29 @@ impl KnockLogic {
         let time_sec = snap.timeline_live_sec - self.time_offset_sec;
         let bins = self.rpm_bins();
 
-        let (cutoff, run_points, preview_peaks) = {
-            let Some(rec) = self.recorder.as_mut() else {
-                return false;
-            };
-            if !rec.is_active() {
-                return false;
-            }
+        let Some(rec) = self.recorder.as_mut() else {
+            self.mark_dirty_live();
+            return false;
+        };
+        if !rec.is_active() {
+            self.mark_dirty_live();
+            return false;
+        }
 
-            let cutoff = rec.on_sample(
-                time_sec,
-                rpm.round() as i32,
-                tps,
-                level,
-                thr,
-                &bins,
-            );
-            let run_points = rec.points().to_vec();
-            let preview_peaks = if rec.mode == KnockRunMode::ThresholdAutotune {
-                Some(rec.bin_peak_level.clone())
-            } else {
-                None
-            };
-            (cutoff, run_points, preview_peaks)
+        let cutoff = rec.on_sample(
+            time_sec,
+            rpm.round() as i32,
+            tps,
+            level,
+            thr,
+            &bins,
+        );
+        let preview_peaks = if rec.mode == KnockRunMode::ThresholdAutotune {
+            Some(rec.bin_peak_level.clone())
+        } else {
+            None
         };
 
-        self.run_points = run_points;
         if cutoff {
             self.pending_stop = true;
             self.pending_stop_apply_threshold = self
@@ -733,11 +773,14 @@ impl KnockLogic {
                 .is_some_and(|r| r.mode == KnockRunMode::ThresholdAutotune);
         }
         if let Some(peaks) = preview_peaks {
-            self.refresh_preview_threshold_curve(&bins, &peaks);
-            self.refresh_run_peak_curve(&bins, &peaks);
+            if peaks_changed(&self.last_emitted_bin_peaks, &peaks) {
+                self.refresh_preview_threshold_curve(&bins, &peaks);
+                self.refresh_run_peak_curve(&bins, &peaks);
+                self.last_emitted_bin_peaks = peaks;
+            }
         }
+        self.mark_dirty_live();
 
-        self.mark_dirty();
         true
     }
 
@@ -888,14 +931,13 @@ impl ComponentLogic for KnockLogic {
     }
 
     fn feed_output(&mut self, snap: &OutputSnapshot) -> Option<Value> {
-        let recording = self.recorder.as_ref().is_some_and(|r| r.is_active());
         self.process_output(snap);
         let stopped = self.flush_pending_stop();
         let emit_config = self.pending_config_emit;
         if emit_config {
             self.pending_config_emit = false;
         }
-        if recording || stopped || self.dirty {
+        if stopped || self.dirty {
             let mut json = self.take_dirty_json()?;
             if emit_config {
                 if let Some(obj) = json.as_object_mut() {

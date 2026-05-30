@@ -1,7 +1,7 @@
 use rusefui_runtime::{
     compute_config_diff, default_log_path, enumerate_local_candidates, parse_rusefi_signature,
     evaluate_checklist, AutoConnectManager, AutoConnectSnapshot, ComponentRuntime, CompositeEventJson, CompositeSnapshot,
-    ComputeTriggerWheelsParams, KnockScopeSnapshot, CompositeTimelineStatus, CompositeTimelineView,
+    ComputeTriggerWheelsParams, KnockScopeSnapshot, KnockScopeUiTick, CompositeTimelineStatus, CompositeTimelineView,
     CompositeTimelineViewQuery, TriggerWheelsView, compute_trigger_wheels,
     ConfigDiffSnapshot, ConfigDiffStore, ConfigFieldInfo, ConfigSnapshot, ConfigSource, ChecklistRules,
     DiffSide,
@@ -261,11 +261,18 @@ fn emit_composite(app: &AppHandle, snapshot: &CompositeSnapshot) {
     });
 }
 
-fn emit_knock_scope(app: &AppHandle, snapshot: &KnockScopeSnapshot) {
+fn emit_knock_scope_tick(app: &AppHandle, tick: &KnockScopeUiTick) {
     let app = app.clone();
-    let snapshot = snapshot.clone();
+    let tick = tick.clone();
     tauri::async_runtime::spawn(async move {
-        let _ = app.emit("knock-scope", snapshot);
+        let _ = app.emit("knock-scope", tick);
+    });
+}
+
+fn emit_knock_scope_reset(app: &AppHandle) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let _ = app.emit("knock-scope-reset", ());
     });
 }
 
@@ -569,7 +576,7 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
             state.session.knock_scope().disable_on_ecu(&state.session);
             state.session.knock_scope().stop();
             emit_composite(app, &state.session.composite().snapshot());
-            emit_knock_scope(app, &state.session.knock_scope_snapshot());
+            emit_knock_scope_reset(app);
         }
         WorkspacePhase::ConfigFromEcu => {
             sync_output_poll_session(&state.session, app);
@@ -579,7 +586,7 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
     emit_config_update(app, &state.session.config().snapshot());
     emit_output(app, &state.session.output().snapshot());
     emit_composite(app, &state.session.composite().snapshot());
-    emit_knock_scope(app, &state.session.knock_scope_snapshot());
+    emit_knock_scope_reset(app);
 }
 
 fn protocol_log_emit_now_ms() -> u64 {
@@ -602,7 +609,7 @@ pub fn register_config_burn_notify(app: &AppHandle) {
 pub fn register_knock_scope_emitter(app: &AppHandle) {
     let handle = app.clone();
     let state = app.state::<RuntimeState>();
-    state.session.knock_scope().set_tick_hook(move |snap| {
+    state.session.knock_scope().set_tick_hook(move |snap, ui| {
         if let Some(state) = handle.try_state::<RuntimeState>() {
             if let Ok(mut rt) = state.runtime.lock() {
                 for (instance_id, st) in rt.feed_knock_scope(&snap) {
@@ -610,7 +617,7 @@ pub fn register_knock_scope_emitter(app: &AppHandle) {
                 }
             }
         }
-        emit_knock_scope(&handle, &snap);
+        emit_knock_scope_tick(&handle, &ui);
     });
 }
 
@@ -920,7 +927,7 @@ pub fn composite_set_enabled(
             emit_composite(&app_emit, &snap);
         })?;
         emit_composite_timeline(&app, &state.session.composite_timeline_status());
-        emit_knock_scope(&app, &state.session.knock_scope_snapshot());
+        emit_knock_scope_reset(&app);
     } else {
         state.session.composite().disable_on_ecu(&state.session);
         state.session.composite().stop();
@@ -987,7 +994,7 @@ pub fn knock_scope_set_enabled(
     } else {
         state.session.knock_scope().disable_on_ecu(&state.session);
         state.session.knock_scope().stop();
-        emit_knock_scope(&app, &state.session.knock_scope_snapshot());
+        emit_knock_scope_reset(&app);
     }
     Ok(state.session.knock_scope_snapshot())
 }

@@ -13,7 +13,6 @@ import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { childPath } from "../../core/instance";
 import ComponentHost from "../ComponentHost.vue";
 import { useDataContext } from "../../core/data-context";
-import { initOutputChannels, useOutputChannels } from "../../composables/useOutputChannels";
 import { initConfig, useConfig } from "../../composables/useConfig";
 import {
   drawKnockThresholdChart,
@@ -22,7 +21,6 @@ import {
 } from "../../composables/drawKnockChart";
 import {
   drawKnockSpectrogram,
-  type KnockSpectrogramView,
 } from "../../composables/drawKnockSpectrogram";
 import { initKnockScope, useKnockScope } from "../../composables/useKnockScope";
 import {
@@ -67,9 +65,8 @@ const { state, dispatch, error, hasLogic, ready, mounting } = useRustComponent(
 const instanceRef = computed(() => props.instance);
 const { paramStringOr } = useInstanceBind(instanceRef);
 const dataCtx = useDataContext();
-const { snapshot } = useOutputChannels();
 const { snapshot: configSnapshot, getArray: getConfigArray } = useConfig();
-const { snapshot: knockScopeSnapshot } = useKnockScope();
+const { snapshot: knockScopeSnapshot, spectrogramView } = useKnockScope();
 const { isActive: tabActive } = useTabActivity();
 const { getProjectUi, setProjectUi } = useProject();
 
@@ -103,17 +100,14 @@ watch(ready, (isReady) => {
   });
 });
 
-const liveRpm = useTabFrozenDisplay(
-  () => snapshot.value.values[rpmField.value] ?? state.value.liveRpm ?? null,
-  null as number | null,
-);
-const liveLevel = useTabFrozenDisplay(
-  () =>
-    snapshot.value.values[knockLevelField.value] ??
-    state.value.liveKnockLevel ??
-    null,
-  null as number | null,
-);
+const liveRpm = useTabFrozenDisplay(() => {
+  const v = state.value.liveRpm;
+  return v != null && Number.isFinite(Number(v)) ? Number(v) : null;
+}, null as number | null);
+const liveLevel = useTabFrozenDisplay(() => {
+  const v = state.value.liveKnockLevel;
+  return v != null && Number.isFinite(Number(v)) ? Number(v) : null;
+}, null as number | null);
 
 const recording = computed(() => Boolean(state.value.recording));
 const mode = computed(() => String(state.value.mode ?? "idle"));
@@ -226,17 +220,6 @@ async function reloadConfigThresholdCurve(): Promise<void> {
   }
   scheduleThresholdRedraw();
 }
-
-const spectrogramView = computed((): KnockSpectrogramView => {
-  const s = knockScopeSnapshot.value.spectrogram;
-  return {
-    width: s?.width ?? 0,
-    height: s?.height ?? 0,
-    freqStartHz: s?.freqStartHz ?? 4000,
-    freqStepHz: s?.freqStepHz ?? 0,
-    pixels: s?.pixels ? [...s.pixels] : [],
-  };
-});
 
 const spectrogramHint = computed(() => {
   const s = knockScopeSnapshot.value;
@@ -439,6 +422,8 @@ async function ensureKnockSettingsPanel(): Promise<void> {
 const thresholdCanvasRef = ref<HTMLCanvasElement | null>(null);
 const thresholdContainerRef = ref<HTMLDivElement | null>(null);
 const thresholdCanvasWidth = ref(640);
+let thresholdCanvasPixelW = 0;
+let thresholdCanvasPixelH = 0;
 const spectrogramCanvasRef = ref<HTMLCanvasElement | null>(null);
 const spectrogramContainerRef = ref<HTMLDivElement | null>(null);
 
@@ -453,10 +438,16 @@ function redrawThresholdChart(): void {
   const dpr = window.devicePixelRatio || 1;
   const w = thresholdCanvasWidth.value;
   const h = chartHeight.value;
-  canvas.width = Math.floor(w * dpr);
-  canvas.height = Math.floor(h * dpr);
-  canvas.style.width = `${w}px`;
-  canvas.style.height = `${h}px`;
+  const pixelW = Math.floor(w * dpr);
+  const pixelH = Math.floor(h * dpr);
+  if (pixelW !== thresholdCanvasPixelW || pixelH !== thresholdCanvasPixelH) {
+    canvas.width = pixelW;
+    canvas.height = pixelH;
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+    thresholdCanvasPixelW = pixelW;
+    thresholdCanvasPixelH = pixelH;
+  }
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -484,10 +475,23 @@ function redrawSpectrogramChart(): void {
 }
 
 let thresholdRedrawRaf = 0;
+let lastThresholdDrawMs = 0;
+const THRESHOLD_REDRAW_MIN_MS = 50;
+
 function scheduleThresholdRedraw(): void {
   if (!tabActive.value) return;
-  cancelAnimationFrame(thresholdRedrawRaf);
-  thresholdRedrawRaf = requestAnimationFrame(redrawThresholdChart);
+  if (thresholdRedrawRaf !== 0) return;
+  const tick = () => {
+    thresholdRedrawRaf = 0;
+    const now = performance.now();
+    if (now - lastThresholdDrawMs < THRESHOLD_REDRAW_MIN_MS) {
+      thresholdRedrawRaf = requestAnimationFrame(tick);
+      return;
+    }
+    lastThresholdDrawMs = now;
+    redrawThresholdChart();
+  };
+  thresholdRedrawRaf = requestAnimationFrame(tick);
 }
 
 let spectrogramRedrawRaf = 0;
@@ -541,39 +545,21 @@ watch(
 
 watch(
   [
-    knockLevelChartPoints,
-    previousKnockLevelChartPoints,
-    runPeakCurve,
+    () => state.value.runPeakCurve,
+    () => state.value.previousRunPeakCurve,
+    () => state.value.previewThresholdCurve,
     configThresholdCurve,
-    previewThresholdCurve,
-    thresholdChartCurve,
-    liveLevel,
-    liveRpm,
     chartHeight,
     recordingThreshold,
   ],
   () => scheduleThresholdRedraw(),
-  { deep: true },
 );
+watch([liveLevel, liveRpm], () => scheduleThresholdRedraw());
+watch(thresholdChartCurve, () => scheduleThresholdRedraw());
+watch([spectrogramView, detectedHz, spectrogramHeight], () => scheduleSpectrogramRedraw());
 watch(
-  () => state.value.runPoints,
-  () => scheduleThresholdRedraw(),
-  { deep: true },
-);
-watch(
-  () => snapshot.value.values,
-  () => {
-    if (recordingThreshold.value) scheduleThresholdRedraw();
-  },
-  { deep: true },
-);
-watch([spectrogramView, detectedHz, spectrogramHeight], () => scheduleSpectrogramRedraw(), {
-  deep: true,
-});
-watch(
-  () => knockScopeSnapshot.value,
+  () => knockScopeSnapshot.value.captureCount,
   () => scheduleSpectrogramRedraw(),
-  { deep: true },
 );
 watch(tabActive, (active, was) => {
   if (active && !was) scheduleRedraw();
@@ -610,7 +596,7 @@ watch([ready, thresholdContainerRef, spectrogramContainerRef], async () => {
 });
 
 onMounted(async () => {
-  await Promise.all([initOutputChannels(), initConfig(), initProject(), initKnockScope()]);
+  await Promise.all([initConfig(), initProject(), initKnockScope()]);
   if (configLoaded.value) await reloadConfigThresholdCurve();
 });
 
@@ -671,7 +657,8 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <section class="knock-step">
+      <div class="knock-steps-row">
+      <section class="knock-step knock-step--threshold">
         <h3 class="knock-step-title">1. Threshold autotune</h3>
         <p class="knock-step-hint">
           График: knockBaseNoise из config (пунктир) и knock level с прогона (сплошная).
@@ -707,7 +694,7 @@ onUnmounted(() => {
         </div>
       </section>
 
-      <section class="knock-step">
+      <section class="knock-step knock-step--spectrum">
         <h3 class="knock-step-title">2. Частота детонации</h3>
         <p class="knock-step-hint">
           Спектрограмма на прогоне + Momentum knock в безопасной зоне.
@@ -751,6 +738,7 @@ onUnmounted(() => {
           </button>
         </div>
       </section>
+      </div>
 
       <Transition name="knock-settings">
         <section v-if="settingsOpen" class="knock-settings">
@@ -906,8 +894,8 @@ onUnmounted(() => {
 
 <style scoped>
 .knock-card {
-  width: 51rem;
-  max-width: 100%;
+  width: 100%;
+  max-width: 72rem;
   padding: 1.15rem 1.25rem 1.25rem;
   border-radius: var(--radius-lg, 12px);
   border: 1px solid var(--color-border);
@@ -1020,10 +1008,26 @@ onUnmounted(() => {
   min-height: 12rem;
 }
 
-.knock-step {
+.knock-steps-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem 1.25rem;
+  align-items: start;
   margin-bottom: 1rem;
   padding-top: 0.5rem;
   border-top: 1px solid var(--color-border);
+}
+
+@media (max-width: 960px) {
+  .knock-steps-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.knock-step {
+  min-width: 0;
+  margin-bottom: 0;
+  padding-top: 0;
 }
 
 .knock-step-title {

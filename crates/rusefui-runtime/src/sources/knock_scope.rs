@@ -11,7 +11,9 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 
-use super::knock_spectrogram::{KnockSpectrogramEngine, KnockSpectrogramView};
+use super::knock_spectrogram::{
+    KnockSpectrogramEngine, KnockSpectrogramPatch, KnockSpectrogramView,
+};
 use crate::session::EcuSession;
 
 const POLL_WAIT_READY: Duration = Duration::from_millis(10);
@@ -29,6 +31,29 @@ const CONFIG_ENABLE_FIELD: &str = "enableKnockScope";
 
 /// Частота KNOCK_ADC на Proteus F4/F7.
 pub const KNOCK_ADC_HZ: f64 = 218_750.0;
+
+/// Лёгкий tick для Tauri → Vue (~KB вместо сотен KB JSON на каждый захват).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KnockScopeUiTick {
+    pub connected: bool,
+    pub scope_enabled: bool,
+    pub polling: bool,
+    pub knock_scope_ready: bool,
+    pub enable_knock_scope_in_config: Option<bool>,
+    pub capture_count: u64,
+    pub sample_count: usize,
+    pub sample_min: f32,
+    pub sample_max: f32,
+    pub last_byte_len: usize,
+    pub sample_rate_hz: f64,
+    pub buffer_duration_ms: f64,
+    pub status_message: Option<String>,
+    pub last_error: Option<String>,
+    pub spectrogram_patch: Option<KnockSpectrogramPatch>,
+    /// Урезанный чанк волны для склеивания на UI (не весь DMA-буфер).
+    pub waveform_chunk: Vec<f32>,
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -82,7 +107,7 @@ pub struct KnockScopeSource {
     scope_enabled_on_ecu: Arc<AtomicBool>,
     scope_started_at: Mutex<Option<Instant>>,
     thread: Mutex<Option<JoinHandle<()>>>,
-    tick_hook: Arc<Mutex<Option<Arc<dyn Fn(KnockScopeSnapshot) + Send + Sync>>>>,
+    tick_hook: Arc<Mutex<Option<Arc<dyn Fn(KnockScopeSnapshot, KnockScopeUiTick) + Send + Sync>>>>,
 }
 
 fn parse_samples(bytes: &[u8]) -> (Vec<f32>, f32, f32) {
@@ -108,6 +133,47 @@ fn buffer_duration_ms(sample_count: usize) -> f64 {
         0.0
     } else {
         sample_count as f64 / KNOCK_ADC_HZ * 1000.0
+    }
+}
+
+const WAVEFORM_CHUNK_MAX: usize = 128;
+const UI_EMIT_MIN_INTERVAL: Duration = Duration::from_millis(33);
+
+fn downsample_waveform(samples: &[f32], max_pts: usize) -> Vec<f32> {
+    if samples.is_empty() {
+        return Vec::new();
+    }
+    if samples.len() <= max_pts {
+        return samples.to_vec();
+    }
+    let step = samples.len() as f64 / max_pts as f64;
+    (0..max_pts)
+        .map(|i| samples[(i as f64 * step) as usize])
+        .collect()
+}
+
+fn build_ui_tick(
+    snap: &KnockScopeSnapshot,
+    patch: Option<KnockSpectrogramPatch>,
+    waveform_chunk: Vec<f32>,
+) -> KnockScopeUiTick {
+    KnockScopeUiTick {
+        connected: snap.connected,
+        scope_enabled: snap.scope_enabled,
+        polling: snap.polling,
+        knock_scope_ready: snap.knock_scope_ready,
+        enable_knock_scope_in_config: snap.enable_knock_scope_in_config,
+        capture_count: snap.capture_count,
+        sample_count: snap.sample_count,
+        sample_min: snap.sample_min,
+        sample_max: snap.sample_max,
+        last_byte_len: snap.last_byte_len,
+        sample_rate_hz: snap.sample_rate_hz,
+        buffer_duration_ms: snap.buffer_duration_ms,
+        status_message: snap.status_message.clone(),
+        last_error: snap.last_error.clone(),
+        spectrogram_patch: patch,
+        waveform_chunk,
     }
 }
 
@@ -180,10 +246,10 @@ impl KnockScopeSource {
         }
     }
 
-    /// Глобальный колбэк (emit во фронт). Вызывается на каждый захват вместе с `on_tick` из `start`.
+    /// Глобальный колбэк (emit во фронт). Вызывается на throttled UI tick.
     pub fn set_tick_hook<F>(&self, f: F)
     where
-        F: Fn(KnockScopeSnapshot) + Send + Sync + 'static,
+        F: Fn(KnockScopeSnapshot, KnockScopeUiTick) + Send + Sync + 'static,
     {
         *self.tick_hook.lock().unwrap() = Some(Arc::new(f));
     }
@@ -308,17 +374,20 @@ fn poll_loop(
     running: Arc<AtomicBool>,
     snapshot: Arc<RwLock<KnockScopeSnapshot>>,
     spectrogram: Arc<Mutex<Option<KnockSpectrogramEngine>>>,
-    tick_hook: Arc<Mutex<Option<Arc<dyn Fn(KnockScopeSnapshot) + Send + Sync>>>>,
+    tick_hook: Arc<Mutex<Option<Arc<dyn Fn(KnockScopeSnapshot, KnockScopeUiTick) + Send + Sync>>>>,
     scope_started_at: Arc<Mutex<Option<Instant>>>,
     on_tick: Arc<dyn Fn(KnockScopeSnapshot) + Send + Sync>,
 ) {
-    let emit = |snap: &KnockScopeSnapshot| {
+    let emit = |snap: &KnockScopeSnapshot, ui: Option<KnockScopeUiTick>| {
         on_tick(snap.clone());
-        if let Some(hook) = tick_hook.lock().unwrap().as_ref() {
-            hook(snap.clone());
+        if let Some(ui) = ui {
+            if let Some(hook) = tick_hook.lock().unwrap().as_ref() {
+                hook(snap.clone(), ui);
+            }
         }
     };
     let mut last_status_emit = Instant::now();
+    let mut last_ui_emit = Instant::now();
     let mut not_ready_since: Option<Instant> = None;
 
     while running.load(Ordering::SeqCst) {
@@ -380,8 +449,21 @@ fn poll_loop(
                     snap.status_message =
                         status_hint(snap.capture_count, true, config_enable, waiting_for);
                     let out = snap.clone();
+                    let waveform = downsample_waveform(&out.samples, WAVEFORM_CHUNK_MAX);
                     drop(snap);
-                    emit(&out);
+                    if last_ui_emit.elapsed() >= UI_EMIT_MIN_INTERVAL {
+                        let patch = {
+                            let mut guard = spectrogram.lock().unwrap();
+                            guard
+                                .as_mut()
+                                .map(|eng| eng.take_ui_patch())
+                        };
+                        emit(
+                            &out,
+                            Some(build_ui_tick(&out, patch, waveform)),
+                        );
+                        last_ui_emit = Instant::now();
+                    }
                     not_ready_since = None;
                     did_work = true;
                     thread::sleep(REARM_AFTER_CAPTURE);
@@ -419,7 +501,7 @@ fn poll_loop(
                 status_hint(0, knock_ready, config_enable, waiting_for);
             let out = snap.clone();
             drop(snap);
-            emit(&out);
+            emit(&out, Some(build_ui_tick(&out, None, Vec::new())));
             last_status_emit = Instant::now();
             did_work = true;
         }
@@ -435,7 +517,7 @@ fn poll_loop(
                 status_hint(snap.capture_count, knock_ready, config_enable, waiting_for);
             let out = snap.clone();
             drop(snap);
-            emit(&out);
+            emit(&out, Some(build_ui_tick(&out, None, Vec::new())));
             last_status_emit = Instant::now();
             did_work = true;
         }
