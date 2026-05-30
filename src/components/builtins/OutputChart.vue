@@ -28,6 +28,7 @@ import {
   type OutputTimelineView,
 } from "../../composables/useOutputTimeline";
 import { useLogViewportLink } from "../../composables/useLogViewportLink";
+import { useTabActivity } from "../../composables/useTabActivity";
 import {
   drawLogPanelsChart,
   logPanelMargins,
@@ -141,6 +142,7 @@ function measureCanvasWidth(): number {
 }
 
 const { snapshot } = useOutputChannels();
+const { isActive: tabActive } = useTabActivity();
 const { fields: allFields, reload: reloadOutputFields } = useOutputFields();
 const { offlineMode } = useEcuConnection(useDataContext());
 const { getProjectUi, setProjectUi } = useProject();
@@ -1077,6 +1079,7 @@ function paintFromView(
 let redrawSkipFetch = false;
 
 function scheduleRedraw(skipFetch = false): void {
+  if (!tabActive.value) return;
   if (skipFetch) redrawSkipFetch = true;
   if (redrawRaf !== 0) return;
   redrawRaf = requestAnimationFrame(() => {
@@ -1275,6 +1278,10 @@ watch(canvasHeight, () => scheduleRedraw());
 watch(rangeInputs, () => scheduleRedraw(), { deep: true });
 watch(graphGroups, () => scheduleRedraw(), { deep: true });
 watch(chartHeight, () => scheduleRedraw());
+
+watch(tabActive, (active, wasActive) => {
+  if (active && !wasActive) scheduleRedraw(true);
+});
 </script>
 
 <template>

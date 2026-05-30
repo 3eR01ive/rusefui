@@ -15,6 +15,7 @@ import {
   setNavMenuPaths,
   syncNavSelectionVisual,
 } from "../../composables/useWorkspaceNav";
+import { useTabActivity } from "../../composables/useTabActivity";
 
 interface ManifestEntry {
   id: string;
@@ -36,6 +37,8 @@ const props = defineProps<{
   binding: unknown;
   meta: ComponentMeta;
 }>();
+
+const { isActive: tabActive } = useTabActivity();
 
 const manifestPath = computed(
   () => String(props.props.manifestPath ?? "/config/components/generated/manifest.json"),
@@ -256,6 +259,7 @@ watch(selectedPath, (path) => {
 watch(
   menuNavPaths,
   (paths) => {
+    if (!tabActive.value) return;
     setNavMenuPaths(props.path, paths);
     void nextTick(() => syncNavSelectionVisual(selectedPath.value));
   },
@@ -271,10 +275,17 @@ watch(manifest, (m) => {
 watch(
   panelRoot,
   (root) => {
+    if (!tabActive.value) return;
     setNavExtension(`${props.path}/preview`, root);
   },
   { immediate: true },
 );
+
+watch(tabActive, (active) => {
+  if (!active) return;
+  setNavMenuPaths(props.path, menuNavPaths.value);
+  setNavExtension(`${props.path}/preview`, panelRoot.value);
+});
 
 onUnmounted(() => {
   setNavExtension(`${props.path}/preview`, null);

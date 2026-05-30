@@ -8,7 +8,7 @@ import {
 } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useProject } from "../../composables/useProject";
-import { activeTabId } from "../../composables/useTabState";
+import { useTabActivity } from "../../composables/useTabActivity";
 import {
   TIMELINE_CHANNEL_LABELS,
   ensureTimelineClipsLoaded,
@@ -27,6 +27,7 @@ defineProps<{
 
 const { hasOpenProject } = useProject();
 const { spanLabel, loading, error: timelineError } = useProjectTimeline();
+const { isActive: tabActive } = useTabActivity();
 
 const trackRef = useTemplateRef<HTMLElement>("trackRef");
 const canvasRef = useTemplateRef<HTMLCanvasElement>("canvasRef");
@@ -56,6 +57,7 @@ function syncTrackSize(): void {
 }
 
 function onWheel(e: WheelEvent): void {
+  if (!tabActive.value) return;
   e.preventDefault();
   const rect = trackRef.value?.getBoundingClientRect();
   const clientX = rect ? e.clientX - rect.left : e.clientX;
@@ -140,9 +142,9 @@ function stopNowTimer(): void {
 }
 
 watch(
-  activeTabId,
-  (id) => {
-    if (id === "timeline") {
+  tabActive,
+  (active) => {
+    if (active) {
       void ensureTimelineClipsLoaded().then(syncTrackSize);
       startNowTimer();
     } else {
@@ -166,7 +168,7 @@ onMounted(async () => {
     lastTrackHeight = track.clientHeight;
     resizeObs = new ResizeObserver(syncTrackSize);
     resizeObs.observe(track);
-    if (activeTabId.value === "timeline") {
+    if (tabActive.value) {
       await ensureTimelineClipsLoaded();
       syncTrackSize();
     }

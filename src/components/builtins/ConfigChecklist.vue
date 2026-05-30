@@ -22,6 +22,7 @@ import {
 } from "../../composables/useConfig";
 import { initChecklist } from "../../composables/useChecklist";
 import { resolveChecklistEditors } from "../../composables/useChecklistEditor";
+import { useTabActivity } from "../../composables/useTabActivity";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -30,6 +31,8 @@ const props = defineProps<{
   binding: unknown;
   meta: ComponentMeta;
 }>();
+
+const { isActive: tabActive } = useTabActivity();
 
 void initConfig();
 void initChecklist();
@@ -177,6 +180,7 @@ watch(
 watch(
   menuNavPaths,
   (paths) => {
+    if (!tabActive.value) return;
     setNavMenuPaths(props.path, paths);
     void nextTick(() => syncNavSelectionVisual(selectedPath.value));
   },
@@ -186,10 +190,17 @@ watch(
 watch(
   editorRoot,
   (root) => {
+    if (!tabActive.value) return;
     setNavExtension(`${props.path}/editor`, root);
   },
   { immediate: true },
 );
+
+watch(tabActive, (active) => {
+  if (!active) return;
+  setNavMenuPaths(props.path, menuNavPaths.value);
+  setNavExtension(`${props.path}/editor`, editorRoot.value);
+});
 
 watch(selectedPath, (path) => {
   const prefix = `${props.path}/menu/`;

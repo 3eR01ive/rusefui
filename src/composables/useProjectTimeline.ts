@@ -6,6 +6,7 @@ import {
   timelineRenderer,
   type ProjectTimelineClip,
 } from "./timelineRenderer";
+import { activeTabId } from "./useTabState";
 
 export {
   TIMELINE_CHANNEL_LABELS,
@@ -27,20 +28,25 @@ function timelineDataKey(info: ProjectInfo): string {
   return `${info.path ?? ""}:${info.logCount}:${info.timelineClipCount}`;
 }
 
+function timelineTabVisible(): boolean {
+  return activeTabId.value === "timeline";
+}
+
 /** Один IPC — список клипов; viewport полностью на клиенте. */
 export async function reloadTimelineClips(paint = true): Promise<void> {
   loading.value = true;
   error.value = null;
+  const doPaint = paint && timelineTabVisible();
   try {
     const clips = await invoke<ProjectTimelineClip[]>("project_timeline_list");
     timelineRenderer.setClips(clips);
-    if (paint) timelineRenderer.rebuild();
+    if (paint) timelineRenderer.rebuild(doPaint);
     else spanLabel.value = timelineRenderer.spanLabel();
     clipsLoaded = true;
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
     timelineRenderer.setClips([]);
-    if (paint) timelineRenderer.rebuild();
+    if (paint) timelineRenderer.rebuild(doPaint);
   } finally {
     loading.value = false;
   }
@@ -58,9 +64,10 @@ async function setupListeners(): Promise<void> {
   _unlistenReset = await listen("workspace-reset", () => {
     timelineKey = "";
     clipsLoaded = false;
-    timelineRenderer.reset();
+    const paint = timelineTabVisible();
+    timelineRenderer.reset(paint);
     spanLabel.value = timelineRenderer.spanLabel();
-    void reloadTimelineClips(true);
+    void reloadTimelineClips(paint);
   });
 }
 

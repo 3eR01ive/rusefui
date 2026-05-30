@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import type { CrankEdgeMode } from "../../composables/useProject";
+import { useTabActivity } from "../../composables/useTabActivity";
 
 export interface WheelTooth {
   angleDeg: number;
@@ -30,6 +31,8 @@ const props = defineProps<{
   edgeMode: CrankEdgeMode;
   height?: number;
 }>();
+
+const { isActive: tabActive } = useTabActivity();
 
 const wrapRef = ref<HTMLDivElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -298,6 +301,7 @@ function draw() {
 }
 
 function scheduleDraw() {
+  if (!tabActive.value) return;
   requestAnimationFrame(draw);
 }
 
@@ -314,6 +318,10 @@ onUnmounted(() => {
 });
 
 watch(() => [props.view, props.edgeMode, props.height], scheduleDraw, { deep: true });
+
+watch(tabActive, (active, wasActive) => {
+  if (active && !wasActive) scheduleDraw();
+});
 </script>
 
 <template>

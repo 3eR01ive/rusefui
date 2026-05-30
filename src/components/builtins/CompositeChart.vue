@@ -14,6 +14,7 @@ import {
   compositeTimelineLoadEpoch,
 } from "../../composables/useCompositeTimeline";
 import { useLogViewportLink } from "../../composables/useLogViewportLink";
+import { useTabActivity } from "../../composables/useTabActivity";
 import { initOutputTimeline, useOutputTimeline } from "../../composables/useOutputTimeline";
 import { useOutputChannels } from "../../composables/useOutputChannels";
 import { initConfig, useConfig } from "../../composables/useConfig";
@@ -93,6 +94,7 @@ const { linked: viewportLinked, setLinked: setViewportLinked } = useLogViewportL
 const { status: outputTimelineStatus, controlView: controlOutputView } =
   useOutputTimeline();
 const { snapshot: outputChannelsSnapshot } = useOutputChannels();
+const { isActive: tabActive } = useTabActivity();
 const { getProjectUi, setProjectUi } = useProject();
 const {
   snapshot: configSnapshot,
@@ -165,7 +167,7 @@ let liveDrawRaf = 0;
 
 function startLiveDraw() {
   const tick = () => {
-    if (!loggingEnabled.value) {
+    if (!loggingEnabled.value || !tabActive.value) {
       liveDrawRaf = 0;
       return;
     }
@@ -696,6 +698,7 @@ function draw() {
 }
 
 function scheduleDraw() {
+  if (!tabActive.value) return;
   requestAnimationFrame(draw);
 }
 
@@ -1122,6 +1125,15 @@ watch(loggingEnabled, (on, wasOn) => {
   }
   if (wasOn && !on) {
     void refreshTimelineStatus().then(() => refreshReviewEvents());
+  }
+});
+
+watch(tabActive, (active, wasActive) => {
+  if (active && !wasActive) {
+    scheduleDraw();
+    if (loggingEnabled.value) startLiveDraw();
+  } else if (!active) {
+    stopLiveDraw();
   }
 });
 

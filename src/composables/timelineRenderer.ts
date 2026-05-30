@@ -90,9 +90,9 @@ export class TimelineRenderer {
     this.rebuild();
   }
 
-  reset(): void {
+  reset(paint = true): void {
     this.builder.reset();
-    this.rebuild();
+    this.rebuild(paint);
   }
 
   applyWheel(clientX: number, deltaY: number, deltaX: number, shiftPan: boolean): void {
@@ -132,10 +132,10 @@ export class TimelineRenderer {
     return this.frame?.spanLabel ?? "…";
   }
 
-  rebuild(): void {
+  rebuild(paint = true): void {
     this.frame = this.builder.build();
     this.onSpanLabelChange?.(this.frame.spanLabel);
-    this.paint();
+    if (paint) this.paint();
   }
 
   paint(nowMs = Date.now()): void {

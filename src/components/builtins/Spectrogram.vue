@@ -13,6 +13,7 @@ import {
   initKnockScope,
   useKnockScope,
 } from "../../composables/useKnockScope";
+import { useTabActivity } from "../../composables/useTabActivity";
 import {
   appendKnockWaveformRing,
   downsampleMinMax,
@@ -53,6 +54,7 @@ const windowMs = computed(() => {
 const chartRef = ref<HTMLCanvasElement | null>(null);
 const spectrogramRef = ref<HTMLCanvasElement | null>(null);
 const { snapshot, setScopeEnabled } = useKnockScope();
+const { isActive: tabActive } = useTabActivity();
 
 if (bindSource.value && bindSource.value !== "knockScope") {
   console.warn(
@@ -189,11 +191,15 @@ function ingestSnapshot(snap: typeof snapshot.value) {
   }
 }
 
-watch(() => snapshot.value, (snap) => ingestSnapshot(snap), { flush: "sync" });
+watch(() => snapshot.value, (snap) => {
+  if (!tabActive.value) return;
+  ingestSnapshot(snap);
+}, { flush: "sync" });
 
 let redrawRaf = 0;
 
 function scheduleRedraw() {
+  if (!tabActive.value) return;
   if (redrawRaf !== 0) return;
   redrawRaf = requestAnimationFrame(() => {
     redrawRaf = 0;
@@ -233,7 +239,7 @@ let liveRedrawRaf = 0;
 
 function startLiveRedraw() {
   const tick = () => {
-    if (!scopeEnabled.value) {
+    if (!scopeEnabled.value || !tabActive.value) {
       liveRedrawRaf = 0;
       return;
     }
@@ -257,6 +263,16 @@ watch(scopeEnabled, (on) => {
     startLiveRedraw();
   } else {
     clearRing();
+    stopLiveRedraw();
+  }
+});
+
+watch(tabActive, (active, wasActive) => {
+  if (active && !wasActive) {
+    ingestSnapshot(snapshot.value);
+    scheduleRedraw();
+    if (scopeEnabled.value) startLiveRedraw();
+  } else if (!active) {
     stopLiveRedraw();
   }
 });

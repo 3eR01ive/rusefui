@@ -2,6 +2,7 @@
 import { computed, onMounted } from "vue";
 import type { ComponentInstance, ComponentMeta, DataBinding } from "../../core/types";
 import { initOutputChannels, useOutputChannels } from "../../composables/useOutputChannels";
+import { useTabFrozenDisplay } from "../../composables/useTabActivity";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -30,13 +31,13 @@ const rawValue = computed(() => {
   return getField(fieldName.value);
 });
 
-const displayValue = computed(() => {
+const displayValue = useTabFrozenDisplay(() => {
   if (!snapshot.value.connected) return "—";
   const v = rawValue.value;
   if (v === null) return "—";
   if (Number.isInteger(v) && decimals.value === 0) return String(v);
   return v.toFixed(decimals.value);
-});
+}, "—");
 
 const stale = computed(
   () => snapshot.value.connected && rawValue.value === null && !!fieldName.value,

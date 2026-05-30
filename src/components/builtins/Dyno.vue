@@ -22,6 +22,7 @@ import {
 } from "../../composables/useProject";
 import { useRustComponent } from "../../composables/useRustComponent";
 import { useInstanceBind } from "../../composables/useInstanceBind";
+import { useTabActivity, useTabFrozenDisplay } from "../../composables/useTabActivity";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -50,6 +51,7 @@ const { paramStringOr, source: bindSource } = useInstanceBind(instanceRef);
 const dataCtx = useDataContext();
 const { snapshot } = useOutputChannels();
 const { snapshot: configSnapshot } = useConfig();
+const { isActive: tabActive } = useTabActivity();
 const { getProjectUi, setProjectUi } = useProject();
 
 let applyingProjectUi = false;
@@ -76,8 +78,14 @@ watch(ready, (isReady) => {
   void dispatch("set_channels", { rpmField: rpm, tpsField: tps });
 });
 
-const liveRpm = computed(() => snapshot.value.values[rpmField.value] ?? null);
-const liveTps = computed(() => snapshot.value.values[tpsField.value] ?? null);
+const liveRpm = useTabFrozenDisplay(
+  () => snapshot.value.values[rpmField.value] ?? null,
+  null as number | null,
+);
+const liveTps = useTabFrozenDisplay(
+  () => snapshot.value.values[tpsField.value] ?? null,
+  null as number | null,
+);
 
 const recording = computed(() => Boolean(state.value.recording));
 const runPoints = computed(
@@ -207,6 +215,7 @@ function redraw(): void {
 
 let redrawRaf = 0;
 function scheduleRedraw(): void {
+  if (!tabActive.value) return;
   cancelAnimationFrame(redrawRaf);
   redrawRaf = requestAnimationFrame(redraw);
 }
@@ -246,6 +255,10 @@ watch(chartHeight, () => {
 });
 
 watch([runPoints, chartPoints, canvasWidth], () => scheduleRedraw(), { deep: true });
+
+watch(tabActive, (active, wasActive) => {
+  if (active && !wasActive) scheduleRedraw();
+});
 
 onMounted(async () => {
   await Promise.all([initOutputChannels(), initConfig(), initProject()]);
