@@ -5,13 +5,9 @@ import {
   onMounted,
   onUnmounted,
   ref,
-  shallowRef,
   watch,
 } from "vue";
-import { parse as parseYaml } from "yaml";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
-import { childPath } from "../../core/instance";
-import ComponentHost from "../ComponentHost.vue";
 import { useDataContext } from "../../core/data-context";
 import { initConfig, useConfig } from "../../composables/useConfig";
 import {
@@ -49,8 +45,6 @@ const props = defineProps<{
 
 const CHART_HEIGHT_MIN = 180;
 const CHART_HEIGHT_MAX = 720;
-const SPECTROGRAM_HEIGHT_MIN = 160;
-const SPECTROGRAM_HEIGHT_DEFAULT = 240;
 
 const chartSizeOverride = { height: null as number | null };
 
@@ -270,6 +264,12 @@ const configLoaded = computed(
 const canRun = computed(
   () => ready.value && connected.value && configLoaded.value && hasLogic.value && !recording.value,
 );
+const canToggleThreshold = computed(
+  () =>
+    recordingThreshold.value ||
+    (ready.value && connected.value && configLoaded.value && hasLogic.value),
+);
+const canToggleSpectrum = computed(() => recordingSpectrum.value || canRun.value);
 const canClear = computed(
   () =>
     !recording.value &&
@@ -385,8 +385,23 @@ function scheduleSaveUiToProject(): void {
 
 function toggleSettings(): void {
   settingsOpen.value = !settingsOpen.value;
-  if (settingsOpen.value) void ensureKnockSettingsPanel();
   scheduleSaveUiToProject();
+}
+
+async function toggleThresholdAutotune(): Promise<void> {
+  if (recordingThreshold.value) {
+    await stopThresholdRun();
+  } else {
+    await dispatch("start_threshold_autotune");
+  }
+}
+
+async function toggleSpectrumRun(): Promise<void> {
+  if (recordingSpectrum.value) {
+    await stopSpectrumRun();
+  } else {
+    await dispatch("start_spectrum_run");
+  }
 }
 
 async function stopThresholdRun(): Promise<void> {
@@ -399,30 +414,6 @@ async function stopSpectrumRun(): Promise<void> {
   await dispatch("stop_run", { applyThreshold: false });
 }
 
-const knockSettingsChildren = shallowRef<ComponentInstance[]>([]);
-const knockSettingsLoading = ref(false);
-const knockSettingsError = ref<string | null>(null);
-let knockSettingsLoaded = false;
-const knockSettingsBasePath = computed(() => `${props.path}/knock-settings`);
-
-async function ensureKnockSettingsPanel(): Promise<void> {
-  if (knockSettingsLoaded || knockSettingsLoading.value) return;
-  knockSettingsLoading.value = true;
-  knockSettingsError.value = null;
-  try {
-    const panelId = paramStringOr("knockSettingsPanel", "generated/softwareknock.panel");
-    const res = await fetch(`/config/components/${panelId}.yaml`);
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    const doc = parseYaml(await res.text()) as { children?: ComponentInstance[] };
-    knockSettingsChildren.value = doc.children ?? [];
-    knockSettingsLoaded = true;
-  } catch (e) {
-    knockSettingsError.value = e instanceof Error ? e.message : String(e);
-  } finally {
-    knockSettingsLoading.value = false;
-  }
-}
-
 const thresholdCanvasRef = ref<HTMLCanvasElement | null>(null);
 const thresholdContainerRef = ref<HTMLDivElement | null>(null);
 let thresholdCanvasPixelW = 0;
@@ -430,10 +421,7 @@ let thresholdCanvasPixelH = 0;
 const spectrogramCanvasRef = ref<HTMLCanvasElement | null>(null);
 const spectrogramContainerRef = ref<HTMLDivElement | null>(null);
 
-const spectrogramHeight = computed(() => {
-  const h = Number(props.props.spectrogramHeight ?? SPECTROGRAM_HEIGHT_DEFAULT);
-  return h >= SPECTROGRAM_HEIGHT_MIN ? h : SPECTROGRAM_HEIGHT_DEFAULT;
-});
+const spectrogramHeight = computed(() => chartHeight.value);
 
 function redrawThresholdChart(): void {
   const canvas = thresholdCanvasRef.value;
@@ -567,10 +555,6 @@ watch(
 watch(tabActive, (active, was) => {
   if (active && !was) scheduleRedraw();
 });
-watch(settingsOpen, (open) => {
-  if (open) void ensureKnockSettingsPanel();
-});
-
 useChartCanvasLayout(thresholdContainerRef, scheduleThresholdRedraw);
 useChartCanvasLayout(spectrogramContainerRef, scheduleSpectrogramRedraw);
 
@@ -642,222 +626,222 @@ onUnmounted(() => {
       </div>
 
       <div class="knock-steps-row">
-      <section class="knock-step knock-step--threshold">
-        <h3 class="knock-step-title">1. Threshold autotune</h3>
-        <p class="knock-step-hint">
-          График: knockBaseNoise из config (пунктир) и knock level с прогона (сплошная).
-        </p>
-        <div ref="thresholdContainerRef" class="knock-chart-wrap">
-          <canvas ref="thresholdCanvasRef" class="knock-canvas" />
-        </div>
-        <div class="knock-step-actions">
-          <button
-            type="button"
-            class="knock-btn knock-btn--secondary"
-            :disabled="!canRun"
-            @click="dispatch('apply_temp_detune')"
+        <section class="knock-step knock-step--threshold">
+          <header class="knock-step-header">
+            <h3 class="knock-step-title">1. Threshold autotune</h3>
+            <p class="knock-step-hint">
+              knockBaseNoise из config (пунктир) и knock level с прогона (сплошная).
+            </p>
+          </header>
+          <div
+            ref="thresholdContainerRef"
+            class="knock-chart-wrap"
+            :style="{ height: `${chartHeight}px` }"
           >
-            Временные бездетоновые настройки
-          </button>
-          <button
-            type="button"
-            class="knock-btn knock-btn--primary"
-            :disabled="!canRun"
-            @click="dispatch('start_threshold_autotune')"
-          >
-            Start Threshold Autotune
-          </button>
-          <button
-            type="button"
-            class="knock-btn knock-btn--stop"
-            :disabled="!recordingThreshold"
-            @click="stopThresholdRun"
-          >
-            Stop
-          </button>
-        </div>
-      </section>
+            <canvas ref="thresholdCanvasRef" class="knock-canvas" />
+          </div>
+          <div class="knock-step-actions">
+            <button
+              type="button"
+              class="knock-btn knock-btn--toggle"
+              :class="{ 'knock-btn--toggle-recording': recordingThreshold }"
+              :disabled="!canToggleThreshold"
+              @click="toggleThresholdAutotune"
+            >
+              {{ recordingThreshold ? "Стоп autotune" : "Старт Threshold Autotune" }}
+            </button>
+            <button
+              type="button"
+              class="knock-btn knock-btn--secondary"
+              :disabled="!canRun"
+              @click="dispatch('apply_temp_detune')"
+            >
+              Временные бездетоновые настройки
+            </button>
+          </div>
+        </section>
 
-      <section class="knock-step knock-step--spectrum">
-        <h3 class="knock-step-title">2. Частота детонации</h3>
-        <p class="knock-step-hint">
-          Спектрограмма на прогоне + Momentum knock в безопасной зоне.
-        </p>
-        <div ref="spectrogramContainerRef" class="knock-chart-wrap knock-chart-wrap--spectrogram">
-          <canvas ref="spectrogramCanvasRef" class="knock-canvas knock-canvas--spectrogram" />
-        </div>
-        <p v-if="spectrogramHint" class="knock-step-hint knock-step-hint--scope">{{ spectrogramHint }}</p>
-        <div class="knock-step-actions">
-          <button
-            type="button"
-            class="knock-btn knock-btn--primary"
-            :disabled="!canRun"
-            @click="dispatch('start_spectrum_run')"
+        <section class="knock-step knock-step--spectrum">
+          <header class="knock-step-header">
+            <h3 class="knock-step-title">2. Частота детонации</h3>
+            <p class="knock-step-hint">
+              Спектрограмма на прогоне и Momentum knock в безопасной зоне.
+            </p>
+          </header>
+          <div
+            ref="spectrogramContainerRef"
+            class="knock-chart-wrap knock-chart-wrap--spectrogram"
+            :style="{ height: `${chartHeight}px` }"
           >
-            Запись спектрограммы (прогон)
-          </button>
-          <button
-            type="button"
-            class="knock-btn knock-btn--secondary"
-            :disabled="!connected || recording"
-            @click="dispatch('start_momentum_knock')"
-          >
-            Momentum Knock
-          </button>
-          <button
-            type="button"
-            class="knock-btn knock-btn--secondary"
-            :disabled="!canApplyFrequency"
-            @click="dispatch('apply_frequency')"
-          >
-            Применить найденную частоту
-          </button>
-          <button
-            type="button"
-            class="knock-btn knock-btn--stop"
-            :disabled="!recordingSpectrum"
-            @click="stopSpectrumRun"
-          >
-            Stop
-          </button>
-        </div>
-      </section>
+            <canvas ref="spectrogramCanvasRef" class="knock-canvas knock-canvas--spectrogram" />
+            <p v-if="spectrogramHint" class="knock-chart-overlay">{{ spectrogramHint }}</p>
+          </div>
+          <div class="knock-step-actions">
+            <button
+              type="button"
+              class="knock-btn knock-btn--toggle"
+              :class="{ 'knock-btn--toggle-recording': recordingSpectrum }"
+              :disabled="!canToggleSpectrum"
+              @click="toggleSpectrumRun"
+            >
+              {{ recordingSpectrum ? "Стоп запись" : "Запись спектрограммы (прогон)" }}
+            </button>
+            <button
+              type="button"
+              class="knock-btn knock-btn--secondary"
+              :disabled="!connected || recording"
+              @click="dispatch('start_momentum_knock')"
+            >
+              Momentum Knock
+            </button>
+            <button
+              type="button"
+              class="knock-btn knock-btn--secondary"
+              :disabled="!canApplyFrequency"
+              @click="dispatch('apply_frequency')"
+            >
+              Применить найденную частоту
+            </button>
+          </div>
+        </section>
       </div>
 
       <Transition name="knock-settings">
         <section v-if="settingsOpen" class="knock-settings">
-          <div class="knock-settings-block">
-            <h3 class="knock-settings-title">Прогон</h3>
-            <label class="knock-check">
-              <input v-model="ignoreTpsMin" type="checkbox" :disabled="recording" />
-              <span>Без ограничения TPS (≥ 30%)</span>
-            </label>
-            <label class="knock-field">
-              <span>Мин. RPM</span>
-              <input v-model.number="minRpm" type="number" min="0" max="20000" step="100" />
-            </label>
-            <label class="knock-field">
-              <span>Отсечка RPM</span>
-              <input v-model.number="cutoffRpm" type="number" min="500" max="20000" step="100" />
-            </label>
-            <label class="knock-field">
-              <span>Зазор threshold, dB</span>
-              <input v-model.number="thresholdGapDb" type="number" min="0" max="20" step="0.5" />
-            </label>
-            <label class="knock-field">
-              <span>λ (временно)</span>
-              <input
-                v-model.number="tempTargetLambda"
-                type="number"
-                min="0.6"
-                max="1.2"
-                step="0.01"
-              />
-            </label>
-            <label class="knock-field">
-              <span>Отступ УОЗ, °</span>
-              <input
-                v-model.number="tempIgnitionRetardDeg"
-                type="number"
-                min="0"
-                max="30"
-                step="0.5"
-              />
-            </label>
-            <label class="knock-field">
-              <span>Окно спектрограммы, ms</span>
-              <input
-                v-model.number="spectrogramWindowMs"
-                type="number"
-                min="100"
-                max="3000"
-                step="50"
-              />
-            </label>
-            <h3 class="knock-settings-title">Momentum knock</h3>
-            <label class="knock-field">
-              <span>Безопасный RPM min</span>
-              <input
-                v-model.number="momentumSafeRpmMin"
-                type="number"
-                min="500"
-                max="20000"
-                step="100"
-              />
-            </label>
-            <label class="knock-field">
-              <span>Безопасный RPM max</span>
-              <input
-                v-model.number="momentumSafeRpmMax"
-                type="number"
-                min="500"
-                max="20000"
-                step="100"
-              />
-            </label>
-            <label class="knock-field">
-              <span>Мин. нагрузка, %</span>
-              <input v-model.number="momentumMinLoad" type="number" min="0" max="100" step="1" />
-            </label>
-            <label class="knock-field">
-              <span>Добавить УОЗ, °</span>
-              <input
-                v-model.number="momentumAdvanceAddDeg"
-                type="number"
-                min="0"
-                max="30"
-                step="0.5"
-              />
-            </label>
-            <label class="knock-field">
-              <span>Длительность, ms</span>
-              <input
-                v-model.number="momentumDurationMs"
-                type="number"
-                min="100"
-                max="5000"
-                step="50"
-              />
-            </label>
-            <label class="knock-field">
-              <span>Высота графика, px</span>
-              <input
-                :value="chartHeight"
-                type="number"
-                :min="CHART_HEIGHT_MIN"
-                :max="CHART_HEIGHT_MAX"
-                step="20"
-                @change="
-                  (e) => {
-                    const h = Number((e.target as HTMLInputElement).value);
-                    if (Number.isFinite(h))
-                      chartSizeOverride.height = Math.min(
-                        CHART_HEIGHT_MAX,
-                        Math.max(CHART_HEIGHT_MIN, h),
-                      );
-                    scheduleSaveUiToProject();
-                    scheduleRedraw();
-                  }
-                "
-              />
-            </label>
-            <button type="button" class="knock-link" :disabled="!canClear" @click="dispatch('clear')">
-              Очистить график
-            </button>
-          </div>
-          <div class="knock-settings-block">
-            <h3 class="knock-settings-title">Knock control (INI)</h3>
-            <p v-if="knockSettingsLoading" class="knock-field-hint">Загрузка…</p>
-            <p v-else-if="knockSettingsError" class="knock-note knock-note--error">
-              {{ knockSettingsError }}
-            </p>
-            <div v-else class="knock-ini-host">
-              <ComponentHost
-                v-for="(child, index) in knockSettingsChildren"
-                :key="child.id ?? `${index}`"
-                :instance="child"
-                :path="childPath(knockSettingsBasePath, index, child)"
-              />
+          <div class="knock-settings-groups">
+            <div class="knock-settings-group">
+              <h4 class="knock-settings-title">Прогон</h4>
+              <div class="knock-settings-fields">
+                <label class="knock-check">
+                  <input v-model="ignoreTpsMin" type="checkbox" :disabled="recording" />
+                  <span>Без ограничения TPS (≥ 30%)</span>
+                </label>
+                <label class="knock-field">
+                  <span>Мин. RPM</span>
+                  <input v-model.number="minRpm" type="number" min="0" max="20000" step="100" />
+                </label>
+                <label class="knock-field">
+                  <span>Отсечка RPM</span>
+                  <input v-model.number="cutoffRpm" type="number" min="500" max="20000" step="100" />
+                </label>
+                <label class="knock-field">
+                  <span>Зазор threshold, dB</span>
+                  <input v-model.number="thresholdGapDb" type="number" min="0" max="20" step="0.5" />
+                </label>
+                <label class="knock-field">
+                  <span>λ (временно)</span>
+                  <input
+                    v-model.number="tempTargetLambda"
+                    type="number"
+                    min="0.6"
+                    max="1.2"
+                    step="0.01"
+                  />
+                </label>
+                <label class="knock-field">
+                  <span>Отступ УОЗ, °</span>
+                  <input
+                    v-model.number="tempIgnitionRetardDeg"
+                    type="number"
+                    min="0"
+                    max="30"
+                    step="0.5"
+                  />
+                </label>
+                <label class="knock-field knock-field--wide">
+                  <span>Окно спектрограммы, ms</span>
+                  <input
+                    v-model.number="spectrogramWindowMs"
+                    type="number"
+                    min="100"
+                    max="3000"
+                    step="50"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div class="knock-settings-group">
+              <h4 class="knock-settings-title">Momentum knock</h4>
+              <div class="knock-settings-fields">
+                <label class="knock-field">
+                  <span>Безоп. RPM min</span>
+                  <input
+                    v-model.number="momentumSafeRpmMin"
+                    type="number"
+                    min="500"
+                    max="20000"
+                    step="100"
+                  />
+                </label>
+                <label class="knock-field">
+                  <span>Безоп. RPM max</span>
+                  <input
+                    v-model.number="momentumSafeRpmMax"
+                    type="number"
+                    min="500"
+                    max="20000"
+                    step="100"
+                  />
+                </label>
+                <label class="knock-field">
+                  <span>Мин. нагрузка, %</span>
+                  <input v-model.number="momentumMinLoad" type="number" min="0" max="100" step="1" />
+                </label>
+                <label class="knock-field">
+                  <span>Добавить УОЗ, °</span>
+                  <input
+                    v-model.number="momentumAdvanceAddDeg"
+                    type="number"
+                    min="0"
+                    max="30"
+                    step="0.5"
+                  />
+                </label>
+                <label class="knock-field knock-field--wide">
+                  <span>Длительность, ms</span>
+                  <input
+                    v-model.number="momentumDurationMs"
+                    type="number"
+                    min="100"
+                    max="5000"
+                    step="50"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div class="knock-settings-group knock-settings-group--tools">
+              <h4 class="knock-settings-title">Отображение</h4>
+              <div class="knock-settings-fields">
+                <label class="knock-field">
+                  <span>Высота графика, px</span>
+                  <input
+                    :value="chartHeight"
+                    type="number"
+                    :min="CHART_HEIGHT_MIN"
+                    :max="CHART_HEIGHT_MAX"
+                    step="20"
+                    @change="
+                      (e) => {
+                        const h = Number((e.target as HTMLInputElement).value);
+                        if (Number.isFinite(h))
+                          chartSizeOverride.height = Math.min(
+                            CHART_HEIGHT_MAX,
+                            Math.max(CHART_HEIGHT_MIN, h),
+                          );
+                        scheduleSaveUiToProject();
+                        scheduleRedraw();
+                      }
+                    "
+                  />
+                </label>
+                <div class="knock-settings-tools">
+                  <button type="button" class="knock-link" :disabled="!canClear" @click="dispatch('clear')">
+                    Очистить график
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -973,30 +957,43 @@ onUnmounted(() => {
 }
 
 .knock-chart-wrap {
+  position: relative;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md, 8px);
   margin-bottom: 0.75rem;
   overflow: hidden;
+  background: var(--color-surface-2, #1a1d24);
 }
 
 .knock-chart-wrap--spectrogram {
-  min-height: 12rem;
+  min-height: 0;
 }
 
 .knock-canvas {
   display: block;
   width: 100%;
+  height: 100%;
 }
 
-.knock-canvas--spectrogram {
-  min-height: 12rem;
+.knock-chart-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0 1rem;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+  pointer-events: none;
 }
 
 .knock-steps-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 1rem 1.25rem;
-  align-items: start;
+  align-items: stretch;
   margin-bottom: 1rem;
   padding-top: 0.5rem;
   border-top: 1px solid var(--color-border);
@@ -1009,19 +1006,26 @@ onUnmounted(() => {
 }
 
 .knock-step {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  margin-bottom: 0;
-  padding-top: 0;
+  min-height: 0;
+}
+
+.knock-step-header {
+  min-height: 3.25rem;
+  margin-bottom: 0.5rem;
 }
 
 .knock-step-title {
-  margin: 0 0 0.35rem;
+  margin: 0 0 0.25rem;
   font-size: 0.92rem;
 }
 
 .knock-step-hint {
-  margin: 0 0 0.6rem;
-  font-size: 0.82rem;
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.35;
   color: var(--color-text-muted);
 }
 
@@ -1029,6 +1033,8 @@ onUnmounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.15rem;
 }
 
 .knock-btn {
@@ -1045,34 +1051,54 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-.knock-btn--primary {
+.knock-btn--toggle {
   background: var(--color-accent);
   border-color: var(--color-accent);
   color: var(--color-on-accent, #111);
+}
+
+.knock-btn--toggle-recording {
+  background: var(--color-gray, #666);
+  border-color: var(--color-gray, #666);
+  color: var(--color-on-gray, #fff);
 }
 
 .knock-btn--secondary {
   background: transparent;
 }
 
-.knock-btn--stop {
-  border-color: var(--color-danger, #c45);
-  color: var(--color-danger, #c45);
-}
-
 .knock-settings {
   margin-top: 1rem;
-  padding-top: 0.75rem;
+  padding-top: 0.85rem;
   border-top: 1px solid var(--color-border);
 }
 
-.knock-settings-block + .knock-settings-block {
-  margin-top: 1rem;
+.knock-settings-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 0.85rem;
+}
+
+.knock-settings-group {
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-bg-subtle, rgba(255, 255, 255, 0.03));
 }
 
 .knock-settings-title {
-  margin: 0 0 0.5rem;
-  font-size: 0.88rem;
+  margin: 0 0 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.knock-settings-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem 0.65rem;
 }
 
 .knock-field,
@@ -1080,12 +1106,56 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  margin-bottom: 0.5rem;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+}
+
+.knock-check {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.knock-check input {
+  width: 1rem;
+  height: 1rem;
+}
+
+.knock-field > span:first-child {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-subtle);
+}
+
+.knock-field--wide {
+  grid-column: 1 / -1;
 }
 
 .knock-field input[type="number"] {
-  max-width: 10rem;
+  width: 100%;
+  max-width: none;
+  padding: 0.4rem 0.5rem;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 0.85rem;
+  box-sizing: border-box;
+}
+
+.knock-settings-tools {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  padding-top: 0.15rem;
+}
+
+.knock-field-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
 }
 
 .knock-link {

@@ -205,3 +205,34 @@ input[type="radio"]:focus-visible {
     0 0 0 1px color-mix(in srgb, var(--color-accent) 28%, var(--color-border)),
     0 0 0 3px var(--nav-ring-selected);
 }
+
+/* Knock tab: INI panel — sibling под knock-tuner, не внутри компонента */
+.tab-panel[data-tab-id="knock"] .composite-root > .composite-root {
+  margin-top: 0.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.tab-panel[data-tab-id="knock"] .composite-root > .composite-root > .section > .section-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  align-items: start;
+}
+
+.tab-panel[data-tab-id="knock"] .composite-root > .composite-root .section .section .section-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.55rem 0.75rem;
+}
+
+.tab-panel[data-tab-id="knock"] .composite-root > .composite-root .config-curve {
+  width: 100%;
+  max-width: none;
+}
+
+@media (max-width: 900px) {
+  .tab-panel[data-tab-id="knock"] .composite-root > .composite-root > .section > .section-body {
+    grid-template-columns: 1fr;
+  }
+}

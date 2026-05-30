@@ -4,9 +4,9 @@ description: Knock tuning — threshold autotune, спектр частоты, m
 children:
   - type: knock
     id: knock-main
+    navSelectable: false
     props:
       height: 360
-      knockSettingsPanel: generated/softwareknock.panel
     bind:
       source: outputChannels
       params:
@@ -15,3 +15,5 @@ children:
         knockThresholdField: m_knockThreshold
         loadField: ignitionLoad
         advanceField: ignitionAdvanceCyl1
+
+  - $component: generated/softwareknock.panel
