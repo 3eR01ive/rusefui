@@ -973,6 +973,11 @@ pub fn knock_scope_get_snapshot(state: State<RuntimeState>) -> KnockScopeSnapsho
 }
 
 #[tauri::command]
+pub fn knock_scope_gpu_buffer(state: State<RuntimeState>) -> String {
+    state.session.knock_scope().spectrogram_gpu_buffer_b64()
+}
+
+#[tauri::command]
 pub fn knock_scope_set_enabled(
     enabled: bool,
     window_ms: Option<u32>,

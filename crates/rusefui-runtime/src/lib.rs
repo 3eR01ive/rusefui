@@ -72,7 +72,10 @@ pub use sources::composite_logger::{
     CompositeEventJson, CompositeLoggerSource, CompositeSnapshot,
 };
 pub use sources::knock_scope::{KnockScopeSnapshot, KnockScopeSource, KnockScopeUiTick, KNOCK_ADC_HZ};
-pub use sources::knock_spectrogram::{KnockSpectrogramPatch, KnockSpectrogramView};
+pub use sources::knock_spectrogram::{
+    encode_knock_spectrogram_gpu, encode_knock_spectrogram_gpu_b64,
+    encode_knock_spectrogram_gpu_patch_b64, KnockSpectrogramPatch, KnockSpectrogramView,
+};
 pub use sources::composite_timeline::{
     CompositeTimeline, CompositeTimelineStatus, CompositeTimelineView,
     CompositeTimelineViewQuery,

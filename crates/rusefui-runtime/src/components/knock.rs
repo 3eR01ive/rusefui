@@ -12,7 +12,6 @@ use crate::knock::{
 use crate::session::EcuSession;
 use crate::sources::config::ConfigSource;
 use crate::sources::knock_scope::KnockScopeSnapshot;
-use crate::sources::knock_spectrogram::peak_frequency_hz;
 use crate::sources::output_channels::OutputSnapshot;
 
 const DEFAULT_RPM_FIELD: &str = "RPMValue";
@@ -646,15 +645,12 @@ impl KnockLogic {
                 }
             } else if rec.mode == KnockRunMode::SpectrumCapture {
                 let snap = self.session.knock_scope().snapshot();
-                let view = &snap.spectrogram;
-                if view.width > 0 {
-                    if let Some(hz) = peak_frequency_hz(view) {
-                        self.detected_frequency_hz = Some(f64::from(hz));
-                        self.message = Some(format!(
-                            "Пик шума: {:.0} Hz (примените кнопкой «Применить частоту»).",
-                            hz
-                        ));
-                    }
+                if let Some(hz) = snap.spectrogram_peak_hz {
+                    self.detected_frequency_hz = Some(f64::from(hz));
+                    self.message = Some(format!(
+                        "Пик шума: {:.0} Hz (примените кнопкой «Применить частоту»).",
+                        hz
+                    ));
                 }
             } else {
                 self.message = Some(format!("Прогон: {} точек.", self.run_points.len()));
@@ -802,16 +798,12 @@ impl KnockLogic {
         if self.mode != KnockRunMode::SpectrumCapture {
             return false;
         }
-        let view = &snap.spectrogram;
-        if view.width == 0 {
+        let Some(hz) = snap.spectrogram_peak_hz else {
             return false;
-        }
-        if let Some(hz) = peak_frequency_hz(view) {
-            let prev = self.detected_frequency_hz;
-            self.detected_frequency_hz = Some(f64::from(hz));
-            return prev != self.detected_frequency_hz;
-        }
-        false
+        };
+        let prev = self.detected_frequency_hz;
+        self.detected_frequency_hz = Some(f64::from(hz));
+        prev != self.detected_frequency_hz
     }
 }
 

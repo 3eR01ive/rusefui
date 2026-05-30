@@ -16,9 +16,12 @@ import {
   type KnockRunPoint,
 } from "../../composables/drawKnockChart";
 import {
-  drawKnockSpectrogram,
-} from "../../composables/drawKnockSpectrogram";
-import { initKnockScope, useKnockScope } from "../../composables/useKnockScope";
+  b64ToArrayBuffer,
+  mountKnockSpectrogramGl,
+  type KnockSpectrogramGl,
+} from "../../composables/knockSpectrogramGl";
+import { initKnockScope, onKnockSpectrogramGlReset, subscribeKnockSpectrogramGpu, useKnockScope } from "../../composables/useKnockScope";
+import { invoke } from "@tauri-apps/api/core";
 import {
   initProject,
   PERSIST_KEY_KNOCK,
@@ -60,7 +63,7 @@ const instanceRef = computed(() => props.instance);
 const { paramStringOr } = useInstanceBind(instanceRef);
 const dataCtx = useDataContext();
 const { snapshot: configSnapshot, getArray: getConfigArray } = useConfig();
-const { snapshot: knockScopeSnapshot, spectrogramView } = useKnockScope();
+const { snapshot: knockScopeSnapshot, spectrogramWidth, spectrogramHeight, spectrogramPeakHz, spectrogramPatchPixelMax, spectrogramGlStats } = useKnockScope();
 const { isActive: tabActive } = useTabActivity();
 const { getProjectUi, setProjectUi } = useProject();
 
@@ -219,10 +222,29 @@ const spectrogramHint = computed(() => {
   const s = knockScopeSnapshot.value;
   if (s.lastError) return s.lastError;
   if (s.statusMessage) return s.statusMessage;
-  if (recordingSpectrum.value && spectrogramView.value.width < 1) {
+  if (recordingSpectrum.value && spectrogramWidth.value < 1) {
     return "Ждём захват knock scope и FFT…";
   }
   return null;
+});
+
+const spectrogramDebugLine = computed(() => {
+  const s = knockScopeSnapshot.value;
+  const g = spectrogramGlStats.value;
+  const parts: string[] = [];
+  parts.push(`захватов ${s.captureCount ?? 0}`);
+  if (spectrogramWidth.value > 0) {
+    parts.push(`FFT ${spectrogramWidth.value}×${spectrogramHeight.value}`);
+  }
+  parts.push(`rustMax=${spectrogramPatchPixelMax.value}`);
+  if (g.uploads > 0) {
+    parts.push(`GL ${g.packetKind} payloadMax=${g.payloadMax} tex=${g.texW}×${g.texH}`);
+    parts.push(`px ${g.pixelMin}…${g.pixelMax} nz=${g.nonzeroPixels}${g.fullSynced ? " sync" : ""}`);
+  }
+  if (spectrogramPeakHz.value != null) {
+    parts.push(`FFT-пик ${Math.round(spectrogramPeakHz.value)} Hz`);
+  }
+  return parts.join(" · ");
 });
 
 const recordingThreshold = computed(
@@ -396,7 +418,14 @@ async function toggleSpectrumRun(): Promise<void> {
   if (recordingSpectrum.value) {
     await stopSpectrumRun();
   } else {
+    spectrogramGl?.reset();
     await dispatch("start_spectrum_run");
+    try {
+      const b64 = await invoke<string>("knock_scope_gpu_buffer");
+      if (b64) applySpectrogramGpuB64(b64);
+    } catch {
+      /* not in tauri */
+    }
   }
 }
 
@@ -416,6 +445,26 @@ let thresholdCanvasPixelW = 0;
 let thresholdCanvasPixelH = 0;
 const spectrogramCanvasRef = ref<HTMLCanvasElement | null>(null);
 const spectrogramContainerRef = ref<HTMLDivElement | null>(null);
+let spectrogramGl: KnockSpectrogramGl | null = null;
+let unsubSpectrogramGpu: (() => void) | null = null;
+let unsubSpectrogramReset: (() => void) | null = null;
+
+function bindSpectrogramGl(): void {
+  spectrogramGl?.destroy();
+  const canvas = spectrogramCanvasRef.value;
+  spectrogramGl = canvas ? mountKnockSpectrogramGl(canvas) : null;
+}
+
+function applySpectrogramGpuB64(b64: string): void {
+  if (!spectrogramGl) return;
+  spectrogramGl.applyBuffer(b64ToArrayBuffer(b64));
+  spectrogramGl.draw();
+}
+
+function redrawSpectrogramChart(): void {
+  if (!spectrogramContainerRef.value || chartWidthPx(spectrogramContainerRef.value) < 1) return;
+  spectrogramGl?.draw();
+}
 
 function chartWidthPx(container: HTMLElement | null | undefined): number {
   if (!container) return 0;
@@ -455,15 +504,6 @@ function redrawThresholdChart(): void {
     liveLevel.value,
     recordingThreshold.value ? configThresholdCurve.value : [],
   );
-}
-
-function redrawSpectrogramChart(): void {
-  const canvas = spectrogramCanvasRef.value;
-  const container = spectrogramContainerRef.value;
-  if (!canvas || !container || chartWidthPx(container) < 1) return;
-  drawKnockSpectrogram(canvas, spectrogramView.value, {
-    title: detectedHz.value != null ? `Пик ~${Math.round(Number(detectedHz.value))} Hz` : undefined,
-  });
 }
 
 let thresholdRedrawRaf = 0;
@@ -507,7 +547,7 @@ function scheduleSpectrogramRedraw(): void {
 }
 
 const spectrogramDirty = computed(
-  () => recordingSpectrum.value || spectrogramView.value.width > 0,
+  () => recordingSpectrum.value || spectrogramWidth.value > 0,
 );
 
 function scheduleRedraw(): void {
@@ -563,11 +603,21 @@ watch(
 );
 
 watch(
-  [() => knockScopeSnapshot.value.captureCount, detectedHz, chartHeight, spectrogramDirty],
+  [chartHeight, spectrogramDirty],
   () => {
     if (spectrogramDirty.value) scheduleSpectrogramRedraw();
   },
 );
+
+watch(spectrogramCanvasRef, (canvas) => {
+  if (canvas) {
+    bindSpectrogramGl();
+    if (spectrogramDirty.value) scheduleSpectrogramRedraw();
+  } else {
+    spectrogramGl?.destroy();
+    spectrogramGl = null;
+  }
+});
 
 watch(tabActive, (active, was) => {
   if (active && !was) void nextTick(() => scheduleRedraw());
@@ -591,6 +641,8 @@ function setupResizeObserver(): void {
     if (spectrogramDirty.value) scheduleSpectrogramRedraw();
   });
   resizeObserver.observe(el);
+  const specEl = spectrogramContainerRef.value;
+  if (specEl) resizeObserver.observe(specEl);
 }
 
 watch([ready, thresholdContainerRef], async () => {
@@ -602,10 +654,29 @@ watch([ready, thresholdContainerRef], async () => {
 
 onMounted(async () => {
   await Promise.all([initConfig(), initProject(), initKnockScope()]);
+  await nextTick();
+  bindSpectrogramGl();
+  unsubSpectrogramGpu = subscribeKnockSpectrogramGpu((b64) => {
+    if (!tabActive.value) return;
+    applySpectrogramGpuB64(b64);
+  });
+  unsubSpectrogramReset = onKnockSpectrogramGlReset(() => spectrogramGl?.reset());
+  try {
+    const b64 = await invoke<string>("knock_scope_gpu_buffer");
+    if (b64) applySpectrogramGpuB64(b64);
+  } catch {
+    /* not in tauri */
+  }
   if (configLoaded.value) await reloadConfigThresholdCurve();
 });
 
 onUnmounted(() => {
+  unsubSpectrogramGpu?.();
+  unsubSpectrogramGpu = null;
+  unsubSpectrogramReset?.();
+  unsubSpectrogramReset = null;
+  spectrogramGl?.destroy();
+  spectrogramGl = null;
   cancelAnimationFrame(thresholdRedrawRaf);
   cancelAnimationFrame(spectrogramRedrawRaf);
   resizeObserver?.disconnect();
@@ -713,6 +784,9 @@ onUnmounted(() => {
             <canvas ref="spectrogramCanvasRef" class="knock-canvas knock-canvas--spectrogram" />
             <p v-if="spectrogramHint" class="knock-chart-overlay">{{ spectrogramHint }}</p>
           </div>
+          <p v-if="recordingSpectrum || spectrogramWidth > 0" class="knock-spectrogram-debug">
+            {{ spectrogramDebugLine }}
+          </p>
           <div class="knock-step-actions">
             <button
               type="button"
@@ -1004,6 +1078,15 @@ onUnmounted(() => {
 
 .knock-chart-wrap--spectrogram {
   min-height: 0;
+}
+
+.knock-spectrogram-debug {
+  margin: 0;
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .knock-canvas {

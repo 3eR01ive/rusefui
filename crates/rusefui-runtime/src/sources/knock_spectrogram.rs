@@ -4,6 +4,7 @@ use std::collections::VecDeque;
 use std::f32::consts::PI;
 use std::sync::Arc;
 
+use base64::{engine::general_purpose::STANDARD, Engine};
 use rustfft::num_complex::Complex;
 use rustfft::Fft;
 use serde::Serialize;
@@ -40,6 +41,57 @@ pub struct KnockSpectrogramPatch {
     pub shift_left: usize,
     /// column-major новые столбцы: `new_column_count * height` байт.
     pub new_columns: Vec<u8>,
+}
+
+/// Заголовок GPU-пакета (LE): width, height, freq_start_hz, freq_step_hz — по 4 байта.
+pub const KNOCK_SPECTROGRAM_GPU_HEADER: usize = 16;
+
+/// Row-major u8 heatmap + заголовок для WebGL (`texImage2D`).
+pub fn encode_knock_spectrogram_gpu(view: &KnockSpectrogramView) -> Vec<u8> {
+    let w = view.width;
+    let h = view.height;
+    let mut buf = Vec::with_capacity(KNOCK_SPECTROGRAM_GPU_HEADER + w * h);
+    buf.extend_from_slice(&(w as u32).to_le_bytes());
+    buf.extend_from_slice(&(h as u32).to_le_bytes());
+    buf.extend_from_slice(&view.freq_start_hz.to_le_bytes());
+    buf.extend_from_slice(&view.freq_step_hz.to_le_bytes());
+    if w == 0 || h == 0 {
+        return buf;
+    }
+    for row in 0..h {
+        for col in 0..w {
+            let idx = col * h + row;
+            buf.push(view.pixels.get(idx).copied().unwrap_or(0));
+        }
+    }
+    buf
+}
+
+pub fn encode_knock_spectrogram_gpu_b64(view: &KnockSpectrogramView) -> String {
+    STANDARD.encode(encode_knock_spectrogram_gpu(view))
+}
+
+/// Patch-пакет (24 байта + column-major новые столбцы) для инкрементального WebGL.
+pub const KNOCK_SPECTROGRAM_GPU_PATCH_HEADER: usize = 24;
+
+pub fn encode_knock_spectrogram_gpu_patch(patch: &KnockSpectrogramPatch) -> Vec<u8> {
+    let w = patch.width;
+    let h = patch.height.max(1);
+    let new_col_count = patch.new_columns.len() / h;
+    let mut buf =
+        Vec::with_capacity(KNOCK_SPECTROGRAM_GPU_PATCH_HEADER + patch.new_columns.len());
+    buf.extend_from_slice(&(w as u32).to_le_bytes());
+    buf.extend_from_slice(&(patch.height as u32).to_le_bytes());
+    buf.extend_from_slice(&patch.freq_start_hz.to_le_bytes());
+    buf.extend_from_slice(&patch.freq_step_hz.to_le_bytes());
+    buf.extend_from_slice(&(patch.shift_left as u32).to_le_bytes());
+    buf.extend_from_slice(&(new_col_count as u32).to_le_bytes());
+    buf.extend_from_slice(&patch.new_columns);
+    buf
+}
+
+pub fn encode_knock_spectrogram_gpu_patch_b64(patch: &KnockSpectrogramPatch) -> String {
+    STANDARD.encode(encode_knock_spectrogram_gpu_patch(patch))
 }
 
 pub struct KnockSpectrogramEngine {
@@ -112,6 +164,36 @@ impl KnockSpectrogramEngine {
         self.trim_stream();
     }
 
+    pub fn spectrogram_meta(&self) -> (usize, usize, f32, f32) {
+        (
+            self.columns.len(),
+            NUM_BINS,
+            self.freq_start_hz,
+            self.freq_step_hz,
+        )
+    }
+
+    /// Пик по heatmap без копирования всех pixels.
+    pub fn peak_frequency_hz(&self) -> Option<f32> {
+        if self.columns.is_empty() {
+            return None;
+        }
+        let mut best_val = 0u8;
+        let mut best_row = 0usize;
+        for col in &self.columns {
+            for (row, &v) in col.iter().enumerate() {
+                if v > best_val {
+                    best_val = v;
+                    best_row = row;
+                }
+            }
+        }
+        if best_val == 0 {
+            return None;
+        }
+        Some(self.freq_start_hz + best_row as f32 * self.freq_step_hz)
+    }
+
     pub fn view(&self) -> KnockSpectrogramView {
         let height = NUM_BINS;
         let width = self.columns.len();
@@ -144,8 +226,9 @@ impl KnockSpectrogramEngine {
             let start = self.stream_offset;
             let frame = &self.stream[start..start + FFT_SIZE];
 
+            let mean = frame.iter().sum::<f32>() / frame.len() as f32;
             for (i, &adc) in frame.iter().enumerate() {
-                let voltage = ADC_RATIO * adc;
+                let voltage = ADC_RATIO * (adc - mean);
                 self.scratch[i] = Complex::new(SENSITIVITY * voltage * self.window[i], 0.0);
             }
             for i in FFT_SIZE..self.scratch.len() {
@@ -281,5 +364,19 @@ mod tests {
         let view = eng.view();
         assert!(view.width >= 1);
         assert_eq!(view.pixels.len(), view.width * NUM_BINS);
+    }
+
+    #[test]
+    fn gpu_packet_row_major() {
+        let view = KnockSpectrogramView {
+            width: 2,
+            height: 2,
+            freq_start_hz: 4000.0,
+            freq_step_hz: 100.0,
+            pixels: vec![1, 2, 3, 4],
+        };
+        let buf = encode_knock_spectrogram_gpu(&view);
+        assert_eq!(buf.len(), 16 + 4);
+        assert_eq!(&buf[16..], &[1, 3, 2, 4]);
     }
 }

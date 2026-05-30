@@ -1,26 +1,59 @@
-import { shallowRef, readonly } from "vue";
+import { readonly, ref, shallowRef } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { resetKnockSpectrogramDrawCache } from "./drawKnockSpectrogram";
+import { knockSpectrogramGlStats, registerKnockSpectrogramFullBuffer, resetKnockSpectrogramGlStats } from "./knockSpectrogramGl";
 
-export interface KnockSpectrogramView {
-  width: number;
-  height: number;
-  freqStartHz: number;
-  freqStepHz: number;
-  pixels: Uint8Array;
+type GpuListener = (b64: string) => void;
+const gpuListeners = new Set<GpuListener>();
+let pendingGpuB64Queue: string[] = [];
+let gpuRaf = 0;
+
+function flushGpuB64(): void {
+  gpuRaf = 0;
+  if (pendingGpuB64Queue.length === 0) return;
+  const batch = pendingGpuB64Queue;
+  pendingGpuB64Queue = [];
+  for (const b64 of batch) {
+    for (const fn of gpuListeners) fn(b64);
+  }
 }
 
-export interface KnockSpectrogramPatch {
-  width: number;
-  height: number;
-  freqStartHz: number;
-  freqStepHz: number;
-  shiftLeft: number;
-  newColumns: number[];
+function scheduleGpuB64(b64: string): void {
+  pendingGpuB64Queue.push(b64);
+  if (gpuRaf !== 0) return;
+  gpuRaf = requestAnimationFrame(flushGpuB64);
 }
 
-/** Полный снимок (invoke) или лёгкий tick (event). */
+/** Подписка на бинарный heatmap из Rust; при mount — полный буфер через IPC. */
+export function subscribeKnockSpectrogramGpu(listener: GpuListener): () => void {
+  gpuListeners.add(listener);
+  void invoke<string>("knock_scope_gpu_buffer")
+    .then((b64) => {
+      if (b64) listener(b64);
+    })
+    .catch(() => {});
+  return () => gpuListeners.delete(listener);
+}
+
+async function loadFullBufferArray(): Promise<ArrayBuffer | null> {
+  try {
+    const b64 = await invoke<string>("knock_scope_gpu_buffer");
+    if (!b64) return null;
+    const bin = atob(b64);
+    const buf = new ArrayBuffer(bin.length);
+    const u8 = new Uint8Array(buf);
+    for (let i = 0; i < bin.length; i += 1) u8[i] = bin.charCodeAt(i);
+    return buf;
+  } catch {
+    return null;
+  }
+}
+
+/** Полный GPU-снимок heatmap (row-major) для init / resync текстуры. */
+export async function refreshKnockSpectrogramFullBuffer(): Promise<ArrayBuffer | null> {
+  return loadFullBufferArray();
+}
+
 export interface KnockScopeUiTick {
   connected: boolean;
   scopeEnabled: boolean;
@@ -36,7 +69,11 @@ export interface KnockScopeUiTick {
   bufferDurationMs: number;
   statusMessage?: string | null;
   lastError?: string | null;
-  spectrogramPatch?: KnockSpectrogramPatch | null;
+  spectrogramGpuB64?: string | null;
+  spectrogramWidth?: number;
+  spectrogramHeight?: number;
+  spectrogramPeakHz?: number | null;
+  spectrogramPatchPixelMax?: number;
   waveformChunk?: number[];
 }
 
@@ -51,14 +88,6 @@ export interface KnockScopeSnapshot extends KnockScopeUiTick {
   };
 }
 
-const emptySpectrogram = (): KnockSpectrogramView => ({
-  width: 0,
-  height: 64,
-  freqStartHz: 4000,
-  freqStepHz: 0,
-  pixels: new Uint8Array(0),
-});
-
 const emptySnapshot = (): KnockScopeSnapshot => ({
   connected: false,
   scopeEnabled: false,
@@ -70,17 +99,17 @@ const emptySnapshot = (): KnockScopeSnapshot => ({
   lastByteLen: 0,
   sampleRateHz: 218_750,
   bufferDurationMs: 0,
+  spectrogramWidth: 0,
+  spectrogramHeight: 0,
 });
 
 const snapshot = shallowRef<KnockScopeSnapshot>(emptySnapshot());
-const spectrogramView = shallowRef<KnockSpectrogramView>(emptySpectrogram());
+const spectrogramWidth = ref(0);
+const spectrogramHeight = ref(0);
+const spectrogramPeakHz = ref<number | null>(null);
+const spectrogramPatchPixelMax = ref(0);
 const waveformRing = shallowRef<number[]>([]);
 
-let spectrogramPixels = new Uint8Array(0);
-let spectrogramWidth = 0;
-let spectrogramHeight = 64;
-let spectrogramFreqStart = 4000;
-let spectrogramFreqStep = 0;
 let lastCaptureCount = 0;
 let ringMaxSamples = Math.round((218_750 * 500) / 1000);
 
@@ -121,95 +150,57 @@ function appendWaveformChunk(tick: KnockScopeUiTick): void {
   lastCaptureCount = tick.captureCount;
 }
 
-function syncSpectrogramViewRef(): void {
-  spectrogramView.value = {
-    width: spectrogramWidth,
-    height: spectrogramHeight,
-    freqStartHz: spectrogramFreqStart,
-    freqStepHz: spectrogramFreqStep,
-    pixels: spectrogramPixels,
-  };
-}
-
-function resetSpectrogramBuffer(): void {
-  spectrogramPixels = new Uint8Array(0);
-  spectrogramWidth = 0;
-  spectrogramHeight = 64;
-  spectrogramFreqStart = 4000;
-  spectrogramFreqStep = 0;
-  resetWaveformRing();
-  resetKnockSpectrogramDrawCache();
-  syncSpectrogramViewRef();
-}
-
-function applySpectrogramPatch(patch: KnockSpectrogramPatch): void {
-  const h = patch.height;
-  if (h <= 0) return;
-  spectrogramHeight = h;
-  spectrogramFreqStart = patch.freqStartHz;
-  spectrogramFreqStep = patch.freqStepHz;
-
-  const shift = Math.max(0, patch.shiftLeft);
-  if (shift > 0 && spectrogramWidth > 0) {
-    const drop = Math.min(shift, spectrogramWidth) * h;
-    spectrogramPixels = spectrogramPixels.subarray(drop);
-    spectrogramWidth = Math.max(0, spectrogramWidth - Math.min(shift, spectrogramWidth));
-  }
-
-  const newBytes = patch.newColumns;
-  if (newBytes.length > 0) {
-    const merged = new Uint8Array(spectrogramPixels.length + newBytes.length);
-    merged.set(spectrogramPixels);
-    merged.set(newBytes, spectrogramPixels.length);
-    spectrogramPixels = merged;
-  }
-
-  if (patch.width > 0) {
-    spectrogramWidth = patch.width;
-    const expected = spectrogramWidth * h;
-    if (spectrogramPixels.length > expected) {
-      spectrogramPixels = spectrogramPixels.subarray(spectrogramPixels.length - expected);
-    }
-  }
-  syncSpectrogramViewRef();
-}
-
-function loadFullSpectrogram(
-  spec: NonNullable<KnockScopeSnapshot["spectrogram"]> | undefined,
-): void {
-  if (!spec || spec.width < 1 || spec.height < 1 || !spec.pixels?.length) {
-    resetSpectrogramBuffer();
-    return;
-  }
-  resetKnockSpectrogramDrawCache();
-  spectrogramWidth = spec.width;
-  spectrogramHeight = spec.height;
-  spectrogramFreqStart = spec.freqStartHz;
-  spectrogramFreqStep = spec.freqStepHz;
-  spectrogramPixels = Uint8Array.from(spec.pixels);
-  syncSpectrogramViewRef();
-}
+const gpuResetListeners = new Set<() => void>();
 
 function mergeTick(tick: KnockScopeUiTick): void {
   snapshot.value = { ...snapshot.value, ...tick };
-  appendWaveformChunk(tick);
-  if (tick.spectrogramPatch) {
-    applySpectrogramPatch(tick.spectrogramPatch);
+  if (tick.spectrogramWidth != null) spectrogramWidth.value = tick.spectrogramWidth;
+  if (tick.spectrogramHeight != null) spectrogramHeight.value = tick.spectrogramHeight;
+  if (tick.spectrogramPeakHz != null) spectrogramPeakHz.value = tick.spectrogramPeakHz;
+  if (tick.spectrogramPatchPixelMax != null) {
+    spectrogramPatchPixelMax.value = tick.spectrogramPatchPixelMax;
   }
+  appendWaveformChunk(tick);
+  if (tick.spectrogramGpuB64) {
+    scheduleGpuB64(tick.spectrogramGpuB64);
+  }
+}
+
+function resetSpectrogramBuffer(): void {
+  pendingGpuB64Queue = [];
+  if (gpuRaf !== 0) {
+    cancelAnimationFrame(gpuRaf);
+    gpuRaf = 0;
+  }
+  spectrogramWidth.value = 0;
+  spectrogramHeight.value = 0;
+  spectrogramPeakHz.value = null;
+  spectrogramPatchPixelMax.value = 0;
+  resetWaveformRing();
+  resetKnockSpectrogramGlStats();
+  for (const fn of gpuResetListeners) fn();
+}
+
+/** Сброс WebGL-текстуры (knock-scope-reset / stop scope). */
+export function onKnockSpectrogramGlReset(listener: () => void): () => void {
+  gpuResetListeners.add(listener);
+  return () => gpuResetListeners.delete(listener);
 }
 
 let unlisten: UnlistenFn | null = null;
 let initPromise: Promise<void> | null = null;
 
-/** Подписка на `knock-scope`; опрос ECU — только через `knock_scope_set_enabled`. */
+/** Подписка на `knock-scope`; FFT heatmap — инкрементальные patch-пакеты из Rust. */
 export async function initKnockScope(): Promise<void> {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
+    registerKnockSpectrogramFullBuffer(loadFullBufferArray);
     try {
       const snap = await invoke<KnockScopeSnapshot>("knock_scope_get_snapshot");
       snapshot.value = snap;
-      loadFullSpectrogram(snap.spectrogram);
+      spectrogramWidth.value = snap.spectrogram?.width ?? snap.spectrogramWidth ?? 0;
+      spectrogramHeight.value = snap.spectrogram?.height ?? snap.spectrogramHeight ?? 0;
     } catch {
       /* not in tauri */
     }
@@ -243,9 +234,9 @@ export async function setKnockScopeEnabled(
     windowMs: windowMs ?? 500,
   });
   snapshot.value = snap;
-  if (enabled) {
-    loadFullSpectrogram(snap.spectrogram);
-  } else {
+  spectrogramWidth.value = snap.spectrogram?.width ?? snap.spectrogramWidth ?? 0;
+  spectrogramHeight.value = snap.spectrogram?.height ?? snap.spectrogramHeight ?? 0;
+  if (!enabled) {
     resetSpectrogramBuffer();
   }
   return snap;
@@ -254,7 +245,11 @@ export async function setKnockScopeEnabled(
 export function useKnockScope() {
   return {
     snapshot: readonly(snapshot),
-    spectrogramView: readonly(spectrogramView),
+    spectrogramWidth: readonly(spectrogramWidth),
+    spectrogramHeight: readonly(spectrogramHeight),
+    spectrogramPeakHz: readonly(spectrogramPeakHz),
+    spectrogramPatchPixelMax: readonly(spectrogramPatchPixelMax),
+    spectrogramGlStats: readonly(knockSpectrogramGlStats),
     waveformRing: readonly(waveformRing),
     setScopeEnabled: setKnockScopeEnabled,
     resetSpectrogramBuffer,

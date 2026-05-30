@@ -12,7 +12,8 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 
 use super::knock_spectrogram::{
-    KnockSpectrogramEngine, KnockSpectrogramPatch, KnockSpectrogramView,
+    encode_knock_spectrogram_gpu_patch_b64, KnockSpectrogramEngine, KnockSpectrogramPatch,
+    KnockSpectrogramView, NUM_BINS,
 };
 use crate::session::EcuSession;
 
@@ -50,7 +51,13 @@ pub struct KnockScopeUiTick {
     pub buffer_duration_ms: f64,
     pub status_message: Option<String>,
     pub last_error: Option<String>,
-    pub spectrogram_patch: Option<KnockSpectrogramPatch>,
+    /// Base64: `encode_knock_spectrogram_gpu` — сырой ArrayBuffer для WebGL.
+    pub spectrogram_gpu_b64: Option<String>,
+    pub spectrogram_width: usize,
+    pub spectrogram_height: usize,
+    pub spectrogram_peak_hz: Option<f32>,
+    /// Max u8 в последнем GPU patch (0 = FFT в полосе knock пустой).
+    pub spectrogram_patch_pixel_max: u8,
     /// Урезанный чанк волны для склеивания на UI (не весь DMA-буфер).
     pub waveform_chunk: Vec<f32>,
 }
@@ -73,8 +80,10 @@ pub struct KnockScopeSnapshot {
     pub buffer_duration_ms: f64,
     pub status_message: Option<String>,
     pub last_error: Option<String>,
-    /// FFT-спектрограмма (расчёт на хосте).
+    /// FFT-спектрограмма (расчёт на хосте). `pixels` заполняются только для `get_snapshot` / GPU init.
     pub spectrogram: KnockSpectrogramView,
+    /// Пик шума по heatmap (без копирования pixels на UI tick).
+    pub spectrogram_peak_hz: Option<f32>,
 }
 
 impl KnockScopeSnapshot {
@@ -96,6 +105,7 @@ impl KnockScopeSnapshot {
             status_message: None,
             last_error: None,
             spectrogram: KnockSpectrogramView::default(),
+            spectrogram_peak_hz: None,
         }
     }
 }
@@ -107,7 +117,7 @@ pub struct KnockScopeSource {
     scope_enabled_on_ecu: Arc<AtomicBool>,
     scope_started_at: Mutex<Option<Instant>>,
     thread: Mutex<Option<JoinHandle<()>>>,
-    tick_hook: Arc<Mutex<Option<Arc<dyn Fn(KnockScopeSnapshot, KnockScopeUiTick) + Send + Sync>>>>,
+    tick_hook: Arc<Mutex<Option<Arc<dyn Fn(&KnockScopeSnapshot, KnockScopeUiTick) + Send + Sync>>>>,
 }
 
 fn parse_samples(bytes: &[u8]) -> (Vec<f32>, f32, f32) {
@@ -157,6 +167,14 @@ fn build_ui_tick(
     patch: Option<KnockSpectrogramPatch>,
     waveform_chunk: Vec<f32>,
 ) -> KnockScopeUiTick {
+    let spectrogram_patch_pixel_max = patch
+        .as_ref()
+        .map(|p| p.new_columns.iter().copied().max().unwrap_or(0))
+        .unwrap_or(0);
+    let spectrogram_gpu_b64 = patch
+        .as_ref()
+        .filter(|p| p.shift_left > 0 || !p.new_columns.is_empty())
+        .map(|p| encode_knock_spectrogram_gpu_patch_b64(p));
     KnockScopeUiTick {
         connected: snap.connected,
         scope_enabled: snap.scope_enabled,
@@ -172,7 +190,11 @@ fn build_ui_tick(
         buffer_duration_ms: snap.buffer_duration_ms,
         status_message: snap.status_message.clone(),
         last_error: snap.last_error.clone(),
-        spectrogram_patch: patch,
+        spectrogram_gpu_b64,
+        spectrogram_width: snap.spectrogram.width,
+        spectrogram_height: snap.spectrogram.height,
+        spectrogram_peak_hz: snap.spectrogram_peak_hz,
+        spectrogram_patch_pixel_max,
         waveform_chunk,
     }
 }
@@ -249,13 +271,24 @@ impl KnockScopeSource {
     /// Глобальный колбэк (emit во фронт). Вызывается на throttled UI tick.
     pub fn set_tick_hook<F>(&self, f: F)
     where
-        F: Fn(KnockScopeSnapshot, KnockScopeUiTick) + Send + Sync + 'static,
+        F: Fn(&KnockScopeSnapshot, KnockScopeUiTick) + Send + Sync + 'static,
     {
         *self.tick_hook.lock().unwrap() = Some(Arc::new(f));
     }
 
     pub fn snapshot(&self) -> KnockScopeSnapshot {
         self.snapshot.read().unwrap().clone()
+    }
+
+    /// Полный GPU-буфер для init WebGL (один раз при mount / enable).
+    pub fn spectrogram_gpu_buffer_b64(&self) -> String {
+        use super::knock_spectrogram::encode_knock_spectrogram_gpu_b64;
+        let guard = self.spectrogram.lock().unwrap();
+        if let Some(eng) = guard.as_ref() {
+            encode_knock_spectrogram_gpu_b64(&eng.view())
+        } else {
+            encode_knock_spectrogram_gpu_b64(&self.snapshot.read().unwrap().spectrogram)
+        }
     }
 
     pub fn is_polling(&self) -> bool {
@@ -274,6 +307,7 @@ impl KnockScopeSource {
         snap.knock_scope_ready = false;
         snap.status_message = None;
         snap.spectrogram = KnockSpectrogramView::default();
+        snap.spectrogram_peak_hz = None;
         *self.spectrogram.lock().unwrap() = None;
         self.scope_enabled_on_ecu.store(false, Ordering::SeqCst);
     }
@@ -333,6 +367,7 @@ impl KnockScopeSource {
             snap.last_error = None;
             snap.status_message = status_hint(0, false, config_enable, Duration::ZERO);
             snap.spectrogram = KnockSpectrogramView::default();
+            snap.spectrogram_peak_hz = None;
         }
 
         *self.spectrogram.lock().unwrap() = Some(KnockSpectrogramEngine::new(
@@ -374,16 +409,13 @@ fn poll_loop(
     running: Arc<AtomicBool>,
     snapshot: Arc<RwLock<KnockScopeSnapshot>>,
     spectrogram: Arc<Mutex<Option<KnockSpectrogramEngine>>>,
-    tick_hook: Arc<Mutex<Option<Arc<dyn Fn(KnockScopeSnapshot, KnockScopeUiTick) + Send + Sync>>>>,
+    tick_hook: Arc<Mutex<Option<Arc<dyn Fn(&KnockScopeSnapshot, KnockScopeUiTick) + Send + Sync>>>>,
     scope_started_at: Arc<Mutex<Option<Instant>>>,
-    on_tick: Arc<dyn Fn(KnockScopeSnapshot) + Send + Sync>,
+    _on_tick: Arc<dyn Fn(KnockScopeSnapshot) + Send + Sync>,
 ) {
-    let emit = |snap: &KnockScopeSnapshot, ui: Option<KnockScopeUiTick>| {
-        on_tick(snap.clone());
-        if let Some(ui) = ui {
-            if let Some(hook) = tick_hook.lock().unwrap().as_ref() {
-                hook(snap.clone(), ui);
-            }
+    let emit = |snap: &KnockScopeSnapshot, ui: KnockScopeUiTick| {
+        if let Some(hook) = tick_hook.lock().unwrap().as_ref() {
+            hook(snap, ui);
         }
     };
     let mut last_status_emit = Instant::now();
@@ -422,46 +454,50 @@ fn poll_loop(
             {
                 Ok(bytes) if !bytes.is_empty() => {
                     let (samples, min_v, max_v) = parse_samples(&bytes);
-                    let spec_view = {
+                    let (spec_w, spec_h, spec_f0, spec_fs, peak_hz) = {
                         let mut guard = spectrogram.lock().unwrap();
                         if let Some(eng) = guard.as_mut() {
                             eng.push_samples(&samples);
-                            eng.view()
+                            let (w, h, f0, fs) = eng.spectrogram_meta();
+                            (w, h, f0, fs, eng.peak_frequency_hz())
                         } else {
-                            KnockSpectrogramView::default()
+                            (0, NUM_BINS, 0.0, 0.0, None)
                         }
                     };
-                    let mut snap = snapshot.write().unwrap();
-                    snap.connected = connected;
-                    snap.scope_enabled = true;
-                    snap.polling = true;
-                    snap.knock_scope_ready = output_knock_scope_ready(&session);
-                    snap.enable_knock_scope_in_config = config_enable;
-                    snap.last_byte_len = bytes.len();
-                    snap.samples = samples;
-                    snap.spectrogram = spec_view;
-                    snap.sample_count = snap.samples.len();
-                    snap.sample_min = min_v;
-                    snap.sample_max = max_v;
-                    snap.buffer_duration_ms = buffer_duration_ms(snap.sample_count);
-                    snap.capture_count = snap.capture_count.saturating_add(1);
-                    snap.last_error = None;
-                    snap.status_message =
-                        status_hint(snap.capture_count, true, config_enable, waiting_for);
-                    let out = snap.clone();
-                    let waveform = downsample_waveform(&out.samples, WAVEFORM_CHUNK_MAX);
-                    drop(snap);
+                    let waveform = downsample_waveform(&samples, WAVEFORM_CHUNK_MAX);
+                    let capture_count;
+                    {
+                        let mut snap = snapshot.write().unwrap();
+                        snap.connected = connected;
+                        snap.scope_enabled = true;
+                        snap.polling = true;
+                        snap.knock_scope_ready = output_knock_scope_ready(&session);
+                        snap.enable_knock_scope_in_config = config_enable;
+                        snap.last_byte_len = bytes.len();
+                        snap.samples.clear();
+                        snap.spectrogram.width = spec_w;
+                        snap.spectrogram.height = spec_h;
+                        snap.spectrogram.freq_start_hz = spec_f0;
+                        snap.spectrogram.freq_step_hz = spec_fs;
+                        snap.spectrogram.pixels.clear();
+                        snap.spectrogram_peak_hz = peak_hz;
+                        snap.sample_count = samples.len();
+                        snap.sample_min = min_v;
+                        snap.sample_max = max_v;
+                        snap.buffer_duration_ms = buffer_duration_ms(snap.sample_count);
+                        snap.capture_count = snap.capture_count.saturating_add(1);
+                        capture_count = snap.capture_count;
+                        snap.last_error = None;
+                        snap.status_message =
+                            status_hint(capture_count, true, config_enable, waiting_for);
+                    }
                     if last_ui_emit.elapsed() >= UI_EMIT_MIN_INTERVAL {
                         let patch = {
                             let mut guard = spectrogram.lock().unwrap();
-                            guard
-                                .as_mut()
-                                .map(|eng| eng.take_ui_patch())
+                            guard.as_mut().map(|eng| eng.take_ui_patch())
                         };
-                        emit(
-                            &out,
-                            Some(build_ui_tick(&out, patch, waveform)),
-                        );
+                        let snap = snapshot.read().unwrap();
+                        emit(&snap, build_ui_tick(&snap, patch, waveform));
                         last_ui_emit = Instant::now();
                     }
                     not_ready_since = None;
@@ -491,33 +527,35 @@ fn poll_loop(
             snapshot.read().unwrap().capture_count == 0
         } && last_status_emit.elapsed() >= STATUS_EMIT_INTERVAL
         {
-            let mut snap = snapshot.write().unwrap();
-            snap.connected = connected;
-            snap.scope_enabled = true;
-            snap.polling = true;
-            snap.knock_scope_ready = knock_ready;
-            snap.enable_knock_scope_in_config = config_enable;
-            snap.status_message =
-                status_hint(0, knock_ready, config_enable, waiting_for);
-            let out = snap.clone();
-            drop(snap);
-            emit(&out, Some(build_ui_tick(&out, None, Vec::new())));
+            {
+                let mut snap = snapshot.write().unwrap();
+                snap.connected = connected;
+                snap.scope_enabled = true;
+                snap.polling = true;
+                snap.knock_scope_ready = knock_ready;
+                snap.enable_knock_scope_in_config = config_enable;
+                snap.status_message =
+                    status_hint(0, knock_ready, config_enable, waiting_for);
+            }
+            let snap = snapshot.read().unwrap();
+            emit(&snap, build_ui_tick(&snap, None, Vec::new()));
             last_status_emit = Instant::now();
             did_work = true;
         }
 
         if last_error.is_some() && last_status_emit.elapsed() >= STATUS_EMIT_INTERVAL {
-            let mut snap = snapshot.write().unwrap();
-            snap.connected = connected;
-            snap.polling = running.load(Ordering::SeqCst);
-            snap.knock_scope_ready = knock_ready;
-            snap.enable_knock_scope_in_config = config_enable;
-            snap.last_error = last_error.clone();
-            snap.status_message =
-                status_hint(snap.capture_count, knock_ready, config_enable, waiting_for);
-            let out = snap.clone();
-            drop(snap);
-            emit(&out, Some(build_ui_tick(&out, None, Vec::new())));
+            {
+                let mut snap = snapshot.write().unwrap();
+                snap.connected = connected;
+                snap.polling = running.load(Ordering::SeqCst);
+                snap.knock_scope_ready = knock_ready;
+                snap.enable_knock_scope_in_config = config_enable;
+                snap.last_error = last_error.clone();
+                snap.status_message =
+                    status_hint(snap.capture_count, knock_ready, config_enable, waiting_for);
+            }
+            let snap = snapshot.read().unwrap();
+            emit(&snap, build_ui_tick(&snap, None, Vec::new()));
             last_status_emit = Instant::now();
             did_work = true;
         }

@@ -10,6 +10,8 @@ import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useInstanceBind } from "../../composables/useInstanceBind";
 import {
   initKnockScope,
+  onKnockSpectrogramGlReset,
+  subscribeKnockSpectrogramGpu,
   useKnockScope,
 } from "../../composables/useKnockScope";
 import { useTabActivity } from "../../composables/useTabActivity";
@@ -18,9 +20,10 @@ import {
   drawKnockWaveform,
 } from "../../composables/drawKnockWaveform";
 import {
-  drawKnockSpectrogram,
-  resetKnockSpectrogramDrawCache,
-} from "../../composables/drawKnockSpectrogram";
+  b64ToArrayBuffer,
+  mountKnockSpectrogramGl,
+  type KnockSpectrogramGl,
+} from "../../composables/knockSpectrogramGl";
 
 const yamlProps = defineProps<{
   instance: ComponentInstance;
@@ -51,10 +54,19 @@ const windowMs = computed(() => {
 
 const chartRef = ref<HTMLCanvasElement | null>(null);
 const spectrogramRef = ref<HTMLCanvasElement | null>(null);
-const { snapshot, spectrogramView, waveformRing, setScopeEnabled, setWaveformWindowMs } =
-  useKnockScope();
+const {
+  snapshot,
+  spectrogramWidth,
+  spectrogramHeight: spectrogramTexHeight,
+  waveformRing,
+  setScopeEnabled,
+  setWaveformWindowMs,
+} = useKnockScope();
 const { isActive: tabActive } = useTabActivity();
 
+let spectrogramGl: KnockSpectrogramGl | null = null;
+let unsubSpectrogramGpu: (() => void) | null = null;
+let unsubSpectrogramReset: (() => void) | null = null;
 let redrawRaf = 0;
 
 if (bindSource.value && bindSource.value !== "knockScope") {
@@ -64,10 +76,12 @@ if (bindSource.value && bindSource.value !== "knockScope") {
 }
 
 const spectrogramTitle = computed(() => {
-  const v = spectrogramView.value;
-  if (v.width < 1) return "Спектрограмма (FFT, Rust)";
-  const fEnd = v.freqStartHz + v.freqStepHz * Math.max(0, v.height - 1);
-  return `Спектрограмма · ${v.width} cols · ${Math.round(v.freqStartHz)}–${Math.round(fEnd)} Hz`;
+  const sg = snapshot.value.spectrogram;
+  const w = spectrogramWidth.value;
+  if (w < 1 || !sg) return "Спектрограмма (FFT, Rust)";
+  const h = sg.height || spectrogramTexHeight.value;
+  const fEnd = sg.freqStartHz + sg.freqStepHz * Math.max(0, h - 1);
+  return `Спектрограмма · ${w} cols · ${Math.round(sg.freqStartHz)}–${Math.round(fEnd)} Hz`;
 });
 
 const connected = computed(() => snapshot.value.connected);
@@ -120,8 +134,8 @@ const statusLine = computed(() => {
     if (enableInConfig.value === false) parts.push("enableKnockScope=no");
   }
   parts.push(`захватов: ${captureCount.value}`);
-  if (spectrogramView.value.width > 0) {
-    parts.push(`FFT cols: ${spectrogramView.value.width}`);
+  if (spectrogramWidth.value > 0) {
+    parts.push(`FFT cols: ${spectrogramWidth.value}`);
   }
   if (waveformRing.value.length > 0) {
     parts.push(
@@ -149,6 +163,18 @@ const hint = computed(() => {
   return null;
 });
 
+function bindSpectrogramGl(): void {
+  spectrogramGl?.destroy();
+  const canvas = spectrogramRef.value;
+  spectrogramGl = canvas ? mountKnockSpectrogramGl(canvas) : null;
+}
+
+function applySpectrogramGpuB64(b64: string): void {
+  if (!spectrogramGl) return;
+  spectrogramGl.applyBuffer(b64ToArrayBuffer(b64));
+  spectrogramGl.draw();
+}
+
 function scheduleRedraw() {
   if (!tabActive.value) return;
   if (redrawRaf !== 0) return;
@@ -169,11 +195,7 @@ function redrawWaveform() {
 }
 
 function redrawSpectrogram() {
-  const canvas = spectrogramRef.value;
-  if (!canvas) return;
-  drawKnockSpectrogram(canvas, spectrogramView.value, {
-    title: spectrogramTitle.value,
-  });
+  spectrogramGl?.draw();
 }
 
 function redraw() {
@@ -187,18 +209,8 @@ watch(
     if (tabActive.value) scheduleRedraw();
   },
 );
-watch(spectrogramView, () => {
-  if (tabActive.value) scheduleRedraw();
-});
 watch([displaySamples, displayMin, displayMax], () => scheduleRedraw());
-
-let resizeObs: ResizeObserver | null = null;
-
-watch(scopeEnabled, (on) => {
-  if (!on) {
-    resetKnockSpectrogramDrawCache();
-  }
-});
+watch([spectrogramHeight, chartHeight], () => scheduleRedraw());
 
 watch(windowMs, (ms) => {
   setWaveformWindowMs(ms);
@@ -210,11 +222,29 @@ watch(tabActive, (active, wasActive) => {
   }
 });
 
+watch(spectrogramRef, (canvas) => {
+  if (canvas) {
+    bindSpectrogramGl();
+    scheduleRedraw();
+  } else {
+    spectrogramGl?.destroy();
+    spectrogramGl = null;
+  }
+});
+
+let resizeObs: ResizeObserver | null = null;
+
 const panelRef = ref<HTMLElement | null>(null);
 
 onMounted(async () => {
   setWaveformWindowMs(windowMs.value);
+  unsubSpectrogramGpu = subscribeKnockSpectrogramGpu((b64) => {
+    if (!tabActive.value) return;
+    applySpectrogramGpuB64(b64);
+  });
+  unsubSpectrogramReset = onKnockSpectrogramGlReset(() => spectrogramGl?.reset());
   await initKnockScope();
+  bindSpectrogramGl();
   scheduleRedraw();
   const observeTarget = panelRef.value ?? chartRef.value;
   if (observeTarget) {
@@ -228,6 +258,12 @@ onMounted(async () => {
 
 onUnmounted(() => {
   resizeObs?.disconnect();
+  unsubSpectrogramGpu?.();
+  unsubSpectrogramGpu = null;
+  unsubSpectrogramReset?.();
+  unsubSpectrogramReset = null;
+  spectrogramGl?.destroy();
+  spectrogramGl = null;
   if (redrawRaf !== 0) cancelAnimationFrame(redrawRaf);
   if (scopeEnabled.value) {
     void setScopeEnabled(false);
@@ -259,6 +295,7 @@ async function toggleScope() {
       class="spectrogram-canvas"
       :style="{ height: `${chartHeight}px` }"
     />
+    <p class="spectrogram-heatmap-title">{{ spectrogramTitle }}</p>
     <canvas
       ref="spectrogramRef"
       class="spectrogram-canvas spectrogram-heatmap"
@@ -288,6 +325,12 @@ async function toggleScope() {
 }
 
 .spectrogram-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.spectrogram-heatmap-title {
   margin: 0;
   font-size: 12px;
   color: var(--color-text-muted);

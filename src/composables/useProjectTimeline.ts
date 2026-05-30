@@ -20,7 +20,6 @@ const error = ref<string | null>(null);
 
 let listenersReady: Promise<void> | null = null;
 let unlistenProject: UnlistenFn | null = null;
-let _unlistenReset: UnlistenFn | null = null;
 let timelineKey = "";
 let clipsLoaded = false;
 
@@ -61,7 +60,7 @@ async function setupListeners(): Promise<void> {
     clipsLoaded = false;
     void reloadTimelineClips(true);
   });
-  _unlistenReset = await listen("workspace-reset", () => {
+  void listen("workspace-reset", () => {
     timelineKey = "";
     clipsLoaded = false;
     const paint = timelineTabVisible();
