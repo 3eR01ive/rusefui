@@ -24,6 +24,7 @@ export interface ProjectInfo {
   name: string;
   dirty: boolean;
   logCount: number;
+  timelineClipCount: number;
   hasEcuConfig: boolean;
 }
 
@@ -78,6 +79,7 @@ const info = shallowRef<ProjectInfo>({
   name: "Новый проект",
   dirty: false,
   logCount: 0,
+  timelineClipCount: 0,
   hasEcuConfig: false,
 });
 
@@ -203,6 +205,22 @@ export function useProject() {
     return invoke<string[]>("project_ui_persist_keys");
   }
 
+  async function clearTimeline(): Promise<boolean> {
+    return invoke<boolean>("project_clear_timeline");
+  }
+
+  async function copyProjectWithoutTimeline(): Promise<boolean> {
+    const defaultName = info.value.name.trim().endsWith("(копия)")
+      ? info.value.name
+      : `${info.value.name} (копия)`;
+    const path = await invoke<string | null>("pick_project_save_path", {
+      defaultName,
+    });
+    if (!path) return false;
+    await invoke("project_copy_without_timeline", { path });
+    return true;
+  }
+
   return {
     info: readonly(info),
     hasOpenProject,
@@ -223,5 +241,7 @@ export function useProject() {
     getProjectUi,
     setProjectUi,
     listPersistKeys,
+    clearTimeline,
+    copyProjectWithoutTimeline,
   };
 }

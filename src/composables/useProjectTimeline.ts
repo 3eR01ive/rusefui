@@ -1,114 +1,92 @@
 import { invoke } from "@tauri-apps/api/core";
-import { computed, ref, shallowRef, watch } from "vue";
-import { projectUiEpoch, workspaceResetEpoch } from "./useProject";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { ref } from "vue";
+import type { ProjectInfo } from "./useProject";
+import {
+  timelineRenderer,
+  type ProjectTimelineClip,
+} from "./timelineRenderer";
 
-export type TimelineChannel = "logs" | "trigger" | "spectrogram" | "runs";
+export {
+  TIMELINE_CHANNEL_LABELS,
+  timelineRenderer,
+} from "./timelineRenderer";
+export type { TimelineFrame, ProjectTimelineClip } from "./timelineFrame";
 
-export interface ProjectTimelineRecordRef {
-  path: string;
-  kind?: string | null;
-}
-
-export interface ProjectTimelineClip {
-  id: string;
-  channel: TimelineChannel;
-  startMs: number;
-  endMs?: number | null;
-  record: ProjectTimelineRecordRef;
-  label?: string | null;
-}
-
-export const TIMELINE_CHANNELS: ReadonlyArray<{
-  id: TimelineChannel;
-  title: string;
-}> = [
-  { id: "logs", title: "Логи" },
-  { id: "trigger", title: "Триггер" },
-  { id: "spectrogram", title: "Спектрограмма" },
-  { id: "runs", title: "Прогоны" },
-];
-
-const clips = shallowRef<ProjectTimelineClip[]>([]);
+const spanLabel = ref("…");
 const loading = ref(false);
 const error = ref<string | null>(null);
-let initPromise: Promise<void> | null = null;
 
-async function refresh(): Promise<void> {
+let listenersReady: Promise<void> | null = null;
+let unlistenProject: UnlistenFn | null = null;
+let _unlistenReset: UnlistenFn | null = null;
+let timelineKey = "";
+let clipsLoaded = false;
+
+function timelineDataKey(info: ProjectInfo): string {
+  return `${info.path ?? ""}:${info.logCount}:${info.timelineClipCount}`;
+}
+
+/** Один IPC — список клипов; viewport полностью на клиенте. */
+export async function reloadTimelineClips(paint = true): Promise<void> {
   loading.value = true;
   error.value = null;
   try {
-    clips.value = await invoke<ProjectTimelineClip[]>("project_timeline_list");
+    const clips = await invoke<ProjectTimelineClip[]>("project_timeline_list");
+    timelineRenderer.setClips(clips);
+    if (paint) timelineRenderer.rebuild();
+    else spanLabel.value = timelineRenderer.spanLabel();
+    clipsLoaded = true;
   } catch (e) {
     error.value = e instanceof Error ? e.message : String(e);
-    clips.value = [];
+    timelineRenderer.setClips([]);
+    if (paint) timelineRenderer.rebuild();
   } finally {
     loading.value = false;
   }
 }
 
-export async function initProjectTimeline(): Promise<void> {
-  if (initPromise) return initPromise;
-  initPromise = refresh();
-  return initPromise;
+async function setupListeners(): Promise<void> {
+  if (unlistenProject) return;
+  unlistenProject = await listen<ProjectInfo>("project-changed", (ev) => {
+    const key = timelineDataKey(ev.payload);
+    if (key === timelineKey) return;
+    timelineKey = key;
+    clipsLoaded = false;
+    void reloadTimelineClips(true);
+  });
+  _unlistenReset = await listen("workspace-reset", () => {
+    timelineKey = "";
+    clipsLoaded = false;
+    timelineRenderer.reset();
+    spanLabel.value = timelineRenderer.spanLabel();
+    void reloadTimelineClips(true);
+  });
 }
 
-watch([projectUiEpoch, workspaceResetEpoch], () => {
-  void refresh();
-});
+export async function ensureTimelineListeners(): Promise<void> {
+  if (!listenersReady) {
+    listenersReady = setupListeners();
+  }
+  await listenersReady;
+}
+
+export async function ensureTimelineClipsLoaded(): Promise<void> {
+  await ensureTimelineListeners();
+  if (clipsLoaded) return;
+  try {
+    const info = await invoke<ProjectInfo>("project_get_info");
+    timelineKey = timelineDataKey(info);
+  } catch {
+    timelineKey = "";
+  }
+  await reloadTimelineClips(true);
+}
 
 export function useProjectTimeline() {
-  const sortedClips = computed(() =>
-    [...clips.value].sort((a, b) => a.startMs - b.startMs),
-  );
-
   return {
-    clips: sortedClips,
+    spanLabel,
     loading,
     error,
-    refresh,
   };
-}
-
-export function formatTimelineMs(ms: number): string {
-  const d = new Date(ms);
-  return d.toLocaleString(undefined, {
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
-
-export function formatTimelineMsFull(ms: number): string {
-  const d = new Date(ms);
-  return d.toLocaleString(undefined, {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
-
-export function channelTitle(channel: string): string {
-  return TIMELINE_CHANNELS.find((c) => c.id === channel)?.title ?? channel;
-}
-
-export function basename(path: string): string {
-  const parts = path.replace(/\\/g, "/").split("/");
-  return parts[parts.length - 1] || path;
-}
-
-export function clipEndMs(clip: ProjectTimelineClip, nowMs: number): number {
-  return clip.endMs ?? nowMs;
-}
-
-export function formatSpanMs(spanMs: number): string {
-  const sec = spanMs / 1000;
-  if (sec < 120) return `${Math.round(sec)} с`;
-  if (sec < 7200) return `${(sec / 60).toFixed(0)} мин`;
-  if (sec < 172800) return `${(sec / 3600).toFixed(1)} ч`;
-  return `${(sec / 86400).toFixed(1)} д`;
 }

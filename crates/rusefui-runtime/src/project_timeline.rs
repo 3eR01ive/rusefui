@@ -2,6 +2,9 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Временная заглушка: длительность клипа без явного `end_ms` (2 мин).
+pub const DEFAULT_CLIP_DURATION_MS: u64 = 120_000;
+
 /// Каналы общей шкалы (логические id, не поля INI).
 pub mod channel {
     pub const LOGS: &str = "logs";
@@ -56,7 +59,7 @@ pub struct ProjectTimelineClip {
     pub channel: String,
     /// Начало записи на шкале проекта (Unix ms).
     pub start_ms: u64,
-    /// Конец записи; `None` — до «сейчас».
+    /// Конец записи; `None` — `start_ms` + [`DEFAULT_CLIP_DURATION_MS`].
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub end_ms: Option<u64>,
     pub record: ProjectTimelineRecordRef,
@@ -101,6 +104,18 @@ impl ProjectTimeline {
     }
 }
 
+pub fn effective_clip_end_ms(clip: &ProjectTimelineClip) -> u64 {
+    clip.end_ms
+        .unwrap_or(clip.start_ms.saturating_add(DEFAULT_CLIP_DURATION_MS))
+}
+
+pub fn clip_with_default_end(mut clip: ProjectTimelineClip) -> ProjectTimelineClip {
+    if clip.end_ms.is_none() {
+        clip.end_ms = Some(effective_clip_end_ms(&clip));
+    }
+    clip
+}
+
 pub fn validate_channel(channel: &str) -> Result<(), String> {
     if channel::is_valid(channel) {
         Ok(())
@@ -114,6 +129,23 @@ pub fn validate_channel(channel: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn effective_end_ms_default_duration() {
+        let clip = ProjectTimelineClip {
+            id: "c1".into(),
+            channel: channel::LOGS.into(),
+            start_ms: 5000,
+            end_ms: None,
+            record: ProjectTimelineRecordRef::new("/tmp/a.csv", Some("output_csv".into())),
+            label: None,
+        };
+        assert_eq!(effective_clip_end_ms(&clip), 5000 + DEFAULT_CLIP_DURATION_MS);
+        assert_eq!(
+            clip_with_default_end(clip).end_ms,
+            Some(5000 + DEFAULT_CLIP_DURATION_MS)
+        );
+    }
 
     #[test]
     fn clip_json_roundtrip() {

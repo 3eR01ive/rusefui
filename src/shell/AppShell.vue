@@ -43,12 +43,15 @@ footerToggleProtocol.value = togglePanel;
 const { burn: burnConfig } = useConfig();
 const {
   info: projectInfo,
+  hasOpenProject,
   createNewProject,
   openProject,
   closeProject,
   saveProject,
   saveProjectAs,
   captureEcuConfig,
+  clearTimeline,
+  copyProjectWithoutTimeline,
 } = useProject();
 const { showMainUi, canBurn: workspaceCanBurn, snapshot: workspaceSnap } =
   useWorkspaceState();
@@ -244,6 +247,20 @@ function onCaptureConfigToProject(): void {
   void runProjectAction(() => captureEcuConfig());
 }
 
+function onCopyProjectWithoutTimeline(): void {
+  void runProjectAction(async () => {
+    const proceed = await confirmUnsavedChanges(unsavedCheck("switch"));
+    if (!proceed) return;
+    await copyProjectWithoutTimeline();
+  });
+}
+
+function onClearTimeline(): void {
+  void runProjectAction(async () => {
+    await clearTimeline();
+  });
+}
+
 function workspacePhaseLabel(phase: WorkspacePhase): string {
   switch (phase) {
     case "gate":
@@ -301,12 +318,16 @@ async function onBurn() {
         :project-dirty="projectInfo.dirty"
         :project-busy="projectBusy"
         :can-capture-config="dataCtx.connection.value.connected"
+        :has-open-project="hasOpenProject"
+        :timeline-clip-count="projectInfo.timelineClipCount"
         @new-project="onNewProject"
         @open-project="onOpenProject"
         @close-project="onCloseProject"
         @save-project="onSaveProject"
         @save-project-as="onSaveProjectAs"
         @capture-config="onCaptureConfigToProject"
+        @copy-project-without-timeline="onCopyProjectWithoutTimeline"
+        @clear-timeline="onClearTimeline"
       />
       <div class="brand-block">
         <div class="brand-mark" aria-hidden="true" />

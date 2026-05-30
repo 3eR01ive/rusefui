@@ -8,7 +8,7 @@ use rusefui_runtime::{
     EcuSession, EcuSyncOnMount, IniCandidate, OnlineDownloadStatus, OutputFieldInfo,
     OutputSnapshot, OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl,
     PendingIniResolution, ProjectInfo, ProjectLogRef, ProjectStore, ProjectTimelineClip,
-    ProjectTimelineRecordRef, ProtocolLogEntry,
+    ProtocolLogEntry,
     ProtocolLogFilterSettings, ProtocolLogStore, RecentProjectEntry, RecentProjectsStore,
     RusefuiProject, WorkspaceFsm, WorkspaceInputs, WorkspacePhase, WorkspaceSnapshot,
 };
@@ -1848,6 +1848,41 @@ pub fn project_list_logs(state: State<RuntimeState>) -> Vec<ProjectLogRef> {
 #[tauri::command]
 pub fn project_timeline_list(state: State<RuntimeState>) -> Vec<ProjectTimelineClip> {
     state.project.lock().unwrap().list_timeline_clips()
+}
+
+#[tauri::command]
+pub fn project_clear_timeline(state: State<RuntimeState>, app: AppHandle) -> Result<bool, String> {
+    let changed = state.project.lock().unwrap().clear_timeline();
+    if changed {
+        emit_project(&app, &state);
+    }
+    Ok(changed)
+}
+
+#[tauri::command]
+pub fn project_copy_without_timeline(
+    path: String,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    let path_ref = std::path::Path::new(&path);
+    {
+        let store = state.project.lock().unwrap();
+        store.write_copy_without_timeline(path_ref, &state.session)?;
+    }
+    let store = state.project.lock().unwrap();
+    store.load_from_path(path_ref)?;
+    state.session.reset_workspace_for_new_project();
+    store.apply_to_session(&state.session)?;
+    drop(store);
+    record_recent_project(&state, path_ref);
+    clear_config_diff(&state, &app);
+    emit_project(&app, &state);
+    emit_workspace_reset(&app, &state);
+    if state.session.is_connected() && state.session.config().snapshot().loaded {
+        try_start_config_diff(&state, &app);
+    }
+    Ok(())
 }
 
 #[tauri::command]

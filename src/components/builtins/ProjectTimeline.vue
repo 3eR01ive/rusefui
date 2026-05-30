@@ -1,23 +1,20 @@
 <script setup lang="ts">
 import {
-  computed,
   onMounted,
   onUnmounted,
   ref,
   useTemplateRef,
+  watch,
 } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useProject } from "../../composables/useProject";
+import { activeTabId } from "../../composables/useTabState";
 import {
-  TIMELINE_CHANNELS,
-  basename,
-  clipEndMs,
-  formatSpanMs,
-  formatTimelineMs,
-  initProjectTimeline,
+  TIMELINE_CHANNEL_LABELS,
+  ensureTimelineClipsLoaded,
+  ensureTimelineListeners,
+  timelineRenderer,
   useProjectTimeline,
-  type ProjectTimelineClip,
-  type TimelineChannel,
 } from "../../composables/useProjectTimeline";
 
 defineProps<{
@@ -28,150 +25,71 @@ defineProps<{
   meta: ComponentMeta;
 }>();
 
-void initProjectTimeline();
-
 const { hasOpenProject } = useProject();
-const { clips, loading, error } = useProjectTimeline();
+const { spanLabel, loading, error: timelineError } = useProjectTimeline();
 
 const trackRef = useTemplateRef<HTMLElement>("trackRef");
-const trackWidth = ref(800);
-
-/** Центр окна на шкале (Unix ms). «Сейчас» по умолчанию в центре. */
-const viewCenterMs = ref(Date.now());
-/** Видимый интервал времени. */
-const spanMs = ref(3_600_000);
-const nowMs = ref(Date.now());
-
-let nowTimer: ReturnType<typeof setInterval> | null = null;
-let resizeObs: ResizeObserver | null = null;
-
-onMounted(() => {
-  nowTimer = setInterval(() => {
-    nowMs.value = Date.now();
-  }, 1000);
-
-  const el = trackRef.value;
-  if (el) {
-    trackWidth.value = el.clientWidth;
-    resizeObs = new ResizeObserver(() => {
-      if (trackRef.value) trackWidth.value = trackRef.value.clientWidth;
-    });
-    resizeObs.observe(el);
-  }
-});
-
-onUnmounted(() => {
-  if (nowTimer) clearInterval(nowTimer);
-  resizeObs?.disconnect();
-});
+const canvasRef = useTemplateRef<HTMLCanvasElement>("canvasRef");
 
 const dragging = ref(false);
 const dragLastX = ref(0);
+const panOffsetPx = ref(0);
 
-const pxPerMs = computed(() => trackWidth.value / spanMs.value);
+let resizeObs: ResizeObserver | null = null;
+let nowTimer: ReturnType<typeof setInterval> | null = null;
+let lastTrackWidth = 0;
+let lastTrackHeight = 0;
+let lastTooltip = "";
 
-function timeToX(ms: number): number {
-  return (ms - viewCenterMs.value) * pxPerMs.value + trackWidth.value / 2;
-}
-
-function xToTime(x: number): number {
-  return viewCenterMs.value + (x - trackWidth.value / 2) / pxPerMs.value;
-}
-
-function clipsForChannel(channel: TimelineChannel): ProjectTimelineClip[] {
-  return clips.value.filter((c) => c.channel === channel);
-}
-
-function clipStyle(clip: ProjectTimelineClip): Record<string, string> {
-  const end = clipEndMs(clip, nowMs.value);
-  const left = timeToX(clip.startMs);
-  const right = timeToX(end);
-  const width = Math.max(6, right - left);
-  return {
-    left: `${left}px`,
-    width: `${width}px`,
-  };
-}
-
-function clipLabel(clip: ProjectTimelineClip): string {
-  return clip.label || basename(clip.record.path);
-}
-
-function clipTitle(clip: ProjectTimelineClip): string {
-  const end = clip.endMs ? formatTimelineMs(clip.endMs) : "…сейчас";
-  return `${clipLabel(clip)}\n${formatTimelineMs(clip.startMs)} → ${end}`;
-}
-
-const rulerTicks = computed(() => {
-  const w = trackWidth.value;
-  if (w <= 0) return [];
-  const t0 = xToTime(0);
-  const t1 = xToTime(w);
-  const span = t1 - t0;
-  const rough = span / 8;
-  const step =
-    rough >= 3_600_000
-      ? 3_600_000
-      : rough >= 900_000
-        ? 900_000
-        : rough >= 300_000
-          ? 300_000
-          : rough >= 60_000
-            ? 60_000
-            : rough >= 15_000
-              ? 15_000
-              : 5_000;
-  const start = Math.floor(t0 / step) * step;
-  const out: { x: number; label: string }[] = [];
-  for (let t = start; t <= t1 + step; t += step) {
-    const x = timeToX(t);
-    if (x < -40 || x > w + 40) continue;
-    out.push({ x, label: formatTimelineMs(t) });
-  }
-  return out;
-});
-
-const nowX = computed(() => timeToX(nowMs.value));
-
-function zoomAt(clientX: number, factor: number): void {
+function trackSize(): { w: number; h: number } {
   const el = trackRef.value;
-  if (!el || factor <= 0) return;
-  const rect = el.getBoundingClientRect();
-  const x = clientX - rect.left;
-  const anchorMs = xToTime(x);
-  const nextSpan = clampSpan(spanMs.value * factor);
-  const nextPxPerMs = trackWidth.value / nextSpan;
-  viewCenterMs.value = anchorMs - (x - trackWidth.value / 2) / nextPxPerMs;
-  spanMs.value = nextSpan;
+  return { w: el?.clientWidth ?? 0, h: el?.clientHeight ?? 0 };
+}
+
+function syncTrackSize(): void {
+  const { w, h } = trackSize();
+  if (w <= 0 || h <= 0) return;
+  if (w === lastTrackWidth && h === lastTrackHeight) return;
+  lastTrackWidth = w;
+  lastTrackHeight = h;
+  timelineRenderer.setSize(w, h);
 }
 
 function onWheel(e: WheelEvent): void {
   e.preventDefault();
-  if (e.shiftKey && !e.ctrlKey && !e.metaKey) {
-    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-    viewCenterMs.value += delta / pxPerMs.value;
-    return;
-  }
-  const factor = Math.pow(1.0015, -e.deltaY);
-  zoomAt(e.clientX, factor);
+  const rect = trackRef.value?.getBoundingClientRect();
+  const clientX = rect ? e.clientX - rect.left : e.clientX;
+  timelineRenderer.applyWheel(
+    clientX,
+    e.deltaY,
+    e.deltaX,
+    e.shiftKey && !e.ctrlKey && !e.metaKey,
+  );
 }
 
 function onPointerDown(e: PointerEvent): void {
   if (e.button !== 0) return;
   dragging.value = true;
   dragLastX.value = e.clientX;
+  panOffsetPx.value = 0;
+  timelineRenderer.setPanOffset(0);
   (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 }
 
 function onPointerMove(e: PointerEvent): void {
   if (!dragging.value) return;
-  const dx = e.clientX - dragLastX.value;
+  panOffsetPx.value += e.clientX - dragLastX.value;
   dragLastX.value = e.clientX;
-  viewCenterMs.value -= dx / pxPerMs.value;
+  timelineRenderer.setPanOffset(panOffsetPx.value);
+  timelineRenderer.paint();
 }
 
 function onPointerUp(e: PointerEvent): void {
+  if (!dragging.value) return;
   dragging.value = false;
+  const dx = panOffsetPx.value;
+  panOffsetPx.value = 0;
+  timelineRenderer.commitPan(dx);
   try {
     (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
   } catch {
@@ -180,35 +98,99 @@ function onPointerUp(e: PointerEvent): void {
 }
 
 function centerOnNow(): void {
-  viewCenterMs.value = nowMs.value;
+  timelineRenderer.centerOnNow();
 }
 
 function zoom(factor: number): void {
-  const el = trackRef.value;
-  if (!el) {
-    spanMs.value = clampSpan(spanMs.value * factor);
-    return;
-  }
-  const rect = el.getBoundingClientRect();
-  zoomAt(rect.left + rect.width / 2, factor);
+  const { w } = trackSize();
+  timelineRenderer.zoomAt(factor, w > 0 ? w / 2 : 400);
 }
 
-function clampSpan(v: number): number {
-  return Math.min(14 * 86_400_000, Math.max(30_000, v));
+function onCanvasMove(e: MouseEvent): void {
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const tip = timelineRenderer.hitTest(
+    e.clientX - rect.left,
+    e.clientY - rect.top,
+  );
+  const next = tip ?? "";
+  if (next === lastTooltip) return;
+  lastTooltip = next;
+  if (next) canvas.title = next;
+  else canvas.removeAttribute("title");
 }
+
+function onCanvasLeave(): void {
+  lastTooltip = "";
+  canvasRef.value?.removeAttribute("title");
+}
+
+function startNowTimer(): void {
+  if (nowTimer) return;
+  nowTimer = setInterval(() => {
+    if (timelineRenderer.getFrame()) timelineRenderer.paint();
+  }, 1000);
+}
+
+function stopNowTimer(): void {
+  if (!nowTimer) return;
+  clearInterval(nowTimer);
+  nowTimer = null;
+}
+
+watch(
+  activeTabId,
+  (id) => {
+    if (id === "timeline") {
+      void ensureTimelineClipsLoaded().then(syncTrackSize);
+      startNowTimer();
+    } else {
+      stopNowTimer();
+    }
+  },
+  { immediate: true },
+);
+
+onMounted(async () => {
+  await ensureTimelineListeners();
+  const canvas = canvasRef.value;
+  const track = trackRef.value;
+  if (canvas) {
+    timelineRenderer.attach(canvas, (label) => {
+      spanLabel.value = label;
+    });
+  }
+  if (track) {
+    lastTrackWidth = track.clientWidth;
+    lastTrackHeight = track.clientHeight;
+    resizeObs = new ResizeObserver(syncTrackSize);
+    resizeObs.observe(track);
+    if (activeTabId.value === "timeline") {
+      await ensureTimelineClipsLoaded();
+      syncTrackSize();
+    }
+  }
+});
+
+onUnmounted(() => {
+  stopNowTimer();
+  resizeObs?.disconnect();
+  timelineRenderer.detach();
+});
 </script>
 
 <template>
   <section class="tl">
     <p v-if="!hasOpenProject" class="tl-empty">Откройте проект.</p>
-    <p v-else-if="error" class="tl-err">{{ error }}</p>
+    <p v-else-if="timelineError" class="tl-err">{{ timelineError }}</p>
 
     <template v-else>
       <div class="tl-toolbar">
         <button type="button" class="btn-clear btn-clear--mini" title="Уменьшить" @click="zoom(1.25)">
           −
         </button>
-        <span class="tl-span">{{ formatSpanMs(spanMs) }}</span>
+        <span class="tl-span">{{ spanLabel }}</span>
         <button type="button" class="btn-clear btn-clear--mini" title="Увеличить" @click="zoom(0.8)">
           +
         </button>
@@ -220,7 +202,7 @@ function clampSpan(v: number): number {
         <div class="tl-labels">
           <div class="tl-label-ruler" aria-hidden="true" />
           <div class="tl-labels-body">
-            <div v-for="ch in TIMELINE_CHANNELS" :key="ch.id" class="tl-label">
+            <div v-for="ch in TIMELINE_CHANNEL_LABELS" :key="ch.id" class="tl-label">
               {{ ch.title }}
             </div>
           </div>
@@ -236,33 +218,12 @@ function clampSpan(v: number): number {
           @pointerup="onPointerUp"
           @pointercancel="onPointerUp"
         >
-          <div class="tl-ruler">
-            <span
-              v-for="(tick, i) in rulerTicks"
-              :key="i"
-              class="tl-tick"
-              :style="{ left: `${tick.x}px` }"
-            >
-              {{ tick.label }}
-            </span>
-          </div>
-
-          <div class="tl-now" :style="{ left: `${nowX}px` }" title="Сейчас" />
-
-          <div class="tl-lanes">
-            <div v-for="ch in TIMELINE_CHANNELS" :key="ch.id" class="tl-lane">
-              <div
-                v-for="clip in clipsForChannel(ch.id)"
-                :key="clip.id"
-                class="tl-clip"
-                :data-channel="ch.id"
-                :style="clipStyle(clip)"
-                :title="clipTitle(clip)"
-              >
-                <span class="tl-clip-label">{{ clipLabel(clip) }}</span>
-              </div>
-            </div>
-          </div>
+          <canvas
+            ref="canvasRef"
+            class="tl-canvas"
+            @mousemove="onCanvasMove"
+            @mouseleave="onCanvasLeave"
+          />
         </div>
       </div>
     </template>
@@ -363,7 +324,7 @@ function clampSpan(v: number): number {
 }
 
 .tl-label-ruler {
-  height: 1.85rem;
+  height: 30px;
   flex-shrink: 0;
   border-bottom: 1px solid var(--color-border);
 }
@@ -395,160 +356,20 @@ function clampSpan(v: number): number {
 
 .tl-track {
   position: relative;
-  display: flex;
-  flex-direction: column;
   min-height: 0;
   overflow: hidden;
   cursor: grab;
   background: var(--color-bg-elevated);
+  touch-action: none;
 }
 
 .tl-track--dragging {
   cursor: grabbing;
 }
 
-.tl-ruler {
-  position: relative;
-  flex-shrink: 0;
-  height: 1.85rem;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg-muted);
-}
-
-.tl-tick {
-  position: absolute;
-  top: 0;
-  transform: translateX(-50%);
-  padding-top: 0.25rem;
-  font-size: 0.65rem;
-  color: var(--color-text-subtle);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
-.tl-tick::before {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  width: 1px;
-  height: 0.35rem;
-  background: var(--color-border-strong);
-  transform: translateX(-50%);
-}
-
-.tl-lanes {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.tl-now {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  margin-left: -1px;
-  background: var(--color-accent);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--color-accent) 45%, transparent);
-  z-index: 4;
-  pointer-events: none;
-}
-
-.tl-now::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 5px solid transparent;
-  border-top-color: var(--color-accent);
-}
-
-.tl-lane {
-  position: relative;
-  flex: 1;
-  min-height: 2.5rem;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.tl-lane:last-child {
-  border-bottom: none;
-}
-
-.tl-lane::before {
-  content: "";
+.tl-canvas {
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(
-    90deg,
-    transparent,
-    transparent 59px,
-    color-mix(in srgb, var(--color-border) 55%, transparent) 59px,
-    color-mix(in srgb, var(--color-border) 55%, transparent) 60px
-  );
-  pointer-events: none;
-}
-
-.tl-clip {
-  position: absolute;
-  top: 0.4rem;
-  bottom: 0.4rem;
-  min-width: 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  overflow: hidden;
-  z-index: 2;
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-text) 8%, transparent);
-}
-
-.tl-clip[data-channel="logs"] {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, #5b9fd4 88%, white),
-    color-mix(in srgb, #5b9fd4 62%, white)
-  );
-  border-color: color-mix(in srgb, #5b9fd4 70%, var(--color-border));
-}
-
-.tl-clip[data-channel="trigger"] {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--color-accent) 82%, white),
-    color-mix(in srgb, var(--color-accent-muted) 75%, white)
-  );
-  border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border));
-}
-
-.tl-clip[data-channel="spectrogram"] {
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, #9b6fd4 85%, white),
-    color-mix(in srgb, #9b6fd4 58%, white)
-  );
-  border-color: color-mix(in srgb, #9b6fd4 65%, var(--color-border));
-}
-
-.tl-clip[data-channel="runs"] {
-  background: linear-gradient(
-    180deg,
-    var(--color-gray-light),
-    color-mix(in srgb, var(--color-gray-light) 70%, var(--color-bg-muted))
-  );
-  border-color: var(--color-border-strong);
-}
-
-.tl-clip-label {
   display: block;
-  padding: 0.2rem 0.4rem;
-  font-size: 0.68rem;
-  font-weight: 500;
-  color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  pointer-events: none;
 }
 </style>

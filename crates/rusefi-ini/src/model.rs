@@ -85,7 +85,6 @@ pub struct ArrayField {
     pub ty: ScalarType,
     pub offset: u32,
     /// INI `page = N` (1-based). Page 1 = основная калибровка (~64 KiB).
-    #[serde(default = "default_ini_page")]
     pub page: u8,
     pub shape: ArrayShape,
     pub units: String,
@@ -108,13 +107,8 @@ pub enum ConfigFieldKind {
 #[derive(Debug, Clone, Serialize)]
 pub struct StringField {
     pub offset: u32,
-    #[serde(default = "default_ini_page")]
     pub page: u8,
     pub length: u32,
-}
-
-fn default_ini_page() -> u8 {
-    DEFAULT_INI_PAGE
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -214,7 +208,6 @@ impl ScalarType {
 pub struct ScalarField {
     pub ty: ScalarType,
     pub offset: u32,
-    #[serde(default = "default_ini_page")]
     pub page: u8,
     pub units: String,
     pub scale: f64,
@@ -225,7 +218,6 @@ pub struct ScalarField {
 pub struct BitsField {
     pub ty: ScalarType,
     pub offset: u32,
-    #[serde(default = "default_ini_page")]
     pub page: u8,
     pub bit_low: u8,
     pub bit_high: u8,

@@ -15,7 +15,8 @@ use crate::ini::resolve_ini_for_signature;
 use crate::session::EcuSession;
 use crate::sources::config::{build_project_ecu_config, pages_from_project_ecu};
 use crate::project_timeline::{
-    channel, validate_channel, ProjectTimeline, ProjectTimelineClip, ProjectTimelineRecordRef,
+    channel, clip_with_default_end, validate_channel, ProjectTimeline, ProjectTimelineClip,
+    ProjectTimelineRecordRef,
 };
 use crate::ui_persist::{self, ProjectUi};
 
@@ -109,6 +110,7 @@ pub struct ProjectInfo {
     pub name: String,
     pub dirty: bool,
     pub log_count: usize,
+    pub timeline_clip_count: usize,
     pub has_ecu_config: bool,
 }
 
@@ -142,6 +144,7 @@ impl ProjectStore {
             name: doc.name.clone(),
             dirty,
             log_count: doc.logs.len(),
+            timeline_clip_count: doc.timeline.clips.len(),
             has_ecu_config: doc.ecu_config.is_some(),
         }
     }
@@ -214,20 +217,58 @@ impl ProjectStore {
     }
 
     pub fn save_to_path(&self, path: &Path) -> Result<(), String> {
+        let mut doc = self.doc.lock().unwrap();
+        doc.touch();
+        Self::write_document_to_path(&doc, path)?;
+        drop(doc);
+        *self.path.lock().unwrap() = Some(path.to_path_buf());
+        *self.dirty.lock().unwrap() = false;
+        Ok(())
+    }
+
+    fn write_document_to_path(doc: &RusefuiProject, path: &Path) -> Result<(), String> {
         if let Some(parent) = path.parent() {
             if !parent.as_os_str().is_empty() {
                 fs::create_dir_all(parent).map_err(|e| e.to_string())?;
             }
         }
-        let mut doc = self.doc.lock().unwrap();
-        doc.touch();
         let text =
-            serde_json::to_string_pretty(&*doc).map_err(|e| format!("Сериализация: {e}"))?;
+            serde_json::to_string_pretty(doc).map_err(|e| format!("Сериализация: {e}"))?;
         fs::write(path, text).map_err(|e| e.to_string())?;
-        drop(doc);
-        *self.path.lock().unwrap() = Some(path.to_path_buf());
-        *self.dirty.lock().unwrap() = false;
         Ok(())
+    }
+
+    /// Копия проекта на диск без секции `timeline` (клипы не переносятся).
+    pub fn write_copy_without_timeline(
+        &self,
+        path: &Path,
+        session: &EcuSession,
+    ) -> Result<(), String> {
+        self.prepare_for_save(session)?;
+        let mut doc = self.doc.lock().unwrap().clone();
+        doc.timeline = ProjectTimeline::default();
+        let base = doc.name.trim();
+        doc.name = if base.ends_with("(копия)") {
+            base.to_string()
+        } else {
+            format!("{base} (копия)")
+        };
+        let t = now_ms();
+        doc.created_at_ms = t;
+        doc.updated_at_ms = t;
+        Self::write_document_to_path(&doc, path)
+    }
+
+    pub fn clear_timeline(&self) -> bool {
+        let mut doc = self.doc.lock().unwrap();
+        if doc.timeline.clips.is_empty() {
+            return false;
+        }
+        doc.timeline.clips.clear();
+        doc.touch();
+        drop(doc);
+        *self.dirty.lock().unwrap() = true;
+        true
     }
 
     pub fn saved_path(&self) -> Option<PathBuf> {
@@ -322,7 +363,7 @@ impl ProjectStore {
             }
         }
         clips.sort_by_key(|c| c.start_ms);
-        clips
+        clips.into_iter().map(clip_with_default_end).collect()
     }
 
     pub fn upsert_timeline_clip(&self, clip: ProjectTimelineClip) -> Result<(), String> {
@@ -511,7 +552,7 @@ fn ini_page_size(ini_page: u8, ini: &crate::sources::output_channels::IniContext
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::project_timeline::{channel, ProjectTimelineRecordRef};
+    use crate::project_timeline::{channel, ProjectTimelineRecordRef, DEFAULT_CLIP_DURATION_MS};
     use crate::ui_persist::{LogUiSettings, PERSIST_KEY_OUTPUT_CHART};
 
     #[test]
@@ -545,6 +586,24 @@ mod tests {
     }
 
     #[test]
+    fn timeline_clip_without_end_gets_default_duration() {
+        let store = ProjectStore::new();
+        store
+            .upsert_timeline_clip(ProjectTimelineClip {
+                id: "c1".into(),
+                channel: channel::LOGS.into(),
+                start_ms: 1000,
+                end_ms: None,
+                record: ProjectTimelineRecordRef::new("/tmp/a.csv", Some("output_csv".into())),
+                label: None,
+            })
+            .unwrap();
+        let list = store.list_timeline_clips();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].end_ms, Some(1000 + DEFAULT_CLIP_DURATION_MS));
+    }
+
+    #[test]
     fn timeline_clip_roundtrip_in_project() {
         let store = ProjectStore::new();
         store
@@ -560,5 +619,53 @@ mod tests {
         let list = store.list_timeline_clips();
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].end_ms, Some(8000));
+    }
+
+    #[test]
+    fn clear_timeline_removes_persisted_clips() {
+        let store = ProjectStore::new();
+        store
+            .upsert_timeline_clip(ProjectTimelineClip {
+                id: "c1".into(),
+                channel: channel::LOGS.into(),
+                start_ms: 1,
+                end_ms: None,
+                record: ProjectTimelineRecordRef::new("/tmp/a.csv", Some("output_csv".into())),
+                label: None,
+            })
+            .unwrap();
+        assert!(store.clear_timeline());
+        assert_eq!(store.info().timeline_clip_count, 0);
+        assert!(!store.clear_timeline());
+    }
+
+    #[test]
+    fn copy_without_timeline_writes_empty_timeline_section() {
+        use crate::protocol_log::ProtocolLogStore;
+        use crate::session::EcuSession;
+
+        let store = ProjectStore::new();
+        store
+            .upsert_timeline_clip(ProjectTimelineClip {
+                id: "c1".into(),
+                channel: channel::LOGS.into(),
+                start_ms: 1,
+                end_ms: None,
+                record: ProjectTimelineRecordRef::new("/tmp/a.csv", Some("output_csv".into())),
+                label: None,
+            })
+            .unwrap();
+        let session = EcuSession::new_arc(ProtocolLogStore::new(std::env::temp_dir().join(
+            format!("rusefui-proto-test-{}", now_ms()),
+        )));
+        let dir = std::env::temp_dir().join(format!("rusefui-copy-test-{}", now_ms()));
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("copy.json");
+        store.write_copy_without_timeline(&path, &session).unwrap();
+        let text = fs::read_to_string(&path).unwrap();
+        let back: RusefuiProject = serde_json::from_str(&text).unwrap();
+        assert!(back.timeline.clips.is_empty());
+        assert!(back.name.contains("(копия)"));
+        let _ = fs::remove_dir_all(dir);
     }
 }

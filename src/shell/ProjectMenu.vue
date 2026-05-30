@@ -7,6 +7,8 @@ defineProps<{
   projectDirty: boolean;
   projectBusy: boolean;
   canCaptureConfig: boolean;
+  hasOpenProject: boolean;
+  timelineClipCount: number;
 }>();
 
 const emit = defineEmits<{
@@ -16,6 +18,8 @@ const emit = defineEmits<{
   saveProject: [];
   saveProjectAs: [];
   captureConfig: [];
+  copyProjectWithoutTimeline: [];
+  clearTimeline: [];
 }>();
 
 const open = ref(false);
@@ -185,6 +189,35 @@ onUnmounted(() => {
         </span>
         Config → проект
       </button>
+
+      <div class="project-dropdown-sep" />
+
+      <button
+        type="button"
+        role="menuitem"
+        class="menu-item"
+        :disabled="projectBusy || !hasOpenProject"
+        @click="action(() => emit('copyProjectWithoutTimeline'))"
+      >
+        <span class="menu-item-icon">
+          <svg viewBox="0 0 16 16" fill="none"><rect x="3" y="2" width="9" height="11" rx="1.2" fill="currentColor" opacity=".15"/><rect x="3" y="2" width="9" height="11" rx="1.2" stroke="currentColor" stroke-width="1.1"/><rect x="6" y="2" width="9" height="11" rx="1.2" fill="currentColor" opacity=".35"/><rect x="6" y="2" width="9" height="11" rx="1.2" stroke="currentColor" stroke-width="1.1"/></svg>
+        </span>
+        Копировать проект…
+        <span class="menu-item-hint">без таймлайна</span>
+      </button>
+
+      <button
+        type="button"
+        role="menuitem"
+        class="menu-item"
+        :disabled="projectBusy || !hasOpenProject || timelineClipCount === 0"
+        @click="action(() => emit('clearTimeline'))"
+      >
+        <span class="menu-item-icon">
+          <svg viewBox="0 0 16 16" fill="none"><path d="M3 4h10M5.5 4V3h5v1M6 7v4M10 7v4M4.5 4l.5 9h6l.5-9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        Очистить таймлайн
+      </button>
     </div>
   </div>
 </template>
@@ -323,5 +356,12 @@ onUnmounted(() => {
   margin-left: auto;
   font-size: 0.68rem;
   color: var(--color-text-subtle);
+}
+
+.menu-item-hint {
+  margin-left: auto;
+  font-size: 0.65rem;
+  color: var(--color-text-subtle);
+  font-weight: 400;
 }
 </style>

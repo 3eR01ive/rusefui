@@ -280,11 +280,6 @@ fn parse_key_u16(line: &str, key: &str) -> Option<u16> {
     v.split(',').next()?.trim().parse().ok()
 }
 
-fn parse_key_first_u32(line: &str, key: &str) -> Option<u32> {
-    let v = parse_key_value(line, key)?;
-    v.split(',').next()?.trim().parse().ok()
-}
-
 fn parse_page_sizes_line(line: &str) -> Option<Vec<u32>> {
     let v = parse_key_value(line, "pageSize")?;
     let sizes: Vec<u32> = v

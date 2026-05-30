@@ -397,6 +397,7 @@ mod tests {
                 name: "P".into(),
                 dirty: false,
                 log_count: 0,
+                timeline_clip_count: 0,
                 has_ecu_config: path.is_some(),
             },
             autoconnect: AutoConnectSnapshot {

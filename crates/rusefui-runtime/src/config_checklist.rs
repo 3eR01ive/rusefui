@@ -49,7 +49,7 @@ fn default_severity() -> String {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct CheckDef {
+pub struct CheckDef {
     id: String,
     level: String,
     #[serde(default)]

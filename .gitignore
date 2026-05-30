@@ -15,6 +15,7 @@ target
 src-tauri/target
 dist-ssr
 *.local
+.cargo-target
 
 # Editor directories and files
 .vscode/*
