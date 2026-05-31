@@ -54,7 +54,19 @@ const { state, dispatch, ready, error } = useRustComponent(
 );
 
 const zField = computed(() => paramString("zBins") ?? "");
+const xField = computed(() => paramString("xBins") ?? "");
+const yField = computed(() => paramString("yBins") ?? "");
 const title = computed(() => String(state.value.title ?? propsRef.value.title ?? ""));
+
+type EditFocus = "grid" | "x" | "y";
+
+function parseEditFocus(raw: unknown): EditFocus {
+  if (raw === "grid" || raw === "x" || raw === "y") return raw;
+  const s = String(raw ?? "grid").toLowerCase();
+  if (s === "x") return "x";
+  if (s === "y") return "y";
+  return "grid";
+}
 
 async function dispatchWrite(
   action: string,
@@ -67,6 +79,7 @@ async function dispatchWrite(
     title.value,
     action,
     payload,
+    { xField: xField.value || undefined, yField: yField.value || undefined },
   );
 }
 
@@ -132,6 +145,59 @@ interface TableGridView {
   };
 }
 
+interface AxisCellView {
+  index: number;
+  value: number;
+  display: string;
+  selected: boolean;
+  cursor: boolean;
+}
+
+interface AxisBarView {
+  cells: AxisCellView[];
+  selI0: number;
+  selI1: number;
+  editable: boolean;
+}
+
+const editFocus = computed((): EditFocus => parseEditFocus(state.value.editFocus));
+const xAxis = computed(() => state.value.xAxis as AxisBarView | undefined);
+const yAxis = computed(() => state.value.yAxis as AxisBarView | undefined);
+const canEditX = computed(() => Boolean(state.value.canEditX));
+const canEditY = computed(() => Boolean(state.value.canEditY));
+
+function xAxisCell(col: number): AxisCellView | undefined {
+  return xAxis.value?.cells.find((c) => c.index === col);
+}
+
+function yAxisCell(row: number): AxisCellView | undefined {
+  return yAxis.value?.cells.find((c) => c.index === row);
+}
+
+function axisDisplay(axis: "x" | "y", index: number, fallback: number): string {
+  const cell = axis === "x" ? xAxisCell(index) : yAxisCell(index);
+  const isCursor =
+    editFocus.value === axis && cell?.cursor === true;
+  if (isCursor && editBuffer.value !== "") {
+    return editBuffer.value;
+  }
+  if (cell) return cell.display;
+  const vals = axis === "x" ? xValues.value : yValues.value;
+  return fmtAxis(vals[index], fallback);
+}
+
+function isAxisSelectionEdge(
+  axis: "x" | "y",
+  index: number,
+  edge: "start" | "end",
+): boolean {
+  if (editFocus.value !== axis) return false;
+  const bar = axis === "x" ? xAxis.value : yAxis.value;
+  if (!bar) return false;
+  if (index < bar.selI0 || index > bar.selI1) return false;
+  return edge === "start" ? index === bar.selI0 : index === bar.selI1;
+}
+
 function cellAt(row: number, col: number): TableCellView | undefined {
   return cells.value.find((c) => c.row === row && c.col === col);
 }
@@ -143,6 +209,7 @@ function isSelectionEdge(
   col: number,
   edge: "top" | "bottom" | "left" | "right",
 ): boolean {
+  if (editFocus.value !== "grid") return false;
   const sel = selectionRect.value;
   if (!sel) return false;
   if (row < sel.r0 || row > sel.r1 || col < sel.c0 || col > sel.c1) return false;
@@ -201,35 +268,38 @@ watch(
 );
 
 watch(
-  () => [grid.value?.cursorRow, grid.value?.cursorCol] as const,
+  () =>
+    [
+      grid.value?.cursorRow,
+      grid.value?.cursorCol,
+      editFocus.value,
+      xAxis.value?.cells.find((c) => c.cursor)?.index,
+      yAxis.value?.cells.find((c) => c.cursor)?.index,
+    ] as const,
   () => {
-    const el = gridRef.value?.querySelector(".cell-td--cursor");
+    const sel =
+      editFocus.value === "x"
+        ? ".axis-head--cursor-x"
+        : editFocus.value === "y"
+          ? ".axis-head--cursor-y"
+          : ".cell-td--cursor";
+    const el = gridRef.value?.querySelector(sel);
     el?.scrollIntoView({ block: "nearest", inline: "nearest" });
   },
 );
 
-function selectionTsv(): string {
-  const sel = selectionRect.value;
-  if (!sel) return "";
-  const lines: string[] = [];
-  for (let row = sel.r0; row <= sel.r1; row++) {
-    const cols: string[] = [];
-    for (let col = sel.c0; col <= sel.c1; col++) {
-      cols.push(cellAt(row, col)?.display ?? "");
-    }
-    lines.push(cols.join("\t"));
-  }
-  return lines.join("\n");
-}
 
 async function copySelection(): Promise<void> {
-  const text = selectionTsv();
+  await dispatch("copy_selection");
+  const text = String(state.value.copyText ?? "");
   if (!text) return;
   await writeClipboardText(text);
 }
 
 async function pasteSelection(): Promise<void> {
-  if (disabled.value) return;
+  if (editFocus.value === "x" && !canEditX.value) return;
+  if (editFocus.value === "y" && !canEditY.value) return;
+  if (editFocus.value === "grid" && disabled.value) return;
   const text = await readClipboardText();
   if (!text.trim()) return;
   await dispatchWrite("paste", { text });
@@ -269,6 +339,9 @@ function onComponentKeydown(e: KeyboardEvent): boolean {
     return true;
   }
   if (isTypeChar || isTypeControl) {
+    if (editFocus.value === "x" && !canEditX.value) return false;
+    if (editFocus.value === "y" && !canEditY.value) return false;
+    if (editFocus.value === "grid" && disabled.value) return false;
     if (isTypeControl) {
       if ((key === "Enter" || key === "Escape") && !editBuffer.value) {
         return false;
@@ -284,14 +357,24 @@ function onComponentKeydown(e: KeyboardEvent): boolean {
     return true;
   }
   if (isInterpolate) {
+    if (editFocus.value === "x" && !canEditX.value) return false;
+    if (editFocus.value === "y" && !canEditY.value) return false;
+    if (editFocus.value === "grid" && disabled.value) return false;
     void dispatchWrite("interpolate");
     return true;
   }
-  void dispatchWrite("keydown", {
-    key,
-    shift: e.shiftKey,
-    ctrl: e.ctrlKey,
-  });
+  const arrowPayload = { key, shift: e.shiftKey, ctrl: e.ctrlKey };
+  const isNudge =
+    e.ctrlKey &&
+    (key === "ArrowUp" ||
+      key === "ArrowDown" ||
+      key === "ArrowLeft" ||
+      key === "ArrowRight");
+  if (isNudge) {
+    void dispatchWrite("keydown", arrowPayload);
+  } else {
+    void dispatch("keydown", arrowPayload);
+  }
   return true;
 }
 
@@ -309,8 +392,34 @@ function onCellMouseDown(row: number, col: number, e: MouseEvent) {
 }
 
 function onCellMouseEnter(row: number, col: number) {
-  if (!ready.value || !isMouseSelecting.value) return;
+  if (!ready.value || !isMouseSelecting.value || editFocus.value !== "grid") return;
   void dispatch("select_cell", { row, col, extend: true });
+}
+
+function onXAxisMouseDown(col: number, e: MouseEvent) {
+  if (!ready.value || !canEditX.value) return;
+  if (e.button !== 0) return;
+  e.preventDefault();
+  isMouseSelecting.value = true;
+  void dispatch("select_x", { col, extend: e.shiftKey });
+}
+
+function onYAxisMouseDown(row: number, e: MouseEvent) {
+  if (!ready.value || !canEditY.value) return;
+  if (e.button !== 0) return;
+  e.preventDefault();
+  isMouseSelecting.value = true;
+  void dispatch("select_y", { row, extend: e.shiftKey });
+}
+
+function onXAxisMouseEnter(col: number) {
+  if (!ready.value || !isMouseSelecting.value || editFocus.value !== "x") return;
+  void dispatch("select_x", { col, extend: true });
+}
+
+function onYAxisMouseEnter(row: number) {
+  if (!ready.value || !isMouseSelecting.value || editFocus.value !== "y") return;
+  void dispatch("select_y", { row, extend: true });
 }
 
 function onGlobalMouseUp() {
@@ -345,22 +454,66 @@ function onCellFocus(row: number, col: number, e: FocusEvent) {
         <thead>
           <tr>
             <th class="corner">{{ yLabel }} \ {{ xLabel }}</th>
-            <th v-for="col in colIndices" :key="`x-${col}`" class="axis-head">
-              {{ fmtAxis(xValues[col], col) }}
+            <th
+              v-for="col in colIndices"
+              :key="`x-${col}`"
+              class="axis-head axis-head-x"
+              :class="{
+                'axis-head--editable': canEditX,
+                'axis-head--selected': editFocus === 'x' && xAxisCell(col)?.selected,
+                'axis-head--cursor-x': editFocus === 'x' && xAxisCell(col)?.cursor,
+                'axis-head--sel-start': isAxisSelectionEdge('x', col, 'start'),
+                'axis-head--sel-end': isAxisSelectionEdge('x', col, 'end'),
+              }"
+              @mousedown="onXAxisMouseDown(col, $event)"
+              @mouseenter="onXAxisMouseEnter(col)"
+            >
+              <input
+                type="text"
+                class="axis-input"
+                readonly
+                tabindex="-1"
+                spellcheck="false"
+                autocomplete="off"
+                :disabled="!canEditX"
+                :value="axisDisplay('x', col, col)"
+              />
             </th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="row in rowIndices" :key="`row-${row}`">
-            <th class="axis-head">{{ fmtAxis(yValues[row], row) }}</th>
+            <th
+              class="axis-head axis-head-y"
+              :class="{
+                'axis-head--editable': canEditY,
+                'axis-head--selected': editFocus === 'y' && yAxisCell(row)?.selected,
+                'axis-head--cursor-y': editFocus === 'y' && yAxisCell(row)?.cursor,
+                'axis-head--sel-start': isAxisSelectionEdge('y', row, 'start'),
+                'axis-head--sel-end': isAxisSelectionEdge('y', row, 'end'),
+              }"
+              @mousedown="onYAxisMouseDown(row, $event)"
+              @mouseenter="onYAxisMouseEnter(row)"
+            >
+              <input
+                type="text"
+                class="axis-input"
+                readonly
+                tabindex="-1"
+                spellcheck="false"
+                autocomplete="off"
+                :disabled="!canEditY"
+                :value="axisDisplay('y', row, row)"
+              />
+            </th>
             <td
               v-for="col in colIndices"
               :key="`c-${row}-${col}`"
               class="cell-td"
               :class="{
-                'cell-td--selected': cellAt(row, col)?.selected,
-                'cell-td--cursor': cellAt(row, col)?.cursor,
-                'cell-td--corner': cellAt(row, col)?.corner,
+                'cell-td--selected': editFocus === 'grid' && cellAt(row, col)?.selected,
+                'cell-td--cursor': editFocus === 'grid' && cellAt(row, col)?.cursor,
+                'cell-td--corner': editFocus === 'grid' && cellAt(row, col)?.corner,
                 'cell-td--sel-top': isSelectionEdge(row, col, 'top'),
                 'cell-td--sel-bottom': isSelectionEdge(row, col, 'bottom'),
                 'cell-td--sel-left': isSelectionEdge(row, col, 'left'),
@@ -387,7 +540,9 @@ function onCellFocus(row: number, col: number, e: FocusEvent) {
       </table>
     </div>
     <p class="grid-hint">
-      ↑↓←→ — смещение · Shift+стрелки — выделение · Ctrl+C/V — копировать/вставить · Ctrl+↑↓ — ±шаг · Ctrl+I — интерполяция
+      Таблица: ↑↓←→ · Shift — выделение · Ctrl+↑↓ — ±шаг · Ctrl+C/V · Ctrl+I — интерполяция.
+      Оси X/Y: клик по заголовку · ←→ (X) / ↑↓ (Y) · Shift — диапазон · Ctrl+↑↓ — ±шаг · цифры — замена · Ctrl+I — интерполяция.
+      Из таблицы: ↑ на верхней строке → ось X; ← в первом столбце → ось Y.
     </p>
   </div>
 </template>
@@ -447,8 +602,61 @@ function onCellFocus(row: number, col: number, e: FocusEvent) {
   background: var(--color-bg-muted);
   color: var(--color-text-muted);
   font-weight: 500;
-  padding: 0.35rem 0.5rem;
+  padding: 0;
   white-space: nowrap;
+}
+
+.axis-head--editable {
+  cursor: cell;
+}
+
+.axis-head--selected {
+  background-image: linear-gradient(
+    rgba(59, 130, 246, 0.12),
+    rgba(59, 130, 246, 0.12)
+  );
+}
+
+.axis-head--cursor-x .axis-input,
+.axis-head--cursor-y .axis-input {
+  outline: 2px solid var(--color-accent, #3b82f6);
+  outline-offset: -2px;
+}
+
+.axis-head--sel-start {
+  border-left: 2px solid var(--color-accent, #3b82f6) !important;
+}
+
+.axis-head--sel-end {
+  border-right: 2px solid var(--color-accent, #3b82f6) !important;
+}
+
+.axis-head-y.axis-head--sel-start {
+  border-left: 1px solid var(--color-border) !important;
+  border-top: 2px solid var(--color-accent, #3b82f6) !important;
+}
+
+.axis-head-y.axis-head--sel-end {
+  border-right: 1px solid var(--color-border) !important;
+  border-bottom: 2px solid var(--color-accent, #3b82f6) !important;
+}
+
+.axis-input {
+  width: 4.5rem;
+  padding: 0.35rem 0.45rem;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  text-align: right;
+  font-weight: 500;
+  user-select: none;
+  pointer-events: none;
+}
+
+.axis-head--cursor-x .axis-input,
+.axis-head--cursor-y .axis-input {
+  color: var(--color-text);
+  font-weight: 600;
 }
 
 .corner {

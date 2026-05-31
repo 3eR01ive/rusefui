@@ -5,8 +5,10 @@ use serde_json::{json, Value};
 
 use crate::component::{ComponentLogic, ComponentMeta, EcuSyncOnMount, LogicComponentType};
 use crate::config_table_grid::{
-    build_grid_view, copy_rect_to_tsv, interpolate_rect, nudge_rect_values, paste_tsv_at, NavDir,
-    TableGridState,
+    build_axis_view, build_grid_view, copy_axis_to_tsv, copy_rect_to_tsv, interpolate_axis_range,
+    interpolate_rect,
+    nudge_axis_range, nudge_rect_values, paste_1d_at, paste_tsv_at, set_axis_range, Axis1dState,
+    EditFocus, NavDir, TableGridState,
 };
 use crate::session::EcuSession;
 
@@ -21,7 +23,12 @@ struct ConfigTableViewState {
     x_values: Vec<f64>,
     y_values: Vec<f64>,
     grid: crate::config_table_grid::TableGridView,
+    x_axis: crate::config_table_grid::AxisBarView,
+    y_axis: crate::config_table_grid::AxisBarView,
+    edit_focus: EditFocus,
     can_edit: bool,
+    can_edit_x: bool,
+    can_edit_y: bool,
     loading: bool,
     saving: bool,
     status_text: String,
@@ -45,6 +52,9 @@ pub struct ConfigTableLogic {
     local_error: Option<String>,
     edit_buffer: String,
     nudge_step: f64,
+    edit_focus: EditFocus,
+    x_axis: Axis1dState,
+    y_axis: Axis1dState,
 }
 
 impl ConfigTableLogic {
@@ -65,7 +75,26 @@ impl ConfigTableLogic {
             local_error: None,
             edit_buffer: String::new(),
             nudge_step: DEFAULT_NUDGE_STEP,
+            edit_focus: EditFocus::Grid,
+            x_axis: Axis1dState::new(),
+            y_axis: Axis1dState::new(),
         }
+    }
+
+    fn axis_x_editable(&self) -> bool {
+        self.can_edit()
+            && self
+                .x_field
+                .as_deref()
+                .is_some_and(|s| !s.is_empty())
+    }
+
+    fn axis_y_editable(&self) -> bool {
+        self.can_edit()
+            && self
+                .y_field
+                .as_deref()
+                .is_some_and(|s| !s.is_empty())
     }
 
     fn config(&self) -> &crate::sources::config::ConfigSource {
@@ -212,18 +241,25 @@ impl ConfigTableLogic {
         let cc = grid.cursor.col.min(cols.saturating_sub(1));
         grid.select_cell(cr, cc);
         self.grid = grid;
+        self.edit_focus = EditFocus::Grid;
+        self.edit_buffer.clear();
+        let x_len = self.x_values.len();
+        let y_len = self.grid.rows;
+        if x_len > 0 {
+            self.x_axis
+                .select(self.x_axis.cursor.min(x_len - 1), x_len);
+        }
+        if y_len > 0 {
+            self.y_axis
+                .select(self.y_axis.cursor.min(y_len - 1), y_len);
+        }
         Ok(())
     }
 
-    fn apply_updates(&mut self, updates: &[(usize, f64)]) -> Result<(), String> {
+    fn write_field_updates(&mut self, field: &str, updates: &[(usize, f64)]) -> Result<(), String> {
         if updates.is_empty() {
             return Ok(());
         }
-        let z_name = self
-            .z_field
-            .as_deref()
-            .ok_or("zBins не задан")?
-            .to_string();
 
         self.saving = true;
         self.local_error = None;
@@ -233,19 +269,14 @@ impl ConfigTableLogic {
             let live = self.session.is_connected() && snap.loaded && !snap.read_only;
             if live {
                 self.config()
-                    .write_array_values(&self.session, &z_name, updates)?;
+                    .write_array_values(&self.session, field, updates)?;
             } else if snap.loaded && snap.read_only {
                 self.config()
-                    .set_array_values_local(&z_name, updates)?;
+                    .set_array_values_local(field, updates)?;
             } else {
                 return Err(
                     "Нет config для редактирования — откройте проект или подключите ECU".into(),
                 );
-            }
-            for &(idx, v) in updates {
-                if idx < self.grid.values.len() {
-                    self.grid.values[idx] = v;
-                }
             }
             Ok(())
         })();
@@ -258,7 +289,67 @@ impl ConfigTableLogic {
         result
     }
 
+    fn apply_updates(&mut self, updates: &[(usize, f64)]) -> Result<(), String> {
+        if updates.is_empty() {
+            return Ok(());
+        }
+        let z_name = self
+            .z_field
+            .as_deref()
+            .ok_or("zBins не задан")?
+            .to_string();
+        self.write_field_updates(&z_name, updates)?;
+        for &(idx, v) in updates {
+            if idx < self.grid.values.len() {
+                self.grid.values[idx] = v;
+            }
+        }
+        Ok(())
+    }
+
+    fn apply_x_updates(&mut self, updates: &[(usize, f64)]) -> Result<(), String> {
+        let name = self
+            .x_field
+            .as_deref()
+            .ok_or("xBins не задан")?
+            .to_string();
+        self.write_field_updates(&name, updates)?;
+        for &(idx, v) in updates {
+            if idx < self.x_values.len() {
+                self.x_values[idx] = v;
+            }
+        }
+        Ok(())
+    }
+
+    fn apply_y_updates(&mut self, updates: &[(usize, f64)]) -> Result<(), String> {
+        let name = self
+            .y_field
+            .as_deref()
+            .ok_or("yBins не задан")?
+            .to_string();
+        self.write_field_updates(&name, updates)?;
+        for &(idx, v) in updates {
+            if idx < self.y_values.len() {
+                self.y_values[idx] = v;
+            }
+        }
+        Ok(())
+    }
+
+    fn y_storage_index(&self, visual_row: usize) -> usize {
+        self.grid.storage_row(visual_row.min(self.grid.rows.saturating_sub(1)))
+    }
+
     fn handle_keydown(&mut self, payload: &Value) -> Result<(), String> {
+        match self.edit_focus {
+            EditFocus::Grid => self.handle_grid_keydown(payload),
+            EditFocus::X => self.handle_x_keydown(payload),
+            EditFocus::Y => self.handle_y_keydown(payload),
+        }
+    }
+
+    fn handle_grid_keydown(&mut self, payload: &Value) -> Result<(), String> {
         let key = payload
             .get("key")
             .and_then(|v| v.as_str())
@@ -284,7 +375,25 @@ impl ConfigTableLogic {
             if shift {
                 self.grid.extend_selection(dir);
             } else {
-                self.grid.translate_selection(dir);
+                match dir {
+                    NavDir::Up if self.grid.cursor.row == 0 && self.axis_x_editable() => {
+                        let col = self
+                            .grid
+                            .cursor
+                            .col
+                            .min(self.x_values.len().saturating_sub(1));
+                        self.edit_focus = EditFocus::X;
+                        self.x_axis.select(col, self.x_values.len());
+                    }
+                    NavDir::Left if self.grid.cursor.col == 0 && self.axis_y_editable() => {
+                        let row = self.grid.cursor.row.min(self.grid.rows.saturating_sub(1));
+                        self.edit_focus = EditFocus::Y;
+                        self.y_axis.select(row, self.grid.rows);
+                    }
+                    _ => {
+                        self.grid.translate_selection(dir);
+                    }
+                }
             }
             self.edit_buffer.clear();
             return Ok(());
@@ -292,38 +401,213 @@ impl ConfigTableLogic {
         Ok(())
     }
 
+    fn handle_x_keydown(&mut self, payload: &Value) -> Result<(), String> {
+        let key = payload
+            .get("key")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let shift = payload.get("shift").and_then(|v| v.as_bool()).unwrap_or(false);
+        let ctrl = payload.get("ctrl").and_then(|v| v.as_bool()).unwrap_or(false);
+        let len = self.x_values.len();
+        if len == 0 {
+            return Ok(());
+        }
+
+        if let Some(dir) = NavDir::from_arrow(key) {
+            if ctrl && matches!(dir, NavDir::Up | NavDir::Down) {
+                if !self.axis_x_editable() {
+                    return Ok(());
+                }
+                let delta = if dir == NavDir::Up {
+                    self.nudge_step
+                } else {
+                    -self.nudge_step
+                };
+                let (i0, i1) = self.x_axis.selection();
+                let updates = nudge_axis_range(&self.x_values, i0, i1, delta);
+                return self.apply_x_updates(&updates);
+            }
+
+            match dir {
+                NavDir::Down => {
+                    let col = self.x_axis.cursor.min(self.grid.cols.saturating_sub(1));
+                    self.edit_focus = EditFocus::Grid;
+                    self.grid.select_cell(0, col);
+                }
+                NavDir::Left | NavDir::Right => {
+                    let delta = if dir == NavDir::Left { -1 } else { 1 };
+                    if shift {
+                        self.x_axis.extend_delta(delta, len);
+                    } else {
+                        self.x_axis.translate(delta, len);
+                    }
+                }
+                _ => {}
+            }
+            self.edit_buffer.clear();
+        }
+        Ok(())
+    }
+
+    fn handle_y_keydown(&mut self, payload: &Value) -> Result<(), String> {
+        let key = payload
+            .get("key")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        let shift = payload.get("shift").and_then(|v| v.as_bool()).unwrap_or(false);
+        let ctrl = payload.get("ctrl").and_then(|v| v.as_bool()).unwrap_or(false);
+        let len = self.grid.rows;
+        if len == 0 {
+            return Ok(());
+        }
+
+        if let Some(dir) = NavDir::from_arrow(key) {
+            if ctrl && matches!(dir, NavDir::Up | NavDir::Down) {
+                if !self.axis_y_editable() {
+                    return Ok(());
+                }
+                let delta = if dir == NavDir::Up {
+                    self.nudge_step
+                } else {
+                    -self.nudge_step
+                };
+                let (v0, v1) = self.y_axis.selection();
+                let mut updates = Vec::new();
+                for vr in v0..=v1 {
+                    let si = self.y_storage_index(vr);
+                    if let Some(&cur) = self.y_values.get(si) {
+                        let next = cur + delta;
+                        if (next - cur).abs() >= 1e-9 {
+                            updates.push((si, next));
+                        }
+                    }
+                }
+                return self.apply_y_updates(&updates);
+            }
+
+            match dir {
+                NavDir::Right => {
+                    let row = self.y_axis.cursor.min(self.grid.rows.saturating_sub(1));
+                    self.edit_focus = EditFocus::Grid;
+                    self.grid.select_cell(row, 0);
+                }
+                NavDir::Up | NavDir::Down => {
+                    let delta = if dir == NavDir::Up { -1 } else { 1 };
+                    if shift {
+                        self.y_axis.extend_delta(delta, len);
+                    } else {
+                        self.y_axis.translate(delta, len);
+                    }
+                }
+                _ => {}
+            }
+            self.edit_buffer.clear();
+        }
+        Ok(())
+    }
+
     fn copy_selection_tsv(&self) -> String {
-        copy_rect_to_tsv(&self.grid, self.grid.selection())
+        match self.edit_focus {
+            EditFocus::X => {
+                let (i0, i1) = self.x_axis.selection();
+                copy_axis_to_tsv(&self.x_values, i0, i1)
+            }
+            EditFocus::Y => {
+                let display = self.y_values_for_display();
+                let (i0, i1) = self.y_axis.selection();
+                copy_axis_to_tsv(&display, i0, i1.min(display.len().saturating_sub(1)))
+            }
+            EditFocus::Grid => copy_rect_to_tsv(&self.grid, self.grid.selection()),
+        }
     }
 
     fn paste_from_text(&mut self, text: &str) -> Result<(), String> {
-        if !self.can_edit() {
-            return Ok(());
+        match self.edit_focus {
+            EditFocus::X => {
+                if !self.axis_x_editable() {
+                    return Ok(());
+                }
+                let (i0, _) = self.x_axis.selection();
+                let updates = paste_1d_at(&self.x_values, i0, text);
+                self.apply_x_updates(&updates)
+            }
+            EditFocus::Y => {
+                if !self.axis_y_editable() {
+                    return Ok(());
+                }
+                let (v0, _) = self.y_axis.selection();
+                let display = self.y_values_for_display();
+                let updates_display = paste_1d_at(&display, v0, text);
+                let updates: Vec<(usize, f64)> = updates_display
+                    .into_iter()
+                    .map(|(vr, v)| (self.y_storage_index(vr), v))
+                    .collect();
+                self.apply_y_updates(&updates)
+            }
+            EditFocus::Grid => {
+                if !self.can_edit() {
+                    return Ok(());
+                }
+                let rect = self.grid.selection();
+                let updates = paste_tsv_at(&self.grid, rect, text);
+                self.apply_updates(&updates)
+            }
         }
-        let rect = self.grid.selection();
-        let updates = paste_tsv_at(&self.grid, rect, text);
-        self.apply_updates(&updates)
     }
 
     fn apply_value_to_selection(&mut self, value: f64) -> Result<(), String> {
-        if !self.can_edit() {
-            return Ok(());
-        }
-        let rect = self.grid.selection();
-        let mut updates = Vec::new();
-        for r in rect.r0..=rect.r1 {
-            for c in rect.c0..=rect.c1 {
-                let idx = self.grid.index_visual(r, c);
-                let current = self.grid.values.get(idx).copied().unwrap_or(0.0);
-                if (current - value).abs() >= 1e-9 {
-                    updates.push((idx, value));
+        match self.edit_focus {
+            EditFocus::X => {
+                if !self.axis_x_editable() {
+                    return Ok(());
                 }
+                let (i0, i1) = self.x_axis.selection();
+                let updates = set_axis_range(&self.x_values, i0, i1, value);
+                self.apply_x_updates(&updates)
+            }
+            EditFocus::Y => {
+                if !self.axis_y_editable() {
+                    return Ok(());
+                }
+                let (v0, v1) = self.y_axis.selection();
+                let mut updates = Vec::new();
+                for vr in v0..=v1 {
+                    let si = self.y_storage_index(vr);
+                    let cur = self.y_values.get(si).copied().unwrap_or(0.0);
+                    if (cur - value).abs() >= 1e-9 {
+                        updates.push((si, value));
+                    }
+                }
+                self.apply_y_updates(&updates)
+            }
+            EditFocus::Grid => {
+                if !self.can_edit() {
+                    return Ok(());
+                }
+                let rect = self.grid.selection();
+                let mut updates = Vec::new();
+                for r in rect.r0..=rect.r1 {
+                    for c in rect.c0..=rect.c1 {
+                        let idx = self.grid.index_visual(r, c);
+                        let current = self.grid.values.get(idx).copied().unwrap_or(0.0);
+                        if (current - value).abs() >= 1e-9 {
+                            updates.push((idx, value));
+                        }
+                    }
+                }
+                self.apply_updates(&updates)
             }
         }
-        self.apply_updates(&updates)
     }
 
     fn handle_type_key(&mut self, payload: &Value) -> Result<(), String> {
+        match self.edit_focus {
+            EditFocus::X if !self.axis_x_editable() => return Ok(()),
+            EditFocus::Y if !self.axis_y_editable() => return Ok(()),
+            EditFocus::Grid if !self.can_edit() => return Ok(()),
+            _ => {}
+        }
+
         let kind = payload.get("kind").and_then(|v| v.as_str()).unwrap_or("");
         match kind {
             "char" => {
@@ -445,14 +729,33 @@ impl ConfigTableLogic {
     }
 
     fn view_state(&self) -> ConfigTableViewState {
+        let y_display = self.y_values_for_display();
+        let grid_active = self.edit_focus == EditFocus::Grid;
+        let x_active = self.edit_focus == EditFocus::X;
+        let y_active = self.edit_focus == EditFocus::Y;
         ConfigTableViewState {
             title: self.title.clone(),
             x_label: self.x_label.clone(),
             y_label: self.y_label.clone(),
             x_values: self.x_values.clone(),
-            y_values: self.y_values_for_display(),
-            grid: build_grid_view(&self.grid),
+            y_values: y_display.clone(),
+            grid: build_grid_view(&self.grid, grid_active),
+            x_axis: build_axis_view(
+                &self.x_values,
+                &self.x_axis,
+                self.axis_x_editable(),
+                x_active,
+            ),
+            y_axis: build_axis_view(
+                &y_display,
+                &self.y_axis,
+                self.axis_y_editable(),
+                y_active,
+            ),
+            edit_focus: self.edit_focus,
             can_edit: self.can_edit(),
+            can_edit_x: self.axis_x_editable(),
+            can_edit_y: self.axis_y_editable(),
             loading: self.loading,
             saving: self.saving,
             status_text: self.status_text(),
@@ -496,14 +799,38 @@ impl ComponentLogic for ConfigTableLogic {
             "keydown" => {
                 self.handle_keydown(&payload)?;
             }
-            "interpolate" => {
-                if !self.can_edit() {
-                    return Ok(self.to_json());
+            "interpolate" => match self.edit_focus {
+                EditFocus::X => {
+                    if !self.axis_x_editable() {
+                        return Ok(self.to_json());
+                    }
+                    let (i0, i1) = self.x_axis.selection();
+                    let updates = interpolate_axis_range(&self.x_values, i0, i1);
+                    self.apply_x_updates(&updates)?;
                 }
-                let rect = self.grid.selection();
-                let updates = interpolate_rect(&self.grid, rect);
-                self.apply_updates(&updates)?;
-            }
+                EditFocus::Y => {
+                    if !self.axis_y_editable() {
+                        return Ok(self.to_json());
+                    }
+                    let (v0, v1) = self.y_axis.selection();
+                    let display = self.y_values_for_display();
+                    let end = v1.min(display.len().saturating_sub(1));
+                    let updates_display = interpolate_axis_range(&display, v0, end);
+                    let updates: Vec<(usize, f64)> = updates_display
+                        .into_iter()
+                        .map(|(vr, v)| (self.y_storage_index(vr), v))
+                        .collect();
+                    self.apply_y_updates(&updates)?;
+                }
+                EditFocus::Grid => {
+                    if !self.can_edit() {
+                        return Ok(self.to_json());
+                    }
+                    let rect = self.grid.selection();
+                    let updates = interpolate_rect(&self.grid, rect);
+                    self.apply_updates(&updates)?;
+                }
+            },
             "select_cell" => {
                 let row = payload.get("row").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
                 let col = payload.get("col").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
@@ -511,10 +838,39 @@ impl ComponentLogic for ConfigTableLogic {
                     .get("extend")
                     .and_then(|v| v.as_bool())
                     .unwrap_or(false);
+                self.edit_focus = EditFocus::Grid;
                 if extend {
                     self.grid.cursor = self.grid.clamp_pos(row as isize, col as isize);
                 } else {
                     self.grid.select_cell(row, col);
+                }
+                self.edit_buffer.clear();
+            }
+            "select_x" => {
+                let col = payload.get("col").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+                let extend = payload
+                    .get("extend")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                self.edit_focus = EditFocus::X;
+                if extend {
+                    self.x_axis.extend_to(col, self.x_values.len());
+                } else {
+                    self.x_axis.select(col, self.x_values.len());
+                }
+                self.edit_buffer.clear();
+            }
+            "select_y" => {
+                let row = payload.get("row").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+                let extend = payload
+                    .get("extend")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+                self.edit_focus = EditFocus::Y;
+                if extend {
+                    self.y_axis.extend_to(row, self.grid.rows);
+                } else {
+                    self.y_axis.select(row, self.grid.rows);
                 }
                 self.edit_buffer.clear();
             }

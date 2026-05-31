@@ -57,6 +57,142 @@ impl GridRect {
     }
 }
 
+/// 1D-выделение для оси таблицы (RPM / load bins).
+#[derive(Debug, Clone, Copy)]
+pub struct Axis1dState {
+    pub cursor: usize,
+    pub anchor: usize,
+}
+
+impl Axis1dState {
+    pub fn new() -> Self {
+        Self {
+            cursor: 0,
+            anchor: 0,
+        }
+    }
+
+    pub fn selection(&self) -> (usize, usize) {
+        (self.anchor.min(self.cursor), self.anchor.max(self.cursor))
+    }
+
+    pub fn select(&mut self, index: usize, len: usize) {
+        if len == 0 {
+            return;
+        }
+        let i = index.min(len - 1);
+        self.cursor = i;
+        self.anchor = i;
+    }
+
+    pub fn extend_to(&mut self, index: usize, len: usize) {
+        if len == 0 {
+            return;
+        }
+        self.cursor = index.min(len - 1);
+    }
+
+    pub fn translate(&mut self, delta: isize, len: usize) {
+        if len == 0 {
+            return;
+        }
+        let next = (self.cursor as isize + delta).clamp(0, len as isize - 1) as usize;
+        self.cursor = next;
+        self.anchor = next;
+    }
+
+    pub fn extend_delta(&mut self, delta: isize, len: usize) {
+        if len == 0 {
+            return;
+        }
+        self.cursor = (self.cursor as isize + delta).clamp(0, len as isize - 1) as usize;
+    }
+}
+
+pub fn nudge_axis_range(
+    values: &[f64],
+    i0: usize,
+    i1: usize,
+    delta: f64,
+) -> Vec<(usize, f64)> {
+    let mut out = Vec::new();
+    for i in i0..=i1 {
+        if let Some(&cur) = values.get(i) {
+            let next = cur + delta;
+            if (next - cur).abs() >= 1e-9 {
+                out.push((i, next));
+            }
+        }
+    }
+    out
+}
+
+pub fn set_axis_range(values: &[f64], i0: usize, i1: usize, value: f64) -> Vec<(usize, f64)> {
+    let mut out = Vec::new();
+    for i in i0..=i1 {
+        let cur = values.get(i).copied().unwrap_or(0.0);
+        if (cur - value).abs() >= 1e-9 {
+            out.push((i, value));
+        }
+    }
+    out
+}
+
+pub fn paste_1d_at(values: &[f64], start: usize, text: &str) -> Vec<(usize, f64)> {
+    let nums = parse_tsv_numbers(text);
+    if nums.is_empty() {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    for (off, &v) in nums.iter().enumerate() {
+        let i = start + off;
+        if i >= values.len() {
+            break;
+        }
+        let cur = values[i];
+        if (cur - v).abs() >= 1e-9 {
+            out.push((i, v));
+        }
+    }
+    out
+}
+
+pub fn copy_axis_to_tsv(values: &[f64], i0: usize, i1: usize) -> String {
+    (i0..=i1)
+        .filter_map(|i| values.get(i))
+        .map(|v| format_cell_value(*v))
+        .collect::<Vec<_>>()
+        .join("\t")
+}
+
+fn parse_tsv_numbers(text: &str) -> Vec<f64> {
+    let mut nums = Vec::new();
+    for line in text.lines() {
+        for part in line.split('\t') {
+            for cell in part.split(',') {
+                let s = cell.trim().replace(',', ".");
+                if s.is_empty() {
+                    continue;
+                }
+                if let Ok(v) = s.parse::<f64>() {
+                    if v.is_finite() {
+                        nums.push(v);
+                    }
+                }
+            }
+        }
+    }
+    nums
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum EditFocus {
+    Grid,
+    X,
+    Y,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NavDir {
     Up,
@@ -293,6 +429,28 @@ pub fn nudge_rect_values(state: &TableGridState, rect: GridRect, delta: f64) -> 
     out
 }
 
+pub fn interpolate_axis_range(values: &[f64], i0: usize, i1: usize) -> Vec<(usize, f64)> {
+    if i1 <= i0 {
+        return Vec::new();
+    }
+    let v0 = values.get(i0).copied().unwrap_or(0.0);
+    let v1 = values.get(i1).copied().unwrap_or(0.0);
+    let span = (i1 - i0) as f64;
+    let mut out = Vec::new();
+    for i in i0..=i1 {
+        if i == i0 || i == i1 {
+            continue;
+        }
+        let t = (i - i0) as f64 / span;
+        let v = ((v0 + (v1 - v0) * t) * 10.0).round() / 10.0;
+        let cur = values.get(i).copied().unwrap_or(0.0);
+        if (cur - v).abs() >= 1e-9 {
+            out.push((i, v));
+        }
+    }
+    out
+}
+
 /// Билинейная интерполяция внутри прямоугольника; углы не меняются.
 pub fn interpolate_rect(state: &TableGridState, rect: GridRect) -> Vec<(usize, f64)> {
     if rect.rows() < 2 && rect.cols() < 2 {
@@ -416,7 +574,52 @@ pub struct GridRectView {
     pub c1: usize,
 }
 
-pub fn build_grid_view(state: &TableGridState) -> TableGridView {
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AxisCellView {
+    pub index: usize,
+    pub value: f64,
+    pub display: String,
+    pub selected: bool,
+    pub cursor: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AxisBarView {
+    pub cells: Vec<AxisCellView>,
+    pub sel_i0: usize,
+    pub sel_i1: usize,
+    pub editable: bool,
+}
+
+pub fn build_axis_view(
+    values: &[f64],
+    axis: &Axis1dState,
+    editable: bool,
+    active: bool,
+) -> AxisBarView {
+    let (i0, i1) = axis.selection();
+    let cells = values
+        .iter()
+        .enumerate()
+        .map(|(index, &value)| AxisCellView {
+            index,
+            value,
+            display: format_cell_value(value),
+            selected: active && index >= i0 && index <= i1,
+            cursor: active && index == axis.cursor,
+        })
+        .collect();
+    AxisBarView {
+        cells,
+        sel_i0: if active { i0 } else { 0 },
+        sel_i1: if active { i1 } else { 0 },
+        editable,
+    }
+}
+
+pub fn build_grid_view(state: &TableGridState, active: bool) -> TableGridView {
     let rect = state.selection();
     let (vmin, vmax) = min_max_finite(&state.values);
     let span = vmax - vmin;
@@ -436,9 +639,9 @@ pub fn build_grid_view(state: &TableGridState) -> TableGridView {
                 value,
                 display: format_cell_value(value),
                 heat_bg: heat_color(t),
-                selected: rect.contains(visual_row, col),
-                cursor: state.cursor.row == visual_row && state.cursor.col == col,
-                corner: rect.is_corner(visual_row, col),
+                selected: active && rect.contains(visual_row, col),
+                cursor: active && state.cursor.row == visual_row && state.cursor.col == col,
+                corner: active && rect.is_corner(visual_row, col),
             });
         }
     }
@@ -450,10 +653,10 @@ pub fn build_grid_view(state: &TableGridState) -> TableGridView {
         cursor_row: state.cursor.row,
         cursor_col: state.cursor.col,
         selection: GridRectView {
-            r0: rect.r0,
-            r1: rect.r1,
-            c0: rect.c0,
-            c1: rect.c1,
+            r0: if active { rect.r0 } else { 0 },
+            r1: if active { rect.r1 } else { 0 },
+            c0: if active { rect.c0 } else { 0 },
+            c1: if active { rect.c1 } else { 0 },
         },
     }
 }
@@ -554,6 +757,16 @@ mod tests {
     }
 
     #[test]
+    fn interpolate_axis_range_linear() {
+        let values = vec![1000.0, 2000.0, 9999.0, 4000.0, 5000.0];
+        let updates: std::collections::HashMap<usize, f64> =
+            interpolate_axis_range(&values, 0, 4).into_iter().collect();
+        assert!(!updates.contains_key(&0));
+        assert!(!updates.contains_key(&4));
+        assert_eq!(updates.get(&2).copied().unwrap(), 3000.0);
+    }
+
+    #[test]
     fn copy_and_paste_tsv() {
         let g = sample_table();
         let rect = GridRect {
@@ -563,7 +776,7 @@ mod tests {
             c1: 1,
         };
         let tsv = copy_rect_to_tsv(&g, rect);
-        assert_eq!(tsv, "10\t20\n40\t50");
+        assert_eq!(tsv, "70\t80\n40\t50");
         let updates = paste_tsv_at(&g, GridRect::single(CellPos { row: 2, col: 2 }), "1\t2\n3\t4");
         assert_eq!(updates.len(), 1);
         assert_eq!(updates[0], (2, 1.0));

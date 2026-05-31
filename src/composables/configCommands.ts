@@ -255,7 +255,13 @@ export function configTableActionMayWrite(
     case "keydown": {
       const ctrl = Boolean(payload.ctrl);
       const key = String(payload.key ?? "");
-      return ctrl && (key === "ArrowUp" || key === "ArrowDown");
+      return (
+        ctrl &&
+        (key === "ArrowUp" ||
+          key === "ArrowDown" ||
+          key === "ArrowLeft" ||
+          key === "ArrowRight")
+      );
     }
     default:
       return false;
@@ -301,6 +307,21 @@ export function diffConfigTableCells(
       oldValue,
       newValue,
     });
+  }
+  return updates;
+}
+
+export function diffConfigTableAxis(
+  before: number[],
+  after: number[],
+): ArrayCellUpdate[] {
+  const updates: ArrayCellUpdate[] = [];
+  const len = Math.min(before.length, after.length);
+  for (let i = 0; i < len; i++) {
+    const oldValue = before[i]!;
+    const newValue = after[i]!;
+    if (Math.abs(oldValue - newValue) < 1e-9) continue;
+    updates.push({ index: i, oldValue, newValue });
   }
   return updates;
 }
