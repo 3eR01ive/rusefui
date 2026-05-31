@@ -75,6 +75,8 @@ pub fn run() {
             runtime_cmds::autoconnect_get_connection,
             runtime_cmds::autoconnect_set_offline_mode,
             runtime_cmds::stimulator_set_rpm,
+            runtime_cmds::stimulator_ramp_start,
+            runtime_cmds::stimulator_ramp_cancel,
             runtime_cmds::ecu_resync,
             runtime_cmds::protocol_log_get,
             runtime_cmds::protocol_log_set_filters,

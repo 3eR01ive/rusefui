@@ -20,6 +20,7 @@ mod recent_projects;
 mod ui_persist;
 mod protocol_log;
 mod runtime;
+mod stimulator_ramp;
 mod workspace;
 pub mod components;
 pub mod session;
@@ -45,6 +46,10 @@ pub use config_diff::{
 };
 pub use runtime::ComponentRuntime;
 pub use session::{EcuSession, PendingIniResolution};
+pub use stimulator_ramp::{
+    StimulatorRampParams, StimulatorRampPhase, StimulatorRampResult, StimulatorRampRunner,
+    StimulatorRampStep, DEFAULT_RAMP_STEP_MS,
+};
 pub use ini::{
     download_ini_for_signature, enumerate_local_candidates, explicit_ini_path,
     find_any_local_ini, ini_cache_dir, ini_download_target, load_ini_path, parse_rusefi_signature,
@@ -62,6 +67,7 @@ pub use recent_projects::{RecentProjectEntry, RecentProjectsStore};
 pub use ui_persist::{
     CompositeChartUiSettings, DynoUiSettings, KnockUiSettings, LogGraphGroupJson, LogRangeInputJson, LogUiSettings,
     ProjectUi, PERSIST_KEY_COMPOSITE_CHART, PERSIST_KEY_DYNO, PERSIST_KEY_KNOCK, PERSIST_KEY_OUTPUT_CHART,
+    RampCurveKind,
 };
 pub use ui_persist::{ComponentUiPersist, persist_keys as ui_persist_keys};
 pub use protocol_log::{

@@ -5,7 +5,7 @@ use super::ComponentUiPersist;
 
 pub const PERSIST_KEY_SIMULATION: &str = "simulation";
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum RampCurveKind {
     #[serde(rename = "linear")]

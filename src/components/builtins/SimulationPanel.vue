@@ -271,9 +271,9 @@ async function startRamp(): Promise<void> {
         rampDownSec: rampDownSec.value,
         curve: rampCurve.value as RampCurve,
         stepMs: 100,
+        rpmMin: rpmMin.value,
+        rpmMax: rpmMax.value,
       },
-      rpmMin.value,
-      rpmMax.value,
       rampAbort.signal,
       (stepRpm, phase) => {
         liveRampRpm.value = stepRpm;

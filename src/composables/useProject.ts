@@ -59,6 +59,12 @@ export interface DynoUiSettings {
   smoothStrength: number;
   chartHeight: number;
   settingsOpen: boolean;
+  chartRpmMin: number;
+  chartRpmMax: number;
+  chartNmMin: number;
+  chartNmMax: number;
+  chartHpMin: number;
+  chartHpMax: number;
 }
 
 export interface KnockUiSettings {

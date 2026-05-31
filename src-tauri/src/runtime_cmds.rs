@@ -11,8 +11,9 @@ use rusefui_runtime::{
     OutputTimelineViewControl,
     PendingIniResolution, ProjectInfo, ProjectLogRef, ProjectStore, ProjectTimelineClip,
     ProtocolLogEntry,
-    ProtocolLogFilterSettings, ProtocolLogStore, RecentProjectEntry, RecentProjectsStore,
-    RusefuiProject, WorkspaceFsm, WorkspaceInputs, WorkspacePhase, WorkspaceSnapshot,
+    ProtocolLogFilterSettings, ProtocolLogStore, RampCurveKind, RecentProjectEntry, RecentProjectsStore,
+    RusefuiProject, StimulatorRampParams, StimulatorRampResult, StimulatorRampStep,
+    DEFAULT_RAMP_STEP_MS, WorkspaceFsm, WorkspaceInputs, WorkspacePhase, WorkspaceSnapshot,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -942,6 +943,57 @@ fn persist_config_after_table_edit(state: &RuntimeState, app: &AppHandle) {
 #[tauri::command]
 pub fn stimulator_set_rpm(rpm: u16, state: State<RuntimeState>) -> Result<(), String> {
     state.session.run_stimulator_set_rpm(rpm)
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct StimulatorRampStartParams {
+    idle_rpm: u16,
+    peak_rpm: u16,
+    ramp_up_sec: f32,
+    ramp_down_sec: f32,
+    curve: RampCurveKind,
+    step_ms: Option<u64>,
+    rpm_min: u16,
+    rpm_max: u16,
+}
+
+#[tauri::command]
+pub fn stimulator_ramp_start(
+    params: StimulatorRampStartParams,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    let ramp_params = StimulatorRampParams {
+        idle_rpm: params.idle_rpm,
+        peak_rpm: params.peak_rpm,
+        ramp_up_sec: params.ramp_up_sec,
+        ramp_down_sec: params.ramp_down_sec,
+        curve: params.curve,
+        step_ms: params.step_ms.unwrap_or(DEFAULT_RAMP_STEP_MS),
+        rpm_min: params.rpm_min,
+        rpm_max: params.rpm_max,
+    };
+
+    let session = Arc::clone(&state.session);
+    let app_step = app.clone();
+    let app_done = app.clone();
+
+    state.session.stimulator_ramp().start(
+        session,
+        ramp_params,
+        move |step: StimulatorRampStep| {
+            let _ = app_step.emit("stimulator-ramp-step", step);
+        },
+        move |result: StimulatorRampResult| {
+            let _ = app_done.emit("stimulator-ramp-finished", result);
+        },
+    )
+}
+
+#[tauri::command]
+pub fn stimulator_ramp_cancel(state: State<RuntimeState>) {
+    state.session.stimulator_ramp().cancel();
 }
 
 #[tauri::command]

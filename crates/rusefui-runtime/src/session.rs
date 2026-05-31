@@ -15,6 +15,7 @@ use crate::ini::{
     ResolvedIni,
 };
 use crate::protocol_log::ProtocolLogStore;
+use crate::stimulator_ramp::StimulatorRampRunner;
 use crate::sources::composite_data_log::CompositeDataLogWriter;
 use crate::sources::composite_logger::{CompositeEventJson, CompositeLoggerSource};
 use crate::sources::knock_scope::KnockScopeSource;
@@ -79,6 +80,7 @@ pub struct EcuSession {
     /// Hash signature активного panel-cache (`4139280449`).
     active_panel_hash: Mutex<Option<String>>,
     panels_changed_hook: Mutex<Option<Arc<dyn Fn(PanelCacheStatus) + Send + Sync>>>,
+    stimulator_ramp: StimulatorRampRunner,
 }
 
 impl EcuSession {
@@ -105,6 +107,7 @@ impl EcuSession {
             project_ini_signature: Mutex::new(None),
             active_panel_hash: Mutex::new(None),
             panels_changed_hook: Mutex::new(None),
+            stimulator_ramp: StimulatorRampRunner::new(),
         })
     }
 
@@ -802,6 +805,7 @@ impl EcuSession {
 
     pub fn disconnect_reason(&self, reason: &str, automatic: bool) {
         self.set_stimulation_active(false);
+        self.stimulator_ramp.cancel_and_join();
         self.composite().disable_on_ecu(self);
         self.knock_scope().disable_on_ecu(self);
         self.knock_scope().stop();
@@ -935,6 +939,10 @@ impl EcuSession {
             let _ = self.patch_trigger_rpm_cache(rpm);
         }
         result
+    }
+
+    pub fn stimulator_ramp(&self) -> &StimulatorRampRunner {
+        &self.stimulator_ramp
     }
 
     /// Консольная `E` + чтение ответа `G` (Java console CommandQueue).

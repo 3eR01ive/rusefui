@@ -1,4 +1,4 @@
-import type { DynoRunPoint } from "./drawDynoChart";
+import type { DynoRunPoint } from "./dynoTypes";
 
 /** Одна итерация: среднее соседей; крайние точки не меняются. */
 function smoothInterior(values: number[]): number[] {

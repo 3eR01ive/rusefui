@@ -97,6 +97,30 @@ impl DynoLogic {
         }
     }
 
+    /// Лёгкий патч при записи: одна новая точка без клонирования всего `runPoints`.
+    fn take_recording_delta(&mut self) -> Option<Value> {
+        if !self.dirty {
+            return None;
+        }
+        self.dirty = false;
+        let last = self.run_points.last()?;
+        Some(json!({
+            "dynoDelta": true,
+            "connected": self.session.is_connected(),
+            "configLoaded": self.session.config().snapshot().loaded,
+            "recording": true,
+            "runPointsLen": self.run_points.len(),
+            "lastRunPoint": last,
+            "currentTorque": self.view.current_torque,
+            "currentHp": self.view.current_hp,
+            "ignoreTpsMin": self.run_options.ignore_tps_min,
+            "minRpm": self.run_options.min_rpm,
+            "rpmField": self.rpm_field,
+            "tpsField": self.tps_field,
+            "message": self.message,
+        }))
+    }
+
     fn set_options_from_payload(&mut self, payload: &Value) {
         if let Some(v) = payload.get("ignoreTpsMin").and_then(|v| v.as_bool()) {
             self.run_options.ignore_tps_min = v;
@@ -255,6 +279,9 @@ impl ComponentLogic for DynoLogic {
 
     fn feed_output(&mut self, snap: &OutputSnapshot) -> Option<Value> {
         if self.process_output(snap) {
+            if self.recording {
+                return self.take_recording_delta();
+            }
             return self.take_dirty_json();
         }
         None

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   computed,
-  onMounted,
+  nextTick,
   onUnmounted,
   ref,
   shallowRef,
@@ -13,8 +13,18 @@ import { childPath } from "../../core/instance";
 import ComponentHost from "../ComponentHost.vue";
 import { useDataContext } from "../../core/data-context";
 import { initOutputChannels, useOutputChannels } from "../../composables/useOutputChannels";
-import { initConfig, useConfig } from "../../composables/useConfig";
-import { drawDynoChart, type DynoRunPoint } from "../../composables/drawDynoChart";
+import { initConfig, useConfig, configDataRevision } from "../../composables/useConfig";
+import type { DynoRunPoint } from "../../composables/dynoTypes";
+import {
+  buildDynoChartOverlay,
+  buildDynoCrosshairMarkers,
+  dynoCrosshairMarkerStyle,
+  dynoLayoutSignature,
+  type DynoChartOverlay,
+} from "../../composables/dynoChartOverlay";
+import { dynoChartRenderer } from "../../composables/dynoChartRenderer";
+import type { DynoCrosshairSpec, DynoChartLayout, DynoAxisRange } from "../../composables/dynoChartLayout";
+import { DEFAULT_DYNO_AXIS, normalizeDynoAxisRange } from "../../composables/dynoChartLayout";
 import { clampSmoothStrength, smoothDynoPoints } from "../../composables/smoothDynoCurve";
 import {
   initProject,
@@ -24,7 +34,7 @@ import {
   workspaceResetEpoch,
   type DynoUiSettings,
 } from "../../composables/useProject";
-import { useRustComponent } from "../../composables/useRustComponent";
+import { useRustComponent, type ComponentViewState } from "../../composables/useRustComponent";
 import { useInstanceBind } from "../../composables/useInstanceBind";
 import { useTabActivity, useTabFrozenDisplay } from "../../composables/useTabActivity";
 import {
@@ -100,26 +110,108 @@ const liveTps = useTabFrozenDisplay(
 );
 
 const recording = computed(() => Boolean(state.value.recording));
-const runPoints = computed(
-  () => (state.value.runPoints as DynoRunPoint[] | undefined) ?? [],
-);
-const previousRunPoints = computed(
-  () => (state.value.previousRunPoints as DynoRunPoint[] | undefined) ?? [],
-);
+const localRunPoints = shallowRef<DynoRunPoint[]>([]);
+const localPreviousRunPoints = shallowRef<DynoRunPoint[]>([]);
 const currentTorque = computed(() => Number(state.value.currentTorque ?? 0));
 const currentHp = computed(() => Number(state.value.currentHp ?? 0));
 const message = computed(() => (state.value.message as string) ?? null);
+
+function isDynoDelta(s: ComponentViewState): boolean {
+  return s.dynoDelta === true;
+}
+
+function syncFullDynoState(s: ComponentViewState): void {
+  if (Array.isArray(s.runPoints)) {
+    localRunPoints.value = s.runPoints as DynoRunPoint[];
+  }
+  if (Array.isArray(s.previousRunPoints)) {
+    localPreviousRunPoints.value = s.previousRunPoints as DynoRunPoint[];
+  }
+}
+
+function applyDynoDelta(s: ComponentViewState): void {
+  const len = Number(s.runPointsLen ?? 0);
+  const pt = s.lastRunPoint as DynoRunPoint | undefined;
+  if (!pt || len < 1) return;
+
+  const curLen = localRunPoints.value.length;
+  if (len === 1 && curLen > 1) {
+    localRunPoints.value = [pt];
+    return;
+  }
+  if (len < curLen) {
+    localRunPoints.value = localRunPoints.value.slice(0, len);
+  }
+  if (len === localRunPoints.value.length + 1) {
+    localRunPoints.value = [...localRunPoints.value, pt];
+  }
+}
+
+const chartPoints = shallowRef<DynoRunPoint[]>([]);
+const chartPreviousPoints = shallowRef<DynoRunPoint[]>([]);
+
+function syncChartPointBuffers(): void {
+  const strength = smoothStrength.value;
+  chartPoints.value =
+    strength > 0
+      ? smoothDynoPoints(localRunPoints.value, strength)
+      : localRunPoints.value;
+  chartPreviousPoints.value =
+    strength > 0
+      ? smoothDynoPoints(localPreviousRunPoints.value, strength)
+      : localPreviousRunPoints.value;
+}
+
+watch(state, (s) => {
+  if (isDynoDelta(s)) {
+    applyDynoDelta(s);
+  } else {
+    syncFullDynoState(s);
+  }
+  if (!tabActive.value) return;
+  syncChartPointBuffers();
+  scheduleRedraw();
+});
+
+watch(localRunPoints, () => {
+  if (!tabActive.value || !recording.value) return;
+  syncChartPointBuffers();
+  scheduleRedraw();
+});
+
+watch(recording, (rec, wasRec) => {
+  if (rec && !wasRec) {
+    dynoChartRenderer.resetLiveCache();
+    cachedOverlaySig = "";
+  }
+  if (!tabActive.value) return;
+  syncChartPointBuffers();
+  scheduleRedraw();
+});
 
 const ignoreTpsMin = ref(false);
 const minRpm = ref(0);
 const smoothStrength = ref(0);
 const settingsOpen = ref(false);
+const chartRpmMin = ref(DEFAULT_DYNO_AXIS.rpmMin);
+const chartRpmMax = ref(DEFAULT_DYNO_AXIS.rpmMax);
+const chartNmMin = ref(DEFAULT_DYNO_AXIS.nmMin);
+const chartNmMax = ref(DEFAULT_DYNO_AXIS.nmMax);
+const chartHpMin = ref(DEFAULT_DYNO_AXIS.hpMin);
+const chartHpMax = ref(DEFAULT_DYNO_AXIS.hpMax);
 
-const chartPoints = computed(() =>
-  smoothDynoPoints(runPoints.value, smoothStrength.value),
-);
-const chartPreviousPoints = computed(() =>
-  smoothDynoPoints(previousRunPoints.value, smoothStrength.value),
+const chartAxes = computed((): DynoAxisRange =>
+  normalizeDynoAxisRange(
+    {
+      rpmMin: chartRpmMin.value,
+      rpmMax: chartRpmMax.value,
+      nmMin: chartNmMin.value,
+      nmMax: chartNmMax.value,
+      hpMin: chartHpMin.value,
+      hpMax: chartHpMax.value,
+    },
+    true,
+  ),
 );
 
 const connected = computed(
@@ -135,7 +227,7 @@ const peakTorque = computed(() =>
 const peakHp = computed(() => chartPoints.value.reduce((m, p) => Math.max(m, p.hp), 0));
 
 const showRunPeaks = computed(
-  () => !recording.value && runPoints.value.length > 0,
+  () => !recording.value && localRunPoints.value.length > 0,
 );
 
 const displayTorque = computed(() =>
@@ -155,14 +247,14 @@ const canToggleRecord = computed(() => {
 const canClear = computed(
   () =>
     !recording.value &&
-    (runPoints.value.length > 0 || previousRunPoints.value.length > 0),
+    (localRunPoints.value.length > 0 || localPreviousRunPoints.value.length > 0),
 );
 
 const statusMode = computed(() => {
   if (recording.value) return "recording";
   if (!connected.value) return "offline";
   if (!configLoaded.value) return "noconfig";
-  if (runPoints.value.length > 0) return "done";
+  if (localRunPoints.value.length > 0) return "done";
   return "idle";
 });
 
@@ -183,7 +275,7 @@ const statusLabel = computed(() => {
 
 const smoothPct = computed(() => (smoothStrength.value / SMOOTH_MAX) * 100);
 const smoothTrackRef = ref<HTMLElement | null>(null);
-const smoothDisabled = computed(() => runPoints.value.length < 3);
+const smoothDisabled = computed(() => localRunPoints.value.length < 3);
 
 function smoothFromClientX(clientX: number): number {
   const el = smoothTrackRef.value;
@@ -227,7 +319,15 @@ function toggleRecording(): void {
   if (recording.value) {
     void dispatch("stop_run");
   } else {
-    void dispatch("start_run");
+    void dispatch("start_run").then((next) => {
+      if (!next) return;
+      syncFullDynoState(next);
+      dynoChartRenderer.resetLiveCache();
+      cachedOverlaySig = "";
+      if (!tabActive.value) return;
+      syncChartPointBuffers();
+      scheduleRedraw();
+    });
   }
 }
 
@@ -236,12 +336,26 @@ function clearRun() {
 }
 
 function buildDynoUiSettings(): DynoUiSettings {
+  const axes = normalizeDynoAxisRange({
+    rpmMin: chartRpmMin.value,
+    rpmMax: chartRpmMax.value,
+    nmMin: chartNmMin.value,
+    nmMax: chartNmMax.value,
+    hpMin: chartHpMin.value,
+    hpMax: chartHpMax.value,
+  });
   return {
     ignoreTpsMin: ignoreTpsMin.value,
     minRpm: Math.max(0, Math.round(minRpm.value)),
     smoothStrength: clampSmoothStrength(smoothStrength.value),
     chartHeight: chartHeight.value,
     settingsOpen: settingsOpen.value,
+    chartRpmMin: axes.rpmMin,
+    chartRpmMax: axes.rpmMax,
+    chartNmMin: axes.nmMin,
+    chartNmMax: axes.nmMax,
+    chartHpMin: axes.hpMin,
+    chartHpMax: axes.hpMax,
   };
 }
 
@@ -253,7 +367,8 @@ async function syncOptionsToRust(): Promise<void> {
   });
 }
 
-async function applyDynoUiFromProject(): Promise<void> {
+async function applyDynoUiFromProject(opts?: { reloadPanelState?: boolean }): Promise<void> {
+  if (!tabActive.value) return;
   applyingProjectUi = true;
   try {
     const ui = await getProjectUi<DynoUiSettings>(PERSIST_KEY_DYNO);
@@ -261,7 +376,23 @@ async function applyDynoUiFromProject(): Promise<void> {
     minRpm.value = ui.minRpm;
     smoothStrength.value = clampSmoothStrength(ui.smoothStrength);
     chartSizeOverride.height = ui.chartHeight > CHART_HEIGHT_MIN ? ui.chartHeight : null;
-    settingsOpen.value = ui.settingsOpen;
+    if (opts?.reloadPanelState !== false) {
+      settingsOpen.value = ui.settingsOpen;
+    }
+    const axes = normalizeDynoAxisRange({
+      rpmMin: ui.chartRpmMin,
+      rpmMax: ui.chartRpmMax,
+      nmMin: ui.chartNmMin,
+      nmMax: ui.chartNmMax,
+      hpMin: ui.chartHpMin,
+      hpMax: ui.chartHpMax,
+    });
+    chartRpmMin.value = axes.rpmMin;
+    chartRpmMax.value = axes.rpmMax;
+    chartNmMin.value = axes.nmMin;
+    chartNmMax.value = axes.nmMax;
+    chartHpMin.value = axes.hpMin;
+    chartHpMax.value = axes.hpMax;
   } catch {
     ignoreTpsMin.value = Boolean(state.value.ignoreTpsMin);
     minRpm.value = Number(state.value.minRpm ?? 0);
@@ -312,6 +443,14 @@ function toggleSettings(): void {
   scheduleSaveDynoUiToProject();
 }
 
+function onChartAxisChange(): void {
+  if (applyingProjectUi) return;
+  dynoChartRenderer.resetLiveCache();
+  cachedOverlaySig = "";
+  scheduleSaveDynoUiToProject();
+  if (tabActive.value) scheduleRedraw();
+}
+
 function onChartHeightChange(event: Event): void {
   const raw = Number((event.target as HTMLInputElement).value);
   if (!Number.isFinite(raw)) return;
@@ -322,23 +461,164 @@ function onChartHeightChange(event: Event): void {
 }
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
+const chartWrapRef = ref<HTMLElement | null>(null);
 const rootRef = ref<HTMLDivElement | null>(null);
+const chartOverlay = ref<DynoChartOverlay>({ labels: [] });
+const chartHover = ref(false);
+const crosshairX = ref<number | null>(null);
+const chRpmEl = ref<HTMLElement | null>(null);
+const chNmEl = ref<HTMLElement | null>(null);
+const chHpEl = ref<HTMLElement | null>(null);
+const webglFailed = ref(false);
+let rendererAttached = false;
+let chartBooted = false;
+let tabBootGen = 0;
+let cachedOverlaySig = "";
+let cachedChartWidth = 1;
+let crosshairRaf = 0;
+
+function crosshairSpec(): DynoCrosshairSpec | null {
+  if (
+    !chartHover.value ||
+    crosshairX.value === null ||
+    chartPoints.value.length < 2
+  ) {
+    return null;
+  }
+  return { x: crosshairX.value };
+}
+
+function updateCrosshairFromEvent(e: PointerEvent): void {
+  const wrap = chartWrapRef.value;
+  if (!wrap) return;
+  const rect = wrap.getBoundingClientRect();
+  crosshairX.value = e.clientX - rect.left;
+}
+
+function applyCrosshairLabelStyle(el: HTMLElement, style: Record<string, string>): void {
+  for (const [key, val] of Object.entries(style)) {
+    el.style.setProperty(key.replace(/([A-Z])/g, "-$1").toLowerCase(), val);
+  }
+}
+
+function updateCrosshairLabels(layout: DynoChartLayout, crosshair: DynoCrosshairSpec | null): void {
+  const els = [chRpmEl.value, chNmEl.value, chHpEl.value];
+  if (!crosshair || recording.value) {
+    for (const el of els) {
+      if (el) el.hidden = true;
+    }
+    return;
+  }
+  const markers = buildDynoCrosshairMarkers(layout, chartPoints.value, crosshair);
+  for (let i = 0; i < els.length; i += 1) {
+    const el = els[i];
+    const mk = markers[i];
+    if (!el || !mk) continue;
+    el.textContent = mk.label;
+    el.hidden = false;
+    applyCrosshairLabelStyle(el, dynoCrosshairMarkerStyle(mk, cachedChartWidth));
+  }
+}
+
+function onChartPointerMove(e: PointerEvent): void {
+  if (!chartHover.value || recording.value || chartPoints.value.length < 2) return;
+  updateCrosshairFromEvent(e);
+  cancelAnimationFrame(crosshairRaf);
+  crosshairRaf = requestAnimationFrame(() => {
+    const crosshair = crosshairSpec();
+    dynoChartRenderer.repaintCrosshair(crosshair);
+    const layout = dynoChartRenderer.lastLayout();
+    if (layout) updateCrosshairLabels(layout, crosshair);
+  });
+}
+
+function onChartPointerLeave(): void {
+  chartHover.value = false;
+  crosshairX.value = null;
+  cancelAnimationFrame(crosshairRaf);
+  dynoChartRenderer.repaintCrosshair(null);
+  const layout = dynoChartRenderer.lastLayout();
+  if (layout) updateCrosshairLabels(layout, null);
+}
+
+function releaseChartRenderer(): void {
+  tabBootGen += 1;
+  cancelAnimationFrame(redrawRaf);
+  cancelAnimationFrame(crosshairRaf);
+  dynoChartRenderer.detach();
+  rendererAttached = false;
+  chartBooted = false;
+}
+
+async function bootChart(bootGen: number): Promise<void> {
+  if (rendererAttached || webglFailed.value) return;
+  await Promise.all([initOutputChannels(), initConfig(), initProject()]);
+  if (bootGen !== tabBootGen) return;
+  for (let attempt = 0; attempt < 8 && !rendererAttached; attempt += 1) {
+    await nextTick();
+    if (bootGen !== tabBootGen) return;
+    await ensureChartRenderer();
+  }
+  chartBooted = rendererAttached;
+}
+
+async function onTabActivated(): Promise<void> {
+  const gen = ++tabBootGen;
+  await nextTick();
+  if (gen !== tabBootGen || !tabActive.value || !ready.value) return;
+  if (!isDynoDelta(state.value)) {
+    syncFullDynoState(state.value);
+  }
+  await bootChart(gen);
+  if (gen !== tabBootGen || !rendererAttached) return;
+  syncChartPointBuffers();
+  await applyDynoUiFromProject({ reloadPanelState: true });
+  scheduleRedraw();
+}
+
+async function ensureChartRenderer(): Promise<void> {
+  if (rendererAttached || webglFailed.value) return;
+  await nextTick();
+  const canvas = canvasRef.value;
+  if (!canvas) return;
+  if (!dynoChartRenderer.attach(canvas)) {
+    webglFailed.value = true;
+    return;
+  }
+  rendererAttached = true;
+}
 
 function redraw(): void {
   const canvas = canvasRef.value;
-  if (!canvas) return;
-  const dpr = window.devicePixelRatio || 1;
-  const w = measureChartWidth(rootRef.value, 1);
+  if (!canvas || webglFailed.value || !rendererAttached) return;
+  cachedChartWidth = measureChartWidth(chartWrapRef.value ?? rootRef.value, 1);
   const h = chartHeight.value;
-  if (w < 1) return;
-  canvas.width = Math.floor(w * dpr);
-  canvas.height = Math.floor(h * dpr);
-  canvas.style.width = "100%";
-  canvas.style.height = `${h}px`;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  drawDynoChart(ctx, w, h, chartPoints.value, undefined, chartPreviousPoints.value);
+  if (cachedChartWidth < 1) return;
+
+  const crosshair = recording.value ? null : crosshairSpec();
+  const layout = dynoChartRenderer.paint({
+    width: cachedChartWidth,
+    height: h,
+    points: chartPoints.value,
+    previousPoints: chartPreviousPoints.value,
+    crosshair,
+    recording: recording.value,
+    axes: chartAxes.value,
+  });
+
+  const overlaySig = dynoLayoutSignature(layout, cachedChartWidth, h);
+  if (overlaySig !== cachedOverlaySig) {
+    cachedOverlaySig = overlaySig;
+    chartOverlay.value = buildDynoChartOverlay(cachedChartWidth, h, layout, {
+      showPreviousLegend: chartPreviousPoints.value.length >= 2,
+    });
+  }
+
+  if (!recording.value) {
+    updateCrosshairLabels(layout, crosshair);
+  } else {
+    updateCrosshairLabels(layout, null);
+  }
 }
 
 let redrawRaf = 0;
@@ -348,27 +628,28 @@ function scheduleRedraw(): void {
   redrawRaf = requestAnimationFrame(redraw);
 }
 
-useChartCanvasLayout(rootRef, scheduleRedraw);
+useChartCanvasLayout(chartWrapRef, scheduleRedraw);
 
-watch(
-  () => configSnapshot.value.values,
-  () => {
-    if (!ready.value || recording.value) return;
-    void dispatch("reload_config");
-  },
-  { deep: true },
-);
+watch(configDataRevision, () => {
+  if (!ready.value || recording.value || !tabActive.value) return;
+  void dispatch("reload_config");
+});
+
+watch([tabActive, ready], ([active, r], [wasActive]) => {
+  if (active && r) void onTabActivated();
+  else if (wasActive && !active) releaseChartRenderer();
+}, { immediate: true });
 
 watch(ready, (r) => {
-  if (r) void applyDynoUiFromProject();
+  if (r && tabActive.value) void onTabActivated();
 });
 
 watch(projectUiEpoch, () => {
-  void applyDynoUiFromProject();
+  if (tabActive.value) void applyDynoUiFromProject({ reloadPanelState: false });
 });
 
 watch(workspaceResetEpoch, () => {
-  void applyDynoUiFromProject();
+  if (tabActive.value) void applyDynoUiFromProject({ reloadPanelState: true });
 });
 
 watch([ignoreTpsMin, minRpm], () => {
@@ -377,34 +658,30 @@ watch([ignoreTpsMin, minRpm], () => {
   scheduleSaveDynoUiToProject();
 });
 
+watch(
+  [chartRpmMin, chartRpmMax, chartNmMin, chartNmMax, chartHpMin, chartHpMax],
+  onChartAxisChange,
+);
+
 watch(smoothStrength, (v) => {
   const c = clampSmoothStrength(v);
   if (c !== v) smoothStrength.value = c;
+  if (!tabActive.value) return;
+  syncChartPointBuffers();
   scheduleRedraw();
 });
 
 watch(chartHeight, () => {
   scheduleSaveDynoUiToProject();
-  scheduleRedraw();
-});
-
-watch([runPoints, previousRunPoints, chartPoints], () => scheduleRedraw(), { deep: true });
-
-watch(tabActive, (active, wasActive) => {
-  if (active && !wasActive) scheduleRedraw();
+  if (tabActive.value) scheduleRedraw();
 });
 
 watch(settingsOpen, (open) => {
-  if (open) void ensureDynoCharsPanel();
-});
-
-onMounted(async () => {
-  await Promise.all([initOutputChannels(), initConfig(), initProject()]);
-  scheduleRedraw();
+  if (open && tabActive.value) void ensureDynoCharsPanel();
 });
 
 onUnmounted(() => {
-  cancelAnimationFrame(redrawRaf);
+  releaseChartRenderer();
   if (saveDynoUiTimer !== 0) window.clearTimeout(saveDynoUiTimer);
 });
 </script>
@@ -454,9 +731,41 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div class="dyno-chart-wrap">
+      <div
+        ref="chartWrapRef"
+        class="dyno-chart-wrap"
+        :class="{ 'dyno-chart-wrap--hover': chartHover && chartPoints.length >= 2 && !webglFailed }"
+        @pointerenter="chartHover = true"
+        @pointerleave="onChartPointerLeave"
+        @pointermove="onChartPointerMove"
+      >
         <canvas ref="canvasRef" class="dyno-canvas" />
-        <p v-if="runPoints.length === 0 && !recording && previousRunPoints.length === 0" class="dyno-chart-empty">
+        <div v-if="webglFailed" class="dyno-chart-empty">
+          WebGL недоступен — график dyno не может отображаться
+        </div>
+        <template v-else>
+          <div class="dyno-chart-overlay" aria-hidden="true">
+            <span
+              v-for="(lb, i) in chartOverlay.labels"
+              :key="`dyno-ol-${i}`"
+              class="dyno-ol-label"
+              :style="{
+                left: `${lb.left}px`,
+                top: `${lb.top}px`,
+                color: lb.color,
+                textAlign: lb.align,
+                transform: lb.transform ?? 'translate(-50%, -50%)',
+              }"
+            >{{ lb.text }}</span>
+            <span ref="chRpmEl" class="dyno-crosshair-tag" hidden />
+            <span ref="chNmEl" class="dyno-crosshair-tag" hidden />
+            <span ref="chHpEl" class="dyno-crosshair-tag" hidden />
+          </div>
+        </template>
+        <p
+          v-if="!webglFailed && localRunPoints.length === 0 && !recording && localPreviousRunPoints.length === 0"
+          class="dyno-chart-empty"
+        >
           Start → разгон → Stop
         </p>
       </div>
@@ -543,6 +852,37 @@ onUnmounted(() => {
           </div>
 
           <div class="dyno-settings-block">
+            <h3 class="dyno-settings-title">Оси графика</h3>
+            <p class="dyno-field-hint">Фиксированный масштаб — не подстраивается под данные.</p>
+            <div class="dyno-axis-grid">
+              <label class="dyno-field">
+                <span>RPM min</span>
+                <input v-model.number="chartRpmMin" type="number" min="0" max="20000" step="100" />
+              </label>
+              <label class="dyno-field">
+                <span>RPM max</span>
+                <input v-model.number="chartRpmMax" type="number" min="0" max="20000" step="100" />
+              </label>
+              <label class="dyno-field">
+                <span>Nm min</span>
+                <input v-model.number="chartNmMin" type="number" min="0" max="2000" step="10" />
+              </label>
+              <label class="dyno-field">
+                <span>Nm max</span>
+                <input v-model.number="chartNmMax" type="number" min="0" max="2000" step="10" />
+              </label>
+              <label class="dyno-field">
+                <span>HP min</span>
+                <input v-model.number="chartHpMin" type="number" min="0" max="2000" step="10" />
+              </label>
+              <label class="dyno-field">
+                <span>HP max</span>
+                <input v-model.number="chartHpMax" type="number" min="0" max="2000" step="10" />
+              </label>
+            </div>
+          </div>
+
+          <div class="dyno-settings-block">
             <h3 class="dyno-settings-title">Параметры авто (dynoChars)</h3>
             <p v-if="dynoCharsLoading" class="dyno-field-hint">Загрузка полей…</p>
             <p v-else-if="dynoCharsError" class="dyno-note dyno-note--error">{{ dynoCharsError }}</p>
@@ -586,13 +926,7 @@ onUnmounted(() => {
   padding: 1.15rem 1.25rem 1.25rem;
   border-radius: var(--radius-lg, 12px);
   border: 1px solid var(--color-border);
-  background: linear-gradient(
-    165deg,
-    var(--color-bg-elevated) 0%,
-    var(--color-bg-subtle, var(--color-bg-elevated)) 100%
-  );
-  box-shadow: var(--shadow-card, 0 4px 24px rgba(0, 0, 0, 0.12));
-  box-sizing: border-box;
+  background: var(--color-bg-elevated);
 }
 
 .dyno-header {
@@ -703,6 +1037,7 @@ onUnmounted(() => {
 .dyno-chart-wrap {
   position: relative;
   width: 100%;
+  min-height: 200px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md, 8px);
   background: var(--color-bg);
@@ -710,9 +1045,41 @@ onUnmounted(() => {
   margin-bottom: 0.75rem;
 }
 
+.dyno-chart-wrap--hover {
+  cursor: crosshair;
+}
+
 .dyno-canvas {
   display: block;
   width: 100%;
+  pointer-events: none;
+}
+
+.dyno-chart-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.dyno-ol-label {
+  position: absolute;
+  font: 10px Segoe UI, system-ui, sans-serif;
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.dyno-crosshair-tag {
+  position: absolute;
+  padding: 2px 5px;
+  font: 600 10px "Segoe UI", system-ui, sans-serif;
+  line-height: 1;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--color-bg-elevated) 92%, transparent);
+  border: 1px solid;
+  border-radius: 2px;
+  pointer-events: none;
 }
 
 .dyno-chart-empty {
@@ -858,6 +1225,18 @@ onUnmounted(() => {
 .dyno-field-hint {
   font-size: 0.75rem;
   color: var(--color-text-subtle);
+}
+
+.dyno-axis-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem 1rem;
+}
+
+@media (max-width: 520px) {
+  .dyno-axis-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .dyno-smooth-track {
