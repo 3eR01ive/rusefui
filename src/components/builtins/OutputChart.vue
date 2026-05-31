@@ -406,11 +406,11 @@ function resolvedSpanSec(ui: LogUiSettings): number {
   return windowSeconds.value;
 }
 
-async function applyLogUiFromProject(): Promise<void> {
+async function applyLogUiFromProject(options: { applyViewport?: boolean } = {}): Promise<void> {
+  const applyViewport = options.applyViewport ?? false;
   applyingProjectUi = true;
   try {
     const ui = await getProjectUi<LogUiSettings>(PERSIST_KEY_OUTPUT_CHART);
-    const span = resolvedSpanSec(ui);
     chartSizeOverride.window = ui.windowSeconds > 0 ? ui.windowSeconds : null;
     chartSizeOverride.height = ui.chartHeight > 120 ? ui.chartHeight : null;
     zoomStepPct.value = clampZoomStepPct(ui.zoomStepPct);
@@ -427,17 +427,22 @@ async function applyLogUiFromProject(): Promise<void> {
       Object.entries(ui.rangeInputs).map(([k, v]) => [k, { min: v.min, max: v.max }]),
     );
     syncGraphFields();
-    localViewport.value = null;
-    const followLive = ui.followLive ?? true;
-    const st = await refreshTimelineStatus();
-    const ctrl: Parameters<typeof controlView>[0] = { spanSec: span, followLive };
-    if (!followLive && st.dataMaxSec > st.dataMinSec) {
-      ctrl.viewEndSec = st.dataMaxSec;
+    if (applyViewport) {
+      const span = resolvedSpanSec(ui);
+      localViewport.value = null;
+      const followLive = ui.followLive ?? true;
+      const st = await refreshTimelineStatus();
+      const ctrl: Parameters<typeof controlView>[0] = { spanSec: span, followLive };
+      if (!followLive && st.dataMaxSec > st.dataMinSec) {
+        ctrl.viewEndSec = st.dataMaxSec;
+      }
+      await controlView(ctrl);
     }
-    await controlView(ctrl);
     scheduleRedraw();
   } catch {
-    await controlView({ spanSec: windowSeconds.value, followLive: true });
+    if (applyViewport) {
+      await controlView({ spanSec: windowSeconds.value, followLive: true });
+    }
   } finally {
     applyingProjectUi = false;
   }
@@ -453,7 +458,8 @@ function scheduleSaveLogUiToProject(): void {
 }
 
 watch(projectUiEpoch, () => {
-  void applyLogUiFromProject();
+  // project-changed шлётся на любой project_ui_set (composite/knock/…); viewport log не трогаем.
+  void applyLogUiFromProject({ applyViewport: false });
 });
 
 watch(workspaceResetEpoch, () => {
@@ -461,7 +467,7 @@ watch(workspaceResetEpoch, () => {
   lastView.value = null;
   seriesStreamGen += 1;
   void refreshTimelineStatus().then(() => {
-    void applyLogUiFromProject().then(() => {
+    void applyLogUiFromProject({ applyViewport: true }).then(() => {
       void ensureTimelineSeriesBootstrap(true).then(() => scheduleRedraw(true));
     });
   });
@@ -1487,7 +1493,7 @@ onMounted(async () => {
   });
 
   await refreshFieldCatalog();
-  await applyLogUiFromProject();
+  await applyLogUiFromProject({ applyViewport: true });
   await ensureTimelineSeriesBootstrap(true);
 
   if (canvasRef.value) {

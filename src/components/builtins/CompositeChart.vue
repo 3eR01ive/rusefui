@@ -998,9 +998,11 @@ async function applyLoggingEnabled(on: boolean) {
   try {
     await setLoggingEnabled(on);
     if (on) {
-      userAdjustedView.value = false;
-      viewAnchorT0Us.value = null;
-      viewSpanMs.value = maxWindowMs.value;
+      if (!viewportLinked.value) {
+        userAdjustedView.value = false;
+        viewAnchorT0Us.value = null;
+        viewSpanMs.value = maxWindowMs.value;
+      }
       startAutoStopTimer();
     } else {
       clearAutoStopTimer();
@@ -1016,7 +1018,7 @@ async function applyLoggingEnabled(on: boolean) {
           viewEndSec: st.dataMaxSec,
           spanSec: Math.max(MIN_VIEW_MS / 1000, st.dataMaxSec - st.dataMinSec),
         });
-        // Восстанавливаем output live-режим если он был активен
+        // Восстанавливаем output live-режим если шкалы связаны и он был активен
         if (viewportLinked.value && outputWasLive) {
           await controlOutputView({ followLive: true });
         }

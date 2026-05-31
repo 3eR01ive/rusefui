@@ -221,6 +221,9 @@ impl EcuSession {
         *self.composite_data_log.lock().unwrap() = Some(arc.clone());
         self.composite_timeline.lock().unwrap().clear();
         self.composite_timeline.lock().unwrap().set_live_capture(true);
+        if self.log_viewport_linked.load(Ordering::Relaxed) {
+            self.sync_composite_viewport_from_output();
+        }
         Ok(arc)
     }
 
