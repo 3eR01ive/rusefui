@@ -4,6 +4,7 @@ use std::sync::Arc;
 use serde_json::Value;
 
 use crate::component::{requires_rust_logic, ComponentLogic, EcuSyncOnMount, LogicComponentType};
+use crate::components::command::CommandLogic;
 use crate::components::config_table::ConfigTableLogic;
 use crate::components::connection::ConnectionLogic;
 use crate::components::dyno::DynoLogic;
@@ -72,6 +73,9 @@ impl ComponentRuntime {
             Some(LogicComponentType::IgnitionTable) => {
                 Box::new(IgnitionTableLogic::new(Arc::clone(&self.session)))
             }
+            Some(LogicComponentType::Command) => {
+                Box::new(CommandLogic::new(Arc::clone(&self.session)))
+            }
             None => {
                 return Err(format!("unknown logic component: {component_type}"));
             }
@@ -124,6 +128,7 @@ impl ComponentRuntime {
             LogicComponentType::Dyno.as_str(),
             LogicComponentType::Knock.as_str(),
             LogicComponentType::ConfigTable.as_str(),
+            LogicComponentType::Command.as_str(),
         ]
     }
 

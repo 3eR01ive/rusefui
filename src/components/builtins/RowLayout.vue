@@ -21,7 +21,7 @@ defineProps<{
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
-  align-items: stretch;
+  align-items: flex-start;
   width: 100%;
 }
 

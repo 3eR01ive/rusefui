@@ -3,9 +3,9 @@ app:
 
 tabs:
   - $tab: monitor
-  - $tab: timeline
+  #- $tab: timeline
   - $tab: checklist
   - $tab: run
   - $tab: knock
-  - $tab: simulation
+  - $tab: control
   - $tab: ini-preview

@@ -9,6 +9,8 @@ pub const TS_CRC_CHECK_COMMAND: u8 = b'k';
 pub const TS_IO_TEST_COMMAND: u8 = b'Z';
 /// Консольная команда (`TS_EXECUTE`), как Java `BinaryProtocol.sendTextCommand`.
 pub const TS_EXECUTE_COMMAND: u8 = b'E';
+/// Текстовый буфер ответа после `E` (`handleGetText` / Java `requestPendingTextMessages`).
+pub const TS_GET_TEXT: u8 = b'G';
 
 /// High-speed trigger logger (`TS_SET_LOGGER_SWITCH` в `ts_protocol.txt`).
 pub const TS_SET_LOGGER_SWITCH: u8 = b'l';

@@ -1,6 +1,0 @@
-tab:
-  id: simulation
-  title: Control
-
-root:
-  $component: simulation.panel

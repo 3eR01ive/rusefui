@@ -706,6 +706,9 @@ pub fn component_dispatch(
     if matches!(action, "start" | "stop") {
         return component_dispatch_simulation(params, state, app);
     }
+    if matches!(action, "send" | "run_quick") {
+        return component_dispatch_command(params, state, app);
+    }
 
     component_dispatch_inner(params, state, app)
 }
@@ -766,6 +769,64 @@ fn component_dispatch_simulation(
 
         if dispatch_result.is_err() {
             session.set_stimulation_active(false);
+        }
+    });
+
+    Ok(snapshot)
+}
+
+fn component_dispatch_command(
+    params: DispatchParams,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<Value, String> {
+    let instance_id = params.instance_id;
+    let send_payload = params.payload;
+
+    let snapshot = {
+        let mut rt = state.runtime.lock().map_err(|e| e.to_string())?;
+        rt.dispatch(&instance_id, "begin_send", send_payload)?
+    };
+    let text = snapshot
+        .get("pendingText")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    let exchange_id = snapshot
+        .get("pendingExchangeId")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(0);
+    if text.is_empty() {
+        return Err("Не удалось определить текст команды".into());
+    }
+    emit_state(&app, &instance_id, &snapshot);
+
+    let session = Arc::clone(&state.session);
+    let app = app.clone();
+    let instance_id_bg = instance_id.clone();
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let ecu_result = session.run_console_command(&text);
+        let ok = ecu_result.is_ok();
+        let finish_payload = serde_json::json!({
+            "ok": ok,
+            "error": ecu_result.as_ref().err().map(String::as_str),
+            "response": ecu_result.as_ref().ok().map(String::as_str),
+            "text": text,
+            "exchangeId": exchange_id,
+        });
+
+        let state = app.state::<RuntimeState>();
+        let dispatch_result = (|| -> Result<(), String> {
+            let mut rt = state.runtime.lock().map_err(|e| e.to_string())?;
+            let snap = rt.dispatch(&instance_id_bg, "finish_send", finish_payload)?;
+            emit_state(&app, &instance_id_bg, &snap);
+            sync_output_poll_session(&state.session, &app);
+            Ok(())
+        })();
+
+        if dispatch_result.is_err() {
+            eprintln!("command finish_send failed: {:?}", dispatch_result);
         }
     });
 

@@ -20,7 +20,10 @@ function resolveInstanceId(instance: ComponentInstance, path: string): string {
 export function useRustComponent(
   instance: ComponentInstance,
   path: string,
-  mountPayload?: () => Record<string, unknown> | undefined,
+  mountPayload?: () =>
+    | Record<string, unknown>
+    | undefined
+    | Promise<Record<string, unknown> | undefined>,
 ) {
   const instanceId = resolveInstanceId(instance, path);
   const state = shallowRef<ComponentViewState>({});
@@ -47,7 +50,7 @@ export function useRustComponent(
           },
         );
       }
-      const payload = mountPayload?.();
+      const payload = await Promise.resolve(mountPayload?.() ?? {});
       const snapshot = await invoke<ComponentViewState>("component_mount", {
         params: {
           instance_id: instanceId,

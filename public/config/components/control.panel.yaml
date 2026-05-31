@@ -1,0 +1,21 @@
+id: control.panel
+description: Control — стимуляция триггера и консоль ECU
+
+children:
+  - type: row
+    children:
+      - type: simulation
+        id: ecu-simulator
+        bind:
+          source: outputChannels
+          params:
+            rpmField: RPMValue
+
+      - type: section
+        props:
+          title: ECU console
+        children:
+          - type: command
+            id: ecu-console
+            props:
+              quickCommands: console/quick-commands.yaml

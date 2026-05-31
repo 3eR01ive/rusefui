@@ -1,0 +1,73 @@
+# Быстрые консольные команды ECU (`E` + `G`).
+# Источник для генерации из INI / Java console — пока ручной список (см. RecentCommands.java).
+
+commands:
+  - id: help
+    label: Help
+    text: help
+    description: Список доступных команд
+
+  - id: showconfig
+    label: Config
+    text: showconfig
+    description: Текущая конфигурация
+
+  - id: sensorinfo
+    label: Sensors
+    text: sensorinfo
+    description: Датчики и ADC
+
+  - id: triggerinfo
+    label: Trigger
+    text: triggerinfo
+    description: Триггер и sync
+
+  - id: tsinfo
+    label: TS
+    text: tsinfo
+    description: TunerStudio / протокол
+
+  - id: fuelinfo
+    label: Fuel
+    text: fuelinfo
+    description: Топливная логика
+
+  - id: pins
+    label: Pins
+    text: pins
+    description: Назначение пинов
+
+  - id: stim_on
+    label: Stim ON
+    text: enable self_stimulation
+    description: Внутренняя стимуляция триггера
+
+  - id: stim_off
+    label: Stim OFF
+    text: disable self_stimulation
+    description: Выключить стимуляцию
+
+  - id: inj_on
+    label: Inj ON
+    text: enable injection
+    description: Включить форсунки
+
+  - id: inj_off
+    label: Inj OFF
+    text: disable injection
+    description: Выключить форсунки
+
+  - id: ign_on
+    label: Ign ON
+    text: enable ignition
+    description: Включить зажигание
+
+  - id: ign_off
+    label: Ign OFF
+    text: disable ignition
+    description: Выключить зажигание
+
+  - id: stopengine
+    label: Stop
+    text: stopengine
+    description: Остановить двигатель

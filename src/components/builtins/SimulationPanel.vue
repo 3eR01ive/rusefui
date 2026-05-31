@@ -453,8 +453,9 @@ onUnmounted(() => {
 
 <style scoped>
 .sim-card {
-  width: 100%;
+  width: auto;
   max-width: 26rem;
+  min-width: 16rem;
   padding: 1.15rem 1.25rem 1.25rem;
   border-radius: var(--radius-lg, 12px);
   border: 1px solid var(--color-border);

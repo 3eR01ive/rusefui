@@ -50,9 +50,14 @@ const title = computed(() => String(props.props.title ?? ""));
 }
 
 .section-body > :deep(*) {
-  width: 100%;
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
+}
+
+.section-body > :deep(.host-node),
+.section-body > :deep(.nav-node) {
+  width: fit-content;
+  align-self: flex-start;
 }
 </style>

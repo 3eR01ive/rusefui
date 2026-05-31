@@ -34,12 +34,16 @@ function escapeNavPath(path: string): string {
   return typeof CSS !== "undefined" && "escape" in CSS ? CSS.escape(path) : path;
 }
 
-function isEditableInActiveComponent(e: KeyboardEvent): boolean {
-  if (!isEditableTarget(e.target) || !activePath.value) return false;
+function isEditableInNavPath(e: KeyboardEvent, path: string): boolean {
+  if (!path || !isEditableTarget(e.target)) return false;
   const node = document.querySelector<HTMLElement>(
-    `[data-nav-path="${escapeNavPath(activePath.value)}"]`,
+    `[data-nav-path="${escapeNavPath(path)}"]`,
   );
   return node?.contains(e.target as Node) ?? false;
+}
+
+function isEditableInActiveComponent(e: KeyboardEvent): boolean {
+  return isEditableInNavPath(e, activePath.value);
 }
 
 /** Глобальные сочетания — работают всегда, поверх активного компонента. */
@@ -200,6 +204,11 @@ function onKeydownCapture(e: KeyboardEvent): void {
         deactivateComponent();
         return;
       }
+      const handler = componentBindings.get(activePath.value);
+      if (handler?.(e)) {
+        blockKey(e);
+        return;
+      }
       if (arrow && !shouldAllowArrowDefault(e)) {
         blockKey(e);
       }
@@ -260,6 +269,24 @@ function onKeydownCapture(e: KeyboardEvent): void {
       e.preventDefault();
       e.stopPropagation();
       handler();
+      return;
+    }
+  }
+
+  if (
+    navMode.value === "select" &&
+    selectedPath.value &&
+    isEditableInNavPath(e, selectedPath.value)
+  ) {
+    const handler = componentBindings.get(selectedPath.value);
+    if (handler?.(e)) {
+      blockKey(e);
+      return;
+    }
+    if (
+      hasNoModifiers(e) &&
+      (e.key === "Enter" || e.key === "ArrowUp" || e.key === "ArrowDown")
+    ) {
       return;
     }
   }

@@ -7,8 +7,8 @@ use serialport::{DataBits, FlowControl, Parity, StopBits};
 
 use crate::commands::{
     TS_BURN_COMMAND, TS_CHUNK_WRITE_COMMAND, TS_COMPOSITE_DISABLE, TS_COMPOSITE_READ,
-    TS_EXECUTE_COMMAND, TS_HELLO_COMMAND, TS_IO_TEST_COMMAND, TS_OUTPUT_COMMAND, TS_READ_COMMAND,
-    TS_RESPONSE_BURN_OK, TS_RESPONSE_OK, TS_SET_LOGGER_SWITCH,
+    TS_EXECUTE_COMMAND, TS_GET_TEXT, TS_HELLO_COMMAND, TS_IO_TEST_COMMAND, TS_OUTPUT_COMMAND,
+    TS_READ_COMMAND, TS_RESPONSE_BURN_OK, TS_RESPONSE_OK, TS_SET_LOGGER_SWITCH,
 };
 use crate::error::ProtocolError;
 use crate::packet::{make_crc_request, parse_crc_response, CrcResponse};
@@ -428,6 +428,21 @@ impl SerialLink {
         Ok(())
     }
 
+    /// `G` — текстовый буфер после `execute_console_command` (Java `requestPendingTextMessages`).
+    pub fn get_console_text(&mut self) -> Result<String, ProtocolError> {
+        let response = self.send_request(&[TS_GET_TEXT])?;
+        if response.code != TS_RESPONSE_OK {
+            return Err(ProtocolError::ErrorResponse(response.code));
+        }
+        Ok(decode_console_text_payload(&response.payload))
+    }
+
+    /// `E` + текст, затем `G` — одна консольная команда с ответом.
+    pub fn execute_console_command_with_response(&mut self, text: &str) -> Result<String, ProtocolError> {
+        self.execute_console_command(text)?;
+        self.get_console_text()
+    }
+
     /// Сырой CRC-payload из INI `[ControllerCommands]` (например `cmd_enable_self_stim`).
     pub fn send_binary_command(&mut self, payload: &[u8]) -> Result<(), ProtocolError> {
         if payload.is_empty() {
@@ -637,4 +652,15 @@ mod tests {
         assert_eq!(payload[0], b'E');
         assert_eq!(&payload[1..], b"rpm 1500");
     }
+
+    #[test]
+    fn get_console_text_payload_format() {
+        assert_eq!([TS_GET_TEXT], [b'G']);
+    }
+}
+
+fn decode_console_text_payload(payload: &[u8]) -> String {
+    String::from_utf8_lossy(payload)
+        .trim_end_matches('\0')
+        .to_string()
 }

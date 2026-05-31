@@ -7,6 +7,7 @@ import CompositeLayout from "./builtins/CompositeLayout.vue";
 import TextBlock from "./builtins/TextBlock.vue";
 import ConnectionPanel from "./builtins/ConnectionPanel.vue";
 import SimulationPanel from "./builtins/SimulationPanel.vue";
+import CommandPanel from "./builtins/CommandPanel.vue";
 import ScalarField from "./builtins/ScalarField.vue";
 import StringField from "./builtins/StringField.vue";
 import EnumField from "./builtins/EnumField.vue";
@@ -41,6 +42,7 @@ export function registerBuiltinComponents(): void {
   reg("text", TextBlock);
   reg("connection", ConnectionPanel);
   reg("simulation", SimulationPanel);
+  reg("command", CommandPanel);
   reg("scalar-field", ScalarField);
   reg("string-field", StringField);
   reg("enum-field", EnumField);

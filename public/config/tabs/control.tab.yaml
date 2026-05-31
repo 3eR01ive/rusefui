@@ -1,0 +1,6 @@
+tab:
+  id: control
+  title: Control
+
+root:
+  $component: control.panel

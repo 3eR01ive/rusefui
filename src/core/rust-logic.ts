@@ -6,6 +6,7 @@ const RUST_LOGIC_TYPES = new Set([
   "knock",
   "config-table",
   "ignition-table",
+  "command",
 ]);
 
 export function requiresRustLogic(componentType: string): boolean {

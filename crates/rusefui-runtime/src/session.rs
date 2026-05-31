@@ -937,6 +937,31 @@ impl EcuSession {
         result
     }
 
+    /// Консольная `E` + чтение ответа `G` (Java console CommandQueue).
+    pub fn run_console_command(self: &Arc<Self>, text: &str) -> Result<String, String> {
+        if !self.is_connected() {
+            return Err("ECU не подключена".into());
+        }
+        let text = text.trim();
+        if text.is_empty() {
+            return Err("Пустая команда".into());
+        }
+
+        let delay = Duration::from_millis(u64::from(self.ini_context().inter_write_delay_ms));
+        self.run_without_output_poll(|session| {
+            session.with_link(|link| {
+                link.execute_console_command(text)?;
+                thread::sleep(delay);
+                let mut response = link.get_console_text()?;
+                if response.trim().is_empty() {
+                    thread::sleep(Duration::from_millis(100));
+                    response = link.get_console_text()?;
+                }
+                Ok(response)
+            })
+        })
+    }
+
     fn patch_trigger_rpm_cache(&self, rpm: u16) -> Result<(), String> {
         let ini = self.ini_context();
         let field = ini

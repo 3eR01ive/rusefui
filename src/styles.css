@@ -236,3 +236,80 @@ input[type="radio"]:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+
+/* Control tab: компактный стимулятор слева, консоль на всю ширину и высоту */
+.tab-panel[data-tab-id="control"] {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tab-panel[data-tab-id="control"] .composite-root {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.tab-panel[data-tab-id="control"] .composite-root > .layout-row {
+  flex: 1 1 0;
+  min-height: 0;
+  flex-wrap: nowrap;
+  align-items: stretch;
+}
+
+.tab-panel[data-tab-id="control"] .layout-row > .nav-node,
+.tab-panel[data-tab-id="control"] .layout-row > .host-node {
+  flex: 0 0 auto;
+  width: fit-content;
+  min-width: 0;
+  align-self: flex-start;
+}
+
+.tab-panel[data-tab-id="control"] .layout-row > .section {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  width: auto;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+
+.tab-panel[data-tab-id="control"] .layout-row > .section .section-body {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-panel[data-tab-id="control"] .layout-row > .section .section-body > .host-node,
+.tab-panel[data-tab-id="control"] .layout-row > .section .section-body > .nav-node {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-panel[data-tab-id="control"] .cmd-panel {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+}
+
+@media (max-width: 760px) {
+  .tab-panel[data-tab-id="control"] {
+    overflow: auto;
+  }
+
+  .tab-panel[data-tab-id="control"] .composite-root > .layout-row {
+    flex-wrap: wrap;
+  }
+
+  .tab-panel[data-tab-id="control"] .layout-row > .section {
+    flex: 1 1 100%;
+    min-height: 24rem;
+  }
+}

@@ -1,3 +1,4 @@
+pub mod command;
 pub mod config_table;
 pub mod connection;
 pub mod dyno;

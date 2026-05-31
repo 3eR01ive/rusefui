@@ -373,7 +373,7 @@ async function onBurn() {
             <path d="M5 14V10M8.5 14V6M12 14V8M15.5 14V4M19 14V11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
           </svg>
           <!-- Control: spark plug -->
-          <svg v-else-if="tab.id === 'simulation'" class="tab-icon" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+          <svg v-else-if="tab.id === 'control'" class="tab-icon" viewBox="0 0 22 22" fill="none" aria-hidden="true">
             <rect x="7.5" y="1.5" width="7" height="5" rx="1.5" fill="currentColor" opacity=".45" stroke="currentColor" stroke-width="1.3"/>
             <path d="M7.5 6.5h7v1.5a3.5 3.5 0 0 1-7 0V6.5Z" fill="currentColor" opacity=".2" stroke="currentColor" stroke-width="1.3"/>
             <path d="M11 10v4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
