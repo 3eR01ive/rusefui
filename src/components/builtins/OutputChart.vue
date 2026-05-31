@@ -106,8 +106,6 @@ function zoomStepFromProps(): number {
 const zoomStepPct = ref(zoomStepFromProps());
 const ZOOM_SPEED = 6;
 const zoomStepFactor = computed(() => 1 + (zoomStepPct.value * ZOOM_SPEED) / 100);
-/** Колёсико — мельче кнопок ±, но с тем же коэффициентом скорости. */
-const wheelZoomFactor = computed(() => 1 + (zoomStepPct.value * ZOOM_SPEED) / 1000);
 
 function onZoomStepChange(): void {
   zoomStepPct.value = clampZoomStepPct(zoomStepPct.value);
@@ -821,12 +819,13 @@ async function panTimeline(deltaSec: number): Promise<void> {
 }
 
 async function zoomTimeline(factor: number): Promise<void> {
+  const keepLive = timelineStatus.value.followLive;
   const { tMin, tMax } = effectiveTimeWindow();
   const span = Math.max(tMax - tMin, 1e-9);
   const center = (tMin + tMax) / 2;
   const newSpan = span / factor;
   setLocalViewport(center - newSpan / 2, center + newSpan / 2);
-  await finishViewportGesture();
+  await finishViewportGesture(keepLive);
 }
 
 async function followLive(): Promise<void> {
@@ -841,6 +840,8 @@ function clearHistory(): void {
 }
 
 const chartHover = ref(false);
+/** Курсор над панелью log (не только canvas) — для пробела live/offline. */
+const logPanelHover = ref(false);
 const chartDragging = ref(false);
 /** X курсора в координатах canvas (CSS px) для кроссхайра. */
 const crosshairX = ref<number | null>(null);
@@ -864,9 +865,6 @@ let dragStartX = 0;
 let dragStartY = 0;
 let dragStartViewEnd = 0;
 let dragStartTMin = 0;
-let wheelRaf = 0;
-let pendingWheelFactor: number | null = null;
-let pendingWheelX = 0;
 
 async function toggleFollowLive(): Promise<void> {
   localViewport.value = null;
@@ -997,26 +995,33 @@ function scheduleViewSyncDebounced(): void {
   }, VIEWPORT_SYNC_MS);
 }
 
-async function syncViewToRust(finalize: boolean): Promise<void> {
+async function syncViewToRust(finalize: boolean, keepFollowLive = false): Promise<void> {
   const vp = localViewport.value;
   if (!vp) return;
-  await controlView({
-    followLive: false,
-    viewEndSec: vp.viewEndSec,
-    spanSec: vp.spanSec,
-  });
+  if (keepFollowLive && timelineStatus.value.followLive) {
+    await controlView({
+      followLive: true,
+      spanSec: vp.spanSec,
+    });
+  } else {
+    await controlView({
+      followLive: false,
+      viewEndSec: vp.viewEndSec,
+      spanSec: vp.spanSec,
+    });
+  }
   if (finalize) {
     localViewport.value = null;
     scheduleLocalRepaint();
   }
 }
 
-async function finishViewportGesture(): Promise<void> {
+async function finishViewportGesture(keepFollowLive = false): Promise<void> {
   if (viewportSyncTimer !== 0) {
     window.clearTimeout(viewportSyncTimer);
     viewportSyncTimer = 0;
   }
-  await syncViewToRust(true);
+  await syncViewToRust(true, keepFollowLive);
   scheduleSaveLogUiToProject();
 }
 
@@ -1040,29 +1045,6 @@ function applyLocalZoomAtPointer(clientX: number, zoomFactor: number): void {
   const newEnd = tCursor + (1 - frac) * newSpan;
   setLocalViewport(newEnd - newSpan, newEnd);
   scheduleViewSyncDebounced();
-}
-
-function scheduleWheelZoom(clientX: number, factor: number): void {
-  pendingWheelX = clientX;
-  pendingWheelFactor = (pendingWheelFactor ?? 1) * factor;
-  if (wheelRaf !== 0) return;
-  wheelRaf = requestAnimationFrame(() => {
-    wheelRaf = 0;
-    const f = pendingWheelFactor ?? 1;
-    const x = pendingWheelX;
-    pendingWheelFactor = null;
-    if (Math.abs(f - 1) > 1e-6) {
-      applyLocalZoomAtPointer(x, f);
-    }
-  });
-}
-
-function onCanvasWheel(e: WheelEvent): void {
-  if (!canPlotTimeline()) return;
-  e.preventDefault();
-  const step = wheelZoomFactor.value;
-  const factor = e.deltaY < 0 ? step : 1 / step;
-  scheduleWheelZoom(e.clientX, factor);
 }
 
 async function onChartPointerDown(e: PointerEvent): Promise<void> {
@@ -1144,16 +1126,28 @@ async function onChartPointerUp(e: PointerEvent): Promise<void> {
   }
 
   if (isClick && e.button === 0 && clientXToPlotTime(e.clientX) !== null) {
-    applyLocalZoomAtPointer(e.clientX, zoomStepFactor.value);
-    void finishViewportGesture();
+    const keepLive = timelineStatus.value.followLive;
+    const factor = e.ctrlKey ? 1 / zoomStepFactor.value : zoomStepFactor.value;
+    applyLocalZoomAtPointer(e.clientX, factor);
+    void finishViewportGesture(keepLive);
   }
+}
+
+function logPanelKeyboardActive(): boolean {
+  const wrap = canvasWrapRef.value;
+  if (!wrap) return false;
+  if (logPanelHover.value || chartHover.value) return true;
+  if (document.activeElement === wrap) return true;
+  const root = wrap.closest(".output-chart");
+  if (root && document.activeElement instanceof Node && root.contains(document.activeElement)) {
+    return true;
+  }
+  return false;
 }
 
 function onChartKeyDown(e: KeyboardEvent): void {
   if (e.code !== "Space" && e.key !== " ") return;
-  const wrap = canvasWrapRef.value;
-  if (!wrap) return;
-  if (!chartHover.value && document.activeElement !== wrap) return;
+  if (!logPanelKeyboardActive()) return;
   const tag = (e.target as HTMLElement | null)?.tagName;
   if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
   e.preventDefault();
@@ -1601,6 +1595,8 @@ watch(tabActive, (active, wasActive) => {
   <div
     class="output-chart log-chart"
     :class="{ 'log-chart--compact': !settingsExpanded }"
+    @mouseenter="logPanelHover = true"
+    @mouseleave="logPanelHover = false"
   >
     <div class="log-chrome">
       <button
@@ -1626,7 +1622,7 @@ watch(tabActive, (active, wasActive) => {
 
       <div v-if="!settingsExpanded" class="log-compact-meta">
         <span class="log-compact-summary">{{ setupSummary }}</span>
-        <span class="log-interact-hint">колёсико · drag · пробел</span>
+        <span class="log-interact-hint">клик · Ctrl+клик · drag · пробел live</span>
         <div class="graph-tabs graph-tabs--inline" role="tablist">
           <button
             v-for="(g, i) in graphGroups"
@@ -1654,7 +1650,7 @@ watch(tabActive, (active, wasActive) => {
             ●
           </button>
           <button type="button" class="btn-clear btn-clear--mini" title="Вперёд" @click="panTimeline(timelineStatus.spanSec * 0.25)">▶</button>
-          <label class="zoom-step" title="Шаг зума, % (колёсико и ±)">
+          <label class="zoom-step" title="Шаг зума, % (клик / Ctrl+клик и ±)">
             <input
               v-model.number="zoomStepPct"
               type="number"
@@ -1811,7 +1807,7 @@ watch(tabActive, (active, wasActive) => {
 
       <div class="toolbar-actions">
         <span class="window-hint">окно {{ windowSeconds }} с · автопромотка</span>
-        <label class="zoom-step zoom-step--wide" title="Шаг зума, % (колёсико и ±)">
+        <label class="zoom-step zoom-step--wide" title="Шаг зума, % (клик / Ctrl+клик и ±)">
           <span class="zoom-step-label">Шаг зума</span>
           <input
             v-model.number="zoomStepPct"
@@ -1893,14 +1889,13 @@ watch(tabActive, (active, wasActive) => {
       ref="canvasWrapRef"
       tabindex="0"
       :class="{ 'canvas-wrap--dragging': chartDragging, 'canvas-wrap--live': timelineStatus.followLive }"
-      title="Клик — зум в точку, колёсико — масштаб, перетаскивание — время, пробел — live"
+      title="Клик — зум в точку, Ctrl+клик — зум-аут, перетаскивание — время, пробел — live/offline"
       @pointerenter="chartHover = true"
       @pointerleave="onChartPointerLeave"
       @pointerdown="onChartPointerDown"
       @pointermove="onChartPointerMove"
       @pointerup="onChartPointerUp"
       @pointercancel="onChartPointerUp"
-      @wheel.prevent="onCanvasWheel"
     >
       <canvas ref="canvasRef" class="chart-canvas" />
       <div class="log-chart-overlay" aria-hidden="true">
