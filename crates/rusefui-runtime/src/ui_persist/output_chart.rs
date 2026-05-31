@@ -38,6 +38,11 @@ pub struct LogUiSettings {
     pub active_graph_id: String,
     #[serde(default)]
     pub range_inputs: HashMap<String, LogRangeInputJson>,
+    #[serde(default)]
+    pub follow_live: bool,
+    /// 0 — взять `window_seconds` (legacy / только окно из props).
+    #[serde(default)]
+    pub span_sec: f64,
 }
 
 fn default_window_seconds() -> u32 {
@@ -66,6 +71,8 @@ impl Default for LogUiSettings {
             }],
             active_graph_id: "g1".into(),
             range_inputs: HashMap::new(),
+            follow_live: true,
+            span_sec: 0.0,
         }
     }
 }

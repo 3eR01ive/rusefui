@@ -26,7 +26,9 @@ use crate::sources::config::ConfigSource;
 use crate::sources::output_channels::{IniContext, OutputChannelsSource};
 use crate::sources::output_data_log::OutputDataLogWriter;
 use crate::sources::output_timeline::{
-    OutputTimeline, OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl,
+    OutputTimeline, OutputTimelineSeriesQuery, OutputTimelineSeriesSnapshot,
+    OutputTimelineChunkQuery, OutputTimelineSeriesChunk,
+    OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl,
     OutputTimelineViewQuery,
 };
 
@@ -260,6 +262,20 @@ impl EcuSession {
 
     pub fn output_timeline_query(&self, query: OutputTimelineViewQuery) -> OutputTimelineView {
         self.output_timeline.lock().unwrap().query_view(&query)
+    }
+
+    pub fn output_timeline_series_snapshot(
+        &self,
+        query: OutputTimelineSeriesQuery,
+    ) -> OutputTimelineSeriesSnapshot {
+        self.output_timeline.lock().unwrap().series_snapshot(&query)
+    }
+
+    pub fn output_timeline_pull_series_chunk(
+        &self,
+        query: OutputTimelineChunkQuery,
+    ) -> OutputTimelineSeriesChunk {
+        self.output_timeline.lock().unwrap().pull_series_chunk(&query)
     }
 
     pub fn output_timeline_control(

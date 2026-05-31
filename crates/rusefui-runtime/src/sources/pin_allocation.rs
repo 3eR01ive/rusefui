@@ -81,6 +81,7 @@ mod tests {
                 bits: BitsField {
                     ty: ScalarType::U16,
                     offset: 0,
+                    page: 0,
                     bit_low: 0,
                     bit_high: 8,
                 },

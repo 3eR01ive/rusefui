@@ -6,7 +6,9 @@ use rusefui_runtime::{
     ConfigDiffSnapshot, ConfigDiffStore, ConfigFieldInfo, ConfigSnapshot, ConfigSource, ChecklistRules,
     DiffSide,
     EcuSession, EcuSyncOnMount, IniCandidate, OnlineDownloadStatus, OutputFieldInfo,
-    OutputSnapshot, OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl,
+    OutputSnapshot, OutputTimelineChunkQuery, OutputTimelineSeriesChunk,
+    OutputTimelineSeriesQuery, OutputTimelineSeriesSnapshot, OutputTimelineStatus, OutputTimelineView,
+    OutputTimelineViewControl,
     PendingIniResolution, ProjectInfo, ProjectLogRef, ProjectStore, ProjectTimelineClip,
     ProtocolLogEntry,
     ProtocolLogFilterSettings, ProtocolLogStore, RecentProjectEntry, RecentProjectsStore,
@@ -1114,6 +1116,52 @@ pub struct OutputTimelineControlParams {
 #[tauri::command]
 pub fn output_timeline_status(state: State<RuntimeState>) -> OutputTimelineStatus {
     state.session.output_timeline_status()
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputTimelineSeriesParams {
+    pub fields: Vec<String>,
+    pub max_points_per_field: Option<usize>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputTimelineChunkParams {
+    pub fields: Vec<String>,
+    pub max_rows: Option<usize>,
+    pub max_points_per_field: Option<usize>,
+    pub reset_stream: Option<bool>,
+}
+
+#[tauri::command]
+pub fn output_timeline_pull_series_chunk(
+    state: State<RuntimeState>,
+    params: OutputTimelineChunkParams,
+) -> OutputTimelineSeriesChunk {
+    state.session.output_timeline_pull_series_chunk(OutputTimelineChunkQuery {
+        fields: params.fields,
+        max_rows: params
+            .max_rows
+            .unwrap_or(rusefui_runtime::FILE_CHUNK_ROWS_DEFAULT),
+        max_points_per_field: params
+            .max_points_per_field
+            .unwrap_or(rusefui_runtime::SERIES_CHUNK_MAX_POINTS),
+        reset_stream: params.reset_stream.unwrap_or(false),
+    })
+}
+
+#[tauri::command]
+pub fn output_timeline_series_snapshot(
+    state: State<RuntimeState>,
+    params: OutputTimelineSeriesParams,
+) -> OutputTimelineSeriesSnapshot {
+    state.session.output_timeline_series_snapshot(OutputTimelineSeriesQuery {
+        fields: params.fields,
+        max_points_per_field: params
+            .max_points_per_field
+            .unwrap_or(rusefui_runtime::SERIES_SNAPSHOT_MAX_POINTS),
+    })
 }
 
 #[tauri::command]

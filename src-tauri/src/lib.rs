@@ -43,6 +43,8 @@ pub fn run() {
             runtime_cmds::log_viewport_set_linked,
             runtime_cmds::log_viewport_get_linked,
             runtime_cmds::output_timeline_status,
+            runtime_cmds::output_timeline_series_snapshot,
+            runtime_cmds::output_timeline_pull_series_chunk,
             runtime_cmds::output_timeline_query_view,
             runtime_cmds::output_timeline_set_view,
             runtime_cmds::output_timeline_load_file,

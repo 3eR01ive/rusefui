@@ -89,8 +89,10 @@ pub use sources::output_channels::{
 };
 pub use sources::output_data_log::output_logs_dir;
 pub use sources::output_timeline::{
-    OutputTimeline, OutputTimelineStatus, OutputTimelineView, OutputTimelineViewControl,
-    OutputTimelineViewQuery, TimelineFieldView, TimelineMode, TimelinePoint,
+    OutputTimeline, OutputTimelineSeriesChunk, OutputTimelineSeriesSnapshot, OutputTimelineStatus,
+    OutputTimelineView, OutputTimelineViewControl, OutputTimelineViewQuery,
+    OutputTimelineSeriesQuery, OutputTimelineChunkQuery, TimelineFieldView, TimelineMode,
+    TimelinePoint, SERIES_CHUNK_MAX_POINTS, SERIES_SNAPSHOT_MAX_POINTS, FILE_CHUNK_ROWS_DEFAULT,
 };
 pub use layout::{
     build_nav_paths, is_container, is_filter_nav_path, nav_region, resolve_nav_activatable,

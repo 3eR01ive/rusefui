@@ -14,6 +14,8 @@ export interface OutputTimelineStatus {
   spanSec: number;
   sessionLogPath?: string | null;
   fieldCount: number;
+  seriesRevision?: number;
+  fileLoading?: boolean;
 }
 
 export interface TimelinePoint {
@@ -32,6 +34,24 @@ export interface OutputTimelineView {
   liveSec: number;
   followLive: boolean;
   series: TimelineFieldView[];
+}
+
+export interface OutputTimelineSeriesSnapshot {
+  revision: number;
+  liveSec: number;
+  dataMinSec: number;
+  dataMaxSec: number;
+  series: TimelineFieldView[];
+}
+
+export interface OutputTimelineSeriesChunk {
+  revision: number;
+  liveSec: number;
+  dataMinSec: number;
+  dataMaxSec: number;
+  series: TimelineFieldView[];
+  fileLoadDone: boolean;
+  hasMore: boolean;
 }
 
 export interface TimelineViewControl {
@@ -66,6 +86,7 @@ const status = shallowRef<OutputTimelineStatus>({
   viewEndSec: 0,
   spanSec: 30,
   fieldCount: 0,
+  seriesRevision: 0,
 });
 
 const fieldColors = ref<Record<string, string>>({});
@@ -117,6 +138,27 @@ export async function refreshTimelineStatus(): Promise<OutputTimelineStatus> {
     /* ignore */
   }
   return status.value;
+}
+
+/** Полный ряд из RAM (legacy bulk IPC). */
+export async function fetchTimelineSeriesSnapshot(
+  fields: string[],
+): Promise<OutputTimelineSeriesSnapshot> {
+  ensureFieldColors(fields);
+  return invoke<OutputTimelineSeriesSnapshot>("output_timeline_series_snapshot", {
+    params: { fields, maxPointsPerField: 32768 },
+  });
+}
+
+/** Порция рядов: CSV построчно (старые→новые), затем live-хвост. */
+export async function pullTimelineSeriesChunk(
+  fields: string[],
+  resetStream = false,
+): Promise<OutputTimelineSeriesChunk> {
+  ensureFieldColors(fields);
+  return invoke<OutputTimelineSeriesChunk>("output_timeline_pull_series_chunk", {
+    params: { fields, resetStream },
+  });
 }
 
 export async function queryTimelineView(
@@ -205,7 +247,10 @@ export function useOutputTimeline() {
     hasHistory,
     spanSec: computed(() => status.value.spanSec),
     followLive: computed(() => status.value.followLive),
+    seriesRevision: computed(() => status.value.seriesRevision ?? 0),
     fieldColor: timelineFieldColor,
+    fetchSeriesSnapshot: fetchTimelineSeriesSnapshot,
+    pullSeriesChunk: pullTimelineSeriesChunk,
     queryView: queryTimelineView,
     controlView: controlTimelineView,
     loadFile: loadTimelineFile,

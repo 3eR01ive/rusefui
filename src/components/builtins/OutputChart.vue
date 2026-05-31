@@ -30,12 +30,18 @@ import {
 import { useLogViewportLink } from "../../composables/useLogViewportLink";
 import { useTabActivity } from "../../composables/useTabActivity";
 import {
-  drawLogPanelsChart,
   logPanelMargins,
   plotXToTime,
   type LogGraphPanelSpec,
   type LogTraceSpec,
 } from "../../composables/drawTimeSeriesChart";
+import { logChartRenderer } from "../../composables/logChartRenderer";
+import {
+  buildLogChartOverlay,
+  labelStyle,
+  markerLabelStyle,
+  type LogChartOverlay,
+} from "../../composables/logChartOverlay";
 import type { TimeSeries } from "../../composables/useTimeSeriesBuffer";
 
 interface LogGraphGroup {
@@ -130,6 +136,7 @@ const defaultFields = computed(() => {
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const canvasWrapRef = ref<HTMLDivElement | null>(null);
+const chartOverlay = ref<LogChartOverlay>({ crosshairX: null, labels: [], markers: [] });
 const searchInputRef = ref<HTMLInputElement | null>(null);
 const canvasWidth = ref(0);
 
@@ -153,7 +160,8 @@ const {
   status: timelineStatus,
   hasHistory: timelineHasHistory,
   fieldColor,
-  queryView,
+  pullSeriesChunk,
+  seriesRevision,
   controlView,
   refreshStatus: refreshTimelineStatus,
   loadEpoch,
@@ -168,19 +176,25 @@ async function onOpenOutputLog() {
   openingOutputLog.value = true;
   openOutputLogError.value = null;
   try {
-    const st = await pickAndLoadFile();
-    if (!st) return;
-    await controlView({
-      followLive: false,
-      viewEndSec: st.dataMaxSec,
-      spanSec: Math.max(1, st.dataMaxSec - st.dataMinSec),
-    });
-    scheduleRedraw();
+    await pickAndLoadFile();
   } catch (e) {
     openOutputLogError.value = e instanceof Error ? e.message : String(e);
   } finally {
     openingOutputLog.value = false;
   }
+}
+
+async function runFileLoadStream(): Promise<void> {
+  invalidateSeriesCache();
+  lastView.value = null;
+  localViewport.value = null;
+  seriesStreamGen += 1;
+  const st = await refreshTimelineStatus();
+  if (st.dataMaxSec > st.dataMinSec) {
+    await clampTimelineViewToData(st.dataMinSec, st.dataMaxSec);
+  }
+  await streamSeriesIntoCache(true);
+  scheduleRedraw(true);
 }
 
 const graphGroups = ref<LogGraphGroup[]>([
@@ -240,6 +254,10 @@ const suggestPreviewField = ref<string | null>(null);
 const suggestListRef = ref<HTMLUListElement | null>(null);
 const suggestStyle = ref({ top: "0px", left: "0px", width: "0px" });
 const lastView = shallowRef<OutputTimelineView | null>(null);
+/** Полные ряды из Rust RAM — pan/zoom только сдвигают окно локально. */
+const seriesCache = new Map<string, { t: number; v: number }[]>();
+let seriesStreamGen = 0;
+let seriesFetchInflight: Promise<void> | null = null;
 
 function updateSuggestPosition(): void {
   const el = searchInputRef.value;
@@ -284,22 +302,19 @@ function setSuggestPreview(name: string): void {
   if (isFieldOnActiveGraph(name)) {
     if (suggestPreviewField.value !== null) {
       suggestPreviewField.value = null;
-      cachedView = null;
-      scheduleRedraw();
+      void pullLiveSeriesDelta().then(() => scheduleRedraw(true));
     }
     return;
   }
   if (suggestPreviewField.value === name) return;
   suggestPreviewField.value = name;
-  cachedView = null;
-  scheduleRedraw();
+  void pullLiveSeriesDelta().then(() => scheduleRedraw(true));
 }
 
 function clearSuggestPreview(): void {
   if (suggestPreviewField.value === null) return;
   suggestPreviewField.value = null;
-  cachedView = null;
-  scheduleRedraw();
+  scheduleRedraw(true);
 }
 
 function onSuggestItemBlur(): void {
@@ -366,6 +381,8 @@ watch(windowSeconds, (sec) => {
 watch(graphGroups, () => syncGraphFields(), { deep: true });
 
 function buildLogUiSettings(): LogUiSettings {
+  const st = timelineStatus.value;
+  const lv = localViewport.value;
   return {
     windowSeconds: windowSeconds.value,
     chartHeight: chartHeight.value,
@@ -379,13 +396,22 @@ function buildLogUiSettings(): LogUiSettings {
     rangeInputs: Object.fromEntries(
       Object.entries(rangeInputs.value).map(([k, v]) => [k, { min: v.min, max: v.max }]),
     ),
+    followLive: lv ? false : st.followLive,
+    spanSec: lv?.spanSec ?? st.spanSec,
   };
+}
+
+function resolvedSpanSec(ui: LogUiSettings): number {
+  if (ui.spanSec !== undefined && ui.spanSec > 0) return ui.spanSec;
+  if (ui.windowSeconds > 0) return ui.windowSeconds;
+  return windowSeconds.value;
 }
 
 async function applyLogUiFromProject(): Promise<void> {
   applyingProjectUi = true;
   try {
     const ui = await getProjectUi<LogUiSettings>(PERSIST_KEY_OUTPUT_CHART);
+    const span = resolvedSpanSec(ui);
     chartSizeOverride.window = ui.windowSeconds > 0 ? ui.windowSeconds : null;
     chartSizeOverride.height = ui.chartHeight > 120 ? ui.chartHeight : null;
     zoomStepPct.value = clampZoomStepPct(ui.zoomStepPct);
@@ -402,13 +428,17 @@ async function applyLogUiFromProject(): Promise<void> {
       Object.entries(ui.rangeInputs).map(([k, v]) => [k, { min: v.min, max: v.max }]),
     );
     syncGraphFields();
-    await controlView({
-      spanSec: windowSeconds.value,
-      followLive: timelineStatus.value.followLive,
-    });
+    localViewport.value = null;
+    const followLive = ui.followLive ?? true;
+    const st = await refreshTimelineStatus();
+    const ctrl: Parameters<typeof controlView>[0] = { spanSec: span, followLive };
+    if (!followLive && st.dataMaxSec > st.dataMinSec) {
+      ctrl.viewEndSec = st.dataMaxSec;
+    }
+    await controlView(ctrl);
     scheduleRedraw();
   } catch {
-    /* нет ui.sections["output-chart"] — только props панели */
+    await controlView({ spanSec: windowSeconds.value, followLive: true });
   } finally {
     applyingProjectUi = false;
   }
@@ -428,15 +458,27 @@ watch(projectUiEpoch, () => {
 });
 
 watch(workspaceResetEpoch, () => {
-  cachedView = null;
+  invalidateSeriesCache();
   lastView.value = null;
+  seriesStreamGen += 1;
   void refreshTimelineStatus().then(() => {
-    void applyLogUiFromProject().then(() => scheduleRedraw());
+    void applyLogUiFromProject().then(() => {
+      void streamSeriesIntoCache(true).then(() => scheduleRedraw(true));
+    });
   });
 });
 
 watch(
-  [graphGroups, rangeInputs, zoomStepPct, settingsExpanded, windowSeconds, chartHeight],
+  [
+    graphGroups,
+    rangeInputs,
+    zoomStepPct,
+    settingsExpanded,
+    windowSeconds,
+    chartHeight,
+    () => timelineStatus.value.followLive,
+    () => timelineStatus.value.spanSec,
+  ],
   () => scheduleSaveLogUiToProject(),
   { deep: true },
 );
@@ -486,7 +528,7 @@ const channelRows = computed(() => {
 const PANEL_GAP_UI = 2;
 
 const canvasHeight = computed(() => {
-  const n = Math.max(1, graphGroups.value.filter((g) => g.fieldNames.length > 0).length);
+  const n = Math.max(1, graphGroups.value.length);
   const perPanel = chartHeight.value;
   return perPanel * n + PANEL_GAP_UI * Math.max(0, n - 1) + 4;
 });
@@ -499,7 +541,7 @@ const setupSummary = computed(() => {
   const parts: string[] = [];
   if (ch > 0) parts.push(`${ch} кан.`);
   parts.push(`${gr || graphGroups.value.length} граф.`);
-  parts.push(`окно ${timelineStatus.value.spanSec.toFixed(0)} с`);
+  parts.push(`окно ${(localViewport.value?.spanSec ?? timelineStatus.value.spanSec).toFixed(0)} с`);
   if (!timelineStatus.value.followLive) parts.push("пауза");
   if (viewportLinked.value) {
     const o = timelineStatus.value;
@@ -572,7 +614,7 @@ function buildPanels(
       if (!s) continue;
       const inp = rangeInputs.value[name] ?? { min: "", max: "" };
       const { vMin, vMax } = valueRangeForPoints(
-        s.points,
+        s.points.filter((p) => p.t >= _tMin - 1e-9 && p.t <= _tMax + 1e-9),
         parseRangeInput(inp.min),
         parseRangeInput(inp.max),
       );
@@ -595,7 +637,7 @@ function buildPanels(
       if (s) {
         const inp = rangeInputs.value[previewFieldName] ?? { min: "", max: "" };
         const { vMin, vMax } = valueRangeForPoints(
-          s.points,
+          s.points.filter((p) => p.t >= _tMin - 1e-9 && p.t <= _tMax + 1e-9),
           parseRangeInput(inp.min),
           parseRangeInput(inp.max),
         );
@@ -611,7 +653,7 @@ function buildPanels(
         });
       }
     }
-    if (traces.length > 0) {
+    if (traces.length > 0 || graphGroups.value.length > 1) {
       panels.push({ traces, title: `Граф ${gi + 1}` });
     }
   });
@@ -637,7 +679,11 @@ function padSeriesToAxisEdges(
   }
   out.push(...pts);
   if (last.t < tMax - 1e-9) {
-    out.push({ t: tMax, v: last.v });
+    const gap = tMax - last.t;
+    const maxPad = Math.max((tMax - tMin) * 0.02, 1.0);
+    if (gap <= maxPad) {
+      out.push({ t: tMax, v: last.v });
+    }
   }
   return out;
 }
@@ -680,7 +726,14 @@ function withLiveTail(series: TimeSeries, view: OutputTimelineView): TimeSeries 
     };
   }
   const last = pts[pts.length - 1]!;
-  if (tMax - last.t < 1e-9) {
+  const gap = tMax - last.t;
+  const span = Math.max(view.tMax - view.tMin, 0.05);
+  const maxBridge = Math.max(span * 0.02, 1.0);
+  if (gap > maxBridge) {
+    // Кэш отстаёт — не рисуем диагональ через весь график; точки подтянутся на след. pull.
+    return series;
+  }
+  if (gap < 1e-9) {
     pts[pts.length - 1] = { t: tMax, v: live };
   } else {
     pts.push({ t: tMax, v: live });
@@ -761,27 +814,22 @@ function removeField(name: string, graphId: string): void {
 }
 
 async function panTimeline(deltaSec: number): Promise<void> {
-  await controlView({ panSec: deltaSec, followLive: false });
-  await refreshTimelineStatus();
-  await redrawNow();
+  const { tMin, tMax } = effectiveTimeWindow();
+  setLocalViewport(tMin + deltaSec, tMax + deltaSec);
+  await finishViewportGesture();
 }
 
 async function zoomTimeline(factor: number): Promise<void> {
-  const { tMin, tMax } = displayedTimeWindow();
+  const { tMin, tMax } = effectiveTimeWindow();
   const span = Math.max(tMax - tMin, 1e-9);
   const center = (tMin + tMax) / 2;
   const newSpan = span / factor;
-  cachedView = null;
-  await controlView({
-    followLive: false,
-    spanSec: newSpan,
-    viewEndSec: center + newSpan / 2,
-  });
-  await refreshTimelineStatus();
-  await redrawNow();
+  setLocalViewport(center - newSpan / 2, center + newSpan / 2);
+  await finishViewportGesture();
 }
 
 async function followLive(): Promise<void> {
+  localViewport.value = null;
   await controlView({ followLive: true, spanSec: windowSeconds.value });
   await refreshTimelineStatus();
   await redrawNow();
@@ -797,25 +845,37 @@ const chartDragging = ref(false);
 const crosshairX = ref<number | null>(null);
 const CLICK_PAN_THRESHOLD_PX = 5;
 
+interface LocalViewport {
+  tMin: number;
+  tMax: number;
+  spanSec: number;
+  viewEndSec: number;
+}
+
+/** Локальное окно на время жеста — мгновенный repaint без IPC. */
+const localViewport = ref<LocalViewport | null>(null);
+let localRepaintRaf = 0;
+let viewportSyncTimer = 0;
+const VIEWPORT_SYNC_MS = 72;
+
 let chartPointerDown = false;
 let dragStartX = 0;
 let dragStartY = 0;
 let dragStartViewEnd = 0;
 let dragStartTMin = 0;
-let panRaf = 0;
-let pendingViewEnd: number | null = null;
 let wheelRaf = 0;
 let pendingWheelFactor: number | null = null;
 let pendingWheelX = 0;
 
 async function toggleFollowLive(): Promise<void> {
-  cachedView = null;
+  localViewport.value = null;
   if (timelineStatus.value.followLive) {
     await controlView({ followLive: false, viewEndSec: timelineLiveSec() });
   } else {
-    await controlView({ followLive: true, spanSec: windowSeconds.value });
+    await controlView({ followLive: true, spanSec: timelineStatus.value.spanSec });
   }
   await refreshTimelineStatus();
+  scheduleSaveLogUiToProject();
   await redrawNow();
 }
 
@@ -832,20 +892,131 @@ function chartMargins() {
   return logPanelMargins(maxTraces);
 }
 
-/** Ось времени, как на canvas (из последнего query_view), не «сырой» span/viewEnd. */
-function displayedTimeWindow(): { tMin: number; tMax: number } {
-  const view = lastView.value;
-  if (view) {
-    return { tMin: view.tMin, tMax: view.tMax };
-  }
+/** Ось времени: локальный viewport при жесте, иначе lastView / status. */
+function effectiveTimeWindow(): LocalViewport {
+  const lv = localViewport.value;
+  if (lv) return lv;
   const st = timelineStatus.value;
+  if (!st.followLive) {
+    const view = lastView.value;
+    if (view) {
+      return {
+        tMin: view.tMin,
+        tMax: view.tMax,
+        spanSec: Math.max(view.tMax - view.tMin, 0.001),
+        viewEndSec: view.tMax,
+      };
+    }
+  }
   let tMax = st.followLive ? timelineLiveSec() : st.viewEndSec;
   let tMin = tMax - st.spanSec;
   if (st.followLive && tMax < st.spanSec) {
     tMin = 0;
     tMax = st.spanSec;
   }
-  return { tMin, tMax };
+  return {
+    tMin,
+    tMax,
+    spanSec: Math.max(tMax - tMin, 0.001),
+    viewEndSec: tMax,
+  };
+}
+
+function displayView(view: OutputTimelineView): OutputTimelineView {
+  const lv = localViewport.value;
+  if (!lv) return view;
+  return { ...view, tMin: lv.tMin, tMax: lv.tMax, followLive: false };
+}
+
+function dataTimeBounds(): { dataMin: number; dataMax: number } {
+  const st = timelineStatus.value;
+  let dataMin = st.dataMinSec;
+  let dataMax = Math.max(st.dataMaxSec, timelineLiveSec());
+  for (const pts of seriesCache.values()) {
+    if (pts.length === 0) continue;
+    const lo = pts[0]!.t;
+    const hi = pts[pts.length - 1]!.t;
+    if (lo < dataMin) dataMin = lo;
+    if (hi > dataMax) dataMax = hi;
+  }
+  return { dataMin, dataMax };
+}
+
+/** Как `clamp_view_end` + `query_view` t_min в output_timeline.rs. */
+function clampViewportToData(tMin: number, tMax: number): { tMin: number; tMax: number } {
+  const { dataMin, dataMax } = dataTimeBounds();
+  const dataSpan = Math.max(dataMax - dataMin, 0.001);
+
+  let span = Math.max(tMax - tMin, 0.001);
+  if (span > dataSpan) span = dataSpan;
+  span = Math.max(span, 0.5);
+
+  const endLo = Math.min(dataMin + span, dataMax);
+  const endHi = dataMax;
+
+  let viewEnd = tMax;
+  if (viewEnd < endLo) viewEnd = endLo;
+  if (viewEnd > endHi) viewEnd = endHi;
+
+  let viewMin = viewEnd - span;
+  if (viewMin < dataMin) {
+    viewMin = dataMin;
+    viewEnd = Math.min(dataMin + span, dataMax);
+  }
+
+  return { tMin: viewMin, tMax: viewEnd };
+}
+
+function setLocalViewport(tMin: number, tMax: number): void {
+  const clamped = clampViewportToData(tMin, tMax);
+  const span = Math.max(clamped.tMax - clamped.tMin, 0.001);
+  localViewport.value = {
+    tMin: clamped.tMin,
+    tMax: clamped.tMax,
+    spanSec: span,
+    viewEndSec: clamped.tMax,
+  };
+  scheduleLocalRepaint();
+}
+
+function scheduleLocalRepaint(): void {
+  if (!tabActive.value) return;
+  if (localRepaintRaf !== 0) return;
+  localRepaintRaf = requestAnimationFrame(() => {
+    localRepaintRaf = 0;
+    void redraw(true);
+  });
+}
+
+function scheduleViewSyncDebounced(): void {
+  if (viewportSyncTimer !== 0) window.clearTimeout(viewportSyncTimer);
+  viewportSyncTimer = window.setTimeout(() => {
+    viewportSyncTimer = 0;
+    void syncViewToRust(false);
+  }, VIEWPORT_SYNC_MS);
+}
+
+async function syncViewToRust(finalize: boolean): Promise<void> {
+  const vp = localViewport.value;
+  if (!vp) return;
+  await controlView({
+    followLive: false,
+    viewEndSec: vp.viewEndSec,
+    spanSec: vp.spanSec,
+  });
+  if (finalize) {
+    localViewport.value = null;
+    scheduleLocalRepaint();
+  }
+}
+
+async function finishViewportGesture(): Promise<void> {
+  if (viewportSyncTimer !== 0) {
+    window.clearTimeout(viewportSyncTimer);
+    viewportSyncTimer = 0;
+  }
+  await syncViewToRust(true);
+  scheduleSaveLogUiToProject();
 }
 
 function clientXToPlotTime(clientX: number): number | null {
@@ -853,27 +1024,21 @@ function clientXToPlotTime(clientX: number): number | null {
   if (!wrap) return null;
   const x = clientX - wrap.getBoundingClientRect().left;
   const w = measureCanvasWidth();
-  const { tMin, tMax } = displayedTimeWindow();
+  const { tMin, tMax } = effectiveTimeWindow();
   return plotXToTime(x, w, chartMargins(), tMin, tMax);
 }
 
-async function zoomAtPointer(clientX: number, zoomFactor: number): Promise<void> {
+function applyLocalZoomAtPointer(clientX: number, zoomFactor: number): void {
   if (!canPlotTimeline()) return;
 
-  const { tMin, tMax } = displayedTimeWindow();
+  const { tMin, tMax } = effectiveTimeWindow();
   const span = Math.max(tMax - tMin, 1e-9);
   const tCursor = clientXToPlotTime(clientX) ?? tMin + span * 0.5;
   const frac = Math.min(1, Math.max(0, (tCursor - tMin) / span));
   const newSpan = span / zoomFactor;
-
-  cachedView = null;
-  await controlView({
-    followLive: false,
-    spanSec: newSpan,
-    viewEndSec: tCursor + (1 - frac) * newSpan,
-  });
-  await refreshTimelineStatus();
-  scheduleRedraw();
+  const newEnd = tCursor + (1 - frac) * newSpan;
+  setLocalViewport(newEnd - newSpan, newEnd);
+  scheduleViewSyncDebounced();
 }
 
 function scheduleWheelZoom(clientX: number, factor: number): void {
@@ -886,7 +1051,7 @@ function scheduleWheelZoom(clientX: number, factor: number): void {
     const x = pendingWheelX;
     pendingWheelFactor = null;
     if (Math.abs(f - 1) > 1e-6) {
-      void zoomAtPointer(x, f);
+      applyLocalZoomAtPointer(x, f);
     }
   });
 }
@@ -899,23 +1064,6 @@ function onCanvasWheel(e: WheelEvent): void {
   scheduleWheelZoom(e.clientX, factor);
 }
 
-async function applyPendingPan(): Promise<void> {
-  if (pendingViewEnd === null) return;
-  const end = pendingViewEnd;
-  pendingViewEnd = null;
-  cachedView = null;
-  await controlView({ viewEndSec: end, followLive: false });
-  scheduleRedraw();
-}
-
-function schedulePanApply(): void {
-  if (panRaf !== 0) return;
-  panRaf = requestAnimationFrame(() => {
-    panRaf = 0;
-    void applyPendingPan();
-  });
-}
-
 async function onChartPointerDown(e: PointerEvent): Promise<void> {
   if (!canPlotTimeline() || e.button !== 0) return;
   const wrap = canvasWrapRef.value;
@@ -926,7 +1074,7 @@ async function onChartPointerDown(e: PointerEvent): Promise<void> {
   chartDragging.value = false;
   dragStartX = e.clientX;
   dragStartY = e.clientY;
-  const win = displayedTimeWindow();
+  const win = effectiveTimeWindow();
   dragStartTMin = win.tMin;
   dragStartViewEnd = win.tMax;
   crosshairX.value = null;
@@ -937,11 +1085,12 @@ async function startChartPanDrag(): Promise<void> {
   if (chartDragging.value) return;
   chartDragging.value = true;
   if (timelineStatus.value.followLive) {
-    await controlView({ followLive: false, viewEndSec: timelineLiveSec() });
-    await refreshTimelineStatus();
-    const win = displayedTimeWindow();
-    dragStartTMin = win.tMin;
-    dragStartViewEnd = win.tMax;
+    const end = timelineLiveSec();
+    const span = timelineStatus.value.spanSec;
+    setLocalViewport(end - span, end);
+    void controlView({ followLive: false, viewEndSec: end });
+    dragStartTMin = end - span;
+    dragStartViewEnd = end;
   }
 }
 
@@ -960,8 +1109,8 @@ function onChartPointerMove(e: PointerEvent): void {
       const margins = chartMargins();
       const plotW = Math.max(1, w - margins.left - margins.right);
       const span = Math.max(dragStartViewEnd - dragStartTMin, 1e-9);
-      pendingViewEnd = dragStartViewEnd - (dx / plotW) * span;
-      schedulePanApply();
+      const end = dragStartViewEnd - ((e.clientX - dragStartX) / plotW) * span;
+      setLocalViewport(end - span, end);
       return;
     }
   }
@@ -989,16 +1138,13 @@ async function onChartPointerUp(e: PointerEvent): Promise<void> {
 
   if (chartDragging.value) {
     chartDragging.value = false;
-    if (pendingViewEnd !== null) {
-      await applyPendingPan();
-    }
-    await refreshTimelineStatus();
-    await redrawNow();
+    await finishViewportGesture();
     return;
   }
 
   if (isClick && e.button === 0 && clientXToPlotTime(e.clientX) !== null) {
-    await zoomAtPointer(e.clientX, zoomStepFactor.value);
+    applyLocalZoomAtPointer(e.clientX, zoomStepFactor.value);
+    void finishViewportGesture();
   }
 }
 
@@ -1019,12 +1165,175 @@ let unlistenEcu: UnlistenFn | null = null;
 let redrawGeneration = 0;
 let redrawRaf = 0;
 let redrawInflight: Promise<void> | null = null;
-let lastCanvasW = 0;
-let lastCanvasH = 0;
-let lastCanvasDpr = 1;
-let cachedView: OutputTimelineView | null = null;
-let cachedViewAt = 0;
-const VIEW_QUERY_MS = 80;
+
+function currentViewState(): {
+  viewEndSec: number;
+  spanSec: number;
+  followLive: boolean;
+} {
+  const lv = localViewport.value;
+  const st = timelineStatus.value;
+  if (lv) {
+    return { viewEndSec: lv.viewEndSec, spanSec: lv.spanSec, followLive: false };
+  }
+  return {
+    viewEndSec: st.viewEndSec,
+    spanSec: st.spanSec,
+    followLive: st.followLive,
+  };
+}
+
+/** Только clamp в границы данных — span и позиция не сбрасываются. */
+async function clampTimelineViewToData(dataMin: number, dataMax: number): Promise<void> {
+  const { viewEndSec, spanSec, followLive } = currentViewState();
+  if (!(dataMax > dataMin)) return;
+
+  const span = Math.min(spanSec, Math.max(dataMax - dataMin, 0.5));
+  const endLo = Math.min(dataMin + span, dataMax);
+  const endHi = dataMax;
+
+  let viewEnd = followLive ? endHi : viewEndSec;
+  if (viewEnd < endLo) viewEnd = endLo;
+  if (viewEnd > endHi) viewEnd = endHi;
+
+  localViewport.value = null;
+  await controlView({
+    followLive,
+    viewEndSec: viewEnd,
+    spanSec: span,
+  });
+}
+
+function invalidateSeriesCache(): void {
+  seriesCache.clear();
+}
+
+function mergeSeriesChunk(chunk: {
+  series: { field: string; points: { t: number; v: number }[] }[];
+}): void {
+  for (const s of chunk.series) {
+    const prev = seriesCache.get(s.field) ?? [];
+    const add = s.points.map((p) => ({ t: Number(p.t), v: Number(p.v) }));
+    if (add.length === 0) continue;
+    if (prev.length === 0 || add[0]!.t >= prev[prev.length - 1]!.t) {
+      seriesCache.set(s.field, prev.concat(add));
+    } else {
+      seriesCache.set(
+        s.field,
+        prev.concat(add).sort((a, b) => a.t - b.t),
+      );
+    }
+  }
+}
+
+function slicePointsForWindow(
+  pts: { t: number; v: number }[],
+  tMin: number,
+  tMax: number,
+): { t: number; v: number }[] {
+  const out: { t: number; v: number }[] = [];
+  for (const p of pts) {
+    if (p.t >= tMin && p.t <= tMax) out.push(p);
+  }
+  return out;
+}
+
+async function streamSeriesIntoCache(reset: boolean): Promise<void> {
+  const fields = fieldsForTimelineQuery();
+  if (fields.length === 0) return;
+
+  const gen = ++seriesStreamGen;
+  if (reset) invalidateSeriesCache();
+
+  if (seriesFetchInflight) {
+    await seriesFetchInflight;
+    if (gen !== seriesStreamGen) return;
+  }
+
+  seriesFetchInflight = (async () => {
+    try {
+      let hasMore = true;
+      let first = reset;
+      while (hasMore && gen === seriesStreamGen) {
+        const chunk = await pullSeriesChunk(fields, first);
+        first = false;
+        if (gen !== seriesStreamGen) return;
+        mergeSeriesChunk(chunk);
+        scheduleRedraw(true);
+        hasMore = chunk.hasMore;
+        if (hasMore) {
+          await new Promise<void>((r) => requestAnimationFrame(() => r()));
+        }
+      }
+    } catch (err) {
+      console.warn("[Log] series stream failed:", err);
+    } finally {
+      seriesFetchInflight = null;
+    }
+  })();
+  await seriesFetchInflight;
+}
+
+async function pullLiveSeriesDelta(): Promise<void> {
+  const fields = fieldsForTimelineQuery();
+  if (fields.length === 0) return;
+  if (timelineStatus.value.fileLoading) return;
+
+  if (seriesFetchInflight) {
+    await seriesFetchInflight;
+  }
+
+  seriesFetchInflight = (async () => {
+    try {
+      let hasMore = true;
+      while (hasMore) {
+        const chunk = await pullSeriesChunk(fields, false);
+        if (chunk.series.length === 0 && !chunk.hasMore) break;
+        mergeSeriesChunk(chunk);
+        hasMore = chunk.hasMore;
+      }
+    } catch (err) {
+      console.warn("[Log] live series pull failed:", err);
+    } finally {
+      seriesFetchInflight = null;
+    }
+  })();
+  await seriesFetchInflight;
+}
+
+function buildViewFromCache(): OutputTimelineView | null {
+  const win = effectiveTimeWindow();
+  const fields = fieldsForTimelineQuery();
+  const followLive = timelineStatus.value.followLive;
+  const series: OutputTimelineView["series"] = [];
+  for (const field of fields) {
+    const pts = seriesCache.get(field);
+    if (pts && pts.length > 0) {
+      let windowPts = slicePointsForWindow(pts, win.tMin, win.tMax);
+      if (windowPts.length === 0 && followLive) {
+        windowPts = pts.filter((p) => p.t <= win.tMax + 1e-6);
+      }
+      if (windowPts.length > 0) {
+        series.push({ field, points: windowPts });
+      }
+    }
+  }
+  return {
+    tMin: win.tMin,
+    tMax: win.tMax,
+    liveSec: timelineLiveSec(),
+    followLive,
+    series,
+  };
+}
+
+async function refreshSeriesCache(force = false): Promise<void> {
+  if (force || seriesCache.size === 0) {
+    await streamSeriesIntoCache(force || seriesCache.size === 0);
+    return;
+  }
+  await pullLiveSeriesDelta();
+}
 
 function canPlotTimeline(): boolean {
   return (
@@ -1042,19 +1351,19 @@ function crosshairSpec(): { x: number } | null {
 }
 
 function paintFromView(
-  ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
   view: OutputTimelineView,
 ): void {
-  const { tMin, tMax } = view;
+  const dv = displayView(view);
+  const { tMin, tMax } = dv;
   const crosshair = crosshairSpec();
   const fields = fieldsForTimelineQuery();
   const previewName = effectiveSuggestPreviewField();
   let panels = buildPanels(
     tMin,
     tMax,
-    (name) => seriesForField(name, view),
+    (name) => seriesForField(name, dv),
     previewName,
   );
   if (panels.length === 0 && fields.length > 0) {
@@ -1064,23 +1373,25 @@ function paintFromView(
       (name) => fallbackSeries(name, tMin, tMax),
       previewName,
     );
-    if (panels.length > 0) {
-      drawLogPanelsChart(ctx, w, h, panels, tMin, tMax, crosshair);
-      return;
-    }
   }
-  if (panels.length > 0) {
-    drawLogPanelsChart(ctx, w, h, panels, tMin, tMax, crosshair);
-  } else {
-    ctx.clearRect(0, 0, w, h);
+  if (panels.length === 0) {
+    logChartRenderer.clear(w, h);
+    chartOverlay.value = { crosshairX: null, labels: [], markers: [] };
+    return;
   }
+  logChartRenderer.paint({ width: w, height: h, panels, tMin, tMax, crosshair });
+  chartOverlay.value = buildLogChartOverlay(w, h, panels, tMin, tMax, crosshair);
 }
 
 let redrawSkipFetch = false;
 
 function scheduleRedraw(skipFetch = false): void {
   if (!tabActive.value) return;
-  if (skipFetch) redrawSkipFetch = true;
+  if (skipFetch) {
+    redrawSkipFetch = true;
+  } else {
+    redrawSkipFetch = false;
+  }
   if (redrawRaf !== 0) return;
   redrawRaf = requestAnimationFrame(() => {
     redrawRaf = 0;
@@ -1099,92 +1410,41 @@ function updateCrosshairFromEvent(e: PointerEvent): void {
   crosshairX.value = e.clientX - rect.left;
 }
 
-async function fetchTimelineView(
-  fields: string[],
-  w: number,
-  force = false,
-): Promise<OutputTimelineView> {
-  const now = performance.now();
-  const live = timelineLiveSec();
-  if (
-    !force &&
-    cachedView &&
-    now - cachedViewAt < VIEW_QUERY_MS &&
-    timelineStatus.value.followLive &&
-    Math.abs(live - cachedView.tMax) < 1.0
-  ) {
-    return cachedView;
-  }
-  const view = await queryView(fields, w);
-  cachedView = view;
-  cachedViewAt = now;
-  return view;
-}
-
-async function redraw(skipFetch = false): Promise<void> {
+async function redraw(skipSeriesFetch = false): Promise<void> {
   const canvas = canvasRef.value;
   if (!canvas) return;
-  const dpr = window.devicePixelRatio || 1;
   const w = measureCanvasWidth();
   canvasWidth.value = w;
   const h = canvasHeight.value;
-  const pw = Math.floor(w * dpr);
-  const ph = Math.floor(h * dpr);
-  if (pw !== lastCanvasW || ph !== lastCanvasH || dpr !== lastCanvasDpr) {
-    canvas.width = pw;
-    canvas.height = ph;
-    canvas.style.height = `${h}px`;
-    lastCanvasW = pw;
-    lastCanvasH = ph;
-    lastCanvasDpr = dpr;
-  }
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   const fields = fieldsForTimelineQuery();
   if (fields.length === 0) {
-    ctx.clearRect(0, 0, w, h);
+    logChartRenderer.clear(w, h);
+    chartOverlay.value = { crosshairX: null, labels: [], markers: [] };
     return;
   }
 
   if (!canPlotTimeline()) {
-    ctx.clearRect(0, 0, w, h);
+    logChartRenderer.clear(w, h);
+    chartOverlay.value = { crosshairX: null, labels: [], markers: [] };
     return;
   }
 
   const gen = ++redrawGeneration;
-  let view: OutputTimelineView | null =
-    skipFetch && lastView.value ? lastView.value : null;
-
-  if (!view) {
-    try {
-      view = await fetchTimelineView(fields, w);
-    } catch (err) {
-      console.warn("[Log] timeline query failed:", err);
-      const span = timelineStatus.value.spanSec || windowSeconds.value;
-      const live = timelineLiveSec();
-      const end = timelineStatus.value.followLive
-        ? live
-        : timelineStatus.value.viewEndSec;
-      view = {
-        tMin: end - span,
-        tMax: end,
-        liveSec: live,
-        followLive: timelineStatus.value.followLive,
-        series: [],
-      };
-    }
+  if (!skipSeriesFetch) {
+    await refreshSeriesCache();
   }
+  if (gen !== redrawGeneration) return;
 
-  if (!view || gen !== redrawGeneration) return;
+  const view = buildViewFromCache();
+  if (!view) return;
 
   lastView.value = view;
-  paintFromView(ctx, w, h, view);
+  paintFromView(w, h, view);
 }
 
 async function redrawNow(): Promise<void> {
-  cachedView = null;
+  invalidateSeriesCache();
   redrawGeneration += 1;
   if (redrawInflight) {
     await redrawInflight;
@@ -1201,13 +1461,22 @@ onMounted(async () => {
   await initOutputTimeline();
   await refreshFieldCatalog();
   await applyLogUiFromProject();
-  await controlView({ spanSec: windowSeconds.value, followLive: true });
+  if (snapshot.value.connected || timelineHasHistory.value) {
+    await streamSeriesIntoCache(true);
+  }
+
+  if (canvasRef.value) {
+    logChartRenderer.attach(canvasRef.value);
+  }
 
   unlistenEcu = await listen("ecu-connection", () => {
-    cachedView = null;
+    invalidateSeriesCache();
     lastView.value = null;
+    seriesStreamGen += 1;
     void refreshFieldCatalog();
-    void refreshTimelineStatus().then(() => scheduleRedraw());
+    void refreshTimelineStatus().then(() => {
+      void streamSeriesIntoCache(true).then(() => scheduleRedraw());
+    });
   });
 
   if (canvasWrapRef.value) {
@@ -1230,6 +1499,9 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (saveLogUiTimer !== 0) window.clearTimeout(saveLogUiTimer);
+  if (viewportSyncTimer !== 0) window.clearTimeout(viewportSyncTimer);
+  if (localRepaintRaf !== 0) cancelAnimationFrame(localRepaintRaf);
+  logChartRenderer.detach();
   resizeObserver?.disconnect();
   unlistenEcu?.();
   window.removeEventListener("keydown", onChartKeyDown);
@@ -1244,8 +1516,7 @@ watch(showSuggest, (open) => {
     window.addEventListener("resize", updateSuggestPosition);
   } else {
     suggestPreviewField.value = null;
-    cachedView = null;
-    scheduleRedraw();
+    scheduleRedraw(true);
     window.removeEventListener("scroll", updateSuggestPosition, true);
     window.removeEventListener("resize", updateSuggestPosition);
   }
@@ -1256,22 +1527,24 @@ watch(
   () => {
     if (uniquePollFields().length === 0) return;
     if (!canPlotTimeline()) return;
-    scheduleRedraw();
+    void pullLiveSeriesDelta().then(() => scheduleRedraw(true));
   },
 );
 
 watch(
   () => timelineStatus.value.followLive,
   () => {
-    cachedView = null;
-    scheduleRedraw();
+    lastView.value = null;
+    scheduleRedraw(true);
   },
 );
 
+watch(seriesRevision, () => {
+  void pullLiveSeriesDelta().then(() => scheduleRedraw(true));
+});
+
 watch(loadEpoch, () => {
-  cachedView = null;
-  lastView.value = null;
-  void refreshTimelineStatus().then(() => scheduleRedraw());
+  void runFileLoadStream();
 });
 
 watch(canvasHeight, () => scheduleRedraw());
@@ -1590,6 +1863,23 @@ watch(tabActive, (active, wasActive) => {
       @wheel.prevent="onCanvasWheel"
     >
       <canvas ref="canvasRef" class="chart-canvas" />
+      <div class="log-chart-overlay" aria-hidden="true">
+        <div
+          v-if="chartOverlay.crosshairX !== null"
+          class="log-crosshair-v"
+          :style="{ left: `${chartOverlay.crosshairX}px` }"
+        />
+        <span
+          v-for="(lb, i) in chartOverlay.labels"
+          :key="`lb-${i}`"
+          class="log-ol-label"
+          :style="labelStyle(lb)"
+        >{{ lb.text }}</span>
+        <template v-for="(mk, i) in chartOverlay.markers" :key="`mk-${i}`">
+          <span class="log-crosshair-dot" :style="{ left: `${mk.x}px`, top: `${mk.y}px`, borderColor: mk.color, background: mk.color }" />
+          <span class="log-crosshair-tag" :style="markerLabelStyle(mk, canvasWidth)">{{ mk.label }}</span>
+        </template>
+      </div>
       <p v-if="!hasAnyChannel" class="overlay-hint">
         Выберите параметры через поиск — они попадут на активный граф
       </p>
@@ -2153,6 +2443,58 @@ watch(tabActive, (active, wasActive) => {
   display: block;
   width: 100%;
   pointer-events: none;
+}
+
+.log-chart-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.log-ol-label {
+  position: absolute;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.log-ol-label:not([style*="11px"]) {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.log-ol-label[style*="11px"] {
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.log-crosshair-v {
+  position: absolute;
+  top: 1px;
+  bottom: 2px;
+  width: 0;
+  border-left: 1px dashed color-mix(in srgb, var(--color-accent) 45%, transparent);
+  pointer-events: none;
+}
+
+.log-crosshair-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-bg-elevated);
+  box-sizing: border-box;
+}
+
+.log-crosshair-tag {
+  position: absolute;
+  transform: translateY(-50%);
+  padding: 2px 4px;
+  font: 600 10px "Segoe UI", system-ui, sans-serif;
+  line-height: 1;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--color-bg-elevated) 92%, transparent);
+  border: 1px solid;
+  border-radius: 2px;
 }
 
 .overlay-hint {

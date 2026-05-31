@@ -191,6 +191,7 @@ mod tests {
                         kind: FieldKind::Scalar(ScalarField {
                             ty: ScalarType::U16,
                             offset: 0,
+                            page: 0,
                             units: "rpm".into(),
                             scale: 1.0,
                             translate: 0.0,
@@ -201,6 +202,7 @@ mod tests {
                         kind: FieldKind::Scalar(ScalarField {
                             ty: ScalarType::S16,
                             offset: 4,
+                            page: 0,
                             units: "C".into(),
                             scale: 1.0,
                             translate: 0.0,
@@ -212,6 +214,7 @@ mod tests {
             block_size: 256,
             blocking_factor: 256,
             page_size: 4096,
+            page_sizes: vec![4096],
             page_read_has_page_index: true,
             page_chunk_write_has_page_index: true,
             config_fields: HashMap::new(),

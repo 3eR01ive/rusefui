@@ -48,6 +48,9 @@ export interface LogUiSettings {
   graphGroups: LogGraphGroupJson[];
   activeGraphId: string;
   rangeInputs: Record<string, LogRangeInputJson>;
+  followLive?: boolean;
+  /** Фактический zoom; 0 или отсутствует — `windowSeconds`. */
+  spanSec?: number;
 }
 
 export interface DynoUiSettings {

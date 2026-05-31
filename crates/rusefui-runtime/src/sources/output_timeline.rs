@@ -9,6 +9,12 @@ use serde::{Deserialize, Serialize};
 const LIVE_BUFFER_SEC: f64 = 120.0;
 /// Запас точек на поле в live-буфере (~200 Hz × 120 с).
 const LIVE_MAX_POINTS_PER_FIELD: usize = 25_000;
+/// Строк CSV за один pull (старые → новые).
+pub const FILE_CHUNK_ROWS_DEFAULT: usize = 4096;
+/// Точек на поле за один pull после backfill.
+pub const SERIES_CHUNK_MAX_POINTS: usize = 8192;
+/// Верхняя граница точек на поле в snapshot для UI (IPC).
+pub const SERIES_SNAPSHOT_MAX_POINTS: usize = 32_768;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -32,6 +38,10 @@ pub struct OutputTimelineStatus {
     pub span_sec: f64,
     pub session_log_path: Option<String>,
     pub field_count: usize,
+    /// Меняется при ingest / load_file / reset — UI подтягивает новые чанки.
+    pub series_revision: u64,
+    /// CSV читается построчно в RAM (не одним IPC-блоком).
+    pub file_loading: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -58,10 +68,55 @@ pub struct OutputTimelineView {
     pub series: Vec<TimelineFieldView>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputTimelineSeriesSnapshot {
+    pub revision: u64,
+    pub live_sec: f64,
+    pub data_min_sec: f64,
+    pub data_max_sec: f64,
+    pub series: Vec<TimelineFieldView>,
+}
+
+/// Порция рядов для UI: файл (старые→новые) или live-хвост.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputTimelineSeriesChunk {
+    pub revision: u64,
+    pub live_sec: f64,
+    pub data_min_sec: f64,
+    pub data_max_sec: f64,
+    pub series: Vec<TimelineFieldView>,
+    pub file_load_done: bool,
+    pub has_more: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct OutputTimelineViewQuery {
     pub fields: Vec<String>,
     pub pixel_width: u32,
+}
+
+#[derive(Debug, Clone)]
+pub struct OutputTimelineSeriesQuery {
+    pub fields: Vec<String>,
+    pub max_points_per_field: usize,
+}
+
+#[derive(Debug, Clone)]
+pub struct OutputTimelineChunkQuery {
+    pub fields: Vec<String>,
+    pub max_rows: usize,
+    pub max_points_per_field: usize,
+    pub reset_stream: bool,
+}
+
+struct FileLoaderState {
+    reader: BufReader<File>,
+    line_buf: String,
+    col_map: HashMap<String, usize>,
+    done: bool,
+    rows_read: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -90,6 +145,11 @@ pub struct OutputTimeline {
     data_max_sec: f64,
     view_end_sec: f64,
     span_sec: f64,
+    series_revision: u64,
+    last_series_bump_ms: u64,
+    file_loader: Option<FileLoaderState>,
+    /// Индекс следующей точки для pull (на поле).
+    stream_cursors: HashMap<String, usize>,
 }
 
 impl Default for OutputTimeline {
@@ -106,6 +166,10 @@ impl Default for OutputTimeline {
             data_max_sec: 0.0,
             view_end_sec: 0.0,
             span_sec: 30.0,
+            series_revision: 0,
+            last_series_bump_ms: 0,
+            file_loader: None,
+            stream_cursors: HashMap::new(),
         }
     }
 }
@@ -137,6 +201,9 @@ impl OutputTimeline {
         self.data_max_sec = 0.0;
         self.view_end_sec = 0.0;
         self.span_sec = span_sec.clamp(1.0, 3600.0);
+        self.file_loader = None;
+        self.stream_cursors.clear();
+        self.bump_series_revision();
     }
 
     pub fn set_connected(&mut self, connected: bool) {
@@ -160,12 +227,15 @@ impl OutputTimeline {
     }
 
     pub fn load_file(&mut self, path: PathBuf) {
-        self.session_file = Some(path);
+        self.session_file = Some(path.clone());
         self.connected = false;
         self.follow_live = false;
+        self.stream_cursors.clear();
+        self.start_file_loader(&path);
         self.refresh_bounds_from_file();
-        self.view_end_sec = self.data_max_sec.max(self.live_sec);
+        self.clamp_span_to_data();
         self.clamp_view_end();
+        self.bump_series_revision();
     }
 
     pub fn ingest_from_wall_ms(&mut self, timestamp_ms: u64, values: &HashMap<String, f64>) {
@@ -199,11 +269,30 @@ impl OutputTimeline {
             }
             if let Some(series) = self.fields.get_mut(name) {
                 push_point(series, elapsed_sec, v);
-                trim_live(series, elapsed_sec);
+                let popped = trim_live(series, elapsed_sec);
+                if popped > 0 {
+                    if let Some(cursor) = self.stream_cursors.get_mut(name) {
+                        *cursor = cursor.saturating_sub(popped);
+                    }
+                }
             }
         }
         if self.follow_live {
             self.view_end_sec = self.live_sec;
+        }
+        self.maybe_bump_series_revision();
+    }
+
+    fn bump_series_revision(&mut self) {
+        self.series_revision = self.series_revision.wrapping_add(1);
+        self.last_series_bump_ms = now_ms();
+    }
+
+    /// Live ingest: не чаще ~4 раз/с, чтобы UI успевал подтягивать snapshot.
+    fn maybe_bump_series_revision(&mut self) {
+        let now = now_ms();
+        if now.saturating_sub(self.last_series_bump_ms) >= 250 {
+            self.bump_series_revision();
         }
     }
 
@@ -263,6 +352,107 @@ impl OutputTimeline {
             span_sec: self.span_sec,
             session_log_path: self.session_log_path(),
             field_count: self.field_order.len(),
+            series_revision: self.series_revision,
+            file_loading: self.file_loader.is_some(),
+        }
+    }
+
+    /// Потоковая отдача рядов: CSV построчно (старые→новые), затем live-хвост.
+    pub fn pull_series_chunk(&mut self, q: &OutputTimelineChunkQuery) -> OutputTimelineSeriesChunk {
+        if q.reset_stream {
+            self.stream_cursors.clear();
+        }
+
+        let max_rows = q.max_rows.clamp(64, 65_536);
+        let max_pts = q
+            .max_points_per_field
+            .clamp(256, SERIES_SNAPSHOT_MAX_POINTS);
+
+        if let Some(loader) = self.file_loader.take() {
+            let mut loader = loader;
+            if !loader.done {
+                loader.read_rows(self, max_rows);
+            }
+            if loader.done {
+                self.finalize_file_load();
+            } else {
+                self.file_loader = Some(loader);
+            }
+        }
+
+        let mut series = Vec::with_capacity(q.fields.len());
+        let mut any_unread = false;
+
+        for field in &q.fields {
+            let cursor = self.stream_cursors.entry(field.clone()).or_insert(0);
+            let Some(fs) = self.fields.get(field) else {
+                continue;
+            };
+            let len = fs.points.len();
+            if *cursor >= len {
+                continue;
+            }
+            let end = (*cursor + max_pts).min(len);
+            let points: Vec<TimelinePoint> = fs
+                .points
+                .iter()
+                .skip(*cursor)
+                .take(end - *cursor)
+                .map(|(t, v)| TimelinePoint { t: *t, v: *v })
+                .collect();
+            *cursor = end;
+            if !points.is_empty() {
+                series.push(TimelineFieldView {
+                    field: field.clone(),
+                    points,
+                });
+            }
+            if *cursor < fs.points.len() {
+                any_unread = true;
+            }
+        }
+
+        let file_load_done = self.file_loader.is_none();
+        let has_more = self.file_loader.is_some() || any_unread;
+
+        OutputTimelineSeriesChunk {
+            revision: self.series_revision,
+            live_sec: self.effective_live_sec(),
+            data_min_sec: self.data_min_sec,
+            data_max_sec: self.data_max_sec.max(self.live_sec),
+            series,
+            file_load_done,
+            has_more,
+        }
+    }
+
+    /// Полный снимок рядов в RAM (decimate только для лимита IPC).
+    pub fn series_snapshot(&self, q: &OutputTimelineSeriesQuery) -> OutputTimelineSeriesSnapshot {
+        let max_pts = q
+            .max_points_per_field
+            .clamp(256, SERIES_SNAPSHOT_MAX_POINTS);
+        let t_min = self.data_min_sec;
+        let t_max = self.data_max_sec.max(self.live_sec);
+
+        let mut series = Vec::with_capacity(q.fields.len());
+        for field in &q.fields {
+            let mut points = self.collect_field_points(field, t_min, t_max);
+            decimate_in_place(&mut points, max_pts);
+            series.push(TimelineFieldView {
+                field: field.clone(),
+                points: points
+                    .into_iter()
+                    .map(|(t, v)| TimelinePoint { t, v })
+                    .collect(),
+            });
+        }
+
+        OutputTimelineSeriesSnapshot {
+            revision: self.series_revision,
+            live_sec: self.effective_live_sec(),
+            data_min_sec: self.data_min_sec,
+            data_max_sec: self.data_max_sec.max(self.live_sec),
+            series,
         }
     }
 
@@ -373,59 +563,87 @@ impl OutputTimeline {
                 }
             }
         }
-        let buffer_start = self
-            .fields
-            .get(field)
-            .and_then(|s| s.points.front().map(|(t, _)| *t))
-            .unwrap_or(f64::INFINITY);
-        if t_min < buffer_start {
-            if let Some(file_points) = self.read_file_segment(field, t_min, t_max.min(buffer_start)) {
-                out = merge_sorted(file_points, out);
-            }
-        }
         out
     }
 
-    fn read_file_segment(&self, field: &str, t_min: f64, t_max: f64) -> Option<Vec<(f64, f64)>> {
-        let path = self.session_file.as_ref()?;
-        let file = File::open(path).ok()?;
-        let reader = BufReader::new(file);
-        let mut lines = reader.lines();
-        let header = loop {
-            let line = lines.next()?.ok()?;
-            if line.starts_with("timestamp_ms,elapsed_sec") {
-                break line;
-            }
+    fn start_file_loader(&mut self, path: &PathBuf) {
+        self.fields.clear();
+        self.field_order.clear();
+        self.data_min_sec = 0.0;
+        self.data_max_sec = 0.0;
+        self.live_sec = 0.0;
+        self.file_loader = None;
+
+        let Ok(file) = File::open(path) else {
+            return;
         };
-        let col_idx = parse_field_column(&header, field)?;
-        let mut out = Vec::new();
-        for line in lines.flatten() {
-            if line.starts_with('#') {
+        let mut reader = BufReader::new(file);
+        let mut header_line = String::new();
+        loop {
+            header_line.clear();
+            match reader.read_line(&mut header_line) {
+                Ok(0) => return,
+                Err(_) => return,
+                Ok(_) => {}
+            }
+            let line = header_line.trim_end_matches(['\r', '\n']);
+            if line.is_empty() || line.starts_with('#') {
                 continue;
             }
-            let mut parts = line.split(',');
-            let _ts = parts.next()?;
-            let elapsed = parts.next()?.parse::<f64>().ok()?;
-            if elapsed < t_min {
-                continue;
+            if !line.starts_with("timestamp_ms,elapsed_sec") {
+                return;
             }
-            if elapsed > t_max {
-                break;
+            header_line = line.to_string();
+            break;
+        }
+        self.field_order = parse_header_fields(&header_line);
+        for name in &self.field_order {
+            self.fields.insert(
+                name.clone(),
+                FieldSeries {
+                    points: VecDeque::new(),
+                },
+            );
+        }
+        let col_map: HashMap<String, usize> = self
+            .field_order
+            .iter()
+            .enumerate()
+            .map(|(i, n)| (n.clone(), i))
+            .collect();
+
+        self.file_loader = Some(FileLoaderState {
+            reader,
+            line_buf: String::new(),
+            col_map,
+            done: false,
+            rows_read: 0,
+        });
+    }
+
+    fn finalize_file_load(&mut self) {
+        self.file_loader = None;
+    }
+
+    fn append_file_row(&mut self, elapsed: f64, values: &[f64], col_map: &HashMap<String, usize>) {
+        if self.data_min_sec == 0.0 && self.data_max_sec == 0.0 && elapsed.is_finite() {
+            self.data_min_sec = elapsed;
+            self.data_max_sec = elapsed;
+        } else {
+            if elapsed < self.data_min_sec {
+                self.data_min_sec = elapsed;
             }
-            let mut idx = 0usize;
-            let mut val = None;
-            for part in parts {
-                if idx == col_idx {
-                    val = part.parse::<f64>().ok();
-                    break;
-                }
-                idx += 1;
-            }
-            if let Some(v) = val {
-                out.push((elapsed, v));
+            if elapsed > self.data_max_sec {
+                self.data_max_sec = elapsed;
             }
         }
-        Some(out)
+        for (name, &col) in col_map {
+            if let Some(&v) = values.get(col) {
+                if let Some(series) = self.fields.get_mut(name) {
+                    push_point(series, elapsed, v);
+                }
+            }
+        }
     }
 
     fn refresh_bounds_from_file(&mut self) {
@@ -436,8 +654,8 @@ impl OutputTimeline {
             return;
         };
         let reader = BufReader::new(file);
-        let mut min_t = self.data_min_sec;
-        let mut max_t = self.data_max_sec.max(self.live_sec);
+        let mut min_t = f64::INFINITY;
+        let mut max_t = f64::NEG_INFINITY;
         for line in reader.lines().map_while(Result::ok) {
             if !line.contains(',') || line.starts_with('#') {
                 continue;
@@ -459,8 +677,12 @@ impl OutputTimeline {
                 }
             }
         }
-        self.data_min_sec = min_t;
-        self.data_max_sec = max_t;
+        if min_t.is_finite() {
+            self.data_min_sec = min_t;
+        }
+        if max_t.is_finite() {
+            self.data_max_sec = max_t;
+        }
         if self.follow_live {
             self.view_end_sec = self.effective_live_sec();
         }
@@ -482,6 +704,47 @@ fn clamp_f64(v: f64, lo: f64, hi: f64) -> f64 {
     v.clamp(lo, hi)
 }
 
+impl FileLoaderState {
+    fn read_rows(&mut self, tl: &mut OutputTimeline, max_rows: usize) -> usize {
+        let mut count = 0usize;
+        while count < max_rows {
+            self.line_buf.clear();
+            let read = match self.reader.read_line(&mut self.line_buf) {
+                Ok(0) => {
+                    self.done = true;
+                    break;
+                }
+                Ok(n) => n,
+                Err(_) => {
+                    self.done = true;
+                    break;
+                }
+            };
+            if read == 0 {
+                self.done = true;
+                break;
+            }
+            let line = self.line_buf.trim_end_matches(['\r', '\n']);
+            if line.is_empty() || line.starts_with('#') || line.starts_with("timestamp_ms,") {
+                continue;
+            }
+            let mut parts = line.split(',');
+            let _ = parts.next();
+            let Some(elapsed_s) = parts.next() else {
+                continue;
+            };
+            let Ok(elapsed) = elapsed_s.parse::<f64>() else {
+                continue;
+            };
+            let values: Vec<f64> = parts.filter_map(|s| s.parse().ok()).collect();
+            tl.append_file_row(elapsed, &values, &self.col_map);
+            self.rows_read += 1;
+            count += 1;
+        }
+        count
+    }
+}
+
 fn push_point(series: &mut FieldSeries, t: f64, v: f64) {
     if let Some((last_t, last_v)) = series.points.back_mut() {
         if (*last_t - t).abs() < 1e-9 {
@@ -492,18 +755,22 @@ fn push_point(series: &mut FieldSeries, t: f64, v: f64) {
     series.points.push_back((t, v));
 }
 
-fn trim_live(series: &mut FieldSeries, t_now: f64) {
+fn trim_live(series: &mut FieldSeries, t_now: f64) -> usize {
     let min_t = t_now - LIVE_BUFFER_SEC;
+    let mut popped = 0usize;
     while series
         .points
         .front()
         .is_some_and(|(t, _)| *t < min_t)
     {
         series.points.pop_front();
+        popped += 1;
     }
     while series.points.len() > LIVE_MAX_POINTS_PER_FIELD {
         series.points.pop_front();
+        popped += 1;
     }
+    popped
 }
 
 fn decimate_in_place(points: &mut Vec<(f64, f64)>, max_points: usize) {
@@ -525,24 +792,6 @@ fn decimate_in_place(points: &mut Vec<(f64, f64)>, max_points: usize) {
     *points = decimated;
 }
 
-fn merge_sorted(a: Vec<(f64, f64)>, b: Vec<(f64, f64)>) -> Vec<(f64, f64)> {
-    let mut out = Vec::with_capacity(a.len() + b.len());
-    let mut i = 0usize;
-    let mut j = 0usize;
-    while i < a.len() && j < b.len() {
-        if a[i].0 <= b[j].0 {
-            out.push(a[i]);
-            i += 1;
-        } else {
-            out.push(b[j]);
-            j += 1;
-        }
-    }
-    out.extend_from_slice(&a[i..]);
-    out.extend_from_slice(&b[j..]);
-    out
-}
-
 fn parse_header_fields(header: &str) -> Vec<String> {
     header
         .split(',')
@@ -551,12 +800,6 @@ fn parse_header_fields(header: &str) -> Vec<String> {
         .filter(|s| !s.is_empty())
         .map(str::to_string)
         .collect()
-}
-
-fn parse_field_column(header: &str, field: &str) -> Option<usize> {
-    parse_header_fields(header)
-        .into_iter()
-        .position(|name| name == field)
 }
 
 fn now_ms() -> u64 {
@@ -589,6 +832,7 @@ mod tests {
                         kind: FieldKind::Scalar(ScalarField {
                             ty: ScalarType::U16,
                             offset: 0,
+                            page: 0,
                             units: String::new(),
                             scale: 1.0,
                             translate: 0.0,
@@ -599,6 +843,7 @@ mod tests {
                         kind: FieldKind::Scalar(ScalarField {
                             ty: ScalarType::S16,
                             offset: 2,
+                            page: 0,
                             units: String::new(),
                             scale: 1.0,
                             translate: 0.0,
@@ -610,6 +855,7 @@ mod tests {
             block_size: 64,
             blocking_factor: 64,
             page_size: 4096,
+            page_sizes: vec![4096],
             page_read_has_page_index: true,
             page_chunk_write_has_page_index: true,
             config_fields: HashMap::new(),
@@ -620,8 +866,71 @@ mod tests {
     }
 
     #[test]
+    fn pull_series_chunk_streams_file_oldest_first() {
+        let stamp = now_ms();
+        let dir = std::env::temp_dir().join(format!("rusefui-chunk-{stamp}"));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::env::set_var("RUSEFUI_OUTPUT_LOG_DIR", &dir);
+        let info = ConnectionInfo {
+            port_name: format!("chunk-{stamp}"),
+            baud_rate: 115_200,
+            signature: "sig".into(),
+            handshake_command: 'S',
+        };
+        let ini = test_ini();
+        let names: Vec<String> = ini
+            .channels
+            .fields
+            .iter()
+            .map(|f| f.name.clone())
+            .collect();
+        let mut log = OutputDataLogWriter::open(&info, &ini, None).unwrap();
+        let mut values = HashMap::new();
+        values.insert("RPMValue".into(), 1000.0);
+        let t0 = now_ms();
+        log.write_sample(t0, &values);
+        values.insert("RPMValue".into(), 2000.0);
+        log.write_sample(t0 + 5000, &values);
+        values.insert("RPMValue".into(), 3000.0);
+        log.write_sample(t0 + 10_000, &values);
+        let (path, _) = log.close().unwrap();
+
+        let mut tl = OutputTimeline::default();
+        tl.load_file(path);
+        let mut all_t = Vec::new();
+        let mut reset = true;
+        for _ in 0..100 {
+            let chunk = tl.pull_series_chunk(&OutputTimelineChunkQuery {
+                fields: vec!["RPMValue".into()],
+                max_rows: 1,
+                max_points_per_field: 100,
+                reset_stream: reset,
+            });
+            reset = false;
+            for s in &chunk.series {
+                for p in &s.points {
+                    all_t.push(p.t);
+                }
+            }
+            if !chunk.has_more {
+                break;
+            }
+        }
+        assert!(all_t.len() >= 2);
+        for w in all_t.windows(2) {
+            assert!(w[0] <= w[1]);
+        }
+
+        std::env::remove_var("RUSEFUI_OUTPUT_LOG_DIR");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
     fn query_live_and_file() {
         let dir = std::env::temp_dir().join(format!("rusefui-timeline-{}", now_ms()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
         std::env::set_var("RUSEFUI_OUTPUT_LOG_DIR", &dir);
         let info = ConnectionInfo {
             port_name: "tty".into(),
@@ -708,5 +1017,40 @@ mod tests {
                 zoom_factor: None,
             });
         }
+    }
+
+    #[test]
+    fn pull_yields_new_points_after_live_trim() {
+        let mut tl = OutputTimeline::default();
+        tl.reset_session(&["RPMValue".into()], 30.0);
+        for i in 0..30_000 {
+            let mut v = HashMap::new();
+            v.insert("RPMValue".into(), 1000.0 + i as f64);
+            tl.ingest(i as f64 * 0.005, &v);
+        }
+        let mut reset = true;
+        loop {
+            let chunk = tl.pull_series_chunk(&OutputTimelineChunkQuery {
+                fields: vec!["RPMValue".into()],
+                max_rows: 4096,
+                max_points_per_field: 8192,
+                reset_stream: reset,
+            });
+            reset = false;
+            if !chunk.has_more {
+                break;
+            }
+        }
+        let mut v = HashMap::new();
+        v.insert("RPMValue".into(), 9999.0);
+        tl.ingest(500.0, &v);
+        let chunk = tl.pull_series_chunk(&OutputTimelineChunkQuery {
+            fields: vec!["RPMValue".into()],
+            max_rows: 4096,
+            max_points_per_field: 8192,
+            reset_stream: false,
+        });
+        assert!(!chunk.series.is_empty());
+        assert!(chunk.series[0].points.iter().any(|p| (p.v - 9999.0).abs() < 1e-6));
     }
 }
