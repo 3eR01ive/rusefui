@@ -45,4 +45,11 @@ const title = computed(() => String(props.props.title ?? ""));
   flex-direction: column;
   gap: 0.85rem;
 }
+
+.section-body > :deep(*) {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
 </style>

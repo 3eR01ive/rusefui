@@ -9,6 +9,7 @@ children:
     children:
       - type: output-chart
         id: scope
+        navSelectable: false
         props:
           height: 240
           windowSeconds: 30
@@ -24,6 +25,7 @@ children:
     children:
       - type: composite-chart
         id: trigger-logger
+        navSelectable: false
         props:
           height: 220
           windowMs: 500

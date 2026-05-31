@@ -1671,7 +1671,10 @@ const statusLine = computed(() => {
   background: var(--color-bg-muted);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  min-width: 280px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .cc-header {

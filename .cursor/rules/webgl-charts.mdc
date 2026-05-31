@@ -1,0 +1,30 @@
+---
+description: Все графики и таймлайны — только WebGL / webgl-plot
+alwaysApply: true
+---
+
+# WebGL для графиков
+
+Логи, триггер, таймлайн, спектрограммы и любые time-series / heatmap визуализации рисуем **на GPU** через **WebGL2** и/или **webgl-plot**.
+
+## Делать
+
+- **webgl-plot** — линии, полигоны (клипы таймлайна), pan/zoom через `transformToLinearSpace` / `getGlobalScale`.
+- **Собственные шейдеры** — heatmap (knock spectrogram), colorbar, сложные эффекты.
+- Координаты в **float32-safe** диапазоне: секунды/ms **относительно viewport**, не сырые Unix ms (~1.7e12).
+- `handleCanvasResize` + `clearCanvas` с цветом темы; явный `BLEND` перед draw.
+
+## Не делать
+
+- **Canvas 2D** (`getContext("2d")`) для графиков, таймлайна, scope, спектрограмм — откат только по явной просьбе.
+- Повторный парсинг INI / расчёт данных во фронте (см. `rust-logic-vue-ui.mdc`).
+
+## Пример (таймлайн)
+
+```typescript
+// X — секунды от центра viewport, не Date.now() в ms
+const centerMs = frame.viewCenterMs + panMs;
+const x0 = (clip.startMs - centerMs) / 1000;
+lines.transformToLinearSpace({ minX: -spanSec/2, maxX: spanSec/2, minY: 0, maxY: 4, ... });
+polygons.setGlobalTransform(lines.getGlobalScale(), lines.getGlobalOffset());
+```

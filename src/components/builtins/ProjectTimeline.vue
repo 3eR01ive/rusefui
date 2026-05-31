@@ -15,6 +15,7 @@ import {
   ensureTimelineListeners,
   timelineRenderer,
   useProjectTimeline,
+  type TimelineTickDraw,
 } from "../../composables/useProjectTimeline";
 
 defineProps<{
@@ -26,7 +27,7 @@ defineProps<{
 }>();
 
 const { hasOpenProject } = useProject();
-const { spanLabel, loading, error: timelineError } = useProjectTimeline();
+const { spanLabel, loading, error: timelineError, channelClipCounts } = useProjectTimeline();
 const { isActive: tabActive } = useTabActivity();
 
 const trackRef = useTemplateRef<HTMLElement>("trackRef");
@@ -35,6 +36,7 @@ const canvasRef = useTemplateRef<HTMLCanvasElement>("canvasRef");
 const dragging = ref(false);
 const dragLastX = ref(0);
 const panOffsetPx = ref(0);
+const rulerTicks = ref<TimelineTickDraw[]>([]);
 
 let resizeObs: ResizeObserver | null = null;
 let nowTimer: ReturnType<typeof setInterval> | null = null;
@@ -83,7 +85,6 @@ function onPointerMove(e: PointerEvent): void {
   panOffsetPx.value += e.clientX - dragLastX.value;
   dragLastX.value = e.clientX;
   timelineRenderer.setPanOffset(panOffsetPx.value);
-  timelineRenderer.paint();
 }
 
 function onPointerUp(e: PointerEvent): void {
@@ -132,7 +133,7 @@ function startNowTimer(): void {
   if (nowTimer) return;
   nowTimer = setInterval(() => {
     if (timelineRenderer.getFrame()) timelineRenderer.paint();
-  }, 1000);
+  }, 5000);
 }
 
 function stopNowTimer(): void {
@@ -159,8 +160,13 @@ onMounted(async () => {
   const canvas = canvasRef.value;
   const track = trackRef.value;
   if (canvas) {
-    timelineRenderer.attach(canvas, (label) => {
-      spanLabel.value = label;
+    timelineRenderer.attach(canvas, {
+      onSpanLabelChange: (label) => {
+        spanLabel.value = label;
+      },
+      onFrameChange: (frame) => {
+        rulerTicks.value = frame.ticks;
+      },
     });
   }
   if (track) {
@@ -205,7 +211,8 @@ onUnmounted(() => {
           <div class="tl-label-ruler" aria-hidden="true" />
           <div class="tl-labels-body">
             <div v-for="ch in TIMELINE_CHANNEL_LABELS" :key="ch.id" class="tl-label">
-              {{ ch.title }}
+              <span class="tl-label-title">{{ ch.title }}</span>
+              <span class="tl-label-count">{{ channelClipCounts[ch.id] ?? 0 }}</span>
             </div>
           </div>
         </div>
@@ -220,12 +227,24 @@ onUnmounted(() => {
           @pointerup="onPointerUp"
           @pointercancel="onPointerUp"
         >
-          <canvas
-            ref="canvasRef"
-            class="tl-canvas"
-            @mousemove="onCanvasMove"
-            @mouseleave="onCanvasLeave"
-          />
+          <div class="tl-ruler" aria-hidden="true">
+            <div
+              v-for="(tick, idx) in rulerTicks"
+              :key="idx"
+              class="tl-ruler-tick"
+              :style="{ left: `${tick.xPx + panOffsetPx}px` }"
+            >
+              {{ tick.label }}
+            </div>
+          </div>
+          <div class="tl-lanes">
+            <canvas
+              ref="canvasRef"
+              class="tl-canvas"
+              @mousemove="onCanvasMove"
+              @mouseleave="onCanvasLeave"
+            />
+          </div>
         </div>
       </div>
     </template>
@@ -343,6 +362,8 @@ onUnmounted(() => {
   min-height: 2.5rem;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
   padding: 0 0.55rem;
   font-size: 0.72rem;
   font-weight: 600;
@@ -352,6 +373,27 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--color-border);
 }
 
+.tl-label-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tl-label-count {
+  flex-shrink: 0;
+  min-width: 1.25rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--color-text-subtle);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+}
+
 .tl-label:last-child {
   border-bottom: none;
 }
@@ -359,10 +401,49 @@ onUnmounted(() => {
 .tl-track {
   position: relative;
   min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   cursor: grab;
   background: var(--color-bg-elevated);
   touch-action: none;
+}
+
+.tl-ruler {
+  position: relative;
+  flex-shrink: 0;
+  height: 30px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-muted);
+  overflow: hidden;
+}
+
+.tl-ruler-tick {
+  position: absolute;
+  top: 4px;
+  transform: translateX(-50%);
+  font: 500 10px system-ui, sans-serif;
+  color: var(--color-text-subtle);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.tl-ruler-tick::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -4px;
+  width: 1px;
+  height: 6px;
+  background: var(--color-border-strong);
+  transform: translateX(-50%);
+}
+
+.tl-lanes {
+  position: relative;
+  flex: 1;
+  min-height: 0;
 }
 
 .tl-track--dragging {
@@ -373,5 +454,7 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   display: block;
+  width: 100%;
+  height: 100%;
 }
 </style>

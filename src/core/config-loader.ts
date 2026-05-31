@@ -17,6 +17,12 @@ async function fetchText(path: string): Promise<string> {
   if (!res.ok) {
     throw new Error(`Config not found: ${url} (${res.status})`);
   }
+  const ct = res.headers.get("content-type") ?? "";
+  if (ct.includes("text/html")) {
+    throw new Error(
+      `Config not found (got HTML): ${url} — проверьте путь и имя файла в YAML`,
+    );
+  }
   return res.text();
 }
 
@@ -39,18 +45,29 @@ async function loadComponentDefinition(
       `[config] components/${componentId}.yaml: id "${doc.id}" != expected "${componentId}"`,
     );
   }
+  if (!Array.isArray(doc.children)) {
+    throw new Error(`[config] ${path}: ожидается массив children`);
+  }
   return doc.children;
 }
 
 async function resolveInstanceTree(
   node: ComponentInstance | ComponentRef,
+  at = "root",
 ): Promise<ComponentInstance> {
+  if (node == null || typeof node !== "object") {
+    throw new Error(`[config] пустой узел layout (${at})`);
+  }
   if (isComponentRef(node)) {
     const children = await loadComponentDefinition(node.$component);
     return {
       id: node.$component,
       type: "composite",
-      children: await Promise.all(children.map(resolveInstanceTree)),
+      children: await Promise.all(
+        children.map((child, index) =>
+          resolveInstanceTree(child, `${at}.$component[${index}]`),
+        ),
+      ),
     };
   }
 
@@ -58,8 +75,11 @@ async function resolveInstanceTree(
     ...node,
     children: node.children
       ? await Promise.all(
-          node.children.map((child) =>
-            resolveInstanceTree(child as ComponentInstance | ComponentRef),
+          node.children.map((child, index) =>
+            resolveInstanceTree(
+              child as ComponentInstance | ComponentRef,
+              `${at}.children[${index}]`,
+            ),
           ),
         )
       : undefined,
@@ -71,6 +91,9 @@ async function loadTab(tabPath: string): Promise<ResolvedTab> {
   const path = `tabs/${tabPath}.tab.yaml`;
   const text = await fetchText(path);
   const doc = parseFile<TabDefinitionFile>(text, path);
+  if (!doc?.tab?.id || !doc.root) {
+    throw new Error(`[config] ${path}: нужны tab.id и root`);
+  }
 
   let root: ComponentInstance;
   if (isComponentRef(doc.root)) {
@@ -78,7 +101,11 @@ async function loadTab(tabPath: string): Promise<ResolvedTab> {
     root = {
       id: doc.root.$component,
       type: "composite",
-      children: await Promise.all(children.map(resolveInstanceTree)),
+      children: await Promise.all(
+        children.map((child, index) =>
+          resolveInstanceTree(child, `tab.root.$component[${index}]`),
+        ),
+      ),
     };
   } else {
     root = await resolveInstanceTree(doc.root);

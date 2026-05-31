@@ -1608,6 +1608,9 @@ watch(tabActive, (active, wasActive) => {
   flex-direction: column;
   gap: 0.35rem;
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .output-chart.log-chart--compact {

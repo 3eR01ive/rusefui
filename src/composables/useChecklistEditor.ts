@@ -53,6 +53,7 @@ function findInTree(
   componentId?: string | null,
 ): ComponentInstance | null {
   for (const node of nodes) {
+    if (!node) continue;
     if (componentId && node.id === componentId) return node;
     if (!componentId && bindMatchesField(node.bind, field)) return node;
     if (node.children?.length) {
