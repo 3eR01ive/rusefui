@@ -113,6 +113,9 @@ const fieldsByName = shallowRef<Map<string, ConfigFieldInfo>>(new Map());
 let unlisten: UnlistenFn | null = null;
 let initPromise: Promise<void> | null = null;
 
+/** Инкремент при каждом полном снимке config (массивы/кривые перечитывают данные). */
+export const configDataRevision = shallowRef(0);
+
 function applySnapshot(snap: ConfigSnapshot): void {
   const prev = snapshot.value;
   if (
@@ -124,6 +127,9 @@ function applySnapshot(snap: ConfigSnapshot): void {
     return;
   }
   snapshot.value = snap;
+  if (snap.loaded && !snap.loading) {
+    configDataRevision.value += 1;
+  }
 }
 
 /** Синхронное обновление снимка после undo/redo (до config-snapshot event). */
@@ -149,7 +155,7 @@ export async function initConfig(): Promise<void> {
 
     if (!unlisten) {
       unlisten = await listen<ConfigSnapshot>("config-snapshot", async (event) => {
-        snapshot.value = event.payload;
+        applySnapshot(event.payload);
         if (event.payload.loaded || event.payload.fieldCount > 0) {
           try {
             const fields = await invoke<ConfigFieldInfo[]>("config_list_fields");
@@ -176,7 +182,7 @@ export async function initConfig(): Promise<void> {
       });
       await listen("workspace-reset", async () => {
         try {
-          snapshot.value = await invoke<ConfigSnapshot>("config_get_snapshot");
+          applySnapshot(await invoke<ConfigSnapshot>("config_get_snapshot"));
           const fields = await invoke<ConfigFieldInfo[]>("config_list_fields");
           fieldsByName.value = new Map(fields.map((f) => [f.name, f]));
         } catch {
@@ -191,7 +197,7 @@ export async function initConfig(): Promise<void> {
 
 export async function refreshConfigSnapshot(): Promise<void> {
   try {
-    snapshot.value = await invoke<ConfigSnapshot>("config_get_snapshot");
+    applySnapshot(await invoke<ConfigSnapshot>("config_get_snapshot"));
     const fields = await invoke<ConfigFieldInfo[]>("config_list_fields");
     fieldsByName.value = new Map(fields.map((f) => [f.name, f]));
   } catch {

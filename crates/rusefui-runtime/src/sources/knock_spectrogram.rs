@@ -118,6 +118,9 @@ pub struct KnockSpectrogramEngine {
     columns: VecDeque<Vec<u8>>,
     pending_new_columns: Vec<u8>,
     popped_since_emit: usize,
+    /// Максимум u8 за весь прогон (не только видимое окно).
+    run_peak_val: u8,
+    run_peak_bin: usize,
 }
 
 impl KnockSpectrogramEngine {
@@ -140,6 +143,8 @@ impl KnockSpectrogramEngine {
             columns: VecDeque::new(),
             pending_new_columns: Vec::new(),
             popped_since_emit: 0,
+            run_peak_val: 0,
+            run_peak_bin: MIN_PEAK_BIN,
         }
     }
 
@@ -149,6 +154,8 @@ impl KnockSpectrogramEngine {
         self.columns.clear();
         self.pending_new_columns.clear();
         self.popped_since_emit = 0;
+        self.run_peak_val = 0;
+        self.run_peak_bin = MIN_PEAK_BIN;
     }
 
     /// Забрать накопленные столбцы для UI (не копирует всю heatmap).
@@ -174,25 +181,21 @@ impl KnockSpectrogramEngine {
         (self.columns.len(), self.height_bins)
     }
 
-    /// Пик по heatmap без копирования всех pixels.
+    /// Пик за весь прогон (максимальная амплитуда среди всех FFT-столбцов, включая ушедшие из окна).
     pub fn peak_frequency_hz(&self) -> Option<f32> {
-        if self.columns.is_empty() {
+        if self.run_peak_val == 0 {
             return None;
         }
-        let mut best_val = 0u8;
-        let mut best_row = MIN_PEAK_BIN;
-        for col in &self.columns {
-            for (row, &v) in col.iter().enumerate().skip(MIN_PEAK_BIN) {
-                if v > best_val {
-                    best_val = v;
-                    best_row = row;
-                }
+        Some(bin_to_frequency_hz(self.run_peak_bin, self.sample_rate_hz))
+    }
+
+    fn note_column_peak(&mut self, col: &[u8]) {
+        for (row, &v) in col.iter().enumerate().skip(MIN_PEAK_BIN) {
+            if v > self.run_peak_val {
+                self.run_peak_val = v;
+                self.run_peak_bin = row;
             }
         }
-        if best_val == 0 {
-            return None;
-        }
-        Some(bin_to_frequency_hz(best_row, self.sample_rate_hz))
     }
 
     pub fn view(&self) -> KnockSpectrogramView {
@@ -235,6 +238,7 @@ impl KnockSpectrogramEngine {
             self.fft.process(&mut self.scratch);
 
             let col = spectrum_column(&self.scratch, self.height_bins);
+            self.note_column_peak(&col);
             self.pending_new_columns.extend_from_slice(&col);
             self.columns.push_back(col);
             while self.columns.len() > self.max_columns {
@@ -360,5 +364,50 @@ mod tests {
         let buf = encode_knock_spectrogram_gpu(&view);
         assert_eq!(buf.len(), 16 + 4);
         assert_eq!(&buf[16..], &[1, 3, 2, 4]);
+    }
+
+    #[test]
+    fn run_peak_is_max_over_entire_run_not_sliding_window() {
+        let h = spectrogram_height_bins(KNOCK_ADC_SAMPLE_RATE_HZ);
+        let mut eng = KnockSpectrogramEngine::new(KNOCK_ADC_SAMPLE_RATE_HZ, 40);
+
+        let mut early = vec![0u8; h];
+        early[30] = 120;
+        let early_hz = bin_to_frequency_hz(30, KNOCK_ADC_SAMPLE_RATE_HZ);
+
+        let mut later = vec![0u8; h];
+        later[55] = 200;
+        let run_peak_hz = bin_to_frequency_hz(55, KNOCK_ADC_SAMPLE_RATE_HZ);
+
+        eng.feed_test_column(early);
+        assert_eq!(eng.peak_frequency_hz(), Some(early_hz));
+
+        eng.feed_test_column(later);
+        assert_eq!(eng.peak_frequency_hz(), Some(run_peak_hz));
+
+        // Заполняем окно слабым шумом — столбцы с пиками уходят из deque.
+        for _ in 0..80 {
+            let mut quiet = vec![0u8; h];
+            quiet[3] = 10;
+            eng.feed_test_column(quiet);
+        }
+
+        assert_eq!(
+            eng.peak_frequency_hz(),
+            Some(run_peak_hz),
+            "пик прогона не должен сбрасываться при прокрутке окна"
+        );
+    }
+}
+
+#[cfg(test)]
+impl KnockSpectrogramEngine {
+    fn feed_test_column(&mut self, col: Vec<u8>) {
+        self.note_column_peak(&col);
+        self.pending_new_columns.extend_from_slice(&col);
+        self.columns.push_back(col);
+        while self.columns.len() > self.max_columns {
+            self.columns.pop_front();
+        }
     }
 }

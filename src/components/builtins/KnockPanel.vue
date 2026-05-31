@@ -6,6 +6,7 @@ import {
   onUnmounted,
   ref,
   watch,
+  type Ref,
 } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useDataContext } from "../../core/data-context";
@@ -21,6 +22,7 @@ import {
   KNOCK_SPECTROGRAM_DBFS_MIN,
   knockSpectrogramU8ToDbfs,
   mountKnockSpectrogramGl,
+  knockSpectrogramGlStats,
   type KnockSpectrogramGl,
 } from "../../composables/knockSpectrogramGl";
 import { initKnockScope, onKnockSpectrogramGlReset, subscribeKnockSpectrogramGpu, useKnockScope } from "../../composables/useKnockScope";
@@ -28,7 +30,6 @@ import { invoke } from "@tauri-apps/api/core";
 import {
   initProject,
   PERSIST_KEY_KNOCK,
-  projectUiEpoch,
   useProject,
   workspaceResetEpoch,
   type KnockUiSettings,
@@ -66,12 +67,13 @@ const instanceRef = computed(() => props.instance);
 const { paramStringOr } = useInstanceBind(instanceRef);
 const dataCtx = useDataContext();
 const { snapshot: configSnapshot, getArray: getConfigArray } = useConfig();
-const { snapshot: knockScopeSnapshot, spectrogramWidth, spectrogramHeight, spectrogramPeakHz, spectrogramPatchPixelMax, spectrogramGlStats } = useKnockScope();
+const { snapshot: knockScopeSnapshot, spectrogramWidth, spectrogramHeight, spectrogramPeakHz, spectrogramPatchPixelMax } = useKnockScope();
 const { isActive: tabActive } = useTabActivity();
 const { getProjectUi, setProjectUi } = useProject();
 
 let applyingProjectUi = false;
 let saveUiTimer = 0;
+let applyUiGeneration = 0;
 let channelsConfigured = false;
 
 const rpmField = computed(() =>
@@ -200,6 +202,9 @@ const configThresholdLive = computed(() => {
   return interpolateConfigThreshold(rpm, thresholdChartCurve.value);
 });
 
+const displayRpm = useThrottledNumber(() => liveRpm.value);
+const displayLevel = useThrottledNumber(() => liveLevel.value);
+
 async function reloadConfigThresholdCurve(): Promise<void> {
   if (!configSnapshot.value.loaded) {
     configThresholdCurve.value = [];
@@ -231,9 +236,12 @@ const spectrogramHint = computed(() => {
   return null;
 });
 
-const spectrogramDebugLine = computed(() => {
+const spectrogramDebugRef = ref<HTMLElement | null>(null);
+let debugLineTimer = 0;
+
+function buildSpectrogramDebugLine(): string {
   const s = knockScopeSnapshot.value;
-  const g = spectrogramGlStats.value;
+  const g = knockSpectrogramGlStats.value;
   const parts: string[] = [];
   parts.push(`захватов ${s.captureCount ?? 0}`);
   if (spectrogramWidth.value > 0) {
@@ -243,24 +251,42 @@ const spectrogramDebugLine = computed(() => {
   if (g.uploads > 0) {
     parts.push(`${g.packetKind} px=${g.pixelMin}…${g.pixelMax}`);
     parts.push(`disp ${g.displayMinU8}…${g.displayMaxU8} ×${g.displayGainScale.toFixed(2)}`);
-    parts.push(`dBFS ${Math.round(knockSpectrogramU8ToDbfs(g.pixelMin))}…${Math.round(knockSpectrogramU8ToDbfs(g.pixelMax))}`);
+    parts.push(
+      `dBFS ${Math.round(knockSpectrogramU8ToDbfs(g.pixelMin))}…${Math.round(knockSpectrogramU8ToDbfs(g.pixelMax))}`,
+    );
     if (g.texW > 0) parts.push(`tex=${g.texW}×${g.texH} nz=${g.nonzeroPixels}`);
   }
   if (spectrogramPeakHz.value != null) {
     parts.push(`FFT-пик ${Math.round(spectrogramPeakHz.value)} Hz`);
   }
   return parts.join(" · ");
-});
+}
 
-const spectrogramColorbarDbMin = computed(() => {
-  if (!spectrogramAutocontrast.value) return KNOCK_SPECTROGRAM_DBFS_MIN;
-  return Math.round(knockSpectrogramU8ToDbfs(spectrogramGlStats.value.displayMinU8));
-});
+function scheduleDebugLineUpdate(): void {
+  if (debugLineTimer !== 0) return;
+  debugLineTimer = window.setTimeout(() => {
+    debugLineTimer = 0;
+    const el = spectrogramDebugRef.value;
+    if (el) el.textContent = buildSpectrogramDebugLine();
+  }, 300);
+}
 
-const spectrogramColorbarDbMax = computed(() => {
-  if (!spectrogramAutocontrast.value) return KNOCK_SPECTROGRAM_DBFS_MAX;
-  return Math.round(knockSpectrogramU8ToDbfs(spectrogramGlStats.value.displayMaxU8));
-});
+const METRIC_UI_MS = 250;
+
+function useThrottledNumber(source: () => number | null | undefined): Ref<number | null> {
+  const out = ref<number | null>(null) as Ref<number | null>;
+  let timer = 0;
+  const flush = () => {
+    timer = 0;
+    const v = source();
+    out.value = v != null && Number.isFinite(Number(v)) ? Number(v) : null;
+  };
+  watch(source, () => {
+    if (timer !== 0) return;
+    timer = window.setTimeout(flush, METRIC_UI_MS);
+  }, { immediate: true });
+  return out;
+}
 
 function pushSpectrogramDisplay(): void {
   spectrogramGl?.setDisplay({
@@ -283,6 +309,11 @@ const recordingSpectrum = computed(
 );
 
 const detectedHz = computed(() => state.value.detectedFrequencyHz as number | null | undefined);
+const displayFreq = useThrottledNumber(() => {
+  const v = detectedHz.value;
+  return v != null && Number.isFinite(Number(v)) ? Number(v) : null;
+});
+const displayThreshold = useThrottledNumber(() => configThresholdLive.value);
 const message = computed(() => (state.value.message as string) ?? null);
 const momentumPhase = computed(() => String(state.value.momentumPhase ?? "idle"));
 
@@ -396,9 +427,11 @@ async function syncOptionsToRust(): Promise<void> {
 }
 
 async function applyUiFromProject(): Promise<void> {
+  const gen = ++applyUiGeneration;
   applyingProjectUi = true;
   try {
     const ui = await getProjectUi<KnockUiSettings>(PERSIST_KEY_KNOCK);
+    if (gen !== applyUiGeneration) return;
     ignoreTpsMin.value = ui.ignoreTpsMin;
     minRpm.value = ui.minRpm;
     cutoffRpm.value = ui.cutoffRpm;
@@ -417,12 +450,14 @@ async function applyUiFromProject(): Promise<void> {
     settingsOpen.value = ui.settingsOpen;
     pushSpectrogramDisplay();
   } catch {
+    if (gen !== applyUiGeneration) return;
     ignoreTpsMin.value = Boolean(state.value.ignoreTpsMin);
     minRpm.value = Number(state.value.minRpm ?? 800);
     cutoffRpm.value = Number(state.value.cutoffRpm ?? 6500);
   } finally {
-    applyingProjectUi = false;
+    if (gen === applyUiGeneration) applyingProjectUi = false;
   }
+  if (gen !== applyUiGeneration) return;
   await syncOptionsToRust();
   scheduleRedraw();
 }
@@ -438,7 +473,11 @@ function scheduleSaveUiToProject(): void {
 
 function toggleSettings(): void {
   settingsOpen.value = !settingsOpen.value;
-  scheduleSaveUiToProject();
+  if (saveUiTimer !== 0) {
+    window.clearTimeout(saveUiTimer);
+    saveUiTimer = 0;
+  }
+  void setProjectUi(PERSIST_KEY_KNOCK, buildUiSettings());
 }
 
 async function toggleThresholdAutotune(): Promise<void> {
@@ -480,6 +519,8 @@ let thresholdCanvasPixelW = 0;
 let thresholdCanvasPixelH = 0;
 const spectrogramCanvasRef = ref<HTMLCanvasElement | null>(null);
 const spectrogramContainerRef = ref<HTMLDivElement | null>(null);
+const knockStepsRowRef = ref<HTMLElement | null>(null);
+const chartsInView = ref(true);
 let spectrogramGl: KnockSpectrogramGl | null = null;
 let unsubSpectrogramGpu: (() => void) | null = null;
 let unsubSpectrogramReset: (() => void) | null = null;
@@ -495,12 +536,15 @@ function applySpectrogramGpuB64(b64: string): void {
   if (!spectrogramGl) return;
   pushSpectrogramDisplay();
   spectrogramGl.applyBuffer(b64ToArrayBuffer(b64));
-  spectrogramGl.draw();
+  if (chartsInView.value) spectrogramGl.draw();
+  scheduleDebugLineUpdate();
 }
 
 function redrawSpectrogramChart(): void {
+  if (!chartsInView.value) return;
   if (!spectrogramContainerRef.value || chartWidthPx(spectrogramContainerRef.value) < 1) return;
   spectrogramGl?.draw();
+  scheduleDebugLineUpdate();
 }
 
 function chartWidthPx(container: HTMLElement | null | undefined): number {
@@ -552,7 +596,7 @@ let lastSpectrogramDrawMs = 0;
 const SPECTROGRAM_REDRAW_MIN_MS = 50;
 
 function scheduleThresholdRedraw(): void {
-  if (!tabActive.value) return;
+  if (!tabActive.value || !chartsInView.value) return;
   if (thresholdRedrawRaf !== 0) return;
   const tick = () => {
     thresholdRedrawRaf = 0;
@@ -568,7 +612,7 @@ function scheduleThresholdRedraw(): void {
 }
 
 function scheduleSpectrogramRedraw(): void {
-  if (!tabActive.value) return;
+  if (!tabActive.value || !chartsInView.value) return;
   if (spectrogramRedrawRaf !== 0) return;
   const tick = () => {
     spectrogramRedrawRaf = 0;
@@ -595,7 +639,6 @@ function scheduleRedraw(): void {
 watch(ready, (r) => {
   if (r) void applyUiFromProject();
 });
-watch(projectUiEpoch, () => void applyUiFromProject());
 watch(workspaceResetEpoch, () => void applyUiFromProject());
 watch(configLoaded, (loaded) => {
   if (loaded) void reloadConfigThresholdCurve();
@@ -666,6 +709,34 @@ watch(tabActive, (active, was) => {
   if (active && !was) void nextTick(() => scheduleRedraw());
 });
 
+watch(chartsInView, (visible) => {
+  if (visible) scheduleRedraw();
+});
+
+watch(
+  [spectrogramWidth, spectrogramHeight, spectrogramPatchPixelMax, spectrogramPeakHz, recordingSpectrum],
+  () => scheduleDebugLineUpdate(),
+);
+
+let chartsIo: IntersectionObserver | undefined;
+
+function setupChartsIntersection(): void {
+  chartsIo?.disconnect();
+  chartsIo = undefined;
+  const el = knockStepsRowRef.value;
+  if (!el || typeof IntersectionObserver === "undefined") {
+    chartsInView.value = true;
+    return;
+  }
+  chartsIo = new IntersectionObserver(
+    (entries) => {
+      chartsInView.value = entries.some((e) => e.isIntersecting && e.intersectionRatio > 0.02);
+    },
+    { threshold: [0, 0.02, 0.08] },
+  );
+  chartsIo.observe(el);
+}
+
 let resizeObserver: ResizeObserver | undefined;
 
 function setupResizeObserver(): void {
@@ -688,10 +759,11 @@ function setupResizeObserver(): void {
   if (specEl) resizeObserver.observe(specEl);
 }
 
-watch([ready, thresholdContainerRef], async () => {
+watch([ready, thresholdContainerRef, knockStepsRowRef], async () => {
   if (!ready.value) return;
   await nextTick();
   setupResizeObserver();
+  setupChartsIntersection();
   scheduleThresholdRedraw();
 });
 
@@ -723,6 +795,8 @@ onUnmounted(() => {
   cancelAnimationFrame(thresholdRedrawRaf);
   cancelAnimationFrame(spectrogramRedrawRaf);
   resizeObserver?.disconnect();
+  chartsIo?.disconnect();
+  if (debugLineTimer !== 0) window.clearTimeout(debugLineTimer);
   if (saveUiTimer !== 0) window.clearTimeout(saveUiTimer);
 });
 </script>
@@ -753,30 +827,30 @@ onUnmounted(() => {
         <div class="knock-metric">
           <span class="knock-metric-label">RPM</span>
           <span class="knock-metric-value">
-            {{ liveRpm != null ? Math.round(liveRpm).toLocaleString("ru-RU") : "—" }}
+            {{ displayRpm != null ? Math.round(displayRpm).toLocaleString("ru-RU") : "—" }}
           </span>
         </div>
         <div class="knock-metric knock-metric--live">
           <span class="knock-metric-label">Knock</span>
           <span class="knock-metric-value">
-            {{ liveLevel != null ? liveLevel.toFixed(2) : "—" }}
+            {{ displayLevel != null ? displayLevel.toFixed(2) : "—" }}
           </span>
         </div>
         <div class="knock-metric">
           <span class="knock-metric-label">Threshold (config)</span>
           <span class="knock-metric-value">
-            {{ configThresholdLive != null ? configThresholdLive.toFixed(2) : "—" }}
+            {{ displayThreshold != null ? displayThreshold.toFixed(2) : "—" }}
           </span>
         </div>
-        <div class="knock-metric" :class="{ 'knock-metric--live': detectedHz != null }">
+        <div class="knock-metric" :class="{ 'knock-metric--live': displayFreq != null }">
           <span class="knock-metric-label">Freq</span>
           <span class="knock-metric-value">
-            {{ detectedHz != null ? `${Math.round(detectedHz)} Hz` : "—" }}
+            {{ displayFreq != null ? `${Math.round(displayFreq)} Hz` : "—" }}
           </span>
         </div>
       </div>
 
-      <div class="knock-steps-row">
+      <div ref="knockStepsRowRef" class="knock-steps-row">
         <section class="knock-step knock-step--threshold">
           <header class="knock-step-header">
             <h3 class="knock-step-title">1. Threshold autotune</h3>
@@ -834,14 +908,16 @@ onUnmounted(() => {
               <span class="knock-spectrogram-label knock-spectrogram-label--hz10">10</span>
               <span class="knock-spectrogram-label knock-spectrogram-label--hz15">15</span>
               <span class="knock-spectrogram-label knock-spectrogram-label--hz20">20</span>
-              <span class="knock-spectrogram-label knock-spectrogram-label--db100">{{ spectrogramColorbarDbMin }}</span>
-              <span class="knock-spectrogram-label knock-spectrogram-label--db20">{{ spectrogramColorbarDbMax }}</span>
+              <span class="knock-spectrogram-label knock-spectrogram-label--db100">{{ KNOCK_SPECTROGRAM_DBFS_MIN }}</span>
+              <span class="knock-spectrogram-label knock-spectrogram-label--db20">{{ KNOCK_SPECTROGRAM_DBFS_MAX }}</span>
             </div>
             <p v-if="spectrogramHint" class="knock-chart-overlay">{{ spectrogramHint }}</p>
           </div>
-          <p v-if="recordingSpectrum || spectrogramWidth > 0" class="knock-spectrogram-debug">
-            {{ spectrogramDebugLine }}
-          </p>
+          <p
+            v-if="recordingSpectrum || spectrogramWidth > 0"
+            ref="spectrogramDebugRef"
+            class="knock-spectrogram-debug"
+          />
           <div class="knock-step-actions">
             <button
               type="button"
@@ -1064,7 +1140,7 @@ onUnmounted(() => {
     var(--color-bg-elevated) 0%,
     var(--color-bg-subtle, var(--color-bg-elevated)) 100%
   );
-  box-shadow: var(--shadow-card, 0 4px 24px rgba(0, 0, 0, 0.12));
+  contain: layout style;
 }
 
 .knock-header {
@@ -1121,6 +1197,8 @@ onUnmounted(() => {
   grid-template-columns: repeat(4, 1fr);
   gap: 0.5rem;
   margin-bottom: 0.85rem;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 3.5rem;
 }
 
 .knock-metric {
@@ -1154,6 +1232,9 @@ onUnmounted(() => {
   margin-bottom: 0.75rem;
   overflow: hidden;
   background: var(--color-surface-2, #1a1d24);
+  contain: strict;
+  isolation: isolate;
+  transform: translateZ(0);
 }
 
 .knock-chart-wrap--spectrogram {
@@ -1242,6 +1323,7 @@ onUnmounted(() => {
   margin-bottom: 1rem;
   padding-top: 0.5rem;
   border-top: 1px solid var(--color-border);
+  contain: layout paint;
 }
 
 @media (max-width: 960px) {

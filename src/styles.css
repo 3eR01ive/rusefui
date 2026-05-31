@@ -211,6 +211,8 @@ input[type="radio"]:focus-visible {
   margin-top: 0.25rem;
   padding-top: 1rem;
   border-top: 1px solid var(--color-border);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 36rem;
 }
 
 .tab-panel[data-tab-id="knock"] .composite-root > .composite-root > .section > .section-body {
@@ -230,6 +232,7 @@ input[type="radio"]:focus-visible {
   width: 100%;
   max-width: none;
 }
+
 
 @media (max-width: 900px) {
   .tab-panel[data-tab-id="knock"] .composite-root > .composite-root > .section > .section-body {

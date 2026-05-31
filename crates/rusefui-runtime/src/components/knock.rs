@@ -802,9 +802,15 @@ impl KnockLogic {
         let Some(hz) = snap.spectrogram_peak_hz else {
             return false;
         };
+        let hz = f64::from(hz);
         let prev = self.detected_frequency_hz;
-        self.detected_frequency_hz = Some(f64::from(hz));
-        prev != self.detected_frequency_hz
+        let next = match prev {
+            Some(p) if p >= hz => p,
+            _ => hz,
+        };
+        let changed = prev != Some(next);
+        self.detected_frequency_hz = Some(next);
+        changed
     }
 }
 
@@ -892,7 +898,6 @@ impl ComponentLogic for KnockLogic {
                     .and_then(|v| v.as_bool())
                     .unwrap_or(self.mode == KnockRunMode::ThresholdAutotune);
                 self.stop_run(apply)?;
-                self.pending_config_emit = false;
                 Ok(self.to_json())
             }
             "start_spectrum_run" => {

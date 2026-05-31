@@ -1,6 +1,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch, type ComputedRef } from "vue";
 import type { ComponentInstance } from "../core/types";
-import { configCanEdit, initConfig, useConfig } from "./useConfig";
+import { configCanEdit, configDataRevision, initConfig, useConfig } from "./useConfig";
 import { useInstanceBind } from "./useInstanceBind";
 
 export type ConfigGridKind = "table" | "curve";
@@ -136,6 +136,10 @@ export function useConfigGrid({ kind, instance, props }: UseConfigGridOptions) {
       if (changed) void reload();
     },
   );
+
+  watch(configDataRevision, () => {
+    if (snapshot.value.loaded && !snapshot.value.loading) void reload();
+  });
 
   onMounted(() => {
     window.addEventListener("config-undo-redo", onConfigUndoRedo);
