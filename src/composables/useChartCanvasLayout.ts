@@ -3,7 +3,7 @@ import { onUnmounted, watch, type Ref } from "vue";
 /** Ширина plot-area; 0 если контейнер скрыт (v-show → clientWidth 0). */
 export function measureChartWidth(
   el: HTMLElement | null | undefined,
-  minWidth = 280,
+  minWidth = 1,
 ): number {
   if (!el) return 0;
   const w = el.clientWidth;
