@@ -63,8 +63,8 @@
     }
   },
   "fuel_factors": {
-    "gasoline_92": 0.9967,
-    "gasoline_95": 0.98,
+    "gasoline_92": 0.6987,
+    "gasoline_95": 0.7867,
     "gasoline_98": 0.8747,
     "e85": 1.08
   },

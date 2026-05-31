@@ -68,6 +68,19 @@ function fieldCacheKey(field: string, componentId?: string | null): string {
   return componentId ? `${field}\0${componentId}` : field;
 }
 
+/** Таблицы/кривые — только leaf в checklist; нужна вся INI-панель как во вкладке Config. */
+function isPanelEditorType(type: string | undefined): boolean {
+  return type === "config-table" || type === "ignition-table" || type === "curve";
+}
+
+function panelComposite(panelId: string, children: ComponentInstance[]): ComponentInstance {
+  return {
+    id: `checklist-${panelId}`,
+    type: "composite",
+    children,
+  };
+}
+
 /** Найти enum-field (или другой bind) по имени поля config во всех INI-панелях. */
 async function findFieldComponentInManifest(
   field: string,
@@ -125,9 +138,21 @@ async function resolveSingleChecklistEditor(
       const found =
         findInTree(children, editor.field, editor.component) ??
         findInTree(children, editor.field, null);
+      if (found && isPanelEditorType(found.type)) {
+        return panelComposite(editor.panel, children);
+      }
       if (found) return structuredClone(found);
     }
   }
 
-  return findFieldComponentInManifest(editor.field, editor.component);
+  const fallback = await findFieldComponentInManifest(editor.field, editor.component);
+  if (fallback && isPanelEditorType(fallback.type) && editor.panel) {
+    const manifest = await loadManifest();
+    const entry = manifest.panels.find((p) => p.id === editor.panel);
+    if (entry) {
+      const children = await loadPanelChildren(entry.file);
+      return panelComposite(editor.panel, children);
+    }
+  }
+  return fallback;
 }

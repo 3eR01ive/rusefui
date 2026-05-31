@@ -1,8 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useInstanceBind } from "../../composables/useInstanceBind";
 import { useRustComponent } from "../../composables/useRustComponent";
+import { useComponentBinding } from "../../composables/useKeyboardRouter";
+import {
+  activateComponent,
+  selectComponent,
+  setNavExtension,
+} from "../../composables/useWorkspaceNav";
 import ConfigTable from "./ConfigTable.vue";
 
 interface EngineParams {
@@ -69,6 +75,32 @@ const tableInstance = computed((): ComponentInstance => ({
 }));
 
 const tablePath = computed(() => `${props.path}/grid`);
+
+const gridRef = ref<{ handleKeydown: (e: KeyboardEvent) => boolean } | null>(null);
+
+function syncNavExtension(): void {
+  setNavExtension(tablePath.value, tableInstance.value);
+}
+
+onMounted(() => {
+  syncNavExtension();
+});
+
+onBeforeUnmount(() => {
+  setNavExtension(tablePath.value, null);
+});
+
+watch(tablePath, () => {
+  syncNavExtension();
+});
+
+function onGridMouseDown(): void {
+  selectComponent(tablePath.value);
+  activateComponent(tablePath.value);
+}
+
+/** Вложенная таблица на `{path}/grid`; родительский path перехватывает клавиатуру и делегирует. */
+useComponentBinding(props.path, (e) => gridRef.value?.handleKeydown(e) ?? false);
 
 function rustParams(): EngineParams {
   const p = state.value.params as Record<string, unknown> | undefined;
@@ -308,13 +340,21 @@ const ASPIRATION_OPTIONS = [
       </p>
     </div>
 
-    <ConfigTable
-      :instance="tableInstance"
-      :path="tablePath"
-      :props="tableInstance.props ?? {}"
-      :binding="binding"
-      :meta="meta"
-    />
+    <div
+      class="ignition-grid-host nav-node"
+      data-nav-node="1"
+      :data-nav-path="tablePath"
+      @mousedown.stop="onGridMouseDown"
+    >
+      <ConfigTable
+        ref="gridRef"
+        :instance="tableInstance"
+        :path="tablePath"
+        :props="tableInstance.props ?? {}"
+        :binding="binding"
+        :meta="meta"
+      />
+    </div>
   </div>
 </template>
 
@@ -427,5 +467,11 @@ const ASPIRATION_OPTIONS = [
   font-size: 0.72rem;
   line-height: 1.35;
   color: var(--color-text-muted);
+}
+
+.ignition-grid-host {
+  width: 100%;
+  min-width: 0;
+  align-self: stretch;
 }
 </style>

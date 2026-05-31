@@ -270,5 +270,31 @@ mod tests {
         let diag = calc.diagnostics();
         assert!((diag.burn_index - 1.2189).abs() < 0.001);
         assert!((diag.mbt_deg - 16.9).abs() < 0.1);
+        assert!((diag.fuel_factor - 0.8747).abs() < 0.001);
+    }
+
+    #[test]
+    fn fuel_factors_increase_with_octane() {
+        let coef = ModelCoefficients::default_embedded().expect("coefficients");
+        let mut base = turbo_engine();
+        base.fuel = "gasoline_92".into();
+        let a92 = SparkAdvanceCalculator::new(base.clone(), coef.clone())
+            .advance_at(4000.0, 150.0)
+            .advance_deg;
+        base.fuel = "gasoline_95".into();
+        let a95 = SparkAdvanceCalculator::new(base.clone(), coef.clone())
+            .advance_at(4000.0, 150.0)
+            .advance_deg;
+        base.fuel = "gasoline_98".into();
+        let a98 = SparkAdvanceCalculator::new(base.clone(), coef.clone())
+            .advance_at(4000.0, 150.0)
+            .advance_deg;
+        base.fuel = "e85".into();
+        let ae85 = SparkAdvanceCalculator::new(base, coef)
+            .advance_at(4000.0, 150.0)
+            .advance_deg;
+        assert!(a92 < a95, "92 {a92} should be < 95 {a95}");
+        assert!(a95 < a98, "95 {a95} should be < 98 {a98}");
+        assert!(a98 < ae85, "98 {a98} should be < e85 {ae85}");
     }
 }

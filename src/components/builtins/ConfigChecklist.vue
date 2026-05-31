@@ -49,6 +49,10 @@ const editorInstances = shallowRef<ComponentInstance[]>([]);
 const editorLoading = ref(false);
 const editorError = ref<string | null>(null);
 
+const editorHostPath = computed(() =>
+  selectedId.value ? `${props.path}/editor/${selectedId.value}` : `${props.path}/editor`,
+);
+
 /** Корень редактора справа: один leaf или composite — пути nav как у IniPanelsBrowser. */
 const editorRoot = computed((): ComponentInstance | null => {
   const insts = editorInstances.value;
@@ -190,11 +194,22 @@ watch(
   { immediate: true },
 );
 
+let lastEditorNavPath = "";
+
 watch(
-  editorRoot,
-  (root) => {
+  [editorRoot, editorHostPath],
+  ([root, navPath]) => {
     if (!tabActive.value) return;
-    setNavExtension(`${props.path}/editor`, root);
+    if (lastEditorNavPath && lastEditorNavPath !== navPath) {
+      setNavExtension(lastEditorNavPath, null);
+    }
+    if (root && navPath) {
+      setNavExtension(navPath, root);
+      lastEditorNavPath = navPath;
+    } else if (lastEditorNavPath) {
+      setNavExtension(lastEditorNavPath, null);
+      lastEditorNavPath = "";
+    }
   },
   { immediate: true },
 );
@@ -202,8 +217,9 @@ watch(
 watch(tabActive, (active) => {
   if (!active) return;
   setNavMenuPaths(props.path, menuNavPaths.value);
-  if (editorRoot.value) {
-    setNavExtension(`${props.path}/editor`, editorRoot.value);
+  if (editorRoot.value && editorHostPath.value) {
+    setNavExtension(editorHostPath.value, editorRoot.value);
+    lastEditorNavPath = editorHostPath.value;
   } else if (selectedId.value) {
     void loadEditorForSelection(selectedId.value);
   }
@@ -219,7 +235,9 @@ watch(selectedPath, (path) => {
 });
 
 onUnmounted(() => {
-  setNavExtension(`${props.path}/editor`, null);
+  if (lastEditorNavPath) {
+    setNavExtension(lastEditorNavPath, null);
+  }
   setNavMenuPaths(props.path, []);
 });
 
@@ -358,8 +376,9 @@ function levelLedClass(level: ChecklistLevelStatus): string {
         <p v-else-if="!editorRoot" class="editor-state">Выберите пункт checklist</p>
         <ComponentHost
           v-else
+          :key="selectedId"
           :instance="editorRoot"
-          :path="`${path}/editor`"
+          :path="editorHostPath"
           @select-path="selectComponent"
           @activate-path="(p) => { if (isNavActivatablePath(p)) { activateComponent(p); focusComponent(p); } }"
         />
@@ -455,6 +474,12 @@ function levelLedClass(level: ChecklistLevelStatus): string {
   padding: 0.75rem 1rem;
   background: var(--color-surface-1, rgba(255, 255, 255, 0.02));
   min-width: 0;
+}
+
+.checklist-editor :deep(.host-node) {
+  align-self: stretch;
+  width: 100%;
+  max-width: 100%;
 }
 
 .level-block + .level-block {

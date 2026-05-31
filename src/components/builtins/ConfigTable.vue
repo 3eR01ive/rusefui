@@ -378,6 +378,8 @@ function onComponentKeydown(e: KeyboardEvent): boolean {
   return true;
 }
 
+defineExpose({ handleKeydown: onComponentKeydown });
+
 useComponentBinding(props.path, onComponentKeydown);
 
 function onCellMouseDown(row: number, col: number, e: MouseEvent) {
