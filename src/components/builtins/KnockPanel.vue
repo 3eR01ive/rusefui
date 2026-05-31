@@ -573,18 +573,14 @@ function redrawThresholdChart(): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  drawKnockThresholdChart(
-    ctx,
-    w,
-    h,
-    thresholdChartCurve.value,
-    knockLevelChartPoints.value,
-    undefined,
-    previousKnockLevelChartPoints.value,
-    liveRpm.value,
-    liveLevel.value,
-    recordingThreshold.value ? configThresholdCurve.value : [],
-  );
+  drawKnockThresholdChart(ctx, w, h, thresholdChartCurve.value, knockLevelChartPoints.value, {
+    previousRunLevels: previousKnockLevelChartPoints.value,
+    liveRpm: liveRpm.value,
+    liveLevel: liveLevel.value,
+    baselineThreshold: recordingThreshold.value ? configThresholdCurve.value : [],
+    thresholdGapDb: thresholdGapDb.value,
+    recording: recordingThreshold.value,
+  });
 }
 
 let thresholdRedrawRaf = 0;
@@ -855,7 +851,7 @@ onUnmounted(() => {
           <header class="knock-step-header">
             <h3 class="knock-step-title">1. Threshold autotune</h3>
             <p class="knock-step-hint">
-              knockBaseNoise из config (пунктир) и knock level с прогона (сплошная).
+              Шум по RPM-бинам, порог autotune (peak + Δ) и зазор до knockBaseNoise.
             </p>
           </header>
           <div
