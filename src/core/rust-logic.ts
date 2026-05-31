@@ -5,6 +5,7 @@ const RUST_LOGIC_TYPES = new Set([
   "dyno",
   "knock",
   "config-table",
+  "ignition-table",
 ]);
 
 export function requiresRustLogic(componentType: string): boolean {

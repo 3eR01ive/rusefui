@@ -7,6 +7,7 @@ use crate::component::{requires_rust_logic, ComponentLogic, EcuSyncOnMount, Logi
 use crate::components::config_table::ConfigTableLogic;
 use crate::components::connection::ConnectionLogic;
 use crate::components::dyno::DynoLogic;
+use crate::components::ignition_table::IgnitionTableLogic;
 use crate::components::knock::KnockLogic;
 use crate::components::simulation::SimulationLogic;
 use crate::sources::output_channels::OutputSnapshot;
@@ -42,8 +43,10 @@ impl ComponentRuntime {
         }
 
         if self.instances.contains_key(instance_id) {
-            if component_type == LogicComponentType::ConfigTable.as_str()
-                && !payload.is_null()
+            if matches!(
+                LogicComponentType::from_str(component_type),
+                Some(LogicComponentType::ConfigTable) | Some(LogicComponentType::IgnitionTable)
+            ) && !payload.is_null()
             {
                 return self.dispatch(instance_id, "set_bind", payload);
             }
@@ -66,14 +69,19 @@ impl ComponentRuntime {
             Some(LogicComponentType::ConfigTable) => {
                 Box::new(ConfigTableLogic::new(Arc::clone(&self.session)))
             }
+            Some(LogicComponentType::IgnitionTable) => {
+                Box::new(IgnitionTableLogic::new(Arc::clone(&self.session)))
+            }
             None => {
                 return Err(format!("unknown logic component: {component_type}"));
             }
         };
 
         self.instances.insert(instance_id.to_string(), logic);
-        let mount_payload = if component_type == LogicComponentType::ConfigTable.as_str()
-            && !payload.is_null()
+        let mount_payload = if matches!(
+            LogicComponentType::from_str(component_type),
+            Some(LogicComponentType::ConfigTable) | Some(LogicComponentType::IgnitionTable)
+        ) && !payload.is_null()
         {
             payload
         } else {

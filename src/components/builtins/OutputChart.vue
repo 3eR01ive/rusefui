@@ -151,7 +151,8 @@ function measureCanvasWidth(): number {
 const { snapshot } = useOutputChannels();
 const { isActive: tabActive } = useTabActivity();
 const { fields: allFields, reload: reloadOutputFields } = useOutputFields();
-const { offlineMode } = useEcuConnection(useDataContext());
+const dataCtx = useDataContext();
+const { offlineMode } = useEcuConnection(dataCtx);
 const { getProjectUi, setProjectUi } = useProject();
 
 let applyingProjectUi = false;
@@ -365,7 +366,7 @@ watch(
   () => snapshot.value.iniFieldCount ?? 0,
   (count, prev) => {
     if (count > 0 && count !== prev) {
-      void reloadOutputFields();
+      void reloadOutputFields().then(() => ensureTimelineSeriesBootstrap());
     }
   },
 );
@@ -463,7 +464,7 @@ watch(workspaceResetEpoch, () => {
   seriesStreamGen += 1;
   void refreshTimelineStatus().then(() => {
     void applyLogUiFromProject().then(() => {
-      void streamSeriesIntoCache(true).then(() => scheduleRedraw(true));
+      void ensureTimelineSeriesBootstrap(true).then(() => scheduleRedraw(true));
     });
   });
 });
@@ -1301,6 +1302,28 @@ async function pullLiveSeriesDelta(): Promise<void> {
   await seriesFetchInflight;
 }
 
+let bootstrapInflight: Promise<void> | null = null;
+
+/** Первичная загрузка рядов: ECU могла подключиться до mount (ecu-connection уже прошёл). */
+async function ensureTimelineSeriesBootstrap(force = false): Promise<void> {
+  if (uniquePollFields().length === 0) return;
+
+  if (bootstrapInflight) {
+    await bootstrapInflight;
+    if (!force) return;
+  }
+
+  bootstrapInflight = (async () => {
+    await refreshTimelineStatus();
+    if (!canPlotTimeline()) return;
+    if (!force && seriesCache.size > 0) return;
+    await streamSeriesIntoCache(true);
+  })().finally(() => {
+    bootstrapInflight = null;
+  });
+  await bootstrapInflight;
+}
+
 function buildViewFromCache(): OutputTimelineView | null {
   const win = effectiveTimeWindow();
   const fields = fieldsForTimelineQuery();
@@ -1338,6 +1361,7 @@ async function refreshSeriesCache(force = false): Promise<void> {
 function canPlotTimeline(): boolean {
   return (
     snapshot.value.connected ||
+    dataCtx.connection.value.connected ||
     timelineHasHistory.value ||
     Boolean(snapshot.value.sessionLogPath ?? timelineStatus.value.sessionLogPath)
   );
@@ -1459,25 +1483,22 @@ onMounted(async () => {
   await initProject();
   await initOutputChannels();
   await initOutputTimeline();
-  await refreshFieldCatalog();
-  await applyLogUiFromProject();
-  if (snapshot.value.connected || timelineHasHistory.value) {
-    await streamSeriesIntoCache(true);
-  }
-
-  if (canvasRef.value) {
-    logChartRenderer.attach(canvasRef.value);
-  }
 
   unlistenEcu = await listen("ecu-connection", () => {
     invalidateSeriesCache();
     lastView.value = null;
     seriesStreamGen += 1;
     void refreshFieldCatalog();
-    void refreshTimelineStatus().then(() => {
-      void streamSeriesIntoCache(true).then(() => scheduleRedraw());
-    });
+    void ensureTimelineSeriesBootstrap(true).then(() => scheduleRedraw());
   });
+
+  await refreshFieldCatalog();
+  await applyLogUiFromProject();
+  await ensureTimelineSeriesBootstrap(true);
+
+  if (canvasRef.value) {
+    logChartRenderer.attach(canvasRef.value);
+  }
 
   if (canvasWrapRef.value) {
     resizeObserver = new ResizeObserver((entries) => {
@@ -1527,7 +1548,24 @@ watch(
   () => {
     if (uniquePollFields().length === 0) return;
     if (!canPlotTimeline()) return;
+    if (seriesCache.size === 0) {
+      void ensureTimelineSeriesBootstrap().then(() => scheduleRedraw(true));
+      return;
+    }
     void pullLiveSeriesDelta().then(() => scheduleRedraw(true));
+  },
+);
+
+watch(
+  () =>
+    [
+      uniquePollFields().join("\0"),
+      snapshot.value.connected,
+      dataCtx.connection.value.connected,
+      timelineStatus.value.dataMaxSec,
+    ] as const,
+  () => {
+    void ensureTimelineSeriesBootstrap();
   },
 );
 
@@ -1553,7 +1591,9 @@ watch(graphGroups, () => scheduleRedraw(), { deep: true });
 watch(chartHeight, () => scheduleRedraw());
 
 watch(tabActive, (active, wasActive) => {
-  if (active && !wasActive) scheduleRedraw(true);
+  if (active && !wasActive) {
+    void ensureTimelineSeriesBootstrap().then(() => scheduleRedraw(true));
+  }
 });
 </script>
 

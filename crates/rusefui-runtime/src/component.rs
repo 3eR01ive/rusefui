@@ -9,6 +9,7 @@ pub enum LogicComponentType {
     Dyno,
     Knock,
     ConfigTable,
+    IgnitionTable,
 }
 
 impl LogicComponentType {
@@ -19,6 +20,7 @@ impl LogicComponentType {
             "dyno" => Some(Self::Dyno),
             "knock" => Some(Self::Knock),
             "config-table" => Some(Self::ConfigTable),
+            "ignition-table" => Some(Self::IgnitionTable),
             _ => None,
         }
     }
@@ -30,6 +32,7 @@ impl LogicComponentType {
             Self::Dyno => "dyno",
             Self::Knock => "knock",
             Self::ConfigTable => "config-table",
+            Self::IgnitionTable => "ignition-table",
         }
     }
 }

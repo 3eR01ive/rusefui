@@ -845,6 +845,7 @@ fn component_action_may_write_config(action: &str, payload: &Value) -> bool {
         return true;
     }
     match action {
+        "generate_map" => true,
         "stop_run" => payload
             .get("applyThreshold")
             .and_then(|v| v.as_bool())

@@ -7,8 +7,8 @@ import { requiresRustLogic } from "../core/rust-logic";
 export type ComponentViewState = Record<string, unknown>;
 
 function resolveInstanceId(instance: ComponentInstance, path: string): string {
-  // config-table: id в YAML повторяется между панелями — уникальность по path.
-  if (instance.type === "config-table") {
+  // config-table / ignition-table: id в YAML повторяется — уникальность по path.
+  if (instance.type === "config-table" || instance.type === "ignition-table") {
     return path.replace(/\//g, "-");
   }
   return instance.id ?? path.replace(/\//g, "-");

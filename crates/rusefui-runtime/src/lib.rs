@@ -10,6 +10,7 @@ mod config_conflicts;
 mod config_vars;
 mod config_diff;
 mod dyno;
+mod ignition_map;
 mod knock;
 mod layout;
 mod ini;

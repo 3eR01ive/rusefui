@@ -11,6 +11,7 @@ import ScalarField from "./builtins/ScalarField.vue";
 import StringField from "./builtins/StringField.vue";
 import EnumField from "./builtins/EnumField.vue";
 import ConfigTable from "./builtins/ConfigTable.vue";
+import IgnitionTable from "./builtins/IgnitionTable.vue";
 import ConfigCurve from "./builtins/ConfigCurve.vue";
 import IniPanelsBrowser from "./builtins/IniPanelsBrowser.vue";
 import OutputChart from "./builtins/OutputChart.vue";
@@ -44,6 +45,7 @@ export function registerBuiltinComponents(): void {
   reg("string-field", StringField);
   reg("enum-field", EnumField);
   reg("config-table", ConfigTable);
+  reg("ignition-table", IgnitionTable);
   reg("curve", ConfigCurve);
   reg("ini-panels-browser", IniPanelsBrowser);
   reg("output-chart", OutputChart);

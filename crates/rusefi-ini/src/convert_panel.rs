@@ -367,7 +367,11 @@ fn config_table_node(table: &IniTableDef) -> YamlNode {
         props.insert("yLabel".into(), serde_yaml::Value::String(y.clone()));
     }
     YamlNode {
-        node_type: "config-table".into(),
+        node_type: if table.z_bins == "ignitionTable" {
+            "ignition-table".into()
+        } else {
+            "config-table".into()
+        },
         id: Some(slugify(&table.id)),
         props: Some(props),
         bind: Some(config_table_bind(

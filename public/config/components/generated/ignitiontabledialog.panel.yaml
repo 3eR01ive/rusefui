@@ -36,7 +36,7 @@ children:
     bind:
       source: config
       field: ignOverrideMode
-- type: config-table
+- type: ignition-table
   id: ignitiontabletbl
   props:
     xLabel: RPM
