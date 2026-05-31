@@ -29,8 +29,11 @@ const title = computed(() => String(props.props.title ?? ""));
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   padding: 1.1rem 1.35rem;
-  box-shadow: var(--shadow-card);
   box-sizing: border-box;
+  /* Без box-shadow: при скролле tab-panel тень + белая подложка дают jank (см. dyno-chars-host). */
+  contain: layout paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 8rem;
 }
 
 .section-title {

@@ -66,8 +66,11 @@ export function useRustComponent(
     }
   }
 
-  async function dispatch(action: string, payload: Record<string, unknown> = {}) {
-    if (!hasLogic.value || !ready.value) return;
+  async function dispatch(
+    action: string,
+    payload: Record<string, unknown> = {},
+  ): Promise<ComponentViewState | undefined> {
+    if (!hasLogic.value || !ready.value) return undefined;
     try {
       const next = await invoke<ComponentViewState>("component_dispatch", {
         params: {
@@ -78,6 +81,7 @@ export function useRustComponent(
       });
       state.value = next;
       error.value = null;
+      return next;
     } catch (e) {
       error.value = String(e);
       throw e;

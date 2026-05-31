@@ -8,7 +8,10 @@ import {
 } from "./configCommands";
 
 export async function dispatchConfigTableWithHistory(
-  dispatch: (action: string, payload?: Record<string, unknown>) => Promise<void>,
+  dispatch: (
+    action: string,
+    payload?: Record<string, unknown>,
+  ) => Promise<ComponentViewState | undefined>,
   getState: () => ComponentViewState,
   zField: string,
   title: string,

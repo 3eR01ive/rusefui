@@ -168,18 +168,11 @@ pub fn copy_axis_to_tsv(values: &[f64], i0: usize, i1: usize) -> String {
 fn parse_tsv_numbers(text: &str) -> Vec<f64> {
     let mut nums = Vec::new();
     for line in text.lines() {
-        for part in line.split('\t') {
-            for cell in part.split(',') {
-                let s = cell.trim().replace(',', ".");
-                if s.is_empty() {
-                    continue;
-                }
-                if let Ok(v) = s.parse::<f64>() {
-                    if v.is_finite() {
-                        nums.push(v);
-                    }
-                }
-            }
+        for cell in split_paste_line(line) {
+            let Some(v) = parse_paste_cell(cell) else {
+                continue;
+            };
+            nums.push(v);
         }
     }
     nums
@@ -376,6 +369,33 @@ pub fn copy_rect_to_tsv(state: &TableGridState, rect: GridRect) -> String {
     lines.join("\n")
 }
 
+/// Разделитель ячеек в строке буфера (TSV из Excel/LibreOffice или CSV).
+fn split_paste_line(line: &str) -> Vec<&str> {
+    if line.contains('\t') {
+        return line.split('\t').collect();
+    }
+    if line.contains(';') {
+        return line.split(';').collect();
+    }
+    if line.contains(',') {
+        let parts: Vec<&str> = line.split(',').collect();
+        if parts.len() > 1
+            && parts.iter().all(|p| {
+                p.trim()
+                    .replace(',', ".")
+                    .parse::<f64>()
+                    .ok()
+                    .filter(|v| v.is_finite())
+                    .is_some()
+            })
+            && parts.iter().all(|p| !p.trim().contains('.'))
+        {
+            return parts;
+        }
+    }
+    vec![line]
+}
+
 fn parse_paste_cell(raw: &str) -> Option<f64> {
     let s = raw.trim();
     if s.is_empty() {
@@ -399,7 +419,7 @@ pub fn paste_tsv_at(state: &TableGridState, rect: GridRect, text: &str) -> Vec<(
         if row >= state.rows {
             break;
         }
-        for (dc, cell) in line.split('\t').enumerate() {
+        for (dc, cell) in split_paste_line(line).into_iter().enumerate() {
             let col = rect.c0 + dc;
             if col >= state.cols {
                 break;

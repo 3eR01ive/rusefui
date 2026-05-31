@@ -184,7 +184,7 @@ function onTrackKeydown(event: KeyboardEvent): void {
 }
 
 function commitRpm(): Promise<void> {
-  return dispatch("set_rpm", { rpm: localRpm.value });
+  return dispatch("set_rpm", { rpm: localRpm.value }).then(() => {});
 }
 
 function buildUiSettings(): SimulationUiSettings {

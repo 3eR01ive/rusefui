@@ -99,6 +99,7 @@ onBeforeUnmount(() => {
 
 const gridRef = ref<HTMLElement | null>(null);
 const isMouseSelecting = ref(false);
+const clipboardError = ref("");
 
 const xLabel = computed(() => String(state.value.xLabel ?? propsRef.value.xLabel ?? "X"));
 const yLabel = computed(() => String(state.value.yLabel ?? propsRef.value.yLabel ?? "Y"));
@@ -117,7 +118,8 @@ const disabled = computed(() => !state.value.canEdit);
 const editBuffer = computed(() => String(state.value.editBuffer ?? ""));
 const statusText = computed(() => String(state.value.statusText ?? ""));
 const localError = computed(() =>
-  state.value.localError ? String(state.value.localError) : error.value,
+  clipboardError.value ||
+  (state.value.localError ? String(state.value.localError) : error.value),
 );
 
 interface TableCellView {
@@ -290,18 +292,36 @@ watch(
 
 
 async function copySelection(): Promise<void> {
-  await dispatch("copy_selection");
-  const text = String(state.value.copyText ?? "");
-  if (!text) return;
-  await writeClipboardText(text);
+  clipboardError.value = "";
+  const next = await dispatch("copy_selection");
+  const text = String(next?.copyText ?? state.value.copyText ?? "");
+  if (!text) {
+    clipboardError.value = "Нечего копировать";
+    return;
+  }
+  try {
+    await writeClipboardText(text);
+  } catch (e) {
+    clipboardError.value = e instanceof Error ? e.message : String(e);
+  }
 }
 
 async function pasteSelection(): Promise<void> {
+  clipboardError.value = "";
   if (editFocus.value === "x" && !canEditX.value) return;
   if (editFocus.value === "y" && !canEditY.value) return;
   if (editFocus.value === "grid" && disabled.value) return;
-  const text = await readClipboardText();
-  if (!text.trim()) return;
+  let text = "";
+  try {
+    text = await readClipboardText();
+  } catch (e) {
+    clipboardError.value = e instanceof Error ? e.message : String(e);
+    return;
+  }
+  if (!text.trim()) {
+    clipboardError.value = "Буфер обмена пуст";
+    return;
+  }
   await dispatchWrite("paste", { text });
 }
 
