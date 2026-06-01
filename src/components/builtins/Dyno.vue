@@ -471,7 +471,6 @@ const chNmEl = ref<HTMLElement | null>(null);
 const chHpEl = ref<HTMLElement | null>(null);
 const webglFailed = ref(false);
 let rendererAttached = false;
-let chartBooted = false;
 let tabBootGen = 0;
 let cachedOverlaySig = "";
 let cachedChartWidth = 1;
@@ -547,7 +546,6 @@ function releaseChartRenderer(): void {
   cancelAnimationFrame(crosshairRaf);
   dynoChartRenderer.detach();
   rendererAttached = false;
-  chartBooted = false;
 }
 
 async function bootChart(bootGen: number): Promise<void> {
@@ -559,7 +557,6 @@ async function bootChart(bootGen: number): Promise<void> {
     if (bootGen !== tabBootGen) return;
     await ensureChartRenderer();
   }
-  chartBooted = rendererAttached;
 }
 
 async function onTabActivated(): Promise<void> {

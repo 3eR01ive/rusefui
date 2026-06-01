@@ -313,12 +313,6 @@ export class DynoChartRenderer {
   private staticLineCount = 0;
   private hasCrosshairLines = false;
   private cachedCurCount = 0;
-  private torqueLineIdx = -1;
-  private hpLineIdx = -1;
-  private curTorqueLineIdx = -1;
-  private curHpLineIdx = -1;
-  private torqueBuf: Float32Array | null = null;
-  private hpBuf: Float32Array | null = null;
   private lastDrawLayout: DynoChartLayout | null = null;
   private lastDrawPoints: DynoRunPoint[] = [];
   private theme: ThemeColors = readTheme(null);
@@ -370,12 +364,6 @@ export class DynoChartRenderer {
     this.staticLineCount = 0;
     this.hasCrosshairLines = false;
     this.cachedCurCount = 0;
-    this.torqueLineIdx = -1;
-    this.hpLineIdx = -1;
-    this.curTorqueLineIdx = -1;
-    this.curHpLineIdx = -1;
-    this.torqueBuf = null;
-    this.hpBuf = null;
     this.lastDrawLayout = null;
     this.lastDrawPoints = [];
   }
@@ -432,65 +420,12 @@ export class DynoChartRenderer {
       if (prevHp) configs.push(prevHp);
     }
 
-    this.curTorqueLineIdx = -1;
-    this.curHpLineIdx = -1;
     const torqueLine = buildSolidLine(polylineTorque(cur, layout), height, this.torqueRgba, 2.5);
     const hpLine = buildSolidLine(polylineHp(cur, layout), height, this.hpRgba, 2.5);
-    if (torqueLine) {
-      this.curTorqueLineIdx = configs.length;
-      configs.push(torqueLine);
-    }
-    if (hpLine) {
-      this.curHpLineIdx = configs.length;
-      configs.push(hpLine);
-    }
+    if (torqueLine) configs.push(torqueLine);
+    if (hpLine) configs.push(hpLine);
 
     return configs;
-  }
-
-  private rememberCurveBuffers(staticConfigs: LineConfig[]): void {
-    this.torqueLineIdx = this.curTorqueLineIdx;
-    this.hpLineIdx = this.curHpLineIdx;
-    this.torqueBuf =
-      this.torqueLineIdx >= 0
-        ? staticConfigs[this.torqueLineIdx]!.points.slice()
-        : null;
-    this.hpBuf =
-      this.hpLineIdx >= 0 ? staticConfigs[this.hpLineIdx]!.points.slice() : null;
-  }
-
-  private tryAppendOnePoint(
-    lines: WebglLinePlot,
-    point: DynoRunPoint,
-    layout: DynoChartLayout,
-    height: number,
-  ): boolean {
-    if (
-      this.torqueLineIdx < 0 ||
-      this.hpLineIdx < 0 ||
-      !this.torqueBuf ||
-      !this.hpBuf
-    ) {
-      return false;
-    }
-
-    const x = rpmToCanvasX(point.rpm, layout);
-    const [tx, ty] = canvasToDataPoint(x, torqueToCanvasY(point.torqueNm, layout), height);
-    const tNext = new Float32Array(this.torqueBuf.length + 2);
-    tNext.set(this.torqueBuf);
-    tNext[tNext.length - 2] = tx;
-    tNext[tNext.length - 1] = ty;
-    this.torqueBuf = tNext;
-    lines.updateLinePoints(this.torqueLineIdx, tNext);
-
-    const [hx, hy] = canvasToDataPoint(x, hpToCanvasY(point.hp, layout), height);
-    const hNext = new Float32Array(this.hpBuf.length + 2);
-    hNext.set(this.hpBuf);
-    hNext[hNext.length - 2] = hx;
-    hNext[hNext.length - 1] = hy;
-    this.hpBuf = hNext;
-    lines.updateLinePoints(this.hpLineIdx, hNext);
-    return true;
   }
 
   private uploadScene(
@@ -508,7 +443,6 @@ export class DynoChartRenderer {
       this.cachedStaticSig = staticSig;
       this.cachedStaticConfigs = staticConfigs;
       this.staticLineCount = staticConfigs.length;
-      this.rememberCurveBuffers(staticConfigs);
       if (crossConfigs) {
         lines.initLines([...staticConfigs, ...crossConfigs]);
         this.hasCrosshairLines = true;
