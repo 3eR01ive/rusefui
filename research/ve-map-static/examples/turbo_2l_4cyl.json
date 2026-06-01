@@ -1,0 +1,17 @@
+{
+  "engine": {
+    "displacement_cc": 1997,
+    "cylinders": 4,
+    "max_rpm": 7500,
+    "intake_runner_length_mm": 280,
+    "intake_valve_diameter_mm": 33.0,
+    "cam_duration_deg": 260,
+    "cam_lift_mm": 10.8,
+    "cam_lsa_deg": 112,
+    "is_turbo": true
+  },
+  "axes": {
+    "rpm": [500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500],
+    "map_kpa": [20, 30, 45, 60, 70, 80, 90, 100, 110, 130, 160, 190, 210, 240, 250]
+  }
+}
