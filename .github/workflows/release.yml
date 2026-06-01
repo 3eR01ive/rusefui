@@ -57,22 +57,12 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
-      # Версия бандлов = tauri.conf.json; тег релиза = git tag (не v0.3.0 при теге v0.4.0).
+      # Версия бандлов = tauri.conf.json; тег релиза = git tag. Только Node — bash-синтаксис ломается в pwsh на Windows.
       - name: Sync app version from git tag
         if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          TAG="${{ github.ref_name }}"
-          VER="${TAG#v}"
-          export VER
-          node -e "
-            const fs = require('fs');
-            const v = process.env.VER;
-            for (const p of ['src-tauri/tauri.conf.json', 'package.json']) {
-              const j = JSON.parse(fs.readFileSync(p, 'utf8'));
-              j.version = v;
-              fs.writeFileSync(p, JSON.stringify(j, null, 2) + '\n');
-            }
-          "
+        env:
+          GIT_TAG: ${{ github.ref_name }}
+        run: node -e "const fs=require('fs');const v=process.env.GIT_TAG.replace(/^v/,'');for(const p of['src-tauri/tauri.conf.json','package.json']){const j=JSON.parse(fs.readFileSync(p,'utf8'));j.version=v;fs.writeFileSync(p,JSON.stringify(j,null,2)+'\n');}"
 
       - uses: tauri-apps/tauri-action@v0
         env:
