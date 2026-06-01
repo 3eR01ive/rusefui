@@ -6,6 +6,10 @@ on:
       - "v*"
   workflow_dispatch:
 
+env:
+  # actions/checkout, setup-node на Node 24 (deprecation Node 20 на runner, с июня 2026)
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   publish-tauri:
     permissions:
@@ -22,7 +26,7 @@ jobs:
     runs-on: ${{ matrix.platform }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install Linux dependencies
         if: matrix.platform == 'ubuntu-22.04'
@@ -37,9 +41,9 @@ jobs:
             pkg-config
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: lts/*
+          node-version: 24
           cache: npm
 
       - name: Install Rust stable
