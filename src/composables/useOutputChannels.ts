@@ -1,6 +1,8 @@
-import { shallowRef, readonly } from "vue";
+import { shallowRef, readonly, computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+
+export type OutputValuesSource = "live" | "logCursor";
 
 export interface OutputSnapshot {
   connected: boolean;
@@ -13,6 +15,10 @@ export interface OutputSnapshot {
   sessionLogPath?: string | null;
   /** elapsed_sec головы timeline (та же ось, что CSV и query_view). */
   timelineLiveSec?: number;
+  /** live ECU или интерполяция по логу в курсоре. */
+  valuesSource?: OutputValuesSource;
+  /** Момент на оси лога для `values` (сек). */
+  sampleSec?: number | null;
 }
 
 const snapshot = shallowRef<OutputSnapshot>({
@@ -47,12 +53,19 @@ export async function initOutputChannels(): Promise<void> {
   return initPromise;
 }
 
+/** Текущие output-параметры: live с ECU или срез лога в курсоре (см. `valuesSource`). */
 export function useOutputChannels() {
   return {
     snapshot: readonly(snapshot),
+    valuesSource: computed(
+      () => snapshot.value.valuesSource ?? (snapshot.value.connected ? "live" : "logCursor"),
+    ),
+    sampleSec: computed(() => snapshot.value.sampleSec ?? null),
     getField: (name: string): number | null => {
       const v = snapshot.value.values[name];
       return v === undefined ? null : v;
     },
   };
 }
+
+export const useCurrentOutputValues = useOutputChannels;

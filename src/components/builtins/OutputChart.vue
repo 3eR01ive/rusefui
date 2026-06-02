@@ -7,6 +7,7 @@ import {
   shallowRef,
   watch,
 } from "vue";
+import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useInstanceBind } from "../../composables/useInstanceBind";
@@ -851,6 +852,10 @@ const logPanelHover = ref(false);
 const chartDragging = ref(false);
 /** X курсора в координатах canvas (CSS px) для кроссхайра. */
 const crosshairX = ref<number | null>(null);
+/** Последний `sec`, отправленный в Rust как курсор лога (для current output). */
+let lastSyncedLogCursor: number | null | undefined;
+/** Сброс курсора лога на бэкенде уже отправлен (live ECU). */
+let backendLogCursorCleared = false;
 const CLICK_PAN_THRESHOLD_PX = 5;
 
 interface LocalViewport {
@@ -1112,6 +1117,9 @@ function onChartPointerLeave(_e: PointerEvent): void {
   chartHover.value = false;
   if (!chartDragging.value && !chartPointerDown) {
     crosshairX.value = null;
+    lastSyncedLogCursor = undefined;
+    const { tMin, tMax } = effectiveTimeWindow();
+    syncOutputLogCursorToBackend(tMin, tMax);
     scheduleRedraw(true);
   }
 }
@@ -1374,6 +1382,26 @@ function crosshairSpec(): { x: number } | null {
   return { x: crosshairX.value };
 }
 
+function syncOutputLogCursorToBackend(tMin: number, tMax: number): void {
+  if (snapshot.value.connected || dataCtx.connection.value.connected) {
+    if (!backendLogCursorCleared) {
+      backendLogCursorCleared = true;
+      void invoke("output_set_log_cursor", { sec: null }).catch(() => {});
+    }
+    return;
+  }
+  backendLogCursorCleared = false;
+  let sec: number | null = null;
+  if (chartHover.value && crosshairX.value !== null) {
+    const w = canvasWidth.value;
+    const margins = chartMargins();
+    sec = plotXToTime(crosshairX.value, w, margins, tMin, tMax);
+  }
+  if (sec === lastSyncedLogCursor) return;
+  lastSyncedLogCursor = sec;
+  void invoke("output_set_log_cursor", { sec }).catch(() => {});
+}
+
 function paintFromView(
   w: number,
   h: number,
@@ -1432,6 +1460,8 @@ function updateCrosshairFromEvent(e: PointerEvent): void {
   if (!wrap) return;
   const rect = wrap.getBoundingClientRect();
   crosshairX.value = e.clientX - rect.left;
+  const { tMin, tMax } = effectiveTimeWindow();
+  syncOutputLogCursorToBackend(tMin, tMax);
 }
 
 async function redraw(skipSeriesFetch = false): Promise<void> {
@@ -1485,6 +1515,8 @@ onMounted(async () => {
   await initOutputTimeline();
 
   unlistenEcu = await listen("ecu-connection", () => {
+    backendLogCursorCleared = false;
+    lastSyncedLogCursor = undefined;
     invalidateSeriesCache();
     lastView.value = null;
     seriesStreamGen += 1;
@@ -1544,7 +1576,10 @@ watch(showSuggest, (open) => {
 });
 
 watch(
-  () => snapshot.value.values,
+  () =>
+    snapshot.value.connected || dataCtx.connection.value.connected
+      ? snapshot.value.values
+      : null,
   () => {
     if (uniquePollFields().length === 0) return;
     if (!canPlotTimeline()) return;

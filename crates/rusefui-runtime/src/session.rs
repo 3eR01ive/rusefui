@@ -309,10 +309,71 @@ impl EcuSession {
         tl.status()
     }
 
+    pub fn set_output_log_cursor_sec(&self, sec: Option<f64>) -> bool {
+        self.output_timeline.lock().unwrap().set_log_cursor_sec(sec)
+    }
+
+    fn needs_log_cursor_output_sample(&self) -> bool {
+        let tl = self.output_timeline.lock().unwrap();
+        if tl.has_log_cursor() {
+            return true;
+        }
+        let st = tl.status();
+        st.data_max_sec > st.data_min_sec + 1e-12
+    }
+
+    /// Глобальные «текущие output»: live с ECU или срез лога в курсоре timeline.
+    pub fn current_output_snapshot(&self) -> crate::sources::output_channels::OutputSnapshot {
+        use crate::sources::output_channels::OutputValuesSource;
+        if self.is_connected() {
+            let mut snap = self.output().snapshot();
+            snap.values_source = OutputValuesSource::Live;
+            if snap.sample_sec.is_none() {
+                snap.sample_sec = Some(snap.timeline_live_sec);
+            }
+            return snap;
+        }
+        if self.needs_log_cursor_output_sample() {
+            return self.output_snapshot_from_log_cursor(0.0, None);
+        }
+        let mut snap = self.output().snapshot();
+        snap.values_source = OutputValuesSource::LogCursor;
+        snap.sample_sec = None;
+        snap
+    }
+
+    pub(crate) fn output_snapshot_from_log_cursor(
+        &self,
+        poll_hz: f64,
+        last_error: Option<String>,
+    ) -> crate::sources::output_channels::OutputSnapshot {
+        use crate::sources::output_channels::{OutputSnapshot, OutputValuesSource};
+        let ini = self.ini_context();
+        let tl = self.output_timeline.lock().unwrap();
+        let t = tl.effective_cursor_sec();
+        let values = tl.sample_all_at(t);
+        OutputSnapshot {
+            connected: false,
+            poll_hz,
+            raw_len: 0,
+            values,
+            last_error,
+            ini_signature: ini.signature.clone(),
+            ini_field_count: ini.channels.fields.len(),
+            session_log_path: tl
+                .session_log_path()
+                .or_else(|| self.output_session_log_path()),
+            timeline_live_sec: tl.live_sec(),
+            values_source: OutputValuesSource::LogCursor,
+            sample_sec: Some(t),
+        }
+    }
+
     /// Пустой рабочий стол: config, timeline, лог сессии (без отключения ECU).
     pub fn reset_workspace_for_new_project(&self) {
         *self.active_panel_hash.lock().unwrap() = None;
         self.config().stop();
+        self.output().stop();
         self.composite().stop();
         self.knock_scope().stop();
         let _ = self.stop_output_data_log();

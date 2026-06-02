@@ -150,6 +150,8 @@ pub struct OutputTimeline {
     file_loader: Option<FileLoaderState>,
     /// Индекс следующей точки для pull (на поле).
     stream_cursors: HashMap<String, usize>,
+    /// Позиция курсора на графике лога (crosshair), секунды `elapsed_sec`.
+    log_cursor_sec: Option<f64>,
 }
 
 impl Default for OutputTimeline {
@@ -170,6 +172,7 @@ impl Default for OutputTimeline {
             last_series_bump_ms: 0,
             file_loader: None,
             stream_cursors: HashMap::new(),
+            log_cursor_sec: None,
         }
     }
 }
@@ -210,7 +213,50 @@ impl OutputTimeline {
         self.connected = connected;
         if connected {
             self.follow_live = true;
+            self.log_cursor_sec = None;
         }
+    }
+
+    pub fn set_log_cursor_sec(&mut self, t: Option<f64>) -> bool {
+        let next = t.filter(|v| v.is_finite());
+        if self.log_cursor_sec == next {
+            return false;
+        }
+        self.log_cursor_sec = next;
+        true
+    }
+
+    pub fn has_log_cursor(&self) -> bool {
+        self.log_cursor_sec.is_some()
+    }
+
+    /// Момент на оси лога для «текущих» output: crosshair, иначе правый край окна / live.
+    pub fn effective_cursor_sec(&self) -> f64 {
+        if let Some(t) = self.log_cursor_sec {
+            let hi = self.data_max_sec.max(self.live_sec);
+            return clamp_f64(t, self.data_min_sec, hi);
+        }
+        if self.follow_live {
+            self.effective_live_sec()
+        } else {
+            self.view_end_sec
+        }
+    }
+
+    pub fn interpolate_field_at(&self, field: &str, t: f64) -> Option<f64> {
+        self.fields
+            .get(field)
+            .and_then(|s| interpolate_series(&s.points, t))
+    }
+
+    pub fn sample_all_at(&self, t: f64) -> HashMap<String, f64> {
+        let mut out = HashMap::new();
+        for name in &self.field_order {
+            if let Some(v) = self.interpolate_field_at(name, t) {
+                out.insert(name.clone(), v);
+            }
+        }
+        out
     }
 
     pub fn set_session_file(&mut self, path: Option<PathBuf>) {
@@ -496,12 +542,7 @@ impl OutputTimeline {
     }
 
     pub fn value_at(&self, field: &str, t: f64) -> Option<f64> {
-        let points = self.collect_field_points(field, t - 0.001, t + 0.001);
-        points.last().map(|(_, v)| *v).or_else(|| {
-            self.fields
-                .get(field)
-                .and_then(|s| s.points.back().map(|(_, v)| *v))
-        })
+        self.interpolate_field_at(field, t)
     }
 
     fn mode(&self) -> TimelineMode {
@@ -691,6 +732,39 @@ impl OutputTimeline {
 }
 
 /// `f64::clamp` паникует, если `lo > hi` (например span шире, чем длина лога).
+/// Линейная интерполяция по отсортированному ряду (как `interpolateSeriesAtTime` во фронте).
+fn interpolate_series(points: &VecDeque<(f64, f64)>, t: f64) -> Option<f64> {
+    if points.is_empty() || !t.is_finite() {
+        return None;
+    }
+    let (t0, v0) = points.front()?;
+    if t <= *t0 {
+        return Some(*v0);
+    }
+    let (t_last, v_last) = points.back()?;
+    if t >= *t_last {
+        return Some(*v_last);
+    }
+    let mut lo = 0usize;
+    let mut hi = points.len() - 1;
+    while lo + 1 < hi {
+        let mid = (lo + hi) / 2;
+        if points[mid].0 <= t {
+            lo = mid;
+        } else {
+            hi = mid;
+        }
+    }
+    let (ta, va) = points[lo];
+    let (tb, vb) = points[hi];
+    let dt = tb - ta;
+    if dt.abs() < 1e-12 {
+        return Some(vb);
+    }
+    let f = (t - ta) / dt;
+    Some(va + (vb - va) * f)
+}
+
 fn clamp_f64(v: f64, lo: f64, hi: f64) -> f64 {
     if !v.is_finite() {
         return if hi.is_finite() { hi } else { lo };
@@ -1052,5 +1126,40 @@ mod tests {
         });
         assert!(!chunk.series.is_empty());
         assert!(chunk.series[0].points.iter().any(|p| (p.v - 9999.0).abs() < 1e-6));
+    }
+
+    #[test]
+    fn interpolate_series_linear() {
+        let mut tl = OutputTimeline::default();
+        tl.reset_session(&["RPMValue".into()], 30.0);
+        let mut v = HashMap::new();
+        v.insert("RPMValue".into(), 1000.0);
+        tl.ingest(0.0, &v);
+        v.insert("RPMValue".into(), 2000.0);
+        tl.ingest(10.0, &v);
+        let mid = tl.interpolate_field_at("RPMValue", 5.0).unwrap();
+        assert!((mid - 1500.0).abs() < 1e-6);
+        assert_eq!(tl.interpolate_field_at("RPMValue", -1.0), Some(1000.0));
+        assert_eq!(tl.interpolate_field_at("RPMValue", 20.0), Some(2000.0));
+    }
+
+    #[test]
+    fn effective_cursor_uses_crosshair_when_set() {
+        let mut tl = OutputTimeline::default();
+        tl.reset_session(&["RPMValue".into()], 30.0);
+        let mut v = HashMap::new();
+        v.insert("RPMValue".into(), 1000.0);
+        tl.ingest(0.0, &v);
+        v.insert("RPMValue".into(), 2000.0);
+        tl.ingest(10.0, &v);
+        tl.set_log_cursor_sec(Some(3.5));
+        tl.apply_view_control(OutputTimelineViewControl {
+            follow_live: Some(false),
+            view_end_sec: Some(10.0),
+            span_sec: None,
+            pan_sec: None,
+            zoom_factor: None,
+        });
+        assert!((tl.effective_cursor_sec() - 3.5).abs() < 1e-9);
     }
 }

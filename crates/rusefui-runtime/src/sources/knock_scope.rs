@@ -297,9 +297,7 @@ impl KnockScopeSource {
 
     pub fn stop(&self) {
         self.running.store(false, Ordering::SeqCst);
-        if let Some(handle) = self.thread.lock().unwrap().take() {
-            let _ = handle.join();
-        }
+        let _ = self.thread.lock().unwrap().take();
         *self.scope_started_at.lock().unwrap() = None;
         let mut snap = self.snapshot.write().unwrap();
         snap.scope_enabled = false;
@@ -341,9 +339,7 @@ impl KnockScopeSource {
         session.composite().stop();
 
         self.running.store(false, Ordering::SeqCst);
-        if let Some(handle) = self.thread.lock().unwrap().take() {
-            let _ = handle.join();
-        }
+        let _ = self.thread.lock().unwrap().take();
 
         session.with_link(|link| link.set_knock_scope_enabled(true))?;
         self.scope_enabled_on_ecu.store(true, Ordering::SeqCst);

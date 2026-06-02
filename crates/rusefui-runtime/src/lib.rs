@@ -92,7 +92,7 @@ pub use sources::composite_trigger_wheels::{
 };
 pub use sources::config::{ConfigFieldInfo, ConfigSnapshot};
 pub use sources::output_channels::{
-    IniContext, OutputFieldInfo, OutputSnapshot, DEFAULT_OUTPUT_BLOCK_SIZE,
+    IniContext, OutputFieldInfo, OutputSnapshot, OutputValuesSource, DEFAULT_OUTPUT_BLOCK_SIZE,
 };
 pub use sources::output_data_log::output_logs_dir;
 pub use sources::output_timeline::{

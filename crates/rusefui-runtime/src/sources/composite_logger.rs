@@ -219,9 +219,7 @@ impl CompositeLoggerSource {
     /// Остановить опрос; склеенная сессия остаётся в snapshot.
     pub fn stop(&self) {
         self.running.store(false, Ordering::SeqCst);
-        if let Some(handle) = self.thread.lock().unwrap().take() {
-            let _ = handle.join();
-        }
+        let _ = self.thread.lock().unwrap().take();
 
         let snap = {
             let ring = self.ring.lock().unwrap();
@@ -269,9 +267,7 @@ impl CompositeLoggerSource {
         session.knock_scope().stop();
 
         self.running.store(false, Ordering::SeqCst);
-        if let Some(handle) = self.thread.lock().unwrap().take() {
-            let _ = handle.join();
-        }
+        let _ = self.thread.lock().unwrap().take();
         self.clear_session();
 
         session.with_link(|link| link.set_composite_logger_enabled(true))?;

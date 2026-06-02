@@ -22,6 +22,17 @@ const STIM_POLL_INTERVAL: Duration = Duration::from_nanos((1_000_000_000.0 / STI
 /// UI-события не реже опроса ECU.
 const MIN_EMIT_INTERVAL: Duration = POLL_INTERVAL;
 
+/// Источник поля `values` в [`OutputSnapshot`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum OutputValuesSource {
+    /// Последний срез с ECU (опрос output channels).
+    #[default]
+    Live,
+    /// Интерполяция по логу в момент курсора timeline.
+    LogCursor,
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputSnapshot {
@@ -36,6 +47,11 @@ pub struct OutputSnapshot {
     pub session_log_path: Option<String>,
     /// `elapsed_sec` live-головы timeline (ось времени log = CSV).
     pub timeline_live_sec: f64,
+    /// Откуда взяты `values` (live ECU или курсор на логе).
+    #[serde(default)]
+    pub values_source: OutputValuesSource,
+    /// `elapsed_sec` на оси лога для `values` (курсор / правый край окна).
+    pub sample_sec: Option<f64>,
 }
 
 impl OutputSnapshot {
@@ -50,6 +66,8 @@ impl OutputSnapshot {
             ini_field_count: ini.channels.fields.len(),
             session_log_path: None,
             timeline_live_sec: 0.0,
+            values_source: OutputValuesSource::LogCursor,
+            sample_sec: None,
         }
     }
 }
@@ -182,9 +200,8 @@ impl OutputChannelsSource {
 
     pub fn stop(&self) {
         self.running.store(false, Ordering::SeqCst);
-        if let Some(handle) = self.thread.lock().unwrap().take() {
-            let _ = handle.join();
-        }
+        // Не join(): опрос `O` может висеть на serial; join на UI-потоке замораживает WebView.
+        let _ = self.thread.lock().unwrap().take();
         let ini = self.ini.lock().unwrap().clone();
         *self.snapshot.write().unwrap() = OutputSnapshot::disconnected(&ini);
     }
@@ -256,6 +273,8 @@ fn poll_loop(
             ini_field_count: ini.channels.fields.len(),
             session_log_path: session.output_session_log_path(),
             timeline_live_sec: session.output_timeline_live_sec(),
+            values_source: OutputValuesSource::Live,
+            sample_sec: None,
         };
 
         if snap.connected {
@@ -271,6 +290,7 @@ fn poll_loop(
                             .map(|d| d.as_millis() as u64)
                             .unwrap_or(0);
                         session.record_output_sample(ts, &snap.values);
+                        snap.sample_sec = Some(snap.timeline_live_sec);
                     }
                     Err(e) => snap.last_error = Some(e),
                 }

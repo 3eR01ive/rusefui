@@ -31,8 +31,11 @@ const rawValue = computed(() => {
   return getField(fieldName.value);
 });
 
+const valuesSourceLabel = computed(() =>
+  snapshot.value.valuesSource === "logCursor" ? "log" : "live",
+);
+
 const displayValue = useTabFrozenDisplay(() => {
-  if (!snapshot.value.connected) return "—";
   const v = rawValue.value;
   if (v === null) return "—";
   if (Number.isInteger(v) && decimals.value === 0) return String(v);
@@ -50,7 +53,7 @@ const stale = computed(
     <span class="ov-value">{{ displayValue }}</span>
     <span v-if="unit" class="ov-unit">{{ unit }}</span>
     <span v-if="snapshot.lastError" class="ov-error">{{ snapshot.lastError }}</span>
-    <span v-else class="ov-meta">output · {{ fieldName || "?" }}</span>
+    <span v-else class="ov-meta">output · {{ valuesSourceLabel }} · {{ fieldName || "?" }}</span>
   </div>
 </template>
 

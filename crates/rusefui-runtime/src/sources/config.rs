@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use rusefi_ini::config_field_ini_page;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread::{self, sleep, JoinHandle};
 use std::time::{Duration, Instant};
@@ -193,6 +193,8 @@ pub struct ConfigSource {
     pages: Arc<Mutex<ConfigPageStore>>,
     snapshot: Arc<RwLock<ConfigSnapshot>>,
     loading: Arc<AtomicBool>,
+    /// Увеличивается в [`Self::stop`] — устаревший load-поток не пишет в snapshot.
+    load_epoch: Arc<AtomicU64>,
     thread: Mutex<Option<JoinHandle<()>>>,
     live_ram_dirty_hook: Arc<Mutex<Option<Arc<dyn Fn() + Send + Sync>>>>,
 }
@@ -204,6 +206,7 @@ impl ConfigSource {
             pages: Arc::new(Mutex::new(ConfigPageStore::new())),
             snapshot: Arc::new(RwLock::new(ConfigSnapshot::disconnected(&ini))),
             loading: Arc::new(AtomicBool::new(false)),
+            load_epoch: Arc::new(AtomicU64::new(0)),
             thread: Mutex::new(None),
             live_ram_dirty_hook: Arc::new(Mutex::new(None)),
         }
@@ -700,10 +703,9 @@ impl ConfigSource {
     }
 
     pub fn stop(&self) {
+        self.load_epoch.fetch_add(1, Ordering::SeqCst);
         self.loading.store(false, Ordering::SeqCst);
-        if let Some(handle) = self.thread.lock().unwrap().take() {
-            let _ = handle.join();
-        }
+        let _ = self.thread.lock().unwrap().take();
         let ini = self.ini.lock().unwrap().clone();
         self.pages.lock().unwrap().clear();
         *self.snapshot.write().unwrap() = ConfigSnapshot::disconnected(&ini);
@@ -752,6 +754,8 @@ impl ConfigSource {
         on_update(self.snapshot.read().unwrap().clone());
 
         let loading = Arc::clone(&self.loading);
+        let load_epoch = Arc::clone(&self.load_epoch);
+        let my_epoch = load_epoch.load(Ordering::SeqCst);
         let snapshot = Arc::clone(&self.snapshot);
         let pages_store = Arc::clone(&self.pages);
         let on_update = Arc::new(on_update);
@@ -809,7 +813,7 @@ impl ConfigSource {
                     const LOAD_RETRY_MAX: u32 = 120;
                     let mut load_result: Option<Result<ConfigPageStore, String>> = None;
                     for _ in 0..LOAD_RETRY_MAX {
-                        if !session.is_connected() {
+                        if !session.is_connected() || load_epoch.load(Ordering::SeqCst) != my_epoch {
                             break;
                         }
                         match load_ecu_pages_once(&session, &ini_ctx, |loaded, total| {
@@ -890,6 +894,9 @@ impl ConfigSource {
                     }
                 }
 
+                if load_epoch.load(Ordering::SeqCst) != my_epoch {
+                    return;
+                }
                 loading.store(false, Ordering::SeqCst);
                 *snapshot.write().unwrap() = snap.clone();
                 on_update(snap);

@@ -40,6 +40,8 @@ pub struct RuntimeState {
     pub ram_dirty: Arc<AtomicBool>,
     /// Правила checklist из checklist.yaml (загружаются с фронта).
     pub checklist_rules: Mutex<Option<ChecklistRules>>,
+    /// Сериализация `sync_ecu_data` (autoconnect + invoke не параллелят stop/poll).
+    ecu_sync: Mutex<()>,
 }
 
 impl RuntimeState {
@@ -58,6 +60,7 @@ impl RuntimeState {
             last_ecu_connection_emit: Mutex::new(None),
             ram_dirty: Arc::new(AtomicBool::new(false)),
             checklist_rules: Mutex::new(None),
+            ecu_sync: Mutex::new(()),
         }
     }
 }
@@ -254,6 +257,10 @@ fn emit_output(app: &AppHandle, snapshot: &OutputSnapshot) {
     tauri::async_runtime::spawn(async move {
         let _ = app.emit("output-channels", snapshot);
     });
+}
+
+fn emit_current_output(app: &AppHandle, state: &RuntimeState) {
+    emit_output(app, &state.session.current_output_snapshot());
 }
 
 fn emit_composite(app: &AppHandle, snapshot: &CompositeSnapshot) {
@@ -472,7 +479,7 @@ fn sync_output_poll_session(session: &Arc<EcuSession>, app: &AppHandle) {
         let poll_session = Arc::clone(session);
         session.output().start(poll_session, move |snap| {
             let state = app.state::<RuntimeState>();
-            if let Ok(mut rt) = state.runtime.lock() {
+            if let Ok(mut rt) = state.runtime.try_lock() {
                 for (instance_id, st) in rt.feed_output(&snap) {
                     if st
                         .get("configUpdated")
@@ -489,7 +496,8 @@ fn sync_output_poll_session(session: &Arc<EcuSession>, app: &AppHandle) {
         });
     } else {
         session.output().stop();
-        emit_output(app, &session.output().snapshot());
+        let state = app.state::<RuntimeState>();
+        emit_current_output(app, &state);
     }
 }
 
@@ -532,6 +540,10 @@ fn sync_config_load(state: &RuntimeState, app: &AppHandle) {
 
 /// Синхронизация подсистем по фазе workspace (стейт-машина).
 fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
+    let _sync_guard = state
+        .ecu_sync
+        .lock()
+        .unwrap_or_else(|e| e.into_inner());
     let ws = reconcile_workspace(state, app);
 
     match ws.phase {
@@ -569,7 +581,7 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
                 sync_output_poll_session(&state.session, app);
             } else {
                 state.session.output().stop();
-                emit_output(app, &state.session.output().snapshot());
+                emit_current_output(app, state);
             }
         }
         WorkspacePhase::ConfigLoadingFromEcu => {
@@ -587,7 +599,7 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
     }
 
     emit_config_update(app, &state.session.config().snapshot());
-    emit_output(app, &state.session.output().snapshot());
+    emit_current_output(app, state);
     emit_composite(app, &state.session.composite().snapshot());
     emit_knock_scope_reset(app);
 }
@@ -1010,7 +1022,7 @@ pub fn component_unmount(instance_id: String, state: State<RuntimeState>) {
 
 #[tauri::command]
 pub fn output_get_snapshot(state: State<RuntimeState>) -> OutputSnapshot {
-    state.session.output().snapshot()
+    state.session.current_output_snapshot()
 }
 
 #[tauri::command]
@@ -1022,8 +1034,12 @@ pub fn output_list_fields(state: State<RuntimeState>) -> Vec<OutputFieldInfo> {
 #[tauri::command]
 pub fn output_start_listener(state: State<RuntimeState>, app: AppHandle) {
     state.session.bootstrap_offline_ini_if_needed();
-    emit_output(&app, &state.session.output().snapshot());
-    sync_ecu_data(&state, &app);
+    let app_bg = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let state = app_bg.state::<RuntimeState>();
+        emit_current_output(&app_bg, &state);
+        sync_ecu_data(&state, &app_bg);
+    });
 }
 
 #[tauri::command]
@@ -1303,17 +1319,35 @@ pub fn output_timeline_set_view(
     if state.session.log_viewport_linked() {
         emit_composite_timeline(&app, &state.session.composite_timeline_status());
     }
+    if !state.session.is_connected() {
+        emit_current_output(&app, &state);
+    }
     st
+}
+
+#[tauri::command]
+pub fn output_set_log_cursor(
+    sec: Option<f64>,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) {
+    if state.session.set_output_log_cursor_sec(sec) && !state.session.is_connected() {
+        emit_current_output(&app, &state);
+    }
 }
 
 #[tauri::command]
 pub fn output_timeline_load_file(
     state: State<RuntimeState>,
     path: String,
+    app: AppHandle,
 ) -> Result<OutputTimelineStatus, String> {
-    Ok(state
+    let st = state
         .session
-        .output_timeline_load_file(std::path::PathBuf::from(path)))
+        .output_timeline_load_file(std::path::PathBuf::from(path));
+    let _ = app.emit("output-timeline-status", &st);
+    emit_current_output(&app, &state);
+    Ok(st)
 }
 
 /// Нативный диалог выбора CSV-лога output channels.
@@ -1352,7 +1386,11 @@ pub fn config_list_fields(state: State<RuntimeState>) -> Vec<ConfigFieldInfo> {
 #[tauri::command]
 pub fn config_start_listener(state: State<RuntimeState>, app: AppHandle) {
     emit_config(&app, state.session.config().snapshot());
-    sync_ecu_data(&state, &app);
+    let app_bg = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let state = app_bg.state::<RuntimeState>();
+        sync_ecu_data(&state, &app_bg);
+    });
 }
 
 #[tauri::command]
@@ -1640,7 +1678,8 @@ pub async fn config_burn(state: State<'_, RuntimeState>, app: AppHandle) -> Resu
         if session.should_poll_output_channels() {
             sync_output_poll_session(&session, &app_bg);
         } else {
-            emit_output(&app_bg, &session.output().snapshot());
+            let state_bg = app_bg.state::<RuntimeState>();
+            emit_current_output(&app_bg, &state_bg);
         }
     });
 
@@ -1874,7 +1913,7 @@ pub fn autoconnect_set_offline_mode(
     state.autoconnect.set_offline_mode(offline);
     if offline {
         state.session.bootstrap_offline_ini_if_needed();
-        emit_output(&app, &state.session.output().snapshot());
+        emit_current_output(&app, &state);
     }
     schedule_ecu_notify(&app, false);
     schedule_autoconnect_ui(&app);
