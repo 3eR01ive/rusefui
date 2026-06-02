@@ -370,22 +370,32 @@ impl KnockScopeSource {
         self.running.load(Ordering::SeqCst) && self.thread.lock().unwrap().is_some()
     }
 
+    /// Остановить опрос и ECU scope; heatmap и метки цилиндров остаются для просмотра.
     pub fn stop(&self) {
         self.running.store(false, Ordering::SeqCst);
         let _ = self.thread.lock().unwrap().take();
         *self.scope_started_at.lock().unwrap() = None;
+        self.scope_enabled_on_ecu.store(false, Ordering::SeqCst);
+
+        let frozen = self.spectrogram.lock().unwrap().as_ref().map(|eng| {
+            (
+                eng.view(),
+                eng.visible_markers(),
+                eng.peak_frequency_hz(),
+            )
+        });
+
         let mut snap = self.snapshot.write().unwrap();
         snap.scope_enabled = false;
         snap.polling = false;
-        snap.knock_scope_ready = false;
-        snap.status_message = None;
-        snap.last_cylinder = None;
-        snap.last_channel = None;
-        snap.spectrogram = KnockSpectrogramView::default();
-        snap.spectrogram_peak_hz = None;
-        snap.spectrogram_markers.clear();
-        *self.spectrogram.lock().unwrap() = None;
-        self.scope_enabled_on_ecu.store(false, Ordering::SeqCst);
+        if let Some((view, markers, peak)) = frozen {
+            snap.spectrogram = view;
+            snap.spectrogram_markers = markers;
+            snap.spectrogram_peak_hz = peak;
+            snap.status_message = Some("Запись остановлена — спектрограмма на экране.".into());
+        } else {
+            snap.status_message = Some("Запись остановлена.".into());
+        }
     }
 
     pub fn disable_on_ecu(&self, session: &EcuSession) {

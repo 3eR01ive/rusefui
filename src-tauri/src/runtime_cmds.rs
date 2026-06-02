@@ -886,10 +886,6 @@ fn component_dispatch_inner(
 
     emit_state(&app, &params.instance_id, &snapshot);
 
-    if action == "stop_run" {
-        emit_knock_scope_reset(&app);
-    }
-
     if may_write_config {
         emit_config_update(&app, &state.session.config().snapshot());
         persist_config_after_table_edit(&state, &app);
@@ -1139,7 +1135,6 @@ pub fn knock_scope_set_enabled(
     } else {
         state.session.knock_scope().stop();
         state.session.knock_scope().disable_on_ecu(&state.session);
-        emit_knock_scope_reset(&app);
     }
     Ok(state.session.knock_scope_snapshot())
 }

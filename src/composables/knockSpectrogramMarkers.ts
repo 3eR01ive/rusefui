@@ -32,6 +32,7 @@ export function knockCylinderLabel(cylinder: number): string {
   return `C${cylinder + 1}`;
 }
 
+/** Уникальные метки для отрисовки (по паре столбец+цилиндр, не только по column). */
 export function buildKnockMarkerOverlay(
   markers: readonly KnockCylinderMarker[],
   texWidth: number,
@@ -40,13 +41,14 @@ export function buildKnockMarkerOverlay(
   if (texWidth < 1 || markers.length === 0 || cssWidth < 1) {
     return [];
   }
-  const seen = new Set<number>();
+  const seen = new Set<string>();
   const out: KnockMarkerOverlayItem[] = [];
   for (const mk of markers) {
-    if (seen.has(mk.column)) {
+    const key = `${mk.column}:${mk.cylinder}`;
+    if (seen.has(key)) {
       continue;
     }
-    seen.add(mk.column);
+    seen.add(key);
     out.push({
       x: knockSpectrogramMarkerX(mk.column, texWidth, cssWidth),
       label: knockCylinderLabel(mk.cylinder),
@@ -54,4 +56,20 @@ export function buildKnockMarkerOverlay(
     });
   }
   return out.sort((a, b) => a.x - b.x);
+}
+
+/** Список для WebGL-линий (без layout). */
+export function knockMarkersForGpu(
+  markers: readonly KnockCylinderMarker[],
+): KnockCylinderMarker[] {
+  if (markers.length === 0) return [];
+  const seen = new Set<string>();
+  const out: KnockCylinderMarker[] = [];
+  for (const mk of markers) {
+    const key = `${mk.column}:${mk.cylinder}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ column: mk.column, cylinder: mk.cylinder, channel: mk.channel });
+  }
+  return out.sort((a, b) => a.column - b.column || a.cylinder - b.cylinder);
 }

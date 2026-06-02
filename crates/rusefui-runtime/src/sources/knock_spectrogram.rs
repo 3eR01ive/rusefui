@@ -297,13 +297,15 @@ impl KnockSpectrogramEngine {
     }
 
     fn shift_markers_left(&mut self, shift: usize) {
-        self.markers.retain_mut(|m| {
+        let adjust = |m: &mut KnockSpectrogramMarker| {
             if m.column < shift {
                 return false;
             }
             m.column -= shift;
             true
-        });
+        };
+        self.markers.retain_mut(adjust);
+        self.pending_new_markers.retain_mut(adjust);
     }
 }
 
@@ -446,6 +448,26 @@ mod tests {
             Some(run_peak_hz),
             "пик прогона не должен сбрасываться при прокрутке окна"
         );
+    }
+
+    #[test]
+    fn shift_markers_left_updates_pending_new_markers() {
+        let mut eng = KnockSpectrogramEngine::new(KNOCK_ADC_SAMPLE_RATE_HZ, 500);
+        eng.pending_new_markers.push(KnockSpectrogramMarker {
+            column: 3,
+            cylinder: 1,
+            channel: 0,
+        });
+        eng.markers.push(KnockSpectrogramMarker {
+            column: 3,
+            cylinder: 1,
+            channel: 0,
+        });
+        eng.shift_markers_left(2);
+        assert_eq!(eng.markers.len(), 1);
+        assert_eq!(eng.markers[0].column, 1);
+        assert_eq!(eng.pending_new_markers.len(), 1);
+        assert_eq!(eng.pending_new_markers[0].column, 1);
     }
 }
 

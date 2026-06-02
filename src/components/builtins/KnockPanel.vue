@@ -26,7 +26,13 @@ import {
   type KnockSpectrogramGl,
 } from "../../composables/knockSpectrogramGl";
 import { buildKnockMarkerOverlay } from "../../composables/knockSpectrogramMarkers";
-import { initKnockScope, onKnockSpectrogramGlReset, subscribeKnockSpectrogramGpu, useKnockScope } from "../../composables/useKnockScope";
+import {
+  initKnockScope,
+  onKnockSpectrogramGlReset,
+  refreshKnockScopeSnapshot,
+  subscribeKnockSpectrogramGpu,
+  useKnockScope,
+} from "../../composables/useKnockScope";
 import { invoke } from "@tauri-apps/api/core";
 import {
   initProject,
@@ -307,6 +313,8 @@ function pushSpectrogramDisplay(): void {
     autocontrast: spectrogramAutocontrast.value,
     gainPercent: spectrogramGainPercent.value,
   });
+  const texW = spectrogramWidth.value || knockSpectrogramGlStats.value.texW;
+  spectrogramGl?.setMarkers(spectrogramMarkers.value, texW);
 }
 
 function redrawSpectrogramNow(): void {
@@ -525,6 +533,9 @@ async function stopThresholdRun(): Promise<void> {
 
 async function stopSpectrumRun(): Promise<void> {
   await dispatch("stop_run", { applyThreshold: false });
+  await refreshKnockScopeSnapshot();
+  pushSpectrogramDisplay();
+  scheduleSpectrogramRedraw();
 }
 
 const thresholdCanvasRef = ref<HTMLCanvasElement | null>(null);
@@ -917,7 +928,6 @@ onUnmounted(() => {
                 class="knock-spectrogram-marker"
                 :style="{ left: `${mk.x}px` }"
               >
-                <span class="knock-spectrogram-marker-line" />
                 <span class="knock-spectrogram-marker-label">{{ mk.label }}</span>
               </div>
             </div>
@@ -1283,16 +1293,6 @@ onUnmounted(() => {
   top: 12px;
   bottom: 32px;
   width: 0;
-}
-
-.knock-spectrogram-marker-line {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: rgba(255, 255, 255, 0.55);
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
 }
 
 .knock-spectrogram-marker-label {

@@ -237,8 +237,10 @@ export async function setKnockScopeEnabled(
   if (windowMs != null) {
     setWaveformWindowMs(windowMs);
   }
-  if (!enabled) {
+  if (enabled) {
     resetSpectrogramBuffer();
+  } else {
+    resetWaveformRing();
   }
   const snap = await invoke<KnockScopeSnapshot>("knock_scope_set_enabled", {
     enabled,
@@ -247,10 +249,39 @@ export async function setKnockScopeEnabled(
   snapshot.value = snap;
   spectrogramWidth.value = snap.spectrogram?.width ?? snap.spectrogramWidth ?? 0;
   spectrogramHeight.value = snap.spectrogram?.height ?? snap.spectrogramHeight ?? 0;
-  if (!enabled) {
-    resetSpectrogramBuffer();
+  if (snap.spectrogramMarkers != null) {
+    spectrogramMarkers.value = snap.spectrogramMarkers.map((m) => ({
+      column: m.column,
+      cylinder: m.cylinder,
+      channel: m.channel,
+    }));
+  }
+  if (snap.spectrogramPeakHz != null) {
+    spectrogramPeakHz.value = snap.spectrogramPeakHz;
   }
   return snap;
+}
+
+/** После стопа прогона — подтянуть замороженные метки/размеры из Rust. */
+export async function refreshKnockScopeSnapshot(): Promise<void> {
+  try {
+    const snap = await invoke<KnockScopeSnapshot>("knock_scope_get_snapshot");
+    snapshot.value = { ...snapshot.value, ...snap };
+    spectrogramWidth.value = snap.spectrogram?.width ?? snap.spectrogramWidth ?? 0;
+    spectrogramHeight.value = snap.spectrogram?.height ?? snap.spectrogramHeight ?? 0;
+    if (snap.spectrogramPeakHz != null) {
+      spectrogramPeakHz.value = snap.spectrogramPeakHz;
+    }
+    if (snap.spectrogramMarkers != null) {
+      spectrogramMarkers.value = snap.spectrogramMarkers.map((m) => ({
+        column: m.column,
+        cylinder: m.cylinder,
+        channel: m.channel,
+      }));
+    }
+  } catch {
+    /* not in tauri */
+  }
 }
 
 export function useKnockScope() {
@@ -265,6 +296,7 @@ export function useKnockScope() {
     waveformRing: readonly(waveformRing),
     setScopeEnabled: setKnockScopeEnabled,
     resetSpectrogramBuffer,
+    refreshKnockScopeSnapshot,
     setWaveformWindowMs,
   };
 }

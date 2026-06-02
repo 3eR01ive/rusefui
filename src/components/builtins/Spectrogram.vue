@@ -212,6 +212,8 @@ function redrawWaveform() {
 }
 
 function redrawSpectrogram() {
+  const texW = spectrogramWidth.value || knockSpectrogramGlStats.value.texW;
+  spectrogramGl?.setMarkers(spectrogramMarkers.value, texW);
   spectrogramGl?.draw();
 }
 
@@ -293,6 +295,11 @@ onUnmounted(() => {
 async function toggleScope() {
   setWaveformWindowMs(windowMs.value);
   await setScopeEnabled(!scopeEnabled.value, windowMs.value);
+  if (!scopeEnabled.value) {
+    const texW = spectrogramWidth.value || knockSpectrogramGlStats.value.texW;
+    spectrogramGl?.setMarkers(spectrogramMarkers.value, texW);
+    scheduleRedraw();
+  }
 }
 </script>
 
@@ -329,7 +336,6 @@ async function toggleScope() {
           class="spectrogram-marker"
           :style="{ left: `${mk.x}px` }"
         >
-          <span class="spectrogram-marker-line" />
           <span class="spectrogram-marker-label">{{ mk.label }}</span>
         </div>
       </div>
@@ -390,16 +396,6 @@ async function toggleScope() {
   top: 12px;
   bottom: 32px;
   width: 0;
-}
-
-.spectrogram-marker-line {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: rgba(255, 255, 255, 0.55);
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
 }
 
 .spectrogram-marker-label {

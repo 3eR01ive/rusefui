@@ -1,6 +1,8 @@
 import { ref } from "vue";
+import type { KnockCylinderMarker } from "./knockSpectrogramMarkers";
+import { knockMarkersForGpu } from "./knockSpectrogramMarkers";
 
-/** Спектрограмма: один WebGL2 canvas — heatmap, colorbar, рамки. */
+/** Спектрограмма: один WebGL2 canvas — heatmap, colorbar, линии цилиндров. */
 
 export const KNOCK_SPECTROGRAM_GPU_HEADER = 16;
 export const KNOCK_SPECTROGRAM_GPU_PATCH_HEADER = 24;
@@ -116,6 +118,40 @@ void main() {
 
   outColor = vec4(color, 1.0);
 }`;
+
+const MARKER_LINE_VS = `#version 300 es
+in vec2 aPos;
+in vec3 aColor;
+uniform vec2 uCanvas;
+out vec3 vColor;
+void main() {
+  vec2 clip = vec2(aPos.x / uCanvas.x * 2.0 - 1.0, 1.0 - aPos.y / uCanvas.y * 2.0);
+  gl_Position = vec4(clip, 0.0, 1.0);
+  vColor = aColor;
+}`;
+
+const MARKER_LINE_FS = `#version 300 es
+precision mediump float;
+in vec3 vColor;
+out vec4 outColor;
+void main() {
+  outColor = vec4(vColor, 0.92);
+}`;
+
+const MARKER_COLORS: ReadonlyArray<[number, number, number]> = [
+  [1.0, 0.92, 0.35],
+  [0.45, 0.82, 1.0],
+  [0.55, 1.0, 0.55],
+  [1.0, 0.55, 0.75],
+  [0.75, 0.65, 1.0],
+  [1.0, 0.7, 0.4],
+  [0.5, 0.95, 0.9],
+  [0.95, 0.55, 0.45],
+];
+
+function markerRgb(cylinder: number): [number, number, number] {
+  return MARKER_COLORS[cylinder % MARKER_COLORS.length]!;
+}
 
 function compileShader(gl: WebGL2RenderingContext, type: number, src: string): WebGLShader {
   const sh = gl.createShader(type)!;
@@ -278,6 +314,7 @@ export type KnockSpectrogramGl = {
   applyBuffer: (buf: ArrayBuffer) => void;
   draw: () => void;
   setDisplay: (display: KnockSpectrogramDisplay) => void;
+  setMarkers: (markers: readonly KnockCylinderMarker[], texWidth: number) => void;
   reset: () => void;
   destroy: () => void;
 };
@@ -311,7 +348,7 @@ function ensureCpuTex(
 }
 
 function createKnockSpectrogramGl(gl: WebGL2RenderingContext, canvas: HTMLCanvasElement): KnockSpectrogramGl {
-  let prog: WebGLProgram | null = null;
+  let heatmapProg: WebGLProgram | null = null;
   let aPos = -1;
   let uTex: WebGLUniformLocation | null = null;
   let uCanvas: WebGLUniformLocation | null = null;
@@ -322,8 +359,19 @@ function createKnockSpectrogramGl(gl: WebGL2RenderingContext, canvas: HTMLCanvas
   let uDispMin: WebGLUniformLocation | null = null;
   let uDispMax: WebGLUniformLocation | null = null;
   let uGainScale: WebGLUniformLocation | null = null;
-  let vao: WebGLVertexArrayObject | null = null;
+  let heatmapVao: WebGLVertexArrayObject | null = null;
   let tex: WebGLTexture | null = null;
+
+  let lineProg: WebGLProgram | null = null;
+  let lineVao: WebGLVertexArrayObject | null = null;
+  let lineVbo: WebGLBuffer | null = null;
+  let lineAPos = -1;
+  let lineAColor = -1;
+  let lineUCanvas: WebGLUniformLocation | null = null;
+  let lineVertexCount = 0;
+
+  let markerTexWidth = 0;
+  let markerList: KnockCylinderMarker[] = [];
 
   let display: KnockSpectrogramDisplay = { autocontrast: true, gainPercent: 100 };
   let lastGainScale = 1;
@@ -355,34 +403,34 @@ function createKnockSpectrogramGl(gl: WebGL2RenderingContext, canvas: HTMLCanvas
     displayMaxU8 = r.max;
   }
 
-  function initGlResources(): void {
-    if (vao) gl.deleteVertexArray(vao);
-    if (prog) gl.deleteProgram(prog);
+  function initHeatmapGlResources(): void {
+    if (heatmapVao) gl.deleteVertexArray(heatmapVao);
+    if (heatmapProg) gl.deleteProgram(heatmapProg);
     if (tex) gl.deleteTexture(tex);
 
-    prog = linkProgram(
+    heatmapProg = linkProgram(
       gl,
       compileShader(gl, gl.VERTEX_SHADER, VS),
       compileShader(gl, gl.FRAGMENT_SHADER, FS),
     );
-    gl.useProgram(prog);
-    aPos = gl.getAttribLocation(prog, "aPos");
-    uTex = gl.getUniformLocation(prog, "uTex");
-    uCanvas = gl.getUniformLocation(prog, "uCanvas");
-    uPlot = gl.getUniformLocation(prog, "uPlot");
-    uBar = gl.getUniformLocation(prog, "uBar");
-    uHasTex = gl.getUniformLocation(prog, "uHasTex");
-    uAutoContrast = gl.getUniformLocation(prog, "uAutoContrast");
-    uDispMin = gl.getUniformLocation(prog, "uDispMin");
-    uDispMax = gl.getUniformLocation(prog, "uDispMax");
-    uGainScale = gl.getUniformLocation(prog, "uGainScale");
+    gl.useProgram(heatmapProg);
+    aPos = gl.getAttribLocation(heatmapProg, "aPos");
+    uTex = gl.getUniformLocation(heatmapProg, "uTex");
+    uCanvas = gl.getUniformLocation(heatmapProg, "uCanvas");
+    uPlot = gl.getUniformLocation(heatmapProg, "uPlot");
+    uBar = gl.getUniformLocation(heatmapProg, "uBar");
+    uHasTex = gl.getUniformLocation(heatmapProg, "uHasTex");
+    uAutoContrast = gl.getUniformLocation(heatmapProg, "uAutoContrast");
+    uDispMin = gl.getUniformLocation(heatmapProg, "uDispMin");
+    uDispMax = gl.getUniformLocation(heatmapProg, "uDispMax");
+    uGainScale = gl.getUniformLocation(heatmapProg, "uGainScale");
 
     const vbo = gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
 
-    vao = gl.createVertexArray()!;
-    gl.bindVertexArray(vao);
+    heatmapVao = gl.createVertexArray()!;
+    gl.bindVertexArray(heatmapVao);
     gl.enableVertexAttribArray(aPos);
     gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
     gl.bindVertexArray(null);
@@ -397,22 +445,84 @@ function createKnockSpectrogramGl(gl: WebGL2RenderingContext, canvas: HTMLCanvas
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   }
 
+  function initLineGlResources(): void {
+    if (lineVao) gl.deleteVertexArray(lineVao);
+    if (lineProg) gl.deleteProgram(lineProg);
+    if (lineVbo) gl.deleteBuffer(lineVbo);
+
+    lineProg = linkProgram(
+      gl,
+      compileShader(gl, gl.VERTEX_SHADER, MARKER_LINE_VS),
+      compileShader(gl, gl.FRAGMENT_SHADER, MARKER_LINE_FS),
+    );
+    lineAPos = gl.getAttribLocation(lineProg, "aPos");
+    lineAColor = gl.getAttribLocation(lineProg, "aColor");
+    lineUCanvas = gl.getUniformLocation(lineProg, "uCanvas");
+
+    lineVbo = gl.createBuffer()!;
+    lineVao = gl.createVertexArray()!;
+    gl.bindVertexArray(lineVao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, lineVbo);
+    const stride = 5 * 4;
+    gl.enableVertexAttribArray(lineAPos);
+    gl.vertexAttribPointer(lineAPos, 2, gl.FLOAT, false, stride, 0);
+    gl.enableVertexAttribArray(lineAColor);
+    gl.vertexAttribPointer(lineAColor, 3, gl.FLOAT, false, stride, 8);
+    gl.bindVertexArray(null);
+  }
+
+  function initGlResources(): void {
+    initHeatmapGlResources();
+    initLineGlResources();
+  }
+
   function syncTexture(): void {
     if (!texDirty || !cpuTex || texW < 1 || texH < 1 || !tex) return;
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-    const rgba = new Uint8Array(cpuTex.length * 4);
-    for (let i = 0; i < cpuTex.length; i += 1) {
-      const v = cpuTex[i]!;
-      const j = i * 4;
-      rgba[j] = v;
-      rgba[j + 1] = v;
-      rgba[j + 2] = v;
-      rgba[j + 3] = 255;
-    }
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texW, texH, 0, gl.RGBA, gl.UNSIGNED_BYTE, rgba);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, texW, texH, 0, gl.RED, gl.UNSIGNED_BYTE, cpuTex);
     texDirty = false;
+  }
+
+  function uploadMarkerLines(layout: PlotLayout): void {
+    if (!lineProg || !lineVao || !lineVbo) return;
+    const tw = markerTexWidth > 0 ? markerTexWidth : texW;
+    if (tw < 1 || markerList.length === 0) {
+      lineVertexCount = 0;
+      return;
+    }
+    const verts = new Float32Array(markerList.length * 2 * 5);
+    let n = 0;
+    const { plot } = layout;
+    const y0 = plot.y;
+    const y1 = plot.y + plot.h;
+    for (const mk of markerList) {
+      const t = Math.max(0, Math.min(mk.column, tw)) / tw;
+      const x = plot.x + t * plot.w;
+      const [r, g, b] = markerRgb(mk.cylinder);
+      for (const y of [y0, y1]) {
+        verts[n++] = x;
+        verts[n++] = y;
+        verts[n++] = r;
+        verts[n++] = g;
+        verts[n++] = b;
+      }
+    }
+    lineVertexCount = markerList.length * 2;
+    gl.bindBuffer(gl.ARRAY_BUFFER, lineVbo);
+    gl.bufferData(gl.ARRAY_BUFFER, verts, gl.DYNAMIC_DRAW);
+  }
+
+  function drawMarkerLines(cssW: number, cssH: number): void {
+    if (lineVertexCount < 2 || !lineProg || !lineVao) return;
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.useProgram(lineProg);
+    gl.bindVertexArray(lineVao);
+    if (lineUCanvas) gl.uniform2f(lineUCanvas, cssW, cssH);
+    gl.drawArrays(gl.LINES, 0, lineVertexCount);
+    gl.bindVertexArray(null);
   }
 
   function flushPendingPatches(): void {
@@ -444,6 +554,11 @@ function createKnockSpectrogramGl(gl: WebGL2RenderingContext, canvas: HTMLCanvas
       autocontrast: next.autocontrast,
       gainPercent: Math.max(1, Math.min(400, next.gainPercent)),
     };
+  }
+
+  function setMarkers(markers: readonly KnockCylinderMarker[], texWidth: number): void {
+    markerTexWidth = Math.max(0, Math.floor(texWidth));
+    markerList = knockMarkersForGpu(markers);
   }
 
   function applyFullNow(buf: ArrayBuffer): void {
@@ -586,10 +701,11 @@ function createKnockSpectrogramGl(gl: WebGL2RenderingContext, canvas: HTMLCanvas
 
     const layout = computeLayout(cssW, cssH);
 
-    if (!prog || !vao || !tex) return;
+    if (!heatmapProg || !heatmapVao || !tex) return;
 
     syncTexture();
     refreshDisplayRange();
+    uploadMarkerLines(layout);
 
     const dispMinN = display.autocontrast ? displayMinU8 / 255 : 0;
     const dispMaxN = display.autocontrast ? displayMaxU8 / 255 : 1;
@@ -599,8 +715,11 @@ function createKnockSpectrogramGl(gl: WebGL2RenderingContext, canvas: HTMLCanvas
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT);
 
-    gl.useProgram(prog);
-    gl.bindVertexArray(vao);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    gl.useProgram(heatmapProg);
+    gl.bindVertexArray(heatmapVao);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, tex);
 
@@ -615,6 +734,9 @@ function createKnockSpectrogramGl(gl: WebGL2RenderingContext, canvas: HTMLCanvas
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     gl.bindVertexArray(null);
+
+    drawMarkerLines(cssW, cssH);
+    gl.disable(gl.BLEND);
 
     const prev = knockSpectrogramGlStats.value;
     if (
@@ -634,20 +756,29 @@ function createKnockSpectrogramGl(gl: WebGL2RenderingContext, canvas: HTMLCanvas
     fullSynced = false;
     fullLoadInFlight = false;
     pendingPatches.length = 0;
+    markerList = [];
+    markerTexWidth = 0;
+    lineVertexCount = 0;
     resetKnockSpectrogramGlStats();
   }
 
   function destroy(): void {
     reset();
-    if (vao) gl.deleteVertexArray(vao);
-    if (prog) gl.deleteProgram(prog);
+    if (heatmapVao) gl.deleteVertexArray(heatmapVao);
+    if (heatmapProg) gl.deleteProgram(heatmapProg);
+    if (lineVao) gl.deleteVertexArray(lineVao);
+    if (lineProg) gl.deleteProgram(lineProg);
+    if (lineVbo) gl.deleteBuffer(lineVbo);
     if (tex) gl.deleteTexture(tex);
-    vao = null;
-    prog = null;
+    heatmapVao = null;
+    heatmapProg = null;
+    lineVao = null;
+    lineProg = null;
+    lineVbo = null;
     tex = null;
   }
 
-  return { applyBuffer, draw, setDisplay, reset, destroy };
+  return { applyBuffer, draw, setDisplay, setMarkers, reset, destroy };
 }
 
 /** Один WebGL2 canvas: heatmap + colorbar. */
