@@ -1,8 +1,8 @@
-//! Knock scope — сырой KNOCK_ADC (`l`+8/9/10), отдельный poll-поток как composite logger.
+//! Knock scope — transport for software_knock per-cylinder windows (`l`+8/9/10).
 //!
 //! Читать буфер циклически (`l`+10), как composite `l`+3: готовность по ответу
-//! (данные или 0x84 «ещё не готов»). Опора только на `knockScopeReady` из `O` даёт
-//! пропуски (флаг обнуляется сразу после READ, DMA ~18 ms, poll O 5 ms).
+//! (данные или 0x84 «ещё не готов»). Захват на ECU идёт через тот же пайплайн,
+//! что и software knock (окна по углу коленвала, цилиндр, канал).
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
@@ -13,25 +13,38 @@ use serde::Serialize;
 
 use super::knock_spectrogram::{
     encode_knock_spectrogram_gpu_patch_b64, spectrogram_height_bins, KnockSpectrogramEngine,
-    KnockSpectrogramPatch, KnockSpectrogramView,
+    KnockSpectrogramMarker, KnockSpectrogramPatch, KnockSpectrogramView,
 };
 use crate::session::EcuSession;
 
 const POLL_WAIT_READY: Duration = Duration::from_millis(10);
-/// После READ на ECU DMA ~19 ms; затем снова `l`+8 (иначе scope гаснет → сплошной 0x84).
-const REARM_AFTER_CAPTURE: Duration = Duration::from_millis(22);
 const POLL_IDLE: Duration = Duration::from_millis(40);
 const STATUS_EMIT_INTERVAL: Duration = Duration::from_millis(400);
 const STALL_HINT_AFTER: Duration = Duration::from_secs(4);
 const SERIAL_MUTEX_WAIT: Duration = Duration::from_millis(800);
-/// Повторный `l`+8, если долго только 0x84 без успешного захвата.
-const REARM_STALL: Duration = Duration::from_millis(400);
 
 const READY_FIELD: &str = "knockScopeReady";
 const CONFIG_ENABLE_FIELD: &str = "enableKnockScope";
 
 /// Частота KNOCK_ADC на Proteus F4/F7.
 pub const KNOCK_ADC_HZ: f64 = 218_750.0;
+
+const KNOCK_SCOPE_FRAME_VERSION: u8 = 1;
+const KNOCK_SCOPE_FRAME_HEADER_SIZE: usize = 8;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct KnockScopeFrameHeader {
+    version: u8,
+    cylinder_number: u8,
+    channel_number: u8,
+    sample_count: u16,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct KnockScopeFrame {
+    header: KnockScopeFrameHeader,
+    samples: Vec<f32>,
+}
 
 /// Лёгкий tick для Tauri → Vue (~KB вместо сотен KB JSON на каждый захват).
 #[derive(Debug, Clone, Serialize)]
@@ -51,6 +64,8 @@ pub struct KnockScopeUiTick {
     pub buffer_duration_ms: f64,
     pub status_message: Option<String>,
     pub last_error: Option<String>,
+    pub last_cylinder: Option<u8>,
+    pub last_channel: Option<u8>,
     /// Base64: `encode_knock_spectrogram_gpu` — сырой ArrayBuffer для WebGL.
     pub spectrogram_gpu_b64: Option<String>,
     pub spectrogram_width: usize,
@@ -58,6 +73,8 @@ pub struct KnockScopeUiTick {
     pub spectrogram_peak_hz: Option<f32>,
     /// Max u8 в последнем GPU patch (0 = FFT в полосе knock пустой).
     pub spectrogram_patch_pixel_max: u8,
+    /// Вертикальные метки смены цилиндра в текущем окне heatmap.
+    pub spectrogram_markers: Vec<KnockSpectrogramMarker>,
     /// Урезанный чанк волны для склеивания на UI (не весь DMA-буфер).
     pub waveform_chunk: Vec<f32>,
 }
@@ -80,10 +97,13 @@ pub struct KnockScopeSnapshot {
     pub buffer_duration_ms: f64,
     pub status_message: Option<String>,
     pub last_error: Option<String>,
+    pub last_cylinder: Option<u8>,
+    pub last_channel: Option<u8>,
     /// FFT-спектрограмма (расчёт на хосте). `pixels` заполняются только для `get_snapshot` / GPU init.
     pub spectrogram: KnockSpectrogramView,
     /// Пик шума по heatmap (без копирования pixels на UI tick).
     pub spectrogram_peak_hz: Option<f32>,
+    pub spectrogram_markers: Vec<KnockSpectrogramMarker>,
 }
 
 impl KnockScopeSnapshot {
@@ -104,8 +124,11 @@ impl KnockScopeSnapshot {
             buffer_duration_ms: 0.0,
             status_message: None,
             last_error: None,
+            last_cylinder: None,
+            last_channel: None,
             spectrogram: KnockSpectrogramView::default(),
             spectrogram_peak_hz: None,
+            spectrogram_markers: Vec::new(),
         }
     }
 }
@@ -120,13 +143,17 @@ pub struct KnockScopeSource {
     tick_hook: Arc<Mutex<Option<Arc<dyn Fn(&KnockScopeSnapshot, KnockScopeUiTick) + Send + Sync>>>>,
 }
 
-fn parse_samples(bytes: &[u8]) -> (Vec<f32>, f32, f32) {
+fn adc_samples_to_volts(raw: u16) -> f32 {
+    (raw & 0x0FFF) as f32
+}
+
+fn parse_adc_payload(bytes: &[u8]) -> (Vec<f32>, f32, f32) {
     let mut out = Vec::with_capacity(bytes.len() / 2);
     let mut min_v = f32::MAX;
     let mut max_v = f32::MIN;
     for chunk in bytes.chunks_exact(2) {
         let raw = u16::from_le_bytes([chunk[0], chunk[1]]);
-        let v = (raw & 0x0FFF) as f32;
+        let v = adc_samples_to_volts(raw);
         out.push(v);
         min_v = min_v.min(v);
         max_v = max_v.max(v);
@@ -136,6 +163,51 @@ fn parse_samples(bytes: &[u8]) -> (Vec<f32>, f32, f32) {
         max_v = 0.0;
     }
     (out, min_v, max_v)
+}
+
+fn parse_knock_scope_frame(bytes: &[u8]) -> Option<KnockScopeFrame> {
+    if bytes.len() < KNOCK_SCOPE_FRAME_HEADER_SIZE {
+        return None;
+    }
+    let version = bytes[0];
+    if version != KNOCK_SCOPE_FRAME_VERSION {
+        return None;
+    }
+    let cylinder_number = bytes[1];
+    let channel_number = bytes[2];
+    let sample_count = u16::from_le_bytes([bytes[4], bytes[5]]) as usize;
+    let payload = &bytes[KNOCK_SCOPE_FRAME_HEADER_SIZE..];
+    let payload_samples = payload.len() / 2;
+    if sample_count == 0 || sample_count > payload_samples {
+        return None;
+    }
+    let (samples, _, _) = parse_adc_payload(&payload[..sample_count * 2]);
+    Some(KnockScopeFrame {
+        header: KnockScopeFrameHeader {
+            version,
+            cylinder_number,
+            channel_number,
+            sample_count: sample_count as u16,
+        },
+        samples,
+    })
+}
+
+/// Разбор ответа ECU: v1 header + payload или legacy raw ADC (старые прошивки).
+fn decode_knock_scope_buffer(bytes: &[u8]) -> KnockScopeFrame {
+    if let Some(frame) = parse_knock_scope_frame(bytes) {
+        return frame;
+    }
+    let (samples, _, _) = parse_adc_payload(bytes);
+    KnockScopeFrame {
+        header: KnockScopeFrameHeader {
+            version: 0,
+            cylinder_number: 0,
+            channel_number: 0,
+            sample_count: samples.len() as u16,
+        },
+        samples,
+    }
 }
 
 fn buffer_duration_ms(sample_count: usize) -> f64 {
@@ -190,11 +262,14 @@ fn build_ui_tick(
         buffer_duration_ms: snap.buffer_duration_ms,
         status_message: snap.status_message.clone(),
         last_error: snap.last_error.clone(),
+        last_cylinder: snap.last_cylinder,
+        last_channel: snap.last_channel,
         spectrogram_gpu_b64,
         spectrogram_width: snap.spectrogram.width,
         spectrogram_height: snap.spectrogram.height,
         spectrogram_peak_hz: snap.spectrogram_peak_hz,
         spectrogram_patch_pixel_max,
+        spectrogram_markers: snap.spectrogram_markers.clone(),
         waveform_chunk,
     }
 }
@@ -236,7 +311,7 @@ fn status_hint(
     }
     match config_enable {
         Some(false) => Some(
-            "На ECU enableKnockScope = no — прошивка не запускает scope. \
+            "На ECU enableKnockScope = no — прошивка не публикует окна. \
              Включите yes в tune и Burn."
                 .into(),
         ),
@@ -246,12 +321,12 @@ fn status_hint(
                 .into(),
         ),
         Some(true) if !knock_ready && waiting_for >= STALL_HINT_AFTER => Some(
-            "Нет knockScopeReady: KNOCK_ADC занят software knock или scope сброшен на ECU. \
-             Попробуйте отключить knock sensing или перезапустить scope."
+            "Нет knockScopeReady: нужен software knock и работающий двигатель \
+             (окна по углу после искры). Проверьте enableSoftwareKnock."
                 .into(),
         ),
-        Some(true) if knock_ready => Some("knockScopeReady — чтение буфера…".into()),
-        Some(true) => Some("Ждём knockScopeReady (~20 ms окно DMA после l+8)…".into()),
+        Some(true) if knock_ready => Some("knockScopeReady — чтение окна…".into()),
+        Some(true) => Some("Ждём knockScopeReady (окно software knock после искры)…".into()),
     }
 }
 
@@ -304,8 +379,11 @@ impl KnockScopeSource {
         snap.polling = false;
         snap.knock_scope_ready = false;
         snap.status_message = None;
+        snap.last_cylinder = None;
+        snap.last_channel = None;
         snap.spectrogram = KnockSpectrogramView::default();
         snap.spectrogram_peak_hz = None;
+        snap.spectrogram_markers.clear();
         *self.spectrogram.lock().unwrap() = None;
         self.scope_enabled_on_ecu.store(false, Ordering::SeqCst);
     }
@@ -361,9 +439,12 @@ impl KnockScopeSource {
             snap.enable_knock_scope_in_config = config_enable;
             snap.knock_scope_ready = false;
             snap.last_error = None;
+            snap.last_cylinder = None;
+            snap.last_channel = None;
             snap.status_message = status_hint(0, false, config_enable, Duration::ZERO);
             snap.spectrogram = KnockSpectrogramView::default();
             snap.spectrogram_peak_hz = None;
+            snap.spectrogram_markers.clear();
         }
 
         *self.spectrogram.lock().unwrap() = Some(KnockSpectrogramEngine::new(
@@ -416,7 +497,6 @@ fn poll_loop(
     };
     let mut last_status_emit = Instant::now();
     let mut last_ui_emit = Instant::now();
-    let mut not_ready_since: Option<Instant> = None;
 
     while running.load(Ordering::SeqCst) {
         let connected = session.is_connected();
@@ -433,31 +513,33 @@ fn poll_loop(
         let mut did_work = false;
 
         if allow_poll {
-            if let Some(since) = not_ready_since {
-                if since.elapsed() >= REARM_STALL
-                    && snapshot.read().unwrap().capture_count > 0
-                {
-                    let _ = session.with_link_wait(SERIAL_MUTEX_WAIT, |link| {
-                        link.set_knock_scope_enabled(true)
-                    });
-                    not_ready_since = None;
-                    did_work = true;
-                    thread::sleep(REARM_AFTER_CAPTURE);
-                }
-            }
-
             match session.with_link_wait(SERIAL_MUTEX_WAIT, |link| link.read_knock_scope_buffer())
             {
                 Ok(bytes) if !bytes.is_empty() => {
-                    let (samples, min_v, max_v) = parse_samples(&bytes);
-                    let (spec_w, spec_h, peak_hz) = {
+                    let frame = decode_knock_scope_buffer(&bytes);
+                    let samples = frame.samples;
+                    let min_v = samples.iter().copied().fold(f32::INFINITY, f32::min);
+                    let max_v = samples.iter().copied().fold(f32::NEG_INFINITY, f32::max);
+                    let (min_v, max_v) = if samples.is_empty() {
+                        (0.0, 0.0)
+                    } else {
+                        (min_v, max_v)
+                    };
+                    let cylinder = frame.header.cylinder_number;
+                    let channel = frame.header.channel_number;
+                    let (spec_w, spec_h, peak_hz, markers) = {
                         let mut guard = spectrogram.lock().unwrap();
                         if let Some(eng) = guard.as_mut() {
-                            eng.push_samples(&samples);
+                            eng.push_samples_with_marker(&samples, cylinder, channel);
                             let (w, h) = eng.spectrogram_meta();
-                            (w, h, eng.peak_frequency_hz())
+                            (w, h, eng.peak_frequency_hz(), eng.visible_markers())
                         } else {
-                            (0, spectrogram_height_bins(KNOCK_ADC_HZ as f32), None)
+                            (
+                                0,
+                                spectrogram_height_bins(KNOCK_ADC_HZ as f32),
+                                None,
+                                Vec::new(),
+                            )
                         }
                     };
                     let waveform = downsample_waveform(&samples, WAVEFORM_CHUNK_MAX);
@@ -475,10 +557,13 @@ fn poll_loop(
                         snap.spectrogram.height = spec_h;
                         snap.spectrogram.pixels.clear();
                         snap.spectrogram_peak_hz = peak_hz;
+                        snap.spectrogram_markers = markers;
                         snap.sample_count = samples.len();
                         snap.sample_min = min_v;
                         snap.sample_max = max_v;
                         snap.buffer_duration_ms = buffer_duration_ms(snap.sample_count);
+                        snap.last_cylinder = Some(cylinder);
+                        snap.last_channel = Some(channel);
                         snap.capture_count = snap.capture_count.saturating_add(1);
                         capture_count = snap.capture_count;
                         snap.last_error = None;
@@ -494,20 +579,14 @@ fn poll_loop(
                         emit(&snap, build_ui_tick(&snap, patch, waveform));
                         last_ui_emit = Instant::now();
                     }
-                    not_ready_since = None;
                     did_work = true;
-                    thread::sleep(REARM_AFTER_CAPTURE);
-                    let _ = session.with_link_wait(SERIAL_MUTEX_WAIT, |link| {
-                        link.set_knock_scope_enabled(true)
-                    });
+                    thread::sleep(POLL_WAIT_READY);
                 }
                 Ok(_) => {
-                    not_ready_since.get_or_insert_with(Instant::now);
                     thread::sleep(POLL_WAIT_READY);
                     did_work = true;
                 }
                 Err(e) if is_buffer_not_ready(&e) => {
-                    not_ready_since.get_or_insert_with(Instant::now);
                     thread::sleep(POLL_WAIT_READY);
                     did_work = true;
                 }
@@ -561,5 +640,37 @@ fn poll_loop(
                 POLL_IDLE
             });
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_bytes(values: &[u16]) -> Vec<u8> {
+        values
+            .iter()
+            .flat_map(|v| v.to_le_bytes())
+            .collect::<Vec<_>>()
+    }
+
+    #[test]
+    fn parse_v1_frame_header_and_payload() {
+        let mut bytes = vec![1, 3, 1, 0, 2, 0, 0, 0];
+        bytes.extend(sample_bytes(&[100, 200]));
+        let frame = parse_knock_scope_frame(&bytes).expect("frame");
+        assert_eq!(frame.header.cylinder_number, 3);
+        assert_eq!(frame.header.channel_number, 1);
+        assert_eq!(frame.samples.len(), 2);
+        assert_eq!(frame.samples[0], 100.0);
+        assert_eq!(frame.samples[1], 200.0);
+    }
+
+    #[test]
+    fn legacy_buffer_without_header_still_decodes() {
+        let bytes = sample_bytes(&[512, 1024]);
+        let frame = decode_knock_scope_buffer(&bytes);
+        assert_eq!(frame.header.version, 0);
+        assert_eq!(frame.samples.len(), 2);
     }
 }

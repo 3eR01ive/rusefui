@@ -25,6 +25,7 @@ import {
   knockSpectrogramGlStats,
   type KnockSpectrogramGl,
 } from "../../composables/knockSpectrogramGl";
+import { buildKnockMarkerOverlay } from "../../composables/knockSpectrogramMarkers";
 import { initKnockScope, onKnockSpectrogramGlReset, subscribeKnockSpectrogramGpu, useKnockScope } from "../../composables/useKnockScope";
 import { invoke } from "@tauri-apps/api/core";
 import {
@@ -67,7 +68,7 @@ const instanceRef = computed(() => props.instance);
 const { paramStringOr } = useInstanceBind(instanceRef);
 const dataCtx = useDataContext();
 const { snapshot: configSnapshot, getArray: getConfigArray } = useConfig();
-const { snapshot: knockScopeSnapshot, spectrogramWidth, spectrogramHeight, spectrogramPeakHz, spectrogramPatchPixelMax } = useKnockScope();
+const { snapshot: knockScopeSnapshot, spectrogramWidth, spectrogramHeight, spectrogramPeakHz, spectrogramPatchPixelMax, spectrogramMarkers } = useKnockScope();
 const { isActive: tabActive } = useTabActivity();
 const { getProjectUi, setProjectUi } = useProject();
 
@@ -239,6 +240,15 @@ const spectrogramHint = computed(() => {
 const spectrogramDebugRef = ref<HTMLElement | null>(null);
 let debugLineTimer = 0;
 
+const markerOverlay = computed(() => {
+  void spectrogramLayoutTick.value;
+  const wrapW = spectrogramContainerRef.value?.clientWidth ?? 0;
+  const texW = spectrogramWidth.value || knockSpectrogramGlStats.value.texW;
+  return buildKnockMarkerOverlay(spectrogramMarkers.value, texW, wrapW);
+});
+
+const spectrogramLayoutTick = ref(0);
+
 function buildSpectrogramDebugLine(): string {
   const s = knockScopeSnapshot.value;
   const g = knockSpectrogramGlStats.value;
@@ -258,6 +268,10 @@ function buildSpectrogramDebugLine(): string {
   }
   if (spectrogramPeakHz.value != null) {
     parts.push(`FFT-пик ${Math.round(spectrogramPeakHz.value)} Hz`);
+  }
+  const cyl = knockScopeSnapshot.value.lastCylinder;
+  if (cyl != null) {
+    parts.push(`цил ${cyl + 1}`);
   }
   return parts.join(" · ");
 }
@@ -710,7 +724,7 @@ watch(chartsInView, (visible) => {
 });
 
 watch(
-  [spectrogramWidth, spectrogramHeight, spectrogramPatchPixelMax, spectrogramPeakHz, recordingSpectrum],
+  [spectrogramWidth, spectrogramHeight, spectrogramPatchPixelMax, spectrogramPeakHz, spectrogramMarkers, recordingSpectrum],
   () => scheduleDebugLineUpdate(),
 );
 
@@ -743,6 +757,7 @@ function setupResizeObserver(): void {
   let lastW = 0;
   resizeObserver = new ResizeObserver(() => {
     if (!tabActive.value) return;
+    spectrogramLayoutTick.value += 1;
     const w = el.clientWidth;
     if (w < 1) return;
     if (Math.abs(w - lastW) < 1) return;
@@ -895,6 +910,17 @@ onUnmounted(() => {
             :style="{ height: `${chartHeight}px` }"
           >
             <canvas ref="spectrogramCanvasRef" class="knock-canvas knock-canvas--spectrogram" />
+            <div class="knock-spectrogram-markers" aria-hidden="true">
+              <div
+                v-for="(mk, i) in markerOverlay"
+                :key="`cyl-${mk.cylinder}-${mk.x}-${i}`"
+                class="knock-spectrogram-marker"
+                :style="{ left: `${mk.x}px` }"
+              >
+                <span class="knock-spectrogram-marker-line" />
+                <span class="knock-spectrogram-marker-label">{{ mk.label }}</span>
+              </div>
+            </div>
             <div class="knock-spectrogram-labels" aria-hidden="true">
               <span class="knock-spectrogram-label knock-spectrogram-label--y">Frequency (kHz)</span>
               <span class="knock-spectrogram-label knock-spectrogram-label--x">Time (s)</span>
@@ -1242,6 +1268,46 @@ onUnmounted(() => {
   display: block;
   width: 100%;
   height: 100%;
+}
+
+.knock-spectrogram-markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.knock-spectrogram-marker {
+  position: absolute;
+  top: 12px;
+  bottom: 32px;
+  width: 0;
+}
+
+.knock-spectrogram-marker-line {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+}
+
+.knock-spectrogram-marker-label {
+  position: absolute;
+  left: 4px;
+  top: 0;
+  padding: 1px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 3px;
+  white-space: nowrap;
 }
 
 .knock-spectrogram-labels {

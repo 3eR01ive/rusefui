@@ -34,6 +34,15 @@ pub struct KnockSpectrogramView {
 }
 
 /// Инкремент для UI: новые FFT-столбцы + сдвиг скользящего окна (без полной heatmap).
+#[derive(Debug, Clone, Copy, Serialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct KnockSpectrogramMarker {
+    /// Индекс FFT-столбца в текущем скользящем окне (0 = левый край heatmap).
+    pub column: usize,
+    pub cylinder: u8,
+    pub channel: u8,
+}
+
 #[derive(Debug, Clone, Serialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct KnockSpectrogramPatch {
@@ -43,6 +52,8 @@ pub struct KnockSpectrogramPatch {
     pub shift_left: usize,
     /// column-major новые столбцы: `new_column_count * height` байт.
     pub new_columns: Vec<u8>,
+    /// Вертикальные метки смены цилиндра для новых столбцов в этом patch.
+    pub new_markers: Vec<KnockSpectrogramMarker>,
 }
 
 /// Заголовок GPU-пакета (LE): width, height — по 4 байта; bytes 8–15 зарезервированы (0).
@@ -117,6 +128,8 @@ pub struct KnockSpectrogramEngine {
     stream_offset: usize,
     columns: VecDeque<Vec<u8>>,
     pending_new_columns: Vec<u8>,
+    pending_new_markers: Vec<KnockSpectrogramMarker>,
+    markers: Vec<KnockSpectrogramMarker>,
     popped_since_emit: usize,
     /// Максимум u8 за весь прогон (не только видимое окно).
     run_peak_val: u8,
@@ -142,6 +155,8 @@ impl KnockSpectrogramEngine {
             stream_offset: 0,
             columns: VecDeque::new(),
             pending_new_columns: Vec::new(),
+            pending_new_markers: Vec::new(),
+            markers: Vec::new(),
             popped_since_emit: 0,
             run_peak_val: 0,
             run_peak_bin: MIN_PEAK_BIN,
@@ -153,6 +168,8 @@ impl KnockSpectrogramEngine {
         self.stream_offset = 0;
         self.columns.clear();
         self.pending_new_columns.clear();
+        self.pending_new_markers.clear();
+        self.markers.clear();
         self.popped_since_emit = 0;
         self.run_peak_val = 0;
         self.run_peak_bin = MIN_PEAK_BIN;
@@ -166,15 +183,36 @@ impl KnockSpectrogramEngine {
             height,
             shift_left: self.popped_since_emit,
             new_columns: std::mem::take(&mut self.pending_new_columns),
+            new_markers: std::mem::take(&mut self.pending_new_markers),
         };
         self.popped_since_emit = 0;
         patch
     }
 
     pub fn push_samples(&mut self, samples: &[f32]) {
+        self.push_samples_with_marker(samples, 0, 0);
+    }
+
+    /// Окно software_knock: метка ставится на первый новый FFT-столбец этого захвата.
+    pub fn push_samples_with_marker(&mut self, samples: &[f32], cylinder: u8, channel: u8) {
+        let marker_col = self.columns.len();
+        let cols_before = self.columns.len();
         self.stream.extend_from_slice(samples);
         self.drain_fft_windows();
         self.trim_stream();
+        if self.columns.len() > cols_before {
+            let marker = KnockSpectrogramMarker {
+                column: marker_col,
+                cylinder,
+                channel,
+            };
+            self.markers.push(marker);
+            self.pending_new_markers.push(marker);
+        }
+    }
+
+    pub fn visible_markers(&self) -> Vec<KnockSpectrogramMarker> {
+        self.markers.clone()
     }
 
     pub fn spectrogram_meta(&self) -> (usize, usize) {
@@ -244,6 +282,7 @@ impl KnockSpectrogramEngine {
             while self.columns.len() > self.max_columns {
                 self.columns.pop_front();
                 self.popped_since_emit += 1;
+                self.shift_markers_left(1);
             }
 
             self.stream_offset += HOP;
@@ -255,6 +294,16 @@ impl KnockSpectrogramEngine {
             self.stream.drain(..self.stream_offset);
             self.stream_offset = 0;
         }
+    }
+
+    fn shift_markers_left(&mut self, shift: usize) {
+        self.markers.retain_mut(|m| {
+            if m.column < shift {
+                return false;
+            }
+            m.column -= shift;
+            true
+        });
     }
 }
 

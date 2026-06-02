@@ -21,9 +21,11 @@ import {
 } from "../../composables/drawKnockWaveform";
 import {
   b64ToArrayBuffer,
+  knockSpectrogramGlStats,
   mountKnockSpectrogramGl,
   type KnockSpectrogramGl,
 } from "../../composables/knockSpectrogramGl";
+import { buildKnockMarkerOverlay } from "../../composables/knockSpectrogramMarkers";
 
 const yamlProps = defineProps<{
   instance: ComponentInstance;
@@ -57,6 +59,7 @@ const spectrogramRef = ref<HTMLCanvasElement | null>(null);
 const {
   snapshot,
   spectrogramWidth,
+  spectrogramMarkers,
   waveformRing,
   setScopeEnabled,
   setWaveformWindowMs,
@@ -91,6 +94,18 @@ const enableInConfig = computed(() => snapshot.value.enableKnockScopeInConfig);
 const statusMessage = computed(() => snapshot.value.statusMessage ?? null);
 const lastError = computed(() => snapshot.value.lastError ?? null);
 const polling = computed(() => snapshot.value.polling);
+const lastCylinder = computed(() => snapshot.value.lastCylinder);
+const lastChannel = computed(() => snapshot.value.lastChannel);
+
+const spectrogramWrapRef = ref<HTMLElement | null>(null);
+const spectrogramLayoutTick = ref(0);
+
+const markerOverlay = computed(() => {
+  void spectrogramLayoutTick.value;
+  const wrapW = spectrogramWrapRef.value?.clientWidth ?? 0;
+  const texW = spectrogramWidth.value || knockSpectrogramGlStats.value.texW;
+  return buildKnockMarkerOverlay(spectrogramMarkers.value, texW, wrapW);
+});
 
 const ringDurationMs = computed(() =>
   waveformRing.value.length > 0
@@ -138,8 +153,14 @@ const statusLine = computed(() => {
       `окно ~${ringDurationMs.value.toFixed(0)} ms (${waveformRing.value.length} pts)`,
     );
     parts.push(`ADC ${displayMin.value.toFixed(0)}…${displayMax.value.toFixed(0)}`);
-  } else if (lastByteLen.value > 0 && chunkDurationMs.value > 0) {
+  } else   if (lastByteLen.value > 0 && chunkDurationMs.value > 0) {
     parts.push(`чанк ~${chunkDurationMs.value.toFixed(1)} ms`);
+  }
+  if (lastCylinder.value != null) {
+    parts.push(`цил ${lastCylinder.value + 1}`);
+  }
+  if (lastChannel.value != null) {
+    parts.push(`ch ${lastChannel.value}`);
   }
   return parts.join(" · ");
 });
@@ -151,7 +172,7 @@ const hint = computed(() => {
     return "Подключите ECU. В tune: enableKnockScope = yes, прошивка с KNOCK_SCOPE.";
   }
   if (!scopeEnabled.value) {
-    return "Старт scope — непрерывная волна (скользящее окно на графике).";
+    return "Старт scope — окна software knock по цилиндрам (склеиваются на графике).";
   }
   if (waveformRing.value.length < 2) {
     return "Ждём первые сэмплы…";
@@ -206,7 +227,7 @@ watch(
   },
 );
 watch([displaySamples, displayMin, displayMax], () => scheduleRedraw());
-watch([spectrogramHeight, chartHeight], () => scheduleRedraw());
+watch([spectrogramHeight, chartHeight, markerOverlay], () => scheduleRedraw());
 
 watch(windowMs, (ms) => {
   setWaveformWindowMs(ms);
@@ -244,11 +265,14 @@ onMounted(async () => {
   scheduleRedraw();
   const observeTarget = panelRef.value ?? chartRef.value;
   if (observeTarget) {
-    resizeObs = new ResizeObserver(() => scheduleRedraw());
+    resizeObs = new ResizeObserver(() => {
+      spectrogramLayoutTick.value += 1;
+      scheduleRedraw();
+    });
     resizeObs.observe(observeTarget);
   }
-  if (spectrogramRef.value) {
-    resizeObs?.observe(spectrogramRef.value);
+  if (spectrogramWrapRef.value) {
+    resizeObs?.observe(spectrogramWrapRef.value);
   }
 });
 
@@ -292,8 +316,23 @@ async function toggleScope() {
       :style="{ height: `${chartHeight}px` }"
     />
     <p class="spectrogram-heatmap-title">{{ spectrogramTitle }}</p>
-    <div class="spectrogram-heatmap-wrap" :style="{ height: `${spectrogramHeight}px` }">
+    <div
+      ref="spectrogramWrapRef"
+      class="spectrogram-heatmap-wrap"
+      :style="{ height: `${spectrogramHeight}px` }"
+    >
       <canvas ref="spectrogramRef" class="spectrogram-canvas spectrogram-canvas--gl" />
+      <div class="spectrogram-markers" aria-hidden="true">
+        <div
+          v-for="(mk, i) in markerOverlay"
+          :key="`cyl-${mk.cylinder}-${mk.x}-${i}`"
+          class="spectrogram-marker"
+          :style="{ left: `${mk.x}px` }"
+        >
+          <span class="spectrogram-marker-line" />
+          <span class="spectrogram-marker-label">{{ mk.label }}</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -337,6 +376,45 @@ async function toggleScope() {
   border-radius: 6px;
   border: 1px solid var(--color-border);
   background: #000;
+}
+
+.spectrogram-markers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.spectrogram-marker {
+  position: absolute;
+  top: 12px;
+  bottom: 32px;
+  width: 0;
+}
+
+.spectrogram-marker-line {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+}
+
+.spectrogram-marker-label {
+  position: absolute;
+  left: 4px;
+  top: 0;
+  padding: 1px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 3px;
+  white-space: nowrap;
 }
 
 .spectrogram-canvas--gl {

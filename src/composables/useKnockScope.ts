@@ -2,6 +2,7 @@ import { readonly, ref, shallowRef } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { knockSpectrogramGlStats, registerKnockSpectrogramFullBuffer, resetKnockSpectrogramGlStats } from "./knockSpectrogramGl";
+import type { KnockCylinderMarker } from "./knockSpectrogramMarkers";
 
 type GpuListener = (b64: string) => void;
 const gpuListeners = new Set<GpuListener>();
@@ -74,6 +75,9 @@ export interface KnockScopeUiTick {
   spectrogramHeight?: number;
   spectrogramPeakHz?: number | null;
   spectrogramPatchPixelMax?: number;
+  lastCylinder?: number | null;
+  lastChannel?: number | null;
+  spectrogramMarkers?: KnockCylinderMarker[];
   waveformChunk?: number[];
 }
 
@@ -106,6 +110,7 @@ const spectrogramWidth = ref(0);
 const spectrogramHeight = ref(0);
 const spectrogramPeakHz = ref<number | null>(null);
 const spectrogramPatchPixelMax = ref(0);
+const spectrogramMarkers = shallowRef<KnockCylinderMarker[]>([]);
 const waveformRing = shallowRef<number[]>([]);
 
 let lastCaptureCount = 0;
@@ -158,6 +163,13 @@ function mergeTick(tick: KnockScopeUiTick): void {
   if (tick.spectrogramPatchPixelMax != null) {
     spectrogramPatchPixelMax.value = tick.spectrogramPatchPixelMax;
   }
+  if (tick.spectrogramMarkers != null) {
+    spectrogramMarkers.value = tick.spectrogramMarkers.map((m) => ({
+      column: m.column,
+      cylinder: m.cylinder,
+      channel: m.channel,
+    }));
+  }
   appendWaveformChunk(tick);
   if (tick.spectrogramGpuB64) {
     scheduleGpuB64(tick.spectrogramGpuB64);
@@ -174,6 +186,7 @@ function resetSpectrogramBuffer(): void {
   spectrogramHeight.value = 0;
   spectrogramPeakHz.value = null;
   spectrogramPatchPixelMax.value = 0;
+  spectrogramMarkers.value = [];
   resetWaveformRing();
   resetKnockSpectrogramGlStats();
   for (const fn of gpuResetListeners) fn();
@@ -247,6 +260,7 @@ export function useKnockScope() {
     spectrogramHeight: readonly(spectrogramHeight),
     spectrogramPeakHz: readonly(spectrogramPeakHz),
     spectrogramPatchPixelMax: readonly(spectrogramPatchPixelMax),
+    spectrogramMarkers: readonly(spectrogramMarkers),
     spectrogramGlStats: readonly(knockSpectrogramGlStats),
     waveformRing: readonly(waveformRing),
     setScopeEnabled: setKnockScopeEnabled,
