@@ -36,6 +36,8 @@ pub fn run() {
             runtime_cmds::knock_scope_get_snapshot,
             runtime_cmds::knock_scope_gpu_buffer,
             runtime_cmds::knock_scope_set_enabled,
+            runtime_cmds::knock_scope_pan_spectrogram,
+            runtime_cmds::knock_scope_set_spectrogram_follow_live,
             runtime_cmds::composite_timeline_status,
             runtime_cmds::composite_timeline_query_view,
             runtime_cmds::composite_timeline_set_view,

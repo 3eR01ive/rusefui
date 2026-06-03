@@ -29,6 +29,9 @@ import { buildKnockMarkerOverlay } from "../../composables/knockSpectrogramMarke
 import {
   initKnockScope,
   onKnockSpectrogramGlReset,
+  panKnockSpectrogram,
+  setKnockSpectrogramFollowLive,
+  formatKnockCaptureStats,
   refreshKnockScopeSnapshot,
   subscribeKnockSpectrogramGpu,
   useKnockScope,
@@ -259,10 +262,7 @@ function buildSpectrogramDebugLine(): string {
   const s = knockScopeSnapshot.value;
   const g = knockSpectrogramGlStats.value;
   const parts: string[] = [];
-  parts.push(`захватов ${s.captureCount ?? 0}`);
-  if (spectrogramWidth.value > 0) {
-    parts.push(`FFT ${spectrogramWidth.value}×${spectrogramHeight.value}`);
-  }
+  parts.push(formatKnockCaptureStats(s, spectrogramWindowMs.value));
   parts.push(`rustMax=${spectrogramPatchPixelMax.value}`);
   if (g.uploads > 0) {
     parts.push(`${g.packetKind} px=${g.pixelMin}…${g.pixelMax}`);
@@ -280,6 +280,20 @@ function buildSpectrogramDebugLine(): string {
     parts.push(`цил ${cyl + 1}`);
   }
   return parts.join(" · ");
+}
+
+function onSpectrogramWheel(e: WheelEvent): void {
+  const s = knockScopeSnapshot.value;
+  if ((s.captureCount ?? 0) < 1 && !recordingSpectrum.value) return;
+  const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  if (delta === 0) return;
+  e.preventDefault();
+  const cols = Math.max(1, Math.round(delta / 12));
+  void panKnockSpectrogram(delta > 0 ? cols : -cols);
+}
+
+function onSpectrogramDblClick(): void {
+  void setKnockSpectrogramFollowLive(true);
 }
 
 function scheduleDebugLineUpdate(): void {
@@ -919,6 +933,8 @@ onUnmounted(() => {
             ref="spectrogramContainerRef"
             class="knock-chart-wrap knock-chart-wrap--spectrogram"
             :style="{ height: `${chartHeight}px` }"
+            @wheel.prevent="onSpectrogramWheel"
+            @dblclick="onSpectrogramDblClick"
           >
             <canvas ref="spectrogramCanvasRef" class="knock-canvas knock-canvas--spectrogram" />
             <div class="knock-spectrogram-markers" aria-hidden="true">

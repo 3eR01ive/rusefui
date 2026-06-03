@@ -70,6 +70,8 @@ pub struct EcuSession {
     protocol_log: Arc<ProtocolLogStore>,
     /// Пока true — не запускать poll `O` (конфликт с консольными `E` на том же порту).
     stimulation_active: AtomicBool,
+    /// После stop knock scope — перезапустить output poll (см. `sync_output_poll_session`).
+    output_poll_resync: AtomicBool,
     output_data_log: Mutex<Option<OutputDataLogWriter>>,
     output_timeline: Mutex<OutputTimeline>,
     composite_data_log: Mutex<Option<Arc<Mutex<CompositeDataLogWriter>>>>,
@@ -99,6 +101,7 @@ impl EcuSession {
             config: ConfigSource::new(ini_ctx),
             protocol_log,
             stimulation_active: AtomicBool::new(false),
+            output_poll_resync: AtomicBool::new(false),
             output_data_log: Mutex::new(None),
             output_timeline: Mutex::new(OutputTimeline::default()),
             composite_data_log: Mutex::new(None),
@@ -505,6 +508,15 @@ impl EcuSession {
     /// Output poll `O` (во время стимуляции `O` и консольные `E` не мешают — см. Java console + TS).
     pub fn should_poll_output_channels(&self) -> bool {
         self.is_connected() && !self.config().snapshot().loading
+    }
+
+    /// После stop knock scope — перезапустить poll `O` при следующем `sync_output_poll_session`.
+    pub fn request_output_poll_resync(&self) {
+        self.output_poll_resync.store(true, Ordering::SeqCst);
+    }
+
+    pub fn take_output_poll_resync(&self) -> bool {
+        self.output_poll_resync.swap(false, Ordering::SeqCst)
     }
 
     pub fn protocol_log(&self) -> Arc<ProtocolLogStore> {

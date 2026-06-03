@@ -70,6 +70,14 @@ export interface KnockScopeUiTick {
   bufferDurationMs: number;
   statusMessage?: string | null;
   lastError?: string | null;
+  spectrogramTotalColumns?: number;
+  spectrogramViewStart?: number;
+  spectrogramViewCaptures?: number;
+  spectrogramFollowLive?: boolean;
+  recordingElapsedMs?: number;
+  captureRateHz?: number;
+  recordingRefRpm?: number | null;
+  expectedCaptureRateHz?: number | null;
   spectrogramGpuB64?: string | null;
   spectrogramWidth?: number;
   spectrogramHeight?: number;
@@ -284,6 +292,76 @@ export async function refreshKnockScopeSnapshot(): Promise<void> {
   }
 }
 
+export async function panKnockSpectrogram(deltaColumns: number): Promise<void> {
+  try {
+    const snap = await invoke<KnockScopeSnapshot>("knock_scope_pan_spectrogram", {
+      deltaColumns: Math.round(deltaColumns),
+    });
+    snapshot.value = { ...snapshot.value, ...snap };
+    spectrogramWidth.value = snap.spectrogram?.width ?? snap.spectrogramWidth ?? 0;
+    if (snap.spectrogramMarkers != null) {
+      spectrogramMarkers.value = snap.spectrogramMarkers.map((m) => ({
+        column: m.column,
+        cylinder: m.cylinder,
+        channel: m.channel,
+      }));
+    }
+  } catch {
+    /* not in tauri */
+  }
+}
+
+export async function setKnockSpectrogramFollowLive(follow: boolean): Promise<void> {
+  try {
+    const snap = await invoke<KnockScopeSnapshot>("knock_scope_set_spectrogram_follow_live", {
+      follow,
+    });
+    snapshot.value = { ...snapshot.value, ...snap };
+    spectrogramWidth.value = snap.spectrogram?.width ?? snap.spectrogramWidth ?? 0;
+    if (snap.spectrogramMarkers != null) {
+      spectrogramMarkers.value = snap.spectrogramMarkers.map((m) => ({
+        column: m.column,
+        cylinder: m.cylinder,
+        channel: m.channel,
+      }));
+    }
+  } catch {
+    /* not in tauri */
+  }
+}
+
+export function formatKnockCaptureStats(snap: KnockScopeUiTick, windowMs: number): string {
+  const inView = snap.spectrogramViewCaptures ?? snap.spectrogramWidth ?? 0;
+  const total = snap.spectrogramTotalColumns ?? snap.captureCount ?? 0;
+  const all = snap.captureCount ?? total;
+  const follow = snap.spectrogramFollowLive !== false;
+  const elapsedMs = snap.recordingElapsedMs ?? 0;
+  const rate = snap.captureRateHz ?? (elapsedMs > 0 ? (all * 1000) / elapsedMs : 0);
+  const expected = snap.expectedCaptureRateHz ?? null;
+  const parts = [`захв: ${all}`, `viewport ${windowMs} ms`];
+  if (inView !== all && total > 0) {
+    parts.unshift(`окно ${inView}`);
+  }
+  if (total > inView) {
+    const start = snap.spectrogramViewStart ?? 0;
+    parts.push(`поз. ${start + 1}–${start + inView}/${total}`);
+  }
+  if (elapsedMs >= 200) {
+    parts.push(`${(elapsedMs / 1000).toFixed(1)} s`);
+    if (rate > 0) {
+      parts.push(`${rate.toFixed(0)}/s`);
+    }
+  }
+  if (expected != null && expected > 0 && rate > 0) {
+    const pct = Math.round((rate / expected) * 100);
+    parts.push(`теор. ~${expected.toFixed(0)}/s (${pct}%)`);
+  } else if (snap.recordingRefRpm != null && snap.recordingRefRpm > 0) {
+    parts.push(`RPM₀ ${Math.round(snap.recordingRefRpm)}`);
+  }
+  parts.push(follow ? "live" : "просмотр");
+  return parts.join(" · ");
+}
+
 export function useKnockScope() {
   return {
     snapshot: readonly(snapshot),
@@ -297,6 +375,9 @@ export function useKnockScope() {
     setScopeEnabled: setKnockScopeEnabled,
     resetSpectrogramBuffer,
     refreshKnockScopeSnapshot,
+    panSpectrogram: panKnockSpectrogram,
+    setSpectrogramFollowLive: setKnockSpectrogramFollowLive,
+    formatCaptureStats: formatKnockCaptureStats,
     setWaveformWindowMs,
   };
 }

@@ -11,6 +11,9 @@ import { useInstanceBind } from "../../composables/useInstanceBind";
 import {
   initKnockScope,
   onKnockSpectrogramGlReset,
+  panKnockSpectrogram,
+  setKnockSpectrogramFollowLive,
+  formatKnockCaptureStats,
   subscribeKnockSpectrogramGpu,
   useKnockScope,
 } from "../../composables/useKnockScope";
@@ -80,7 +83,8 @@ if (bindSource.value && bindSource.value !== "knockScope") {
 const spectrogramTitle = computed(() => {
   const w = spectrogramWidth.value;
   if (w < 1) return "Спектрограмма (0–20 kHz, dBFS)";
-  return `Спектрограмма · ${w} cols · 0–20 kHz`;
+  const stats = formatKnockCaptureStats(snapshot.value, windowMs.value);
+  return `Спектрограмма · ${stats}`;
 });
 
 const connected = computed(() => snapshot.value.connected);
@@ -144,10 +148,7 @@ const statusLine = computed(() => {
     if (knockScopeReady.value) parts.push("ready");
     if (enableInConfig.value === false) parts.push("enableKnockScope=no");
   }
-  parts.push(`захватов: ${captureCount.value}`);
-  if (spectrogramWidth.value > 0) {
-    parts.push(`FFT cols: ${spectrogramWidth.value}`);
-  }
+  parts.push(formatKnockCaptureStats(snapshot.value, windowMs.value));
   if (waveformRing.value.length > 0) {
     parts.push(
       `окно ~${ringDurationMs.value.toFixed(0)} ms (${waveformRing.value.length} pts)`,
@@ -301,6 +302,18 @@ async function toggleScope() {
     scheduleRedraw();
   }
 }
+
+function onSpectrogramWheel(e: WheelEvent): void {
+  if (!scopeEnabled.value && captureCount.value < 1) return;
+  const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  if (delta === 0) return;
+  const cols = Math.max(1, Math.round(delta / 12));
+  void panKnockSpectrogram(delta > 0 ? cols : -cols);
+}
+
+function onSpectrogramDblClick(): void {
+  void setKnockSpectrogramFollowLive(true);
+}
 </script>
 
 <template>
@@ -327,6 +340,8 @@ async function toggleScope() {
       ref="spectrogramWrapRef"
       class="spectrogram-heatmap-wrap"
       :style="{ height: `${spectrogramHeight}px` }"
+      @wheel.prevent="onSpectrogramWheel"
+      @dblclick="onSpectrogramDblClick"
     >
       <canvas ref="spectrogramRef" class="spectrogram-canvas spectrogram-canvas--gl" />
       <div class="spectrogram-markers" aria-hidden="true">

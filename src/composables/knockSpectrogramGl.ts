@@ -7,8 +7,8 @@ import { knockMarkersForGpu } from "./knockSpectrogramMarkers";
 export const KNOCK_SPECTROGRAM_GPU_HEADER = 16;
 export const KNOCK_SPECTROGRAM_GPU_PATCH_HEADER = 24;
 export const KNOCK_SPECTROGRAM_SAMPLE_RATE_HZ = 218_750;
-export const KNOCK_SPECTROGRAM_HOP = 256;
-export const KNOCK_SPECTROGRAM_COLS_PER_SEC = KNOCK_SPECTROGRAM_SAMPLE_RATE_HZ / KNOCK_SPECTROGRAM_HOP;
+/** Оценка столбцов/с при ~800 rpm, 6 цил. (один столбец на knock-окно на хосте). */
+export const KNOCK_SPECTROGRAM_COLS_PER_SEC = 40;
 
 export const KNOCK_SPECTROGRAM_FREQ_MIN_HZ = 0;
 export const KNOCK_SPECTROGRAM_FREQ_MAX_HZ = 20_000;

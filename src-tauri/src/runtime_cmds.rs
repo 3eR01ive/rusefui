@@ -204,6 +204,7 @@ fn emit_workspace_reset(app: &AppHandle, state: &RuntimeState) {
     state.workspace_fsm.lock().unwrap().reset();
     let _ = reconcile_workspace(state, app);
     sync_ecu_data(state, app);
+    let snap = reconcile_workspace(state, app);
     let table_updates = state.runtime.lock().unwrap().reload_config_tables();
     for (instance_id, st) in table_updates {
         emit_state(app, &instance_id, &st);
@@ -211,6 +212,7 @@ fn emit_workspace_reset(app: &AppHandle, state: &RuntimeState) {
     let timeline = state.session.output_timeline_status();
     let _ = app.emit("output-timeline-status", timeline);
     let _ = app.emit("workspace-reset", ());
+    emit_workspace_state(app, state, &snap);
 }
 
 impl Default for RuntimeState {
@@ -471,6 +473,10 @@ fn emit_config_update(app: &AppHandle, snap: &ConfigSnapshot) {
 }
 
 fn sync_output_poll_session(session: &Arc<EcuSession>, app: &AppHandle) {
+    if session.knock_scope().is_polling() {
+        session.output().stop();
+        return;
+    }
     if session.should_poll_output_channels() {
         if session.output().is_polling() {
             return;
@@ -548,6 +554,7 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
 
     match ws.phase {
         WorkspacePhase::Gate => {
+            state.session.knock_scope().stop();
             state.session.config().stop();
             state.session.output().stop();
             state.session.composite().disable_on_ecu(&state.session);
@@ -555,6 +562,7 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
             clear_config_diff(state, app);
         }
         WorkspacePhase::ProjectOnly | WorkspacePhase::EcuScanning => {
+            state.session.knock_scope().stop();
             if ws.config_source == ConfigSource::EcuLive {
                 state.session.config().stop();
                 clear_config_diff(state, app);
@@ -564,6 +572,7 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
             state.session.composite().stop();
         }
         WorkspacePhase::EcuIniMismatch => {
+            state.session.knock_scope().stop();
             // Ждём выбора INI: глушим все источники, но link не разрываем.
             state.session.config().stop();
             state.session.output().stop();
@@ -585,11 +594,11 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
             }
         }
         WorkspacePhase::ConfigLoadingFromEcu => {
+            state.session.knock_scope().stop();
+            state.session.knock_scope().disable_on_ecu(&state.session);
             state.session.output().stop();
             state.session.composite().disable_on_ecu(&state.session);
             state.session.composite().stop();
-            state.session.knock_scope().disable_on_ecu(&state.session);
-            state.session.knock_scope().stop();
             emit_composite(app, &state.session.composite().snapshot());
             emit_knock_scope_reset(app);
         }
@@ -602,6 +611,10 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
     emit_current_output(app, state);
     emit_composite(app, &state.session.composite().snapshot());
     emit_knock_scope_reset(app);
+
+    if state.session.take_output_poll_resync() {
+        sync_output_poll_session(&state.session, app);
+    }
 }
 
 fn protocol_log_emit_now_ms() -> u64 {
@@ -634,6 +647,11 @@ pub fn register_knock_scope_emitter(app: &AppHandle) {
             }
         }
         emit_knock_scope_tick(&handle, &ui);
+    });
+    let handle = app.clone();
+    let session = Arc::clone(&state.session);
+    state.session.knock_scope().set_stop_hook(move || {
+        sync_output_poll_session(&session, &handle);
     });
 }
 
@@ -1133,10 +1151,44 @@ pub fn knock_scope_set_enabled(
         emit_composite(&app, &state.session.composite().snapshot());
         emit_composite_timeline(&app, &state.session.composite_timeline_status());
     } else {
-        state.session.knock_scope().stop();
-        state.session.knock_scope().disable_on_ecu(&state.session);
+        state.session.knock_scope().stop_recording(&state.session);
+        sync_output_poll_session(&state.session, &app);
     }
     Ok(state.session.knock_scope_snapshot())
+}
+
+#[tauri::command]
+pub fn knock_scope_pan_spectrogram(
+    delta_columns: i32,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> KnockScopeSnapshot {
+    state
+        .session
+        .knock_scope()
+        .pan_spectrogram_view(delta_columns);
+    emit_knock_scope_tick(
+        &app,
+        &state.session.knock_scope().viewport_refresh_ui_tick(),
+    );
+    state.session.knock_scope_snapshot()
+}
+
+#[tauri::command]
+pub fn knock_scope_set_spectrogram_follow_live(
+    follow: bool,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> KnockScopeSnapshot {
+    state
+        .session
+        .knock_scope()
+        .set_spectrogram_follow_live(follow);
+    emit_knock_scope_tick(
+        &app,
+        &state.session.knock_scope().viewport_refresh_ui_tick(),
+    );
+    state.session.knock_scope_snapshot()
 }
 
 #[tauri::command]

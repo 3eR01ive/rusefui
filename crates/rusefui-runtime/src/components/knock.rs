@@ -504,8 +504,7 @@ impl KnockLogic {
     fn stop_scope(&mut self) {
         if self.scope_for_run {
             // Сначала останавливаем poll-поток, затем l+8 на ECU (не держать serial, пока thread жив).
-            self.session.knock_scope().stop();
-            self.session.knock_scope().disable_on_ecu(&self.session);
+            self.session.knock_scope().stop_recording(&self.session);
             self.scope_for_run = false;
         }
     }

@@ -12,7 +12,6 @@ use serde::Serialize;
 pub const KNOCK_ADC_SAMPLE_RATE_HZ: f32 = 218_750.0;
 
 pub const FFT_SIZE: usize = 1024;
-pub const HOP: usize = 256;
 /// Верхняя частота heatmap (Гц); отображение и шкала — на стороне UI.
 pub const SPECTROGRAM_MAX_FREQ_HZ: f32 = 20_000.0;
 const ADC_RATIO: f32 = 3.3 / 4095.0;
@@ -120,17 +119,21 @@ pub fn bin_to_frequency_hz(bin: usize, sample_rate_hz: f32) -> f32 {
 pub struct KnockSpectrogramEngine {
     sample_rate_hz: f32,
     height_bins: usize,
-    max_columns: usize,
+    /// Ширина viewport (столбцов FFT) из `window_ms`.
+    view_columns_max: usize,
+    /// Левый край viewport в полной записи (глобальный индекс столбца).
+    view_start: usize,
+    /// Пока true — viewport прижат к хвосту записи.
+    follow_live: bool,
     fft: Arc<dyn Fft<f32>>,
     window: Vec<f32>,
     scratch: Vec<Complex<f32>>,
-    stream: Vec<f32>,
-    stream_offset: usize,
+    /// Полная запись прогона (столбец = один knock-захват).
     columns: VecDeque<Vec<u8>>,
-    pending_new_columns: Vec<u8>,
-    pending_new_markers: Vec<KnockSpectrogramMarker>,
+    /// Метки цилиндров; `column` — глобальный индекс в `columns`.
     markers: Vec<KnockSpectrogramMarker>,
-    popped_since_emit: usize,
+    last_emit_view_start: usize,
+    last_emit_total_columns: usize,
     /// Максимум u8 за весь прогон (не только видимое окно).
     run_peak_val: u8,
     run_peak_bin: usize,
@@ -138,7 +141,7 @@ pub struct KnockSpectrogramEngine {
 
 impl KnockSpectrogramEngine {
     pub fn new(sample_rate_hz: f32, window_ms: u32) -> Self {
-        let max_columns = max_columns_for_window(window_ms, sample_rate_hz);
+        let view_columns_max = max_columns_for_window(window_ms, sample_rate_hz);
         let height_bins = spectrogram_height_bins(sample_rate_hz);
         let mut planner = rustfft::FftPlanner::new();
         let fft = planner.plan_fft_forward(FFT_SIZE);
@@ -147,76 +150,162 @@ impl KnockSpectrogramEngine {
         Self {
             sample_rate_hz,
             height_bins,
-            max_columns,
+            view_columns_max,
+            view_start: 0,
+            follow_live: true,
             fft,
             window,
             scratch: vec![Complex::new(0.0, 0.0); FFT_SIZE],
-            stream: Vec::new(),
-            stream_offset: 0,
             columns: VecDeque::new(),
-            pending_new_columns: Vec::new(),
-            pending_new_markers: Vec::new(),
             markers: Vec::new(),
-            popped_since_emit: 0,
+            last_emit_view_start: 0,
+            last_emit_total_columns: 0,
             run_peak_val: 0,
             run_peak_bin: MIN_PEAK_BIN,
         }
     }
 
     pub fn clear(&mut self) {
-        self.stream.clear();
-        self.stream_offset = 0;
         self.columns.clear();
-        self.pending_new_columns.clear();
-        self.pending_new_markers.clear();
         self.markers.clear();
-        self.popped_since_emit = 0;
+        self.view_start = 0;
+        self.follow_live = true;
+        self.last_emit_view_start = 0;
+        self.last_emit_total_columns = 0;
         self.run_peak_val = 0;
         self.run_peak_bin = MIN_PEAK_BIN;
     }
 
-    /// Забрать накопленные столбцы для UI (не копирует всю heatmap).
+    pub fn set_view_columns_max(&mut self, window_ms: u32) {
+        self.view_columns_max = max_columns_for_window(window_ms, self.sample_rate_hz);
+        if self.follow_live {
+            self.view_start = self
+                .columns
+                .len()
+                .saturating_sub(self.view_columns_max);
+        }
+        self.view_start = self.clamp_view_start();
+    }
+
+    pub fn set_follow_live(&mut self, follow: bool) {
+        self.follow_live = follow;
+        if follow {
+            self.view_start = self
+                .columns
+                .len()
+                .saturating_sub(self.view_columns_max);
+        }
+        self.view_start = self.clamp_view_start();
+    }
+
+    pub fn pan_view(&mut self, delta_columns: i32) {
+        self.follow_live = false;
+        let vw = self.viewport_width().max(1);
+        let max_start = self.columns.len().saturating_sub(vw);
+        let next = (self.view_start as i64 + i64::from(delta_columns)).clamp(0, max_start as i64);
+        self.view_start = next as usize;
+    }
+
+    pub fn total_columns(&self) -> usize {
+        self.columns.len()
+    }
+
+    pub fn viewport_stats(&self) -> (usize, usize, usize, bool) {
+        (
+            self.columns.len(),
+            self.clamp_view_start(),
+            self.viewport_width(),
+            self.follow_live,
+        )
+    }
+
+    /// Забрать diff viewport для WebGL (не копирует всю запись).
     pub fn take_ui_patch(&mut self) -> KnockSpectrogramPatch {
         let height = self.height_bins;
-        let patch = KnockSpectrogramPatch {
-            width: self.columns.len(),
-            height,
-            shift_left: self.popped_since_emit,
-            new_columns: std::mem::take(&mut self.pending_new_columns),
-            new_markers: std::mem::take(&mut self.pending_new_markers),
+        let vs = self.clamp_view_start();
+        self.view_start = vs;
+        let vw = self.viewport_width();
+        let total = self.columns.len();
+
+        if total == 0 || vw == 0 {
+            self.last_emit_view_start = vs;
+            self.last_emit_total_columns = 0;
+            return KnockSpectrogramPatch {
+                width: 0,
+                height,
+                ..Default::default()
+            };
+        }
+
+        let view_changed = vs != self.last_emit_view_start;
+        let added = total.saturating_sub(self.last_emit_total_columns);
+
+        if !view_changed && added == 0 {
+            return KnockSpectrogramPatch {
+                width: vw,
+                height,
+                ..Default::default()
+            };
+        }
+
+        let (shift_left, new_columns, new_markers) = if view_changed {
+            self.build_full_viewport_emit(vs, vw, height)
+        } else if vw < self.view_columns_max {
+            self.build_append_emit(vs, vw, height, added)
+        } else {
+            self.build_scroll_emit(vs, vw, height, added)
         };
-        self.popped_since_emit = 0;
-        patch
+
+        self.last_emit_view_start = vs;
+        self.last_emit_total_columns = total;
+
+        KnockSpectrogramPatch {
+            width: vw,
+            height,
+            shift_left,
+            new_columns,
+            new_markers,
+        }
     }
 
     pub fn push_samples(&mut self, samples: &[f32]) {
         self.push_samples_with_marker(samples, 0, 0);
     }
 
-    /// Окно software_knock: метка ставится на первый новый FFT-столбец этого захвата.
+    /// Одно ECU-окно → один FFT-столбец; метка на этом столбце (без склейки с другими цилиндрами).
     pub fn push_samples_with_marker(&mut self, samples: &[f32], cylinder: u8, channel: u8) {
-        let marker_col = self.columns.len();
-        let cols_before = self.columns.len();
-        self.stream.extend_from_slice(samples);
-        self.drain_fft_windows();
-        self.trim_stream();
-        if self.columns.len() > cols_before {
-            let marker = KnockSpectrogramMarker {
-                column: marker_col,
-                cylinder,
-                channel,
-            };
-            self.markers.push(marker);
-            self.pending_new_markers.push(marker);
-        }
+        let Some(col) = self.fft_one_column(samples) else {
+            return;
+        };
+        let global_col = self.columns.len();
+        self.append_column(col);
+        self.markers.push(KnockSpectrogramMarker {
+            column: global_col,
+            cylinder,
+            channel,
+        });
     }
 
     pub fn visible_markers(&self) -> Vec<KnockSpectrogramMarker> {
-        self.markers.clone()
+        let vs = self.clamp_view_start();
+        let vw = self.viewport_width();
+        if vw == 0 {
+            return Vec::new();
+        }
+        let ve = vs + vw;
+        self.markers
+            .iter()
+            .filter(|m| m.column >= vs && m.column < ve)
+            .map(|m| KnockSpectrogramMarker {
+                column: m.column - vs,
+                cylinder: m.cylinder,
+                channel: m.channel,
+            })
+            .collect()
     }
 
     pub fn spectrogram_meta(&self) -> (usize, usize) {
-        (self.columns.len(), self.height_bins)
+        (self.viewport_width(), self.height_bins)
     }
 
     /// Пик за весь прогон (максимальная амплитуда среди всех FFT-столбцов, включая ушедшие из окна).
@@ -236,10 +325,12 @@ impl KnockSpectrogramEngine {
         }
     }
 
+    /// Viewport для GPU / snapshot (не вся запись).
     pub fn view(&self) -> KnockSpectrogramView {
         let height = self.height_bins;
-        let width = self.columns.len();
-        if width == 0 {
+        let vs = self.clamp_view_start();
+        let vw = self.viewport_width();
+        if vw == 0 {
             return KnockSpectrogramView {
                 width: 0,
                 height,
@@ -247,71 +338,156 @@ impl KnockSpectrogramEngine {
             };
         }
 
-        let mut pixels = Vec::with_capacity(width * height);
-        for col in &self.columns {
-            pixels.extend_from_slice(col);
+        let mut pixels = Vec::with_capacity(vw * height);
+        for col_idx in vs..vs + vw {
+            if let Some(col) = self.columns.get(col_idx) {
+                pixels.extend_from_slice(col);
+            }
         }
 
         KnockSpectrogramView {
-            width,
+            width: vw,
             height,
             pixels,
         }
     }
 
-    fn drain_fft_windows(&mut self) {
-        while self.stream.len().saturating_sub(self.stream_offset) >= FFT_SIZE {
-            let start = self.stream_offset;
-            let frame = &self.stream[start..start + FFT_SIZE];
-
-            let mean = frame.iter().sum::<f32>() / frame.len() as f32;
-            for (i, &adc) in frame.iter().enumerate() {
-                let voltage = ADC_RATIO * (adc - mean);
-                self.scratch[i] = Complex::new(SENSITIVITY * voltage * self.window[i], 0.0);
-            }
-            for i in FFT_SIZE..self.scratch.len() {
-                self.scratch[i] = Complex::new(0.0, 0.0);
-            }
-
-            self.fft.process(&mut self.scratch);
-
-            let col = spectrum_column(&self.scratch, self.height_bins);
-            self.note_column_peak(&col);
-            self.pending_new_columns.extend_from_slice(&col);
-            self.columns.push_back(col);
-            while self.columns.len() > self.max_columns {
-                self.columns.pop_front();
-                self.popped_since_emit += 1;
-                self.shift_markers_left(1);
-            }
-
-            self.stream_offset += HOP;
+    /// FFT по одному knock-окну: до `FFT_SIZE` первых сэмплов, остаток — дополнение средним (как DC-steady).
+    fn fft_one_column(&mut self, samples: &[f32]) -> Option<Vec<u8>> {
+        if samples.is_empty() {
+            return None;
         }
+        let used = samples.len().min(FFT_SIZE);
+        let mean = samples[..used].iter().sum::<f32>() / used as f32;
+        for i in 0..FFT_SIZE {
+            let adc = if i < samples.len() {
+                samples[i]
+            } else {
+                mean
+            };
+            let voltage = ADC_RATIO * (adc - mean);
+            self.scratch[i] = Complex::new(SENSITIVITY * voltage * self.window[i], 0.0);
+        }
+        for i in FFT_SIZE..self.scratch.len() {
+            self.scratch[i] = Complex::new(0.0, 0.0);
+        }
+
+        self.fft.process(&mut self.scratch);
+        Some(spectrum_column(&self.scratch, self.height_bins))
     }
 
-    fn trim_stream(&mut self) {
-        if self.stream_offset > FFT_SIZE * 2 {
-            self.stream.drain(..self.stream_offset);
-            self.stream_offset = 0;
+    fn append_column(&mut self, col: Vec<u8>) {
+        self.note_column_peak(&col);
+        self.columns.push_back(col);
+        if self.follow_live {
+            self.view_start = self
+                .columns
+                .len()
+                .saturating_sub(self.view_columns_max);
         }
+        self.view_start = self.clamp_view_start();
     }
 
-    fn shift_markers_left(&mut self, shift: usize) {
-        let adjust = |m: &mut KnockSpectrogramMarker| {
-            if m.column < shift {
-                return false;
+    fn viewport_width(&self) -> usize {
+        self.view_columns_max.min(self.columns.len())
+    }
+
+    fn clamp_view_start(&self) -> usize {
+        let total = self.columns.len();
+        let vw = self.viewport_width();
+        if total <= vw {
+            return 0;
+        }
+        self.view_start.min(total - vw)
+    }
+
+    fn build_full_viewport_emit(
+        &self,
+        vs: usize,
+        vw: usize,
+        height: usize,
+    ) -> (usize, Vec<u8>, Vec<KnockSpectrogramMarker>) {
+        let mut new_columns = Vec::with_capacity(vw * height);
+        for col_idx in vs..vs + vw {
+            if let Some(col) = self.columns.get(col_idx) {
+                new_columns.extend_from_slice(col);
             }
-            m.column -= shift;
-            true
-        };
-        self.markers.retain_mut(adjust);
-        self.pending_new_markers.retain_mut(adjust);
+        }
+        (
+            vw,
+            new_columns,
+            self.markers_for_global_range(vs, vs + vw, vs),
+        )
+    }
+
+    fn build_append_emit(
+        &self,
+        vs: usize,
+        vw: usize,
+        height: usize,
+        added: usize,
+    ) -> (usize, Vec<u8>, Vec<KnockSpectrogramMarker>) {
+        let old_vw = vw.saturating_sub(added);
+        let mut new_columns = Vec::with_capacity(added * height);
+        for col_idx in vs + old_vw..vs + vw {
+            if let Some(col) = self.columns.get(col_idx) {
+                new_columns.extend_from_slice(col);
+            }
+        }
+        (
+            0,
+            new_columns,
+            self.markers_for_global_range(vs + old_vw, vs + vw, vs),
+        )
+    }
+
+    fn build_scroll_emit(
+        &self,
+        vs: usize,
+        vw: usize,
+        height: usize,
+        added: usize,
+    ) -> (usize, Vec<u8>, Vec<KnockSpectrogramMarker>) {
+        let shift = added.min(vw);
+        let start = vs + vw - shift;
+        let mut new_columns = Vec::with_capacity(shift * height);
+        for col_idx in start..vs + vw {
+            if let Some(col) = self.columns.get(col_idx) {
+                new_columns.extend_from_slice(col);
+            }
+        }
+        (
+            shift,
+            new_columns,
+            self.markers_for_global_range(start, vs + vw, vs),
+        )
+    }
+
+    fn markers_for_global_range(
+        &self,
+        global_start: usize,
+        global_end: usize,
+        viewport_start: usize,
+    ) -> Vec<KnockSpectrogramMarker> {
+        self.markers
+            .iter()
+            .filter(|m| m.column >= global_start && m.column < global_end)
+            .map(|m| KnockSpectrogramMarker {
+                column: m.column - viewport_start,
+                cylinder: m.cylinder,
+                channel: m.channel,
+            })
+            .collect()
     }
 }
 
-pub fn max_columns_for_window(window_ms: u32, sample_rate_hz: f32) -> usize {
-    let samples = (sample_rate_hz as f64 * f64::from(window_ms) / 1000.0).ceil() as usize;
-    (samples / HOP).max(32) + 4
+pub fn max_columns_for_window(window_ms: u32, _sample_rate_hz: f32) -> usize {
+    // Один столбец на knock-окно; запас под 12 цил. @ 12k rpm 4-такт.
+    const MAX_CAPTURES_PER_SEC: f64 = 1200.0;
+    let win_sec = f64::from(window_ms) / 1000.0;
+    ((win_sec * MAX_CAPTURES_PER_SEC).ceil() as usize)
+        .max(64)
+        .saturating_add(8)
 }
 
 fn spectrum_column(scratch: &[Complex<f32>], bin_count: usize) -> Vec<u8> {
@@ -390,19 +566,38 @@ mod tests {
     }
 
     #[test]
-    fn engine_produces_columns_from_sine() {
+    fn engine_produces_one_column_per_capture() {
         let mut eng = KnockSpectrogramEngine::new(KNOCK_ADC_SAMPLE_RATE_HZ, 500);
         let sr = KNOCK_ADC_SAMPLE_RATE_HZ;
         let mut buf = Vec::new();
-        for i in 0..FFT_SIZE * 3 {
+        for i in 0..FFT_SIZE {
             let t = i as f32 / sr;
             let v = (2.0 * PI * 8000.0 * t).sin() * 2000.0 + 2000.0;
             buf.push(v);
         }
         eng.push_samples(&buf);
         let view = eng.view();
-        assert!(view.width >= 1);
+        assert_eq!(view.width, 1);
         assert_eq!(view.pixels.len(), view.width * view.height);
+    }
+
+    #[test]
+    fn each_capture_adds_one_column_and_marker() {
+        let mut eng = KnockSpectrogramEngine::new(KNOCK_ADC_SAMPLE_RATE_HZ, 500);
+        let short = vec![1500.0; 400];
+        eng.push_samples_with_marker(&short, 0, 0);
+        eng.push_samples_with_marker(&short, 1, 0);
+        assert_eq!(eng.view().width, 2);
+        assert_eq!(eng.visible_markers().len(), 2);
+        assert_eq!(eng.visible_markers()[0].cylinder, 0);
+        assert_eq!(eng.visible_markers()[1].cylinder, 1);
+    }
+
+    #[test]
+    fn short_window_still_one_column() {
+        let mut eng = KnockSpectrogramEngine::new(KNOCK_ADC_SAMPLE_RATE_HZ, 500);
+        eng.push_samples_with_marker(&vec![1000.0; 200], 2, 0);
+        assert_eq!(eng.view().width, 1);
     }
 
     #[test]
@@ -418,7 +613,7 @@ mod tests {
     }
 
     #[test]
-    fn run_peak_is_max_over_entire_run_not_sliding_window() {
+    fn run_peak_is_max_over_entire_run_not_viewport() {
         let h = spectrogram_height_bins(KNOCK_ADC_SAMPLE_RATE_HZ);
         let mut eng = KnockSpectrogramEngine::new(KNOCK_ADC_SAMPLE_RATE_HZ, 40);
 
@@ -436,49 +631,54 @@ mod tests {
         eng.feed_test_column(later);
         assert_eq!(eng.peak_frequency_hz(), Some(run_peak_hz));
 
-        // Заполняем окно слабым шумом — столбцы с пиками уходят из deque.
         for _ in 0..80 {
             let mut quiet = vec![0u8; h];
             quiet[3] = 10;
             eng.feed_test_column(quiet);
         }
 
+        assert_eq!(eng.total_columns(), 82);
+        assert!(eng.view().width <= eng.total_columns());
         assert_eq!(
             eng.peak_frequency_hz(),
             Some(run_peak_hz),
-            "пик прогона не должен сбрасываться при прокрутке окна"
+            "пик прогона не должен сбрасываться при прокрутке viewport"
         );
     }
 
     #[test]
-    fn shift_markers_left_updates_pending_new_markers() {
+    fn pan_view_shows_earlier_captures() {
         let mut eng = KnockSpectrogramEngine::new(KNOCK_ADC_SAMPLE_RATE_HZ, 500);
-        eng.pending_new_markers.push(KnockSpectrogramMarker {
-            column: 3,
-            cylinder: 1,
-            channel: 0,
-        });
-        eng.markers.push(KnockSpectrogramMarker {
-            column: 3,
-            cylinder: 1,
-            channel: 0,
-        });
-        eng.shift_markers_left(2);
-        assert_eq!(eng.markers.len(), 1);
-        assert_eq!(eng.markers[0].column, 1);
-        assert_eq!(eng.pending_new_markers.len(), 1);
-        assert_eq!(eng.pending_new_markers[0].column, 1);
+        eng.set_viewport_columns_max_raw(3);
+        let short = vec![1500.0; 400];
+        for cyl in 0..6u8 {
+            eng.push_samples_with_marker(&short, cyl, 0);
+        }
+        assert_eq!(eng.total_columns(), 6);
+        assert_eq!(eng.view().width, 3);
+        eng.set_follow_live(false);
+        eng.pan_view(-3);
+        assert_eq!(eng.viewport_stats().1, 0);
+        let markers = eng.visible_markers();
+        assert_eq!(markers.len(), 3);
+        assert_eq!(markers[0].cylinder, 0);
     }
 }
 
 #[cfg(test)]
 impl KnockSpectrogramEngine {
     fn feed_test_column(&mut self, col: Vec<u8>) {
-        self.note_column_peak(&col);
-        self.pending_new_columns.extend_from_slice(&col);
-        self.columns.push_back(col);
-        while self.columns.len() > self.max_columns {
-            self.columns.pop_front();
+        self.append_column(col);
+    }
+
+    fn set_viewport_columns_max_raw(&mut self, width: usize) {
+        self.view_columns_max = width.max(1);
+        if self.follow_live {
+            self.view_start = self
+                .columns
+                .len()
+                .saturating_sub(self.view_columns_max);
         }
+        self.view_start = self.clamp_view_start();
     }
 }

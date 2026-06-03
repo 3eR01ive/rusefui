@@ -17,11 +17,15 @@ use super::knock_spectrogram::{
 };
 use crate::session::EcuSession;
 
-const POLL_WAIT_READY: Duration = Duration::from_millis(10);
+/// Буфер ECU ещё не готов (0x84 / пустой ответ) — короткая пауза и снова read.
+const POLL_NOT_READY: Duration = Duration::from_micros(500);
+/// Порт занят (output poll и т.д.) — yield и быстрый retry.
+const POLL_SERIAL_BUSY: Duration = Duration::from_micros(200);
 const POLL_IDLE: Duration = Duration::from_millis(40);
 const STATUS_EMIT_INTERVAL: Duration = Duration::from_millis(400);
 const STALL_HINT_AFTER: Duration = Duration::from_secs(4);
-const SERIAL_MUTEX_WAIT: Duration = Duration::from_millis(800);
+/// Включение/выключение scope на ECU — редко, можно подождать порт.
+const SERIAL_MUTEX_WAIT: Duration = Duration::from_millis(200);
 
 const READY_FIELD: &str = "knockScopeReady";
 const CONFIG_ENABLE_FIELD: &str = "enableKnockScope";
@@ -66,6 +70,18 @@ pub struct KnockScopeUiTick {
     pub last_error: Option<String>,
     pub last_cylinder: Option<u8>,
     pub last_channel: Option<u8>,
+    pub spectrogram_total_columns: usize,
+    pub spectrogram_view_start: usize,
+    pub spectrogram_view_captures: usize,
+    pub spectrogram_follow_live: bool,
+    /// Wall-clock от `start()` записи (мс).
+    pub recording_elapsed_ms: u64,
+    /// Захватов/с по wall-clock (`capture_count / elapsed`).
+    pub capture_rate_hz: f64,
+    /// RPM из output poll на старте записи (для оценки теор. частоты).
+    pub recording_ref_rpm: Option<f64>,
+    /// Теор. захватов/с: `rpm × N_цил / 120` (4-такт), N = max(виденный цилиндр)+1.
+    pub expected_capture_rate_hz: Option<f64>,
     /// Base64: `encode_knock_spectrogram_gpu` — сырой ArrayBuffer для WebGL.
     pub spectrogram_gpu_b64: Option<String>,
     pub spectrogram_width: usize,
@@ -99,6 +115,14 @@ pub struct KnockScopeSnapshot {
     pub last_error: Option<String>,
     pub last_cylinder: Option<u8>,
     pub last_channel: Option<u8>,
+    pub spectrogram_total_columns: usize,
+    pub spectrogram_view_start: usize,
+    pub spectrogram_view_captures: usize,
+    pub spectrogram_follow_live: bool,
+    pub recording_elapsed_ms: u64,
+    pub capture_rate_hz: f64,
+    pub recording_ref_rpm: Option<f64>,
+    pub expected_capture_rate_hz: Option<f64>,
     /// FFT-спектрограмма (расчёт на хосте). `pixels` заполняются только для `get_snapshot` / GPU init.
     pub spectrogram: KnockSpectrogramView,
     /// Пик шума по heatmap (без копирования pixels на UI tick).
@@ -126,6 +150,14 @@ impl KnockScopeSnapshot {
             last_error: None,
             last_cylinder: None,
             last_channel: None,
+            spectrogram_total_columns: 0,
+            spectrogram_view_start: 0,
+            spectrogram_view_captures: 0,
+            spectrogram_follow_live: true,
+            recording_elapsed_ms: 0,
+            capture_rate_hz: 0.0,
+            recording_ref_rpm: None,
+            expected_capture_rate_hz: None,
             spectrogram: KnockSpectrogramView::default(),
             spectrogram_peak_hz: None,
             spectrogram_markers: Vec::new(),
@@ -139,8 +171,11 @@ pub struct KnockScopeSource {
     running: Arc<AtomicBool>,
     scope_enabled_on_ecu: Arc<AtomicBool>,
     scope_started_at: Mutex<Option<Instant>>,
+    recording_ref_rpm: Mutex<Option<f64>>,
+    max_cylinder_seen: Mutex<Option<u8>>,
     thread: Mutex<Option<JoinHandle<()>>>,
     tick_hook: Arc<Mutex<Option<Arc<dyn Fn(&KnockScopeSnapshot, KnockScopeUiTick) + Send + Sync>>>>,
+    stop_hook: Arc<Mutex<Option<Arc<dyn Fn() + Send + Sync>>>>,
 }
 
 fn adc_samples_to_volts(raw: u16) -> f32 {
@@ -264,6 +299,14 @@ fn build_ui_tick(
         last_error: snap.last_error.clone(),
         last_cylinder: snap.last_cylinder,
         last_channel: snap.last_channel,
+        spectrogram_total_columns: snap.spectrogram_total_columns,
+        spectrogram_view_start: snap.spectrogram_view_start,
+        spectrogram_view_captures: snap.spectrogram_view_captures,
+        spectrogram_follow_live: snap.spectrogram_follow_live,
+        recording_elapsed_ms: snap.recording_elapsed_ms,
+        capture_rate_hz: snap.capture_rate_hz,
+        recording_ref_rpm: snap.recording_ref_rpm,
+        expected_capture_rate_hz: snap.expected_capture_rate_hz,
         spectrogram_gpu_b64,
         spectrogram_width: snap.spectrogram.width,
         spectrogram_height: snap.spectrogram.height,
@@ -272,6 +315,54 @@ fn build_ui_tick(
         spectrogram_markers: snap.spectrogram_markers.clone(),
         waveform_chunk,
     }
+}
+
+fn expected_capture_rate_hz(rpm: f64, max_cylinder_index: u8) -> f64 {
+    let n = f64::from(max_cylinder_index.saturating_add(1)).max(1.0);
+    rpm * n / 120.0
+}
+
+fn recording_timing(
+    started: Option<Instant>,
+    capture_count: u64,
+    ref_rpm: Option<f64>,
+    max_cylinder: Option<u8>,
+) -> (u64, f64, Option<f64>) {
+    let Some(t0) = started else {
+        return (0, 0.0, None);
+    };
+    let elapsed_ms = t0.elapsed().as_millis() as u64;
+    let rate = if elapsed_ms > 0 {
+        capture_count as f64 / (elapsed_ms as f64 / 1000.0)
+    } else {
+        0.0
+    };
+    let expected = ref_rpm.and_then(|rpm| {
+        max_cylinder.map(|c| expected_capture_rate_hz(rpm, c))
+    });
+    (elapsed_ms, rate, expected)
+}
+
+fn apply_recording_timing(snap: &mut KnockScopeSnapshot, started: Option<Instant>, ref_rpm: Option<f64>, max_cylinder: Option<u8>) {
+    let (elapsed_ms, rate, expected) =
+        recording_timing(started, snap.capture_count, ref_rpm, max_cylinder);
+    snap.recording_elapsed_ms = elapsed_ms;
+    snap.capture_rate_hz = rate;
+    snap.recording_ref_rpm = ref_rpm;
+    snap.expected_capture_rate_hz = expected;
+}
+
+fn apply_engine_viewport(snap: &mut KnockScopeSnapshot, eng: &KnockSpectrogramEngine) {
+    let (total, view_start, view_width, follow_live) = eng.viewport_stats();
+    let (_, height) = eng.spectrogram_meta();
+    snap.spectrogram.width = view_width;
+    snap.spectrogram.height = height;
+    snap.spectrogram_total_columns = total;
+    snap.spectrogram_view_start = view_start;
+    snap.spectrogram_view_captures = view_width;
+    snap.spectrogram_follow_live = follow_live;
+    snap.spectrogram_peak_hz = eng.peak_frequency_hz();
+    snap.spectrogram_markers = eng.visible_markers();
 }
 
 fn is_buffer_not_ready(err: &str) -> bool {
@@ -338,9 +429,20 @@ impl KnockScopeSource {
             running: Arc::new(AtomicBool::new(false)),
             scope_enabled_on_ecu: Arc::new(AtomicBool::new(false)),
             scope_started_at: Mutex::new(None),
+            recording_ref_rpm: Mutex::new(None),
+            max_cylinder_seen: Mutex::new(None),
             thread: Mutex::new(None),
             tick_hook: Arc::new(Mutex::new(None)),
+            stop_hook: Arc::new(Mutex::new(None)),
         }
+    }
+
+    /// После `stop` / `stop_recording` (перезапуск output poll и т.д.).
+    pub fn set_stop_hook<F>(&self, f: F)
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
+        *self.stop_hook.lock().unwrap() = Some(Arc::new(f));
     }
 
     /// Глобальный колбэк (emit во фронт). Вызывается на throttled UI tick.
@@ -366,40 +468,83 @@ impl KnockScopeSource {
         }
     }
 
+    /// Идёт запись спектрограммы (poll-поток активен). Без `start()` — всегда false.
     pub fn is_polling(&self) -> bool {
         self.running.load(Ordering::SeqCst) && self.thread.lock().unwrap().is_some()
     }
 
-    /// Остановить опрос и ECU scope; heatmap и метки цилиндров остаются для просмотра.
-    pub fn stop(&self) {
+    /// Остановить poll-поток (без serial). Вызывается только из `stop` / `stop_recording`.
+    fn stop_host_poll(&self) {
         self.running.store(false, Ordering::SeqCst);
         let _ = self.thread.lock().unwrap().take();
         *self.scope_started_at.lock().unwrap() = None;
-        self.scope_enabled_on_ecu.store(false, Ordering::SeqCst);
+        *self.recording_ref_rpm.lock().unwrap() = None;
+        *self.max_cylinder_seen.lock().unwrap() = None;
+    }
+
+    /// Выключить knock scope на ECU, не блокируя serial (для смены проекта / gate).
+    pub fn try_disable_on_ecu(&self, session: &EcuSession) {
+        if !self.scope_enabled_on_ecu.load(Ordering::SeqCst) {
+            return;
+        }
+        match session.try_with_link(|link| link.set_knock_scope_enabled(false)) {
+            Some(Ok(())) => {
+                self.scope_enabled_on_ecu.store(false, Ordering::SeqCst);
+            }
+            Some(Err(_)) | None => {
+                // Порт занят — host-запись уже остановлена; ECU погасим при следующем успешном serial.
+                self.scope_enabled_on_ecu.store(false, Ordering::SeqCst);
+            }
+        }
+    }
+
+    /// Остановить запись: poll + заморозить heatmap; ECU scope — отдельно (`try_disable_on_ecu` / `disable_on_ecu`).
+    pub fn stop(&self) {
+        self.stop_host_poll();
 
         let frozen = self.spectrogram.lock().unwrap().as_ref().map(|eng| {
             (
                 eng.view(),
                 eng.visible_markers(),
                 eng.peak_frequency_hz(),
+                eng.viewport_stats(),
             )
         });
 
         let mut snap = self.snapshot.write().unwrap();
         snap.scope_enabled = false;
         snap.polling = false;
-        if let Some((view, markers, peak)) = frozen {
+        if let Some((view, markers, peak, (total, vs, vw, follow))) = frozen {
             snap.spectrogram = view;
             snap.spectrogram_markers = markers;
             snap.spectrogram_peak_hz = peak;
+            snap.spectrogram_total_columns = total;
+            snap.spectrogram_view_start = vs;
+            snap.spectrogram_view_captures = vw;
+            snap.spectrogram_follow_live = follow;
             snap.status_message = Some("Запись остановлена — спектрограмма на экране.".into());
         } else {
             snap.status_message = Some("Запись остановлена.".into());
         }
     }
 
+    /// Стоп записи + попытка выключить scope на ECU (не блокирует надолго).
+    pub fn stop_recording(&self, session: &EcuSession) {
+        self.stop();
+        self.try_disable_on_ecu(session);
+        session.request_output_poll_resync();
+        if let Some(hook) = self.stop_hook.lock().unwrap().as_ref() {
+            hook();
+        }
+    }
+
+    /// Выключить scope на ECU (кнопка «Стоп»); при занятом порте — короткое ожидание.
     pub fn disable_on_ecu(&self, session: &EcuSession) {
         if !self.scope_enabled_on_ecu.load(Ordering::SeqCst) {
+            return;
+        }
+        if let Some(Ok(())) = session.try_with_link(|link| link.set_knock_scope_enabled(false)) {
+            self.scope_enabled_on_ecu.store(false, Ordering::SeqCst);
             return;
         }
         let _ = session.with_link_wait(SERIAL_MUTEX_WAIT, |link| {
@@ -408,6 +553,49 @@ impl KnockScopeSource {
         self.scope_enabled_on_ecu.store(false, Ordering::SeqCst);
     }
 
+    /// Сдвинуть viewport по записи (столбцы FFT). `delta > 0` — к более новым захватам.
+    pub fn pan_spectrogram_view(&self, delta_columns: i32) -> KnockScopeSnapshot {
+        if let Some(eng) = self.spectrogram.lock().unwrap().as_mut() {
+            eng.pan_view(delta_columns);
+            let mut snap = self.snapshot.write().unwrap();
+            apply_engine_viewport(&mut snap, eng);
+        }
+        self.snapshot.read().unwrap().clone()
+    }
+
+    /// Прижать viewport к хвосту записи (live) или отключить follow.
+    pub fn set_spectrogram_follow_live(&self, follow: bool) -> KnockScopeSnapshot {
+        if let Some(eng) = self.spectrogram.lock().unwrap().as_mut() {
+            eng.set_follow_live(follow);
+            let mut snap = self.snapshot.write().unwrap();
+            apply_engine_viewport(&mut snap, eng);
+        }
+        self.snapshot.read().unwrap().clone()
+    }
+
+    /// Полный GPU-буфер текущего viewport (после pan / follow).
+    pub fn spectrogram_viewport_gpu_b64(&self) -> String {
+        use super::knock_spectrogram::encode_knock_spectrogram_gpu_b64;
+        let guard = self.spectrogram.lock().unwrap();
+        if let Some(eng) = guard.as_ref() {
+            encode_knock_spectrogram_gpu_b64(&eng.view())
+        } else {
+            encode_knock_spectrogram_gpu_b64(&self.snapshot.read().unwrap().spectrogram)
+        }
+    }
+
+    /// UI tick с полным GPU viewport (после pan / follow live).
+    pub fn viewport_refresh_ui_tick(&self) -> KnockScopeUiTick {
+        let snap = self.snapshot.read().unwrap().clone();
+        let mut tick = build_ui_tick(&snap, None, Vec::new());
+        let gpu = self.spectrogram_viewport_gpu_b64();
+        if !gpu.is_empty() {
+            tick.spectrogram_gpu_b64 = Some(gpu);
+        }
+        tick
+    }
+
+    /// Начать запись: поднимает poll-поток. Без вызова `start` knock scope на хосте не опрашивается.
     pub fn start<F>(
         &self,
         session: Arc<EcuSession>,
@@ -425,6 +613,18 @@ impl KnockScopeSource {
 
         session.composite().disable_on_ecu(&session);
         session.composite().stop();
+
+        let ref_rpm = session
+            .output()
+            .snapshot()
+            .values
+            .get("RPMValue")
+            .copied()
+            .filter(|rpm| *rpm > 0.0);
+        // Serial целиком под knock read — иначе poll `O` (~5 ms) съедает окна @ высоких RPM.
+        session.output().stop();
+        *self.recording_ref_rpm.lock().unwrap() = ref_rpm;
+        *self.max_cylinder_seen.lock().unwrap() = None;
 
         self.running.store(false, Ordering::SeqCst);
         let _ = self.thread.lock().unwrap().take();
@@ -455,6 +655,14 @@ impl KnockScopeSource {
             snap.spectrogram = KnockSpectrogramView::default();
             snap.spectrogram_peak_hz = None;
             snap.spectrogram_markers.clear();
+            snap.spectrogram_total_columns = 0;
+            snap.spectrogram_view_start = 0;
+            snap.spectrogram_view_captures = 0;
+            snap.spectrogram_follow_live = true;
+            snap.recording_elapsed_ms = 0;
+            snap.capture_rate_hz = 0.0;
+            snap.recording_ref_rpm = ref_rpm;
+            snap.expected_capture_rate_hz = None;
         }
 
         *self.spectrogram.lock().unwrap() = Some(KnockSpectrogramEngine::new(
@@ -469,6 +677,8 @@ impl KnockScopeSource {
         let spectrogram = Arc::clone(&self.spectrogram);
         let tick_hook = Arc::clone(&self.tick_hook);
         let scope_started_at = Arc::new(Mutex::new(Some(Instant::now())));
+        let recording_ref_rpm = Arc::new(Mutex::new(ref_rpm));
+        let max_cylinder_seen = Arc::new(Mutex::new(None::<u8>));
         let on_tick = Arc::new(on_tick);
 
         let handle = thread::Builder::new()
@@ -481,6 +691,8 @@ impl KnockScopeSource {
                     spectrogram,
                     tick_hook,
                     scope_started_at,
+                    recording_ref_rpm,
+                    max_cylinder_seen,
                     on_tick,
                 )
             })
@@ -498,6 +710,8 @@ fn poll_loop(
     spectrogram: Arc<Mutex<Option<KnockSpectrogramEngine>>>,
     tick_hook: Arc<Mutex<Option<Arc<dyn Fn(&KnockScopeSnapshot, KnockScopeUiTick) + Send + Sync>>>>,
     scope_started_at: Arc<Mutex<Option<Instant>>>,
+    recording_ref_rpm: Arc<Mutex<Option<f64>>>,
+    max_cylinder_seen: Arc<Mutex<Option<u8>>>,
     _on_tick: Arc<dyn Fn(KnockScopeSnapshot) + Send + Sync>,
 ) {
     let emit = |snap: &KnockScopeSnapshot, ui: KnockScopeUiTick| {
@@ -523,9 +737,8 @@ fn poll_loop(
         let mut did_work = false;
 
         if allow_poll {
-            match session.with_link_wait(SERIAL_MUTEX_WAIT, |link| link.read_knock_scope_buffer())
-            {
-                Ok(bytes) if !bytes.is_empty() => {
+            match session.try_with_link(|link| link.read_knock_scope_buffer()) {
+                Some(Ok(bytes)) if !bytes.is_empty() => {
                     let frame = decode_knock_scope_buffer(&bytes);
                     let samples = frame.samples;
                     let min_v = samples.iter().copied().fold(f32::INFINITY, f32::min);
@@ -537,21 +750,29 @@ fn poll_loop(
                     };
                     let cylinder = frame.header.cylinder_number;
                     let channel = frame.header.channel_number;
-                    let (spec_w, spec_h, peak_hz, markers) = {
+                    let (spec_w, spec_h, peak_hz, markers, viewport) = {
                         let mut guard = spectrogram.lock().unwrap();
                         if let Some(eng) = guard.as_mut() {
                             eng.push_samples_with_marker(&samples, cylinder, channel);
                             let (w, h) = eng.spectrogram_meta();
-                            (w, h, eng.peak_frequency_hz(), eng.visible_markers())
+                            (
+                                w,
+                                h,
+                                eng.peak_frequency_hz(),
+                                eng.visible_markers(),
+                                eng.viewport_stats(),
+                            )
                         } else {
                             (
                                 0,
                                 spectrogram_height_bins(KNOCK_ADC_HZ as f32),
                                 None,
                                 Vec::new(),
+                                (0, 0, 0, true),
                             )
                         }
                     };
+                    let (total_cols, view_start, view_captures, follow_live) = viewport;
                     let waveform = downsample_waveform(&samples, WAVEFORM_CHUNK_MAX);
                     let capture_count;
                     {
@@ -568,6 +789,10 @@ fn poll_loop(
                         snap.spectrogram.pixels.clear();
                         snap.spectrogram_peak_hz = peak_hz;
                         snap.spectrogram_markers = markers;
+                        snap.spectrogram_total_columns = total_cols;
+                        snap.spectrogram_view_start = view_start;
+                        snap.spectrogram_view_captures = view_captures;
+                        snap.spectrogram_follow_live = follow_live;
                         snap.sample_count = samples.len();
                         snap.sample_min = min_v;
                         snap.sample_max = max_v;
@@ -577,6 +802,14 @@ fn poll_loop(
                         snap.capture_count = snap.capture_count.saturating_add(1);
                         capture_count = snap.capture_count;
                         snap.last_error = None;
+                        {
+                            let mut mx = max_cylinder_seen.lock().unwrap();
+                            *mx = Some(mx.map(|m| m.max(cylinder)).unwrap_or(cylinder));
+                        }
+                        let started = *scope_started_at.lock().unwrap();
+                        let ref_rpm = *recording_ref_rpm.lock().unwrap();
+                        let max_cyl = *max_cylinder_seen.lock().unwrap();
+                        apply_recording_timing(&mut snap, started, ref_rpm, max_cyl);
                         snap.status_message =
                             status_hint(capture_count, true, config_enable, waiting_for);
                     }
@@ -590,18 +823,26 @@ fn poll_loop(
                         last_ui_emit = Instant::now();
                     }
                     did_work = true;
-                    thread::sleep(POLL_WAIT_READY);
+                    continue;
                 }
-                Ok(_) => {
-                    thread::sleep(POLL_WAIT_READY);
+                Some(Ok(_)) => {
+                    thread::sleep(POLL_NOT_READY);
                     did_work = true;
+                    continue;
                 }
-                Err(e) if is_buffer_not_ready(&e) => {
-                    thread::sleep(POLL_WAIT_READY);
+                Some(Err(e)) if is_buffer_not_ready(&e) => {
+                    thread::sleep(POLL_NOT_READY);
                     did_work = true;
+                    continue;
                 }
-                Err(e) => {
+                Some(Err(e)) => {
                     last_error = Some(e);
+                }
+                None => {
+                    thread::yield_now();
+                    thread::sleep(POLL_SERIAL_BUSY);
+                    did_work = true;
+                    continue;
                 }
             }
         }
@@ -645,7 +886,7 @@ fn poll_loop(
 
         if !did_work {
             thread::sleep(if allow_poll {
-                POLL_WAIT_READY
+                POLL_NOT_READY
             } else {
                 POLL_IDLE
             });

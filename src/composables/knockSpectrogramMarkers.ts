@@ -32,7 +32,7 @@ export function knockCylinderLabel(cylinder: number): string {
   return `C${cylinder + 1}`;
 }
 
-/** Уникальные метки для отрисовки (по паре столбец+цилиндр, не только по column). */
+/** Все захваты: одна подпись на каждый столбец+цилиндр (без слияния оборотов). */
 export function buildKnockMarkerOverlay(
   markers: readonly KnockCylinderMarker[],
   texWidth: number,
@@ -58,7 +58,7 @@ export function buildKnockMarkerOverlay(
   return out.sort((a, b) => a.x - b.x);
 }
 
-/** Список для WebGL-линий (без layout). */
+/** Список для WebGL-линий — каждый захват. */
 export function knockMarkersForGpu(
   markers: readonly KnockCylinderMarker[],
 ): KnockCylinderMarker[] {
