@@ -17,7 +17,7 @@ rusefui — не клон TunerStudio «один в один», а tuner, зат
 - **Автотюн** — *в разработке*.
 - **Виртуальный диностенд** — кривые Nm/HP по RPM без выезда на стенд (вкладка RUN).
 
-Подробный план: [rusefui.md](./rusefui.md).
+Подробный план: [rusefui.md](./rusefui.md) · roadmap: [ROADMAP.md](./ROADMAP.md).
 
 ## Скриншоты
 
