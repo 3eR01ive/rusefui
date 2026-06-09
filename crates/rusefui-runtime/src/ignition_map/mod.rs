@@ -1,10 +1,15 @@
 mod calculator;
 mod coefficients;
 mod engine;
+mod plausibility;
 
 pub use calculator::SparkAdvanceCalculator;
 pub use coefficients::ModelCoefficients;
 pub use engine::EngineParams;
+pub use plausibility::{
+    boost_likely_from_load_axis, scan_ignition_table, worst_violation, PlausibilityKind,
+    PlausibilityViolation,
+};
 
 /// Сгенерировать карту УОЗ для осей ECU (строки = load/MAP, столбцы = RPM).
 pub fn generate_table_values(

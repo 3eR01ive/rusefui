@@ -38,6 +38,7 @@ children:
       field: ignOverrideMode
 - type: ignition-table
   id: ignitiontabletbl
+  navSelectable: false
   props:
     xLabel: RPM
     title: Ignition Table

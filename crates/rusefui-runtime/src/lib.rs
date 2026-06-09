@@ -7,6 +7,7 @@ mod component;
 pub mod config_table_grid;
 mod config_checklist;
 mod config_conflicts;
+mod config_ignition_plausibility;
 mod config_vars;
 mod config_diff;
 mod dyno;

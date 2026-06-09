@@ -2,6 +2,9 @@
 # panel / component — id из manifest.json / panel yaml (редактор справа).
 
 groups:
+  conflicts:
+    title: "Сводка"
+    order: 4
   pins:
     title: "Пины"
     order: 5
@@ -149,6 +152,15 @@ vars:
   ignition.output_pins:
     source: config
     prefix: ignitionPins
+  ignition.table:
+    source: config
+    parameter: ignitionTable
+  ignition.rpm_bins:
+    source: config
+    parameter: ignitionRpmBins
+  ignition.load_bins:
+    source: config
+    parameter: ignitionLoadBins
   fuel.injection_enabled:
     source: config
     parameter: isInjectionEnabled
@@ -189,6 +201,12 @@ levels:
       Базовые калибровки, без которых ECU не сможет синхронизировать двигатель,
       рассчитать топливо и зажигание.
     severity: error
+  suspicious:
+    title: "Подозрительное"
+    description: >
+      Значения в калибровках, которые могут указывать на ошибку или риск,
+      но не блокируют запуск (пороги plausibility для таблицы УОЗ).
+    severity: warning
 
 checks:
   - id: startup_cylinders_min

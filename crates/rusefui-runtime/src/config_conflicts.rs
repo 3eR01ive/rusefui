@@ -40,6 +40,29 @@ pub fn collect_conflict_items(
 
     defs.sort_by(|a, b| a.id.cmp(&b.id));
 
+    if defs.is_empty() {
+        let (group, group_title, group_order) = resolve_group(rules, Some("conflicts"));
+        return (
+            vec![ChecklistItem {
+                id: "conflicts_clear".to_string(),
+                level: CONFLICT_LEVEL.to_string(),
+                group,
+                group_title,
+                group_order,
+                label: "Конфликты настроек".to_string(),
+                ok: true,
+                message: "Дубли пинов, несогласованность режимов и входов триггера не обнаружены"
+                    .to_string(),
+                value_display: "не обнаружено".to_string(),
+                fields: Vec::new(),
+                field_labels: Vec::new(),
+                editor: ChecklistEditor::default(),
+                editors: Vec::new(),
+            }],
+            Vec::new(),
+        );
+    }
+
     let level_def = rules.levels.get(CONFLICT_LEVEL).cloned().unwrap_or_else(|| {
         LevelDefinition {
             title: "Конфликты настроек".to_string(),
@@ -640,6 +663,18 @@ mod tests {
         assert_eq!(item.editors.len(), 1);
         assert_eq!(item.editors[0].field, "ignitionPins5");
         assert_eq!(issues[0].severity, "critical");
+    }
+
+    #[test]
+    fn no_conflicts_emits_green_summary_item() {
+        let rules = rules_with_fields(HashMap::new());
+        let snapshot = snap(HashMap::from([("cylindersCount".to_string(), 4.0)]), HashMap::new());
+        let (items, issues) = collect_conflict_items(&snapshot, &rules, &HashMap::new());
+        assert_eq!(issues.len(), 0);
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].id, "conflicts_clear");
+        assert!(items[0].ok);
+        assert_eq!(items[0].level, "conflicts");
     }
 
     #[test]

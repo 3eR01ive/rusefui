@@ -44,14 +44,9 @@ pub struct ModelCoefficients {
     pub idle_rpm_max: f64,
     pub idle_map_max_kpa: f64,
     pub min_advance_deg: f64,
-    /// Из coefficients JSON; зарезервировано для будущих предупреждений в UI.
-    #[allow(dead_code)]
     pub plausibility_max_wot_deg: f64,
-    #[allow(dead_code)]
     pub plausibility_max_turbo_deg: f64,
-    #[allow(dead_code)]
     pub plausibility_max_idle_deg: f64,
-    #[allow(dead_code)]
     pub plausibility_min_operating_deg: f64,
 }
 

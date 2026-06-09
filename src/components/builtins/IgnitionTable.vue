@@ -3,9 +3,9 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useInstanceBind } from "../../composables/useInstanceBind";
 import { useRustComponent } from "../../composables/useRustComponent";
-import { useComponentBinding } from "../../composables/useKeyboardRouter";
 import {
   activateComponent,
+  deactivateComponent,
   selectComponent,
   setNavExtension,
 } from "../../composables/useWorkspaceNav";
@@ -74,33 +74,52 @@ const tableInstance = computed((): ComponentInstance => ({
   bind: props.instance.bind,
 }));
 
-const tablePath = computed(() => `${props.path}/grid`);
+/** `table` после `settings` в localeCompare — совпадает с порядком на экране (↓ вниз). */
+const tablePath = computed(() => `${props.path}/table`);
+const settingsPath = computed(() => `${props.path}/settings`);
+
+/** Якорь в дереве nav (без UI); клавиатура — нативные поля формы. */
+const settingsNavInstance = computed((): ComponentInstance => ({
+  type: "text",
+  id: `${props.instance.id ?? "ignition"}-settings-nav`,
+  props: { text: "\u00a0" },
+  navSelectable: true,
+  navActivatable: false,
+}));
 
 const gridRef = ref<{ handleKeydown: (e: KeyboardEvent) => boolean } | null>(null);
 
-function syncNavExtension(): void {
+function syncNavExtensions(): void {
+  setNavExtension(settingsPath.value, settingsNavInstance.value);
   setNavExtension(tablePath.value, tableInstance.value);
 }
 
+function clearNavExtensions(): void {
+  setNavExtension(settingsPath.value, null);
+  setNavExtension(tablePath.value, null);
+}
+
 onMounted(() => {
-  syncNavExtension();
+  syncNavExtensions();
 });
 
 onBeforeUnmount(() => {
-  setNavExtension(tablePath.value, null);
+  clearNavExtensions();
 });
 
-watch(tablePath, () => {
-  syncNavExtension();
+watch([tablePath, settingsPath], () => {
+  syncNavExtensions();
 });
+
+function onSettingsMouseDown(): void {
+  selectComponent(settingsPath.value);
+  deactivateComponent();
+}
 
 function onGridMouseDown(): void {
   selectComponent(tablePath.value);
   activateComponent(tablePath.value);
 }
-
-/** Вложенная таблица на `{path}/grid`; родительский path перехватывает клавиатуру и делегирует. */
-useComponentBinding(props.path, (e) => gridRef.value?.handleKeydown(e) ?? false);
 
 function rustParams(): EngineParams {
   const p = state.value.params as Record<string, unknown> | undefined;
@@ -190,36 +209,43 @@ const ASPIRATION_OPTIONS = [
 
 <template>
   <div class="ignition-table" :class="{ 'ignition-table--compact': !settingsExpanded }">
-    <div class="ignition-gen-chrome">
-      <button
-        type="button"
-        class="ignition-setup-toggle"
-        :aria-expanded="settingsExpanded"
-        :title="settingsExpanded ? 'Свернуть параметры' : 'Развернуть параметры'"
-        @click="toggleSettings"
-      >
-        <span class="ignition-setup-chevron" :class="{ open: settingsExpanded }">▸</span>
-        <span>{{ settingsExpanded ? "Свернуть" : "Параметры генерации" }}</span>
-      </button>
+    <div
+      class="ignition-settings-zone nav-node"
+      data-nav-node="1"
+      :data-nav-path="settingsPath"
+      data-nav-activatable="false"
+      @mousedown.stop="onSettingsMouseDown"
+    >
+      <div class="ignition-gen-chrome">
+        <button
+          type="button"
+          class="ignition-setup-toggle"
+          :aria-expanded="settingsExpanded"
+          :title="settingsExpanded ? 'Свернуть параметры' : 'Развернуть параметры'"
+          @click="toggleSettings"
+        >
+          <span class="ignition-setup-chevron" :class="{ open: settingsExpanded }">▸</span>
+          <span>{{ settingsExpanded ? "Свернуть" : "Параметры генерации" }}</span>
+        </button>
 
-      <span v-if="!settingsExpanded" class="ignition-compact-summary">{{ setupSummary }}</span>
+        <span v-if="!settingsExpanded" class="ignition-compact-summary">{{ setupSummary }}</span>
 
-      <button
-        type="button"
-        class="ignition-generate-btn"
-        :disabled="!ready || !canGenerate || generating"
-        title="Заполнить таблицу по статической модели УОЗ"
-        @click="onGenerate"
-      >
-        {{ generating ? "Генерация…" : "Сгенерировать начальную таблицу" }}
-      </button>
-    </div>
+        <button
+          type="button"
+          class="ignition-generate-btn"
+          :disabled="!ready || !canGenerate || generating"
+          title="Заполнить таблицу по статической модели УОЗ"
+          @click="onGenerate"
+        >
+          {{ generating ? "Генерация…" : "Сгенерировать начальную таблицу" }}
+        </button>
+      </div>
 
-    <p v-if="localError || message" class="ignition-status" :class="{ 'ignition-status--error': !!localError }">
-      {{ localError || message }}
-    </p>
+      <p v-if="localError || message" class="ignition-status" :class="{ 'ignition-status--error': !!localError }">
+        {{ localError || message }}
+      </p>
 
-    <div v-show="settingsExpanded" class="ignition-settings">
+      <div v-show="settingsExpanded" class="ignition-settings">
       <div class="ignition-settings-grid">
         <label class="ignition-field">
           <span>Диаметр цилиндра, mm</span>
@@ -338,6 +364,7 @@ const ASPIRATION_OPTIONS = [
       <p class="ignition-settings-hint">
         Модель рассчитывает УОЗ по осям таблицы (RPM × MAP). Для корректного результата ось нагрузки должна быть MAP, kPa.
       </p>
+      </div>
     </div>
 
     <div
@@ -365,6 +392,12 @@ const ASPIRATION_OPTIONS = [
   gap: 0.65rem;
   width: 100%;
   min-width: 0;
+}
+
+.ignition-settings-zone {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
 }
 
 .ignition-gen-chrome {

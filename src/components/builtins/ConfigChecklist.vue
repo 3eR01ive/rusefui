@@ -98,6 +98,10 @@ function groupsForLevel(levelId: string): GroupBlock[] {
 
 const levels = computed(() => checklist.value?.levels ?? []);
 
+const allSystemsGreen = computed(
+  () => checklist.value?.evaluated === true && checklist.value?.ok === true,
+);
+
 const visibleLevels = computed(() =>
   levels.value.filter((level) => groupsForLevel(level.id).length > 0),
 );
@@ -157,9 +161,13 @@ watch(showOnlyIncomplete, (on) => {
   }
 });
 
+function isLevelOk(levelId: string): boolean {
+  return levels.value.find((l) => l.id === levelId)?.ok ?? true;
+}
+
 async function loadEditorForSelection(id: string): Promise<void> {
   const item = flatItems.value.find((i) => i.id === id);
-  if (item) expandLevel(item.level);
+  if (item && !isLevelOk(item.level)) expandLevel(item.level);
   if (!item) {
     editorInstances.value = [];
     return;
@@ -271,6 +279,17 @@ function expandLevel(levelId: string): void {
   if (isLevelCollapsed(levelId)) setLevelCollapsed(levelId, false);
 }
 
+/** Пройденные уровни — свёрнуты; с нарушениями — развёрнуты. */
+function syncLevelCollapse(): void {
+  const next = new Set<string>();
+  for (const level of levels.value) {
+    if (level.ok) next.add(level.id);
+  }
+  collapsedLevels.value = next;
+}
+
+watch(levels, syncLevelCollapse, { immediate: true });
+
 function levelLedClass(level: ChecklistLevelStatus): string {
   if (level.ok) return "level-led--ok";
   switch (level.severity) {
@@ -308,9 +327,18 @@ function levelLedClass(level: ChecklistLevelStatus): string {
       Ожидание снимка конфигурации…
     </p>
 
-    <div v-else class="checklist-split">
+    <div v-else class="checklist-body">
+      <div v-if="allSystemsGreen" class="all-systems-green" role="status">
+        <span class="all-systems-green__led" aria-hidden="true" />
+        <span class="all-systems-green__text">ALL SYSTEMS GREEN</span>
+      </div>
+
+      <div class="checklist-split">
       <aside class="checklist-sidebar">
-        <p v-if="showOnlyIncomplete && visibleLevels.length === 0" class="checklist-filter-empty">
+        <p
+          v-if="showOnlyIncomplete && visibleLevels.length === 0 && !allSystemsGreen"
+          class="checklist-filter-empty"
+        >
           Все пункты выполнены.
         </p>
         <article v-for="level in visibleLevels" :key="level.id" class="level-block">
@@ -383,6 +411,7 @@ function levelLedClass(level: ChecklistLevelStatus): string {
           @activate-path="(p) => { if (isNavActivatablePath(p)) { activateComponent(p); focusComponent(p); } }"
         />
       </main>
+      </div>
     </div>
   </section>
 </template>
@@ -448,6 +477,69 @@ function levelLedClass(level: ChecklistLevelStatus): string {
   border-radius: var(--radius-md, 6px);
   color: var(--color-text-muted);
   background: var(--color-surface-2, rgba(255, 255, 255, 0.04));
+}
+
+.checklist-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.all-systems-green {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  padding: 0.85rem 1.25rem;
+  border-radius: var(--radius-md, 6px);
+  border: 1px solid color-mix(in srgb, var(--color-success, #6ecf8a) 45%, transparent);
+  background: color-mix(in srgb, var(--color-success, #6ecf8a) 8%, var(--color-surface-1, #111));
+  box-shadow:
+    0 0 24px color-mix(in srgb, var(--color-success, #6ecf8a) 12%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--color-success, #6ecf8a) 6%, transparent);
+}
+
+.all-systems-green__led {
+  flex-shrink: 0;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  background: var(--color-success, #6ecf8a);
+  box-shadow:
+    0 0 8px var(--color-success, #6ecf8a),
+    0 0 16px color-mix(in srgb, var(--color-success, #6ecf8a) 55%, transparent);
+  animation: all-systems-green-pulse 2.4s ease-in-out infinite;
+}
+
+.all-systems-green__text {
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  color: var(--color-success, #6ecf8a);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--color-success, #6ecf8a) 35%, transparent);
+}
+
+@keyframes all-systems-green-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow:
+      0 0 8px var(--color-success, #6ecf8a),
+      0 0 16px color-mix(in srgb, var(--color-success, #6ecf8a) 55%, transparent);
+  }
+  50% {
+    opacity: 0.82;
+    transform: scale(0.94);
+    box-shadow:
+      0 0 4px var(--color-success, #6ecf8a),
+      0 0 8px color-mix(in srgb, var(--color-success, #6ecf8a) 35%, transparent);
+  }
 }
 
 .checklist-split {

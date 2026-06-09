@@ -6,6 +6,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::config_conflicts::collect_conflict_items;
+use crate::config_ignition_plausibility::collect_ignition_plausibility_items;
 use crate::config_vars::{ConflictConstants, VarBinding};
 use crate::sources::config::{ConfigFieldInfo, ConfigSnapshot, ConfigSource};
 
@@ -254,6 +255,11 @@ pub fn evaluate_checklist(
     let (conflict_items, conflict_issues) = collect_conflict_items(snapshot, rules, &field_info);
     items.extend(conflict_items);
     issues.extend(conflict_issues);
+
+    let (plaus_items, plaus_issues) =
+        collect_ignition_plausibility_items(snapshot, rules, config, &field_info);
+    items.extend(plaus_items);
+    issues.extend(plaus_issues);
 
     ChecklistSnapshot {
         rules_loaded: true,
@@ -660,6 +666,8 @@ mod tests {
         let rules = ChecklistRules::parse_yaml(yaml).expect("checklist.yaml");
         assert!(rules.vars.contains_key("engine.cylinder_count"));
         assert!(rules.vars.contains_key("ignition.output_pins"));
+        assert!(rules.vars.contains_key("ignition.table"));
+        assert!(rules.levels.contains_key("suspicious"));
         assert!(!rules.conflict_constants.trigger.types_needing_secondary.is_empty());
     }
 

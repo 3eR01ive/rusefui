@@ -14,6 +14,9 @@ pub mod logic {
     pub const IGNITION_ENABLED: &str = "ignition.enabled";
     pub const IGNITION_MODE: &str = "ignition.mode";
     pub const IGNITION_OUTPUT_PINS: &str = "ignition.output_pins";
+    pub const IGNITION_TABLE: &str = "ignition.table";
+    pub const IGNITION_RPM_BINS: &str = "ignition.rpm_bins";
+    pub const IGNITION_LOAD_BINS: &str = "ignition.load_bins";
     pub const FUEL_INJECTION_ENABLED: &str = "fuel.injection_enabled";
     pub const FUEL_INJECTION_MODE: &str = "fuel.injection_mode";
     pub const FUEL_INJECTOR_PINS: &str = "fuel.injector_pins";
