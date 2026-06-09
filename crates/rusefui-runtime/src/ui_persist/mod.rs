@@ -68,18 +68,22 @@ pub fn init_document_ui(ui: &mut ProjectUi) {
 }
 
 pub fn get(ui: &ProjectUi, key: &str) -> Result<Value, String> {
-    let entry = find_entry(key)?;
     let raw = ui
         .sections
         .get(key)
         .ok_or_else(|| format!("В проекте нет секции ui.sections[{key:?}]"))?
         .clone();
-    entry.parse(raw)
+    match find_entry(key) {
+        Ok(entry) => entry.parse(raw),
+        Err(_) => Ok(raw),
+    }
 }
 
 pub fn set(ui: &mut ProjectUi, key: &str, value: Value) -> Result<(), String> {
-    let entry = find_entry(key)?;
-    let normalized = entry.parse(value)?;
+    let normalized = match find_entry(key) {
+        Ok(entry) => entry.parse(value)?,
+        Err(_) => value,
+    };
     ui.sections.insert(key.to_string(), normalized);
     Ok(())
 }

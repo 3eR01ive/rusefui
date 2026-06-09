@@ -15,6 +15,7 @@ use rusefi_protocol::{ProtocolError, TS_PAGE_SETTINGS, TS_RESPONSE_OUT_OF_RANGE}
 use serde::Serialize;
 
 use crate::config_checklist::{evaluate_checklist, ChecklistRules, ChecklistSnapshot};
+use crate::ignition_map::EngineParams;
 use crate::config_diff::{encode_scalar_into_page, encode_string_into_page};
 use crate::project::ProjectEcuConfig;
 use crate::session::EcuSession;
@@ -242,7 +243,7 @@ impl ConfigSource {
     pub fn snapshot_with_checklist(&self, rules: Option<&ChecklistRules>) -> ConfigSnapshot {
         let mut snap = self.snapshot();
         if let Some(rules) = rules {
-            snap.checklist = evaluate_checklist(&snap, rules, self);
+            snap.checklist = evaluate_checklist(&snap, rules, self, &EngineParams::default());
         }
         snap
     }

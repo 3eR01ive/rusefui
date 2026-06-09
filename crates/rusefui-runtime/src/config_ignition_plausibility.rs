@@ -1,4 +1,4 @@
-//! Checklist «Подозрительное»: пороги УОЗ в таблице зажигания ECU.
+//! Checklist «Подозрительное»: УОЗ vs модель автогенерации.
 
 use std::collections::HashMap;
 
@@ -8,52 +8,41 @@ use crate::config_checklist::{
 };
 use crate::config_vars::{logic as var, ConfigVarResolver};
 use crate::ignition_map::{
-    boost_likely_from_load_axis, scan_ignition_table, worst_violation, ModelCoefficients,
-    PlausibilityKind, PlausibilityViolation,
+    EngineParams,
+    scan_ignition_table, PlausibilityKind, PlausibilityViolation, MODEL_MARGIN_DEG,
 };
 use crate::sources::config::{ConfigFieldInfo, ConfigSnapshot, ConfigSource};
 
 const SUSPICIOUS_LEVEL: &str = "suspicious";
 
-struct SuspiciousDef {
+struct PlausCheckDef {
     id: &'static str,
-    kind: PlausibilityKind,
     label: &'static str,
     message: &'static str,
+    kind: PlausibilityKind,
 }
 
-const CHECKS: &[SuspiciousDef] = &[
-    SuspiciousDef {
-        id: "suspicious_ignition_wot",
-        kind: PlausibilityKind::Wot,
-        label: "УОЗ на полной нагрузке",
-        message: "УОЗ на WOT выше порога plausibility",
+const CHECKS: &[PlausCheckDef] = &[
+    PlausCheckDef {
+        id: "suspicious_ignition_above_model",
+        label: "УОЗ выше модели автогенерации",
+        message: "В таблице есть ячейки с углом заметно выше расчёта по параметрам генерации",
+        kind: PlausibilityKind::AboveModel,
     },
-    SuspiciousDef {
-        id: "suspicious_ignition_turbo",
-        kind: PlausibilityKind::Turbo,
-        label: "УОЗ при наддуве",
-        message: "УОЗ при наддуве выше порога plausibility",
-    },
-    SuspiciousDef {
-        id: "suspicious_ignition_idle",
-        kind: PlausibilityKind::Idle,
-        label: "УОЗ на холостом",
-        message: "УОЗ на холостом выше порога plausibility",
-    },
-    SuspiciousDef {
-        id: "suspicious_ignition_min",
-        kind: PlausibilityKind::MinOperating,
-        label: "Слишком малый УОЗ",
-        message: "УОЗ ниже минимального рабочего порога plausibility",
+    PlausCheckDef {
+        id: "suspicious_ignition_below_model",
+        label: "УОЗ ниже модели автогенерации",
+        message: "В таблице есть ячейки с углом заметно ниже расчёта по параметрам генерации",
+        kind: PlausibilityKind::BelowModel,
     },
 ];
 
-pub fn collect_ignition_plausibility_items(
+pub(crate) fn collect_ignition_plausibility_items(
     snapshot: &ConfigSnapshot,
     rules: &ChecklistRules,
     config: &ConfigSource,
     field_info: &HashMap<String, ConfigFieldInfo>,
+    engine: &EngineParams,
 ) -> (Vec<ChecklistItem>, Vec<ChecklistIssue>) {
     if !snapshot.loaded {
         return (Vec::new(), Vec::new());
@@ -70,10 +59,6 @@ pub fn collect_ignition_plausibility_items(
         return (Vec::new(), Vec::new());
     };
 
-    let Ok(coef) = ModelCoefficients::default_embedded() else {
-        return (Vec::new(), Vec::new());
-    };
-
     let Ok(rpm_axis) = config.get_array(rpm_field) else {
         return (Vec::new(), Vec::new());
     };
@@ -87,16 +72,26 @@ pub fn collect_ignition_plausibility_items(
         return (Vec::new(), Vec::new());
     }
 
-    let boost_likely = boost_likely_from_load_axis(&coef, &load_axis);
-    let violations = scan_ignition_table(&coef, &rpm_axis, &load_axis, &table, boost_likely);
+    let violations = match scan_ignition_table(
+        engine,
+        &rpm_axis,
+        &load_axis,
+        &table,
+        MODEL_MARGIN_DEG,
+    ) {
+        Ok(v) => v,
+        Err(_) => return (Vec::new(), Vec::new()),
+    };
 
-    let level_def = rules.levels.get(SUSPICIOUS_LEVEL).cloned().unwrap_or_else(|| {
-        LevelDefinition {
+    let level_def = rules
+        .levels
+        .get(SUSPICIOUS_LEVEL)
+        .cloned()
+        .unwrap_or_else(|| LevelDefinition {
             title: "Подозрительное".to_string(),
             description: None,
             severity: "warning".to_string(),
-        }
-    });
+        });
 
     let fields = vec![table_field.to_string()];
     let field_labels = field_labels_for(rules, &fields);
@@ -107,9 +102,6 @@ pub fn collect_ignition_plausibility_items(
     let mut issues = Vec::new();
 
     for check in CHECKS {
-        if check.kind == PlausibilityKind::Turbo && !boost_likely {
-            continue;
-        }
         let worst = worst_violation(&violations, check.kind);
         let ok = worst.is_none();
         let value_display = worst
@@ -148,10 +140,23 @@ pub fn collect_ignition_plausibility_items(
     (items, issues)
 }
 
+fn worst_violation<'a>(
+    violations: &'a [PlausibilityViolation],
+    kind: PlausibilityKind,
+) -> Option<&'a PlausibilityViolation> {
+    violations.iter().filter(|v| v.kind == kind).max_by(|a, b| {
+        let dev_a = (a.advance_deg - a.expected_deg).abs();
+        let dev_b = (b.advance_deg - b.expected_deg).abs();
+        dev_a
+            .partial_cmp(&dev_b)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    })
+}
+
 fn format_violation_display(v: &PlausibilityViolation) -> String {
     format!(
-        "{:.1}° при {:.0} об/мин / {:.0} kPa (порог {:.1}°)",
-        v.advance_deg, v.rpm, v.map_kpa, v.limit_deg
+        "{:.1}° при {:.0} об/мин / {:.0} kPa (модель {:.1}°, допуск ±{:.0}°)",
+        v.advance_deg, v.rpm, v.map_kpa, v.expected_deg, MODEL_MARGIN_DEG,
     )
 }
 

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -21,7 +21,7 @@ struct IgnitionTableViewState {
 
 pub struct IgnitionTableLogic {
     session: Arc<EcuSession>,
-    params: EngineParams,
+    gen_params: Arc<Mutex<EngineParams>>,
     generating: bool,
     message: Option<String>,
     x_field: Option<String>,
@@ -30,10 +30,10 @@ pub struct IgnitionTableLogic {
 }
 
 impl IgnitionTableLogic {
-    pub fn new(session: Arc<EcuSession>) -> Self {
+    pub fn new(session: Arc<EcuSession>, gen_params: Arc<Mutex<EngineParams>>) -> Self {
         Self {
             session,
-            params: EngineParams::default(),
+            gen_params,
             generating: false,
             message: None,
             x_field: None,
@@ -64,15 +64,10 @@ impl IgnitionTableLogic {
         if let Some(v) = payload.get("zBins").and_then(|v| v.as_str()) {
             self.z_field = Some(v.to_string());
         }
-        if let Some(p) = payload.get("params") {
-            if let Ok(next) = serde_json::from_value::<EngineParams>(p.clone()) {
-                self.params = next;
-            }
-        }
     }
 
     fn apply_params_patch(&mut self, payload: &Value) -> Result<(), String> {
-        let mut next = self.params.clone();
+        let mut next = self.gen_params.lock().unwrap().clone();
         macro_rules! patch_f64 {
             ($key:ident) => {
                 if let Some(v) = payload.get(stringify!($key)).and_then(|v| v.as_f64()) {
@@ -119,7 +114,7 @@ impl IgnitionTableLogic {
         patch_str!(fuel);
         patch_str!(aspiration);
 
-        self.params = next;
+        *self.gen_params.lock().unwrap() = next;
         Ok(())
     }
 
@@ -151,6 +146,7 @@ impl IgnitionTableLogic {
         self.generating = true;
         self.message = None;
 
+        let params = self.gen_params.lock().unwrap().clone();
         let result = (|| -> Result<(), String> {
             let rpm_axis = self.config().get_array(&x_name)?;
             let load_axis = self.config().get_array(&y_name)?;
@@ -158,7 +154,7 @@ impl IgnitionTableLogic {
                 return Err("Оси таблицы пусты".into());
             }
 
-            let values = generate_table_values(&self.params, &rpm_axis, &load_axis)?;
+            let values = generate_table_values(&params, &rpm_axis, &load_axis)?;
 
             let cols = rpm_axis.len();
             let rows = load_axis.len();
@@ -208,7 +204,7 @@ impl IgnitionTableLogic {
 
     fn view_state(&self) -> IgnitionTableViewState {
         IgnitionTableViewState {
-            params: self.params.clone(),
+            params: self.gen_params.lock().unwrap().clone(),
             generating: self.generating,
             can_generate: self.can_generate(),
             message: self.message.clone(),
@@ -251,6 +247,11 @@ impl ComponentLogic for IgnitionTableLogic {
             }
             "set_params" => {
                 self.apply_params_patch(&payload)?;
+            }
+            "replace_params" => {
+                let next = serde_json::from_value::<EngineParams>(payload)
+                    .map_err(|e| format!("replace_params: {e}"))?;
+                *self.gen_params.lock().unwrap() = next;
             }
             "generate_map" => {
                 self.generate_map()?;

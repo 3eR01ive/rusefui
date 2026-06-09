@@ -8,6 +8,7 @@ use serde::Serialize;
 use crate::config_conflicts::collect_conflict_items;
 use crate::config_ignition_plausibility::collect_ignition_plausibility_items;
 use crate::config_vars::{ConflictConstants, VarBinding};
+use crate::ignition_map::EngineParams;
 use crate::sources::config::{ConfigFieldInfo, ConfigSnapshot, ConfigSource};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -173,6 +174,7 @@ pub fn evaluate_checklist(
     snapshot: &ConfigSnapshot,
     rules: &ChecklistRules,
     config: &ConfigSource,
+    ignition_gen: &EngineParams,
 ) -> ChecklistSnapshot {
     if !snapshot.loaded {
         return ChecklistSnapshot {
@@ -257,7 +259,7 @@ pub fn evaluate_checklist(
     issues.extend(conflict_issues);
 
     let (plaus_items, plaus_issues) =
-        collect_ignition_plausibility_items(snapshot, rules, config, &field_info);
+        collect_ignition_plausibility_items(snapshot, rules, config, &field_info, ignition_gen);
     items.extend(plaus_items);
     issues.extend(plaus_issues);
 
@@ -676,10 +678,10 @@ mod tests {
         let rules = sample_rules();
         let snap = sample_snapshot(HashMap::from([("cylindersCount".to_string(), 0.0)]));
         let config = ConfigSource::new(IniContext::disconnected());
-        let result = evaluate_checklist(&snap, &rules, &config);
+        let result = evaluate_checklist(&snap, &rules, &config, &EngineParams::default());
         assert!(!result.ok);
         assert_eq!(result.issues.len(), 1);
-        assert_eq!(result.items.len(), 1);
+        assert_eq!(result.items.len(), 2); // scalar + conflicts_clear
         assert!(!result.items[0].ok);
         assert_eq!(result.items[0].group, "engine");
         assert_eq!(result.items[0].editor.panel, "engineChars");
@@ -750,7 +752,7 @@ mod tests {
         };
 
         let config = ConfigSource::new(IniContext::disconnected());
-        let result = evaluate_checklist(&snap, &rules, &config);
+        let result = evaluate_checklist(&snap, &rules, &config, &EngineParams::default());
         assert!(!result.ok);
         let conflict = result
             .items

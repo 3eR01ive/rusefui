@@ -1,148 +1,147 @@
-//! Пороги «подозрительного» УОЗ — из coefficients JSON (как в research/ignition-advance-static).
+//! Скан таблицы УОЗ: сравнение с моделью автогенерации + допуск.
 
-use super::coefficients::ModelCoefficients;
+use super::calculator::SparkAdvanceCalculator;
+use super::engine::EngineParams;
+use super::ModelCoefficients;
+
+/// Допуск к модели (° BTDC): таблица может отличаться на пару градусов.
+pub const MODEL_MARGIN_DEG: f64 = 3.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlausibilityKind {
-    Wot,
-    Turbo,
-    Idle,
-    MinOperating,
+    AboveModel,
+    BelowModel,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct PlausibilityViolation {
     pub kind: PlausibilityKind,
     pub rpm: f64,
     pub map_kpa: f64,
     pub advance_deg: f64,
-    pub limit_deg: f64,
+    pub expected_deg: f64,
 }
 
-/// Сканирует 2D-таблицу (строка = load/Y, столбец = RPM/X), порядок как в `generate_table_values`.
+/// Сканирует таблицу: флаг, если ячейка выходит за `model ± margin`.
 pub fn scan_ignition_table(
-    coef: &ModelCoefficients,
+    engine: &EngineParams,
     rpm_axis: &[f64],
     load_axis: &[f64],
     table: &[f64],
-    boost_likely: bool,
-) -> Vec<PlausibilityViolation> {
+    margin_deg: f64,
+) -> Result<Vec<PlausibilityViolation>, String> {
+    let coef = ModelCoefficients::default_embedded()?;
+    let calc = SparkAdvanceCalculator::new(engine.clone(), coef);
     let cols = rpm_axis.len();
     let rows = load_axis.len();
     if cols == 0 || rows == 0 || table.len() != rows * cols {
-        return Vec::new();
+        return Ok(Vec::new());
     }
 
     let mut out = Vec::new();
     for (row, &map_kpa) in load_axis.iter().enumerate() {
         for (col, &rpm) in rpm_axis.iter().enumerate() {
-            let advance = table[row * cols + col];
-            if advance == 0.0 {
+            let advance_deg = table[row * cols + col];
+            if advance_deg == 0.0 {
                 continue;
             }
-            let is_wot = map_kpa >= coef.wot_map_threshold_kpa;
-            let is_idle = rpm <= coef.idle_rpm_max && map_kpa <= coef.idle_map_max_kpa;
-
-            if is_wot && advance > coef.plausibility_max_wot_deg {
+            let expected_deg = calc.advance_at(rpm, map_kpa);
+            let upper = expected_deg + margin_deg;
+            let lower = expected_deg - margin_deg;
+            if advance_deg > upper {
                 out.push(PlausibilityViolation {
-                    kind: PlausibilityKind::Wot,
+                    kind: PlausibilityKind::AboveModel,
                     rpm,
                     map_kpa,
-                    advance_deg: advance,
-                    limit_deg: coef.plausibility_max_wot_deg,
+                    advance_deg,
+                    expected_deg,
                 });
-            }
-            // Только ячейки в зоне наддува (MAP выше атмосферной опоры), не весь vacuum-столбец.
-            if boost_likely
-                && map_kpa > coef.load_reference_map_kpa + 5.0
-                && advance > coef.plausibility_max_turbo_deg
-            {
+            } else if advance_deg < lower {
                 out.push(PlausibilityViolation {
-                    kind: PlausibilityKind::Turbo,
+                    kind: PlausibilityKind::BelowModel,
                     rpm,
                     map_kpa,
-                    advance_deg: advance,
-                    limit_deg: coef.plausibility_max_turbo_deg,
-                });
-            }
-            if is_idle && advance > coef.plausibility_max_idle_deg {
-                out.push(PlausibilityViolation {
-                    kind: PlausibilityKind::Idle,
-                    rpm,
-                    map_kpa,
-                    advance_deg: advance,
-                    limit_deg: coef.plausibility_max_idle_deg,
-                });
-            }
-            if advance < coef.plausibility_min_operating_deg {
-                out.push(PlausibilityViolation {
-                    kind: PlausibilityKind::MinOperating,
-                    rpm,
-                    map_kpa,
-                    advance_deg: advance,
-                    limit_deg: coef.plausibility_min_operating_deg,
+                    advance_deg,
+                    expected_deg,
                 });
             }
         }
     }
-    out
-}
-
-pub fn boost_likely_from_load_axis(coef: &ModelCoefficients, load_axis: &[f64]) -> bool {
-    let ref_map = coef.load_reference_map_kpa;
-    load_axis.iter().any(|&m| m > ref_map + 5.0)
-}
-
-pub fn worst_violation<'a>(
-    violations: &'a [PlausibilityViolation],
-    kind: PlausibilityKind,
-) -> Option<&'a PlausibilityViolation> {
-    violations
-        .iter()
-        .filter(|v| v.kind == kind)
-        .max_by(|a, b| {
-            a.advance_deg
-                .abs()
-                .partial_cmp(&b.advance_deg.abs())
-                .unwrap_or(std::cmp::Ordering::Equal)
-        })
+    Ok(out)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ignition_map::coefficients::ModelCoefficients;
+    use crate::ignition_map::EngineParams;
 
-    #[test]
-    fn turbo_plausibility_only_in_boost_map_cells() {
-        let coef = ModelCoefficients::default_embedded().expect("coef");
-        let rpm = vec![7000.0];
-        let load = vec![27.0, 220.0];
-        let table = vec![42.3, 30.0];
-        let v = scan_ignition_table(&coef, &rpm, &load, &table, true);
-        assert!(
-            !v.iter()
-                .any(|x| x.kind == PlausibilityKind::Turbo && x.map_kpa < 100.0),
-            "vacuum MAP must not use turbo threshold: {v:?}"
-        );
-        assert!(
-            v.iter()
-                .any(|x| x.kind == PlausibilityKind::Turbo && x.map_kpa > 200.0),
-            "boost MAP should flag: {v:?}"
-        );
+    fn sample_engine() -> EngineParams {
+        EngineParams {
+            displacement_cc: Some(2000.0),
+            compression_ratio: 10.0,
+            ..EngineParams::default()
+        }
     }
 
     #[test]
-    fn flags_wot_and_idle_cells() {
-        let coef = ModelCoefficients::default_embedded().expect("coef");
-        let rpm = vec![600.0, 4000.0];
-        let load = vec![30.0, 220.0];
-        let table = vec![
-            40.0, 12.0, // idle rpm + high advance
-            12.0, 45.0, // WOT high advance
-        ];
-        let v = scan_ignition_table(&coef, &rpm, &load, &table, false);
-        assert!(v.iter().any(|x| x.kind == PlausibilityKind::Idle));
-        assert!(v.iter().any(|x| x.kind == PlausibilityKind::Wot));
+    fn scan_flags_above_model() {
+        let engine = sample_engine();
+        let coef = ModelCoefficients::default_embedded().unwrap();
+        let calc = SparkAdvanceCalculator::new(engine.clone(), coef);
+        let rpm = 7000.0;
+        let map = 108.0;
+        let expected = calc.advance_at(rpm, map);
+        let table = vec![expected + MODEL_MARGIN_DEG + 1.0];
+        let v = scan_ignition_table(
+            &engine,
+            &[rpm],
+            &[map],
+            &table,
+            MODEL_MARGIN_DEG,
+        )
+        .unwrap();
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].kind, PlausibilityKind::AboveModel);
+    }
+
+    #[test]
+    fn scan_accepts_within_margin() {
+        let engine = sample_engine();
+        let coef = ModelCoefficients::default_embedded().unwrap();
+        let calc = SparkAdvanceCalculator::new(engine.clone(), coef);
+        let rpm = 1073.0;
+        let map = 33.0;
+        let expected = calc.advance_at(rpm, map);
+        let table = vec![expected + 1.0];
+        let v = scan_ignition_table(
+            &engine,
+            &[rpm],
+            &[map],
+            &table,
+            MODEL_MARGIN_DEG,
+        )
+        .unwrap();
+        assert!(v.is_empty());
+    }
+
+    #[test]
+    fn scan_flags_below_model() {
+        let engine = sample_engine();
+        let coef = ModelCoefficients::default_embedded().unwrap();
+        let calc = SparkAdvanceCalculator::new(engine.clone(), coef);
+        let rpm = 3000.0;
+        let map = 50.0;
+        let expected = calc.advance_at(rpm, map);
+        let table = vec![expected - MODEL_MARGIN_DEG - 2.0];
+        let v = scan_ignition_table(
+            &engine,
+            &[rpm],
+            &[map],
+            &table,
+            MODEL_MARGIN_DEG,
+        )
+        .unwrap();
+        assert_eq!(v.len(), 1);
+        assert_eq!(v[0].kind, PlausibilityKind::BelowModel);
     }
 }

@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useInstanceBind } from "../../composables/useInstanceBind";
+import { registerProjectUiFlushHook, useProject } from "../../composables/useProject";
 import { useRustComponent } from "../../composables/useRustComponent";
 import {
   activateComponent,
@@ -28,6 +30,9 @@ interface EngineParams {
   aspiration: string;
 }
 
+/** Секция `ui.sections` в файле проекта — только этот компонент знает ключ. */
+const GEN_PARAMS_PROJECT_KEY = "ignition-table-gen-params";
+
 const props = defineProps<{
   instance: ComponentInstance;
   path: string;
@@ -51,11 +56,53 @@ function buildMountPayload(): Record<string, unknown> {
   };
 }
 
+const { getProjectUi, setProjectUi } = useProject();
+
 const { state, dispatch, ready, error } = useRustComponent(
   props.instance,
   props.path,
   buildMountPayload,
 );
+
+let saveIgnitionGenTimer = 0;
+let unregUiFlush: (() => void) | null = null;
+let unlistenProject: UnlistenFn | null = null;
+let hydratingFromProject = false;
+
+function buildIgnitionGenUiPayload(): EngineParams {
+  return rustParams();
+}
+
+async function flushIgnitionGenToProject(): Promise<void> {
+  if (hydratingFromProject) return;
+  if (saveIgnitionGenTimer !== 0) {
+    window.clearTimeout(saveIgnitionGenTimer);
+    saveIgnitionGenTimer = 0;
+  }
+  await setProjectUi(GEN_PARAMS_PROJECT_KEY, buildIgnitionGenUiPayload());
+}
+
+function scheduleSaveIgnitionGenToProject(): void {
+  if (hydratingFromProject) return;
+  if (saveIgnitionGenTimer !== 0) window.clearTimeout(saveIgnitionGenTimer);
+  saveIgnitionGenTimer = window.setTimeout(() => {
+    saveIgnitionGenTimer = 0;
+    void flushIgnitionGenToProject();
+  }, 400);
+}
+
+async function hydrateGenParamsFromProject(): Promise<void> {
+  if (!ready.value) return;
+  hydratingFromProject = true;
+  try {
+    const saved = await getProjectUi<EngineParams>(GEN_PARAMS_PROJECT_KEY);
+    await dispatch("replace_params", saved as unknown as Record<string, unknown>);
+  } catch {
+    // в проекте ещё нет секции — остаются общие params из сессии
+  } finally {
+    hydratingFromProject = false;
+  }
+}
 
 const generating = computed(() => Boolean(state.value.generating));
 const canGenerate = computed(() => Boolean(state.value.canGenerate));
@@ -101,10 +148,26 @@ function clearNavExtensions(): void {
 
 onMounted(() => {
   syncNavExtensions();
+  unregUiFlush = registerProjectUiFlushHook(flushIgnitionGenToProject);
+  void listen("project-changed", () => {
+    void hydrateGenParamsFromProject();
+  }).then((fn) => {
+    unlistenProject = fn;
+  });
+});
+
+watch(ready, (isReady) => {
+  if (isReady) void hydrateGenParamsFromProject();
 });
 
 onBeforeUnmount(() => {
   clearNavExtensions();
+  unregUiFlush?.();
+  unlistenProject?.();
+  if (saveIgnitionGenTimer !== 0) {
+    window.clearTimeout(saveIgnitionGenTimer);
+    saveIgnitionGenTimer = 0;
+  }
 });
 
 watch([tablePath, settingsPath], () => {
@@ -173,6 +236,7 @@ function toggleSettings(): void {
 
 async function patchParam(payload: Record<string, unknown>): Promise<void> {
   await dispatch("set_params", payload);
+  scheduleSaveIgnitionGenToProject();
 }
 
 async function onGenerate(): Promise<void> {

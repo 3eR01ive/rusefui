@@ -1,7 +1,9 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use serde_json::Value;
+
+use crate::ignition_map::EngineParams;
 
 use crate::component::{requires_rust_logic, ComponentLogic, EcuSyncOnMount, LogicComponentType};
 use crate::components::command::CommandLogic;
@@ -17,6 +19,8 @@ use crate::session::EcuSession;
 pub struct ComponentRuntime {
     session: Arc<EcuSession>,
     instances: HashMap<String, Box<dyn ComponentLogic>>,
+    /// Общие для всех ignition-table: параметры автогенерации УОЗ.
+    ignition_gen_params: Arc<Mutex<EngineParams>>,
 }
 
 impl ComponentRuntime {
@@ -24,7 +28,21 @@ impl ComponentRuntime {
         Self {
             session,
             instances: HashMap::new(),
+            ignition_gen_params: Arc::new(Mutex::new(EngineParams::default())),
         }
+    }
+
+    pub fn ignition_gen_params(&self) -> EngineParams {
+        self.ignition_gen_params.lock().unwrap().clone()
+    }
+
+    pub fn set_ignition_gen_params(&self, params: EngineParams) {
+        *self.ignition_gen_params.lock().unwrap() = params;
+    }
+
+    /// Сброс UI-состояния компонентов при смене проекта (не ECU-сессия).
+    pub fn reset_workspace(&self) {
+        *self.ignition_gen_params.lock().unwrap() = EngineParams::default();
     }
 
     pub fn session(&self) -> Arc<EcuSession> {
@@ -71,7 +89,10 @@ impl ComponentRuntime {
                 Box::new(ConfigTableLogic::new(Arc::clone(&self.session)))
             }
             Some(LogicComponentType::IgnitionTable) => {
-                Box::new(IgnitionTableLogic::new(Arc::clone(&self.session)))
+                Box::new(IgnitionTableLogic::new(
+                    Arc::clone(&self.session),
+                    Arc::clone(&self.ignition_gen_params),
+                ))
             }
             Some(LogicComponentType::Command) => {
                 Box::new(CommandLogic::new(Arc::clone(&self.session)))
@@ -177,4 +198,17 @@ impl ComponentRuntime {
             .map(|l| l.ecu_sync_on_mount())
             .unwrap_or(EcuSyncOnMount::Full)
     }
+
+    /// Состояние других ignition-table (общие params в сессии — обновить UI после `set_params`).
+    pub fn peer_ignition_table_states(&self, except_id: &str) -> Vec<(String, Value)> {
+        self.instances
+            .iter()
+            .filter(|(id, logic)| {
+                id.as_str() != except_id
+                    && logic.meta().component_type == LogicComponentType::IgnitionTable.as_str()
+            })
+            .map(|(id, logic)| (id.clone(), logic.state()))
+            .collect()
+    }
+
 }

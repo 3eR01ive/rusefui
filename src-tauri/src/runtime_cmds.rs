@@ -300,12 +300,25 @@ fn emit_composite_timeline(app: &AppHandle, status: &CompositeTimelineStatus) {
     });
 }
 
+fn reset_workspace(state: &RuntimeState) {
+    state.session.reset_workspace_for_new_project();
+    if let Ok(rt) = state.runtime.lock() {
+        rt.reset_workspace();
+    }
+}
+
 fn enrich_config_snapshot(app: &AppHandle, mut snap: ConfigSnapshot) -> ConfigSnapshot {
     if let Some(state) = app.try_state::<RuntimeState>() {
         let rules = state.checklist_rules.lock().unwrap();
         if let Some(rules) = rules.as_ref() {
             let config = state.session.config();
-            snap.checklist = evaluate_checklist(&snap, rules, &config);
+            let ignition_gen = state
+                .runtime
+                .lock()
+                .ok()
+                .map(|rt| rt.ignition_gen_params())
+                .unwrap_or_default();
+            snap.checklist = evaluate_checklist(&snap, rules, &config, &ignition_gen);
         }
     }
     snap
@@ -925,7 +938,7 @@ fn component_dispatch_inner(
 
     let may_write_config = component_action_may_write_config(action, &params.payload);
 
-    let snapshot = {
+    let (snapshot, peer_ignition_states) = {
         let mut rt = state.runtime.lock().map_err(|e| e.to_string())?;
         let snapshot = rt.dispatch(&params.instance_id, action, params.payload)?;
 
@@ -937,10 +950,19 @@ fn component_dispatch_inner(
             }
         }
 
-        snapshot
+        let peers = if matches!(action, "set_params" | "replace_params") {
+            rt.peer_ignition_table_states(&params.instance_id)
+        } else {
+            Vec::new()
+        };
+
+        (snapshot, peers)
     };
 
     emit_state(&app, &params.instance_id, &snapshot);
+    for (peer_id, peer_state) in peer_ignition_states {
+        emit_state(&app, &peer_id, &peer_state);
+    }
 
     if may_write_config {
         emit_config_update(&app, &state.session.config().snapshot());
@@ -2075,7 +2097,7 @@ pub fn project_create_new(
     store.save_to_path(path_ref)?;
     drop(store);
     record_recent_project(&state, path_ref);
-    state.session.reset_workspace_for_new_project();
+    reset_workspace(&state);
     state.project.lock().unwrap().apply_to_session(&state.session)?;
     clear_config_diff(&state, &app);
     emit_project(&app, &state);
@@ -2098,8 +2120,8 @@ pub fn project_load(path: String, state: State<RuntimeState>, app: AppHandle) ->
             println!("[workspace-fsm] project_load failed at load_from_path: {e}");
             return load_result;
         }
-        println!("[workspace-fsm] project_load: reset_workspace_for_new_project…");
-        state.session.reset_workspace_for_new_project();
+        println!("[workspace-fsm] project_load: reset_workspace…");
+        reset_workspace(&state);
         println!("[workspace-fsm] project_load: apply_to_session…");
         store.apply_to_session(&state.session)
     };
@@ -2171,7 +2193,7 @@ pub fn project_close(state: State<RuntimeState>, app: AppHandle) -> Result<(), S
         .unwrap()
         .new_document("Новый проект".into());
     set_burn_pending(&state, &app, false);
-    state.session.reset_workspace_for_new_project();
+    reset_workspace(&state);
     state.session.set_project_ini_signature(None);
     clear_config_diff(&state, &app);
     emit_project(&app, &state);
@@ -2248,7 +2270,7 @@ pub fn project_copy_without_timeline(
     }
     let store = state.project.lock().unwrap();
     store.load_from_path(path_ref)?;
-    state.session.reset_workspace_for_new_project();
+    reset_workspace(&state);
     store.apply_to_session(&state.session)?;
     drop(store);
     record_recent_project(&state, path_ref);
