@@ -78,6 +78,8 @@ export interface KnockScopeUiTick {
   captureRateHz?: number;
   recordingRefRpm?: number | null;
   expectedCaptureRateHz?: number | null;
+  /** Потерянные кадры на ECU (перезапись кольца), суммарно. */
+  knockFramesDropped?: number;
   spectrogramGpuB64?: string | null;
   spectrogramWidth?: number;
   spectrogramHeight?: number;
@@ -355,7 +357,12 @@ export function formatKnockCaptureStats(snap: KnockScopeUiTick, windowMs: number
   if (expected != null && expected > 0 && rate > 0) {
     const pct = Math.round((rate / expected) * 100);
     parts.push(`теор. ~${expected.toFixed(0)}/s (${pct}%)`);
-  } else if (snap.recordingRefRpm != null && snap.recordingRefRpm > 0) {
+  }
+  const dropped = snap.knockFramesDropped ?? 0;
+  if (dropped > 0) {
+    parts.push(`потеряно ECU: ${dropped}`);
+  }
+  if (snap.recordingRefRpm != null && snap.recordingRefRpm > 0 && expected == null) {
     parts.push(`RPM₀ ${Math.round(snap.recordingRefRpm)}`);
   }
   parts.push(follow ? "live" : "просмотр");

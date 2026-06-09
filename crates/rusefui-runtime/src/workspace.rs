@@ -117,6 +117,87 @@ pub struct WorkspaceFsm {
     last: Option<WorkspaceSnapshot>,
 }
 
+fn format_sync_plan(plan: &WorkspaceSyncPlan) -> String {
+    let mut flags = Vec::new();
+    if plan.stop_config {
+        flags.push("stop_config");
+    }
+    if plan.stop_output_poll {
+        flags.push("stop_output_poll");
+    }
+    if plan.stop_composite {
+        flags.push("stop_composite");
+    }
+    if plan.clear_config_diff {
+        flags.push("clear_config_diff");
+    }
+    if plan.start_ecu_config_load {
+        flags.push("start_ecu_config_load");
+    }
+    if plan.start_output_poll {
+        flags.push("start_output_poll");
+    }
+    if flags.is_empty() {
+        "(none)".to_string()
+    } else {
+        flags.join(", ")
+    }
+}
+
+fn log_workspace_inputs(inputs: &WorkspaceInputs) {
+    println!(
+        "[workspace-fsm] inputs: project_path={:?} ecu_connected={} ini_pending={} offline={} scanning={} config_loaded={} config_loading={} config_read_only={}",
+        inputs.project.path,
+        inputs.ecu_connected,
+        inputs.ini_pending_resolution,
+        inputs.autoconnect.offline_mode,
+        inputs.autoconnect.scanning,
+        inputs.config.loaded,
+        inputs.config.loading,
+        inputs.config.read_only,
+    );
+}
+
+fn log_workspace_snapshot(label: &str, snap: &WorkspaceSnapshot) {
+    println!(
+        "[workspace-fsm] {label}: phase={:?} config_source={:?} config_loaded={} config_loading={} ecu_connected={} ecu_scanning={} ini_pending={} offline={} project_path={:?} show_main_ui={}",
+        snap.phase,
+        snap.config_source,
+        snap.config_loaded,
+        snap.config_loading,
+        snap.ecu_connected,
+        snap.ecu_scanning,
+        snap.ini_pending_resolution,
+        snap.offline_mode,
+        snap.project_path,
+        snap.capabilities.show_main_ui,
+    );
+}
+
+fn log_workspace_transition(
+    prev: Option<&WorkspaceSnapshot>,
+    next: &WorkspaceSnapshot,
+    plan: &WorkspaceSyncPlan,
+    inputs: &WorkspaceInputs,
+) {
+    match prev {
+        Some(p) => println!(
+            "[workspace-fsm] transition: {:?} -> {:?}",
+            p.phase, next.phase
+        ),
+        None => println!("[workspace-fsm] transition: (initial) -> {:?}", next.phase),
+    }
+    log_workspace_inputs(inputs);
+    if let Some(p) = prev {
+        log_workspace_snapshot("prev", p);
+    }
+    log_workspace_snapshot("next", next);
+    println!(
+        "[workspace-fsm] sync_plan: {}",
+        format_sync_plan(plan)
+    );
+}
+
 impl WorkspaceFsm {
     pub fn new() -> Self {
         Self { last: None }
@@ -135,6 +216,7 @@ impl WorkspaceFsm {
             WorkspaceSyncPlan::default()
         };
         if changed {
+            log_workspace_transition(self.last.as_ref(), &next, &plan, inputs);
             self.last = Some(next.clone());
         }
         (next, plan, changed)
@@ -145,6 +227,13 @@ impl WorkspaceFsm {
     }
 
     pub fn reset(&mut self) {
+        match self.last.as_ref() {
+            Some(s) => println!(
+                "[workspace-fsm] reset (was phase={:?} project_path={:?})",
+                s.phase, s.project_path
+            ),
+            None => println!("[workspace-fsm] reset (already empty)"),
+        }
         self.last = None;
     }
 }
@@ -152,11 +241,10 @@ impl WorkspaceFsm {
 pub fn derive_workspace(inputs: &WorkspaceInputs) -> WorkspaceSnapshot {
     let project_open = inputs.project.path.is_some();
     let ecu_live = inputs.ecu_connected && !inputs.autoconnect.offline_mode;
-    let ini_pending = inputs.ini_pending_resolution && ecu_live;
 
     if !project_open {
         // Autoconnect может подключить ECU до открытия .json — всё равно показываем выбор INI.
-        if ini_pending {
+        if inputs.ini_pending_resolution && ecu_live {
             return WorkspaceSnapshot {
                 phase: WorkspacePhase::EcuIniMismatch,
                 project_path: None,
@@ -205,9 +293,7 @@ pub fn derive_workspace(inputs: &WorkspaceInputs) -> WorkspaceSnapshot {
         offline_mode: inputs.autoconnect.offline_mode,
         ecu_connected: inputs.ecu_connected && !inputs.autoconnect.offline_mode,
         ecu_scanning: inputs.autoconnect.scanning && !inputs.autoconnect.offline_mode,
-        ini_pending_resolution: inputs.ini_pending_resolution
-            && inputs.ecu_connected
-            && !inputs.autoconnect.offline_mode,
+        ini_pending_resolution: inputs.ini_pending_resolution,
         config_source,
         config_loaded: inputs.config.loaded,
         config_loading: inputs.config.loading,
@@ -228,6 +314,10 @@ fn config_source_from_snapshot(snap: &ConfigSnapshot) -> ConfigSource {
 }
 
 fn phase_from_inputs(inputs: &WorkspaceInputs, config_source: ConfigSource) -> WorkspacePhase {
+    if inputs.ini_pending_resolution {
+        return WorkspacePhase::EcuIniMismatch;
+    }
+
     if inputs.autoconnect.offline_mode || !inputs.ecu_connected {
         if config_source == ConfigSource::ProjectFile {
             return WorkspacePhase::ConfigFromProject;
@@ -236,11 +326,6 @@ fn phase_from_inputs(inputs: &WorkspaceInputs, config_source: ConfigSource) -> W
             return WorkspacePhase::EcuScanning;
         }
         return WorkspacePhase::ProjectOnly;
-    }
-
-    // ECU подключена. Если INI ещё не выбран — приоритет у Mismatch.
-    if inputs.ini_pending_resolution {
-        return WorkspacePhase::EcuIniMismatch;
     }
 
     match config_source {
@@ -456,12 +541,13 @@ mod tests {
     }
 
     #[test]
-    fn ini_pending_ignored_when_offline_or_disconnected() {
+    fn ini_pending_when_offline_with_open_project() {
         let mut inp_off = inputs(Some("/p.json"), true, false, disconnected_config());
         inp_off.ini_pending_resolution = true;
-        // Offline / disconnected — Mismatch недостижим.
-        assert_ne!(inp_off.derive().phase, WorkspacePhase::EcuIniMismatch);
-        assert!(!inp_off.derive().ini_pending_resolution);
+        let snap = inp_off.derive();
+        assert_eq!(snap.phase, WorkspacePhase::EcuIniMismatch);
+        assert!(snap.ini_pending_resolution);
+        assert!(!snap.capabilities.show_main_ui);
     }
 
     #[test]

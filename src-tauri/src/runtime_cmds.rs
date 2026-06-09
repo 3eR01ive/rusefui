@@ -201,6 +201,10 @@ fn record_recent_project(state: &RuntimeState, path: &std::path::Path) {
 
 /// Сброс config/timeline в UI после смены проекта.
 fn emit_workspace_reset(app: &AppHandle, state: &RuntimeState) {
+    println!(
+        "[workspace-fsm] emit_workspace_reset project_path={:?}",
+        state.project.lock().unwrap().info().path
+    );
     state.workspace_fsm.lock().unwrap().reset();
     let _ = reconcile_workspace(state, app);
     sync_ecu_data(state, app);
@@ -510,17 +514,24 @@ fn sync_output_poll_session(session: &Arc<EcuSession>, app: &AppHandle) {
 fn sync_config_load(state: &RuntimeState, app: &AppHandle) {
     let ws = reconcile_workspace(state, app);
     if ws.phase != WorkspacePhase::EcuConnectedIdle {
+        println!(
+            "[workspace-fsm] sync_config_load: skip (phase={:?}, expected EcuConnectedIdle)",
+            ws.phase
+        );
         return;
     }
 
     let cfg = state.session.config().snapshot();
     if cfg.loading {
+        println!("[workspace-fsm] sync_config_load: skip (config already loading)");
         return;
     }
     // Live config с ECU уже в RAM.
     if cfg.loaded && !cfg.read_only {
+        println!("[workspace-fsm] sync_config_load: skip (live config already loaded)");
         return;
     }
+    println!("[workspace-fsm] sync_config_load: starting ECU page 0 load");
     // Preview из проекта не сбрасываем: start_load подменит RAM только после
     // успешного чтения page 1 с ECU (иначе при 0x84 на доп. страницах UI пустой).
 
@@ -552,8 +563,18 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
         .unwrap_or_else(|e| e.into_inner());
     let ws = reconcile_workspace(state, app);
 
+    println!(
+        "[workspace-fsm] sync_ecu_data: phase={:?} config_source={:?} ecu_connected={} config_loaded={} config_loading={}",
+        ws.phase,
+        ws.config_source,
+        ws.ecu_connected,
+        ws.config_loaded,
+        ws.config_loading,
+    );
+
     match ws.phase {
         WorkspacePhase::Gate => {
+            println!("[workspace-fsm] sync_ecu_data action: gate — stop all sources");
             state.session.knock_scope().stop();
             state.session.config().stop();
             state.session.output().stop();
@@ -562,6 +583,15 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
             clear_config_diff(state, app);
         }
         WorkspacePhase::ProjectOnly | WorkspacePhase::EcuScanning => {
+            println!(
+                "[workspace-fsm] sync_ecu_data action: {:?} — stop poll/composite{}",
+                ws.phase,
+                if ws.config_source == ConfigSource::EcuLive {
+                    ", stop live config"
+                } else {
+                    ""
+                }
+            );
             state.session.knock_scope().stop();
             if ws.config_source == ConfigSource::EcuLive {
                 state.session.config().stop();
@@ -572,6 +602,7 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
             state.session.composite().stop();
         }
         WorkspacePhase::EcuIniMismatch => {
+            println!("[workspace-fsm] sync_ecu_data action: ecu_ini_mismatch — stop all sources, keep link");
             state.session.knock_scope().stop();
             // Ждём выбора INI: глушим все источники, но link не разрываем.
             state.session.config().stop();
@@ -581,11 +612,16 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
             clear_config_diff(state, app);
         }
         WorkspacePhase::EcuConnectedIdle => {
+            println!("[workspace-fsm] sync_ecu_data action: ecu_connected_idle — sync_config_load");
             // Не дергать composite.stop() здесь: sync_config_load остановит перед load,
             // а частые sync_ecu_data иначе глушили бы запись триггера без перезапуска.
             sync_config_load(state, app);
         }
         WorkspacePhase::ConfigFromProject => {
+            println!(
+                "[workspace-fsm] sync_ecu_data action: config_from_project — poll_output={}",
+                ws.capabilities.poll_output_channels
+            );
             if ws.capabilities.poll_output_channels {
                 sync_output_poll_session(&state.session, app);
             } else {
@@ -594,6 +630,7 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
             }
         }
         WorkspacePhase::ConfigLoadingFromEcu => {
+            println!("[workspace-fsm] sync_ecu_data action: config_loading_from_ecu — stop poll/composite");
             state.session.knock_scope().stop();
             state.session.knock_scope().disable_on_ecu(&state.session);
             state.session.output().stop();
@@ -603,6 +640,7 @@ fn sync_ecu_data(state: &RuntimeState, app: &AppHandle) {
             emit_knock_scope_reset(app);
         }
         WorkspacePhase::ConfigFromEcu => {
+            println!("[workspace-fsm] sync_ecu_data action: config_from_ecu — start output poll");
             sync_output_poll_session(&state.session, app);
         }
     }
@@ -1041,13 +1079,11 @@ pub fn output_get_snapshot(state: State<RuntimeState>) -> OutputSnapshot {
 
 #[tauri::command]
 pub fn output_list_fields(state: State<RuntimeState>) -> Vec<OutputFieldInfo> {
-    state.session.bootstrap_offline_ini_if_needed();
     state.session.ini_context().list_output_fields()
 }
 
 #[tauri::command]
-pub fn output_start_listener(state: State<RuntimeState>, app: AppHandle) {
-    state.session.bootstrap_offline_ini_if_needed();
+pub fn output_start_listener(_state: State<RuntimeState>, app: AppHandle) {
     let app_bg = app.clone();
     tauri::async_runtime::spawn(async move {
         let state = app_bg.state::<RuntimeState>();
@@ -1959,7 +1995,6 @@ pub fn autoconnect_set_offline_mode(
 ) {
     state.autoconnect.set_offline_mode(offline);
     if offline {
-        state.session.bootstrap_offline_ini_if_needed();
         emit_current_output(&app, &state);
     }
     schedule_ecu_notify(&app, false);
@@ -2041,24 +2076,51 @@ pub fn project_create_new(
     drop(store);
     record_recent_project(&state, path_ref);
     state.session.reset_workspace_for_new_project();
+    state.project.lock().unwrap().apply_to_session(&state.session)?;
     clear_config_diff(&state, &app);
     emit_project(&app, &state);
+    emit_ini_resolution(&app, &state);
     emit_workspace_reset(&app, &state);
+    emit_knock_scope_reset(&app);
     Ok(())
 }
 
 #[tauri::command]
 pub fn project_load(path: String, state: State<RuntimeState>, app: AppHandle) -> Result<(), String> {
+    println!("[workspace-fsm] project_load: {path}");
     let path_ref = std::path::Path::new(&path);
-    let store = state.project.lock().unwrap();
-    store.load_from_path(path_ref)?;
-    state.session.reset_workspace_for_new_project();
-    store.apply_to_session(&state.session)?;
-    drop(store);
+
+    let apply_result = {
+        let store = state.project.lock().unwrap();
+        println!("[workspace-fsm] project_load: load_from_path…");
+        let load_result = store.load_from_path(path_ref);
+        if let Err(ref e) = load_result {
+            println!("[workspace-fsm] project_load failed at load_from_path: {e}");
+            return load_result;
+        }
+        println!("[workspace-fsm] project_load: reset_workspace_for_new_project…");
+        state.session.reset_workspace_for_new_project();
+        println!("[workspace-fsm] project_load: apply_to_session…");
+        store.apply_to_session(&state.session)
+    };
+
+    if let Err(ref e) = apply_result {
+        println!("[workspace-fsm] project_load failed at apply_to_session: {e}");
+        state
+            .project
+            .lock()
+            .unwrap()
+            .new_document("Новый проект".into());
+        return apply_result;
+    }
+
+    println!("[workspace-fsm] project_load: ok, emit_workspace_reset…");
     record_recent_project(&state, path_ref);
     clear_config_diff(&state, &app);
     emit_project(&app, &state);
+    emit_ini_resolution(&app, &state);
     emit_workspace_reset(&app, &state);
+    emit_knock_scope_reset(&app);
     if state.session.is_connected() && state.session.config().snapshot().loaded {
         try_start_config_diff(&state, &app);
     }
@@ -2114,6 +2176,7 @@ pub fn project_close(state: State<RuntimeState>, app: AppHandle) -> Result<(), S
     clear_config_diff(&state, &app);
     emit_project(&app, &state);
     emit_workspace_reset(&app, &state);
+    emit_knock_scope_reset(&app);
     Ok(())
 }
 
@@ -2192,6 +2255,7 @@ pub fn project_copy_without_timeline(
     clear_config_diff(&state, &app);
     emit_project(&app, &state);
     emit_workspace_reset(&app, &state);
+    emit_knock_scope_reset(&app);
     if state.session.is_connected() && state.session.config().snapshot().loaded {
         try_start_config_diff(&state, &app);
     }
@@ -2324,6 +2388,11 @@ pub fn ini_apply_path(
         );
         emit_project(&app, &state);
     }
+    state
+        .project
+        .lock()
+        .unwrap()
+        .apply_ecu_config_if_present(&state.session)?;
     // INI применён — фаза должна обновиться (Mismatch → EcuConnectedIdle/ConfigLoad).
     emit_ini_resolution(&app, &state);
     schedule_ecu_notify(&app, true);

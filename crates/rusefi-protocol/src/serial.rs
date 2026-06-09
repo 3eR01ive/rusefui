@@ -403,13 +403,14 @@ impl SerialLink {
         Ok(())
     }
 
-    /// `l` + `TS_KNOCK_SCOPE_READ` — сырой буфер (до [`KNOCK_SCOPE_BUFFER_BYTES`] байт, u16 LE).
+    /// `l` + `TS_KNOCK_SCOPE_READ` — batch v2 + кадры (размер по факту, не фикс. 8192).
     pub fn read_knock_scope_buffer(&mut self) -> Result<Vec<u8>, ProtocolError> {
+        const KNOCK_SCOPE_READ_TIMEOUT_MS: u64 = 300;
         let payload = [
             TS_SET_LOGGER_SWITCH,
             crate::commands::TS_KNOCK_SCOPE_READ,
         ];
-        let response = self.send_request(&payload)?;
+        let response = self.send_request_with_timeout(&payload, KNOCK_SCOPE_READ_TIMEOUT_MS)?;
         if response.code != TS_RESPONSE_OK {
             return Err(ProtocolError::ErrorResponse(response.code));
         }

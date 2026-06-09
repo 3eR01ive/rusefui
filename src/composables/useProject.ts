@@ -132,6 +132,32 @@ export const projectInitialized = ref(false);
 let initPromise: Promise<void> | null = null;
 let unlisten: UnlistenFn | null = null;
 
+const uiFlushHooks = new Set<() => void | Promise<void>>();
+
+/** Сбросить debounced UI в `ProjectStore` перед `project_save`. */
+export function registerProjectUiFlushHook(
+  hook: () => void | Promise<void>,
+): () => void {
+  uiFlushHooks.add(hook);
+  return () => uiFlushHooks.delete(hook);
+}
+
+export async function flushProjectUiToStore(): Promise<void> {
+  const hooks = [...uiFlushHooks];
+  await Promise.all(hooks.map((h) => Promise.resolve(h())));
+}
+
+function isProjectSaveOnlyChange(prev: ProjectInfo, next: ProjectInfo): boolean {
+  return (
+    prev.path === next.path &&
+    prev.name === next.name &&
+    prev.logCount === next.logCount &&
+    prev.timelineClipCount === next.timelineClipCount &&
+    prev.hasEcuConfig === next.hasEcuConfig &&
+    next.dirty === false
+  );
+}
+
 async function refreshInfo(): Promise<void> {
   info.value = await invoke<ProjectInfo>("project_get_info");
 }
@@ -142,8 +168,11 @@ export async function initProject(): Promise<void> {
     await refreshInfo();
     if (!unlisten) {
       unlisten = await listen<ProjectInfo>("project-changed", (ev) => {
+        const prev = info.value;
         info.value = ev.payload;
-        projectUiEpoch.value += 1;
+        if (!isProjectSaveOnlyChange(prev, ev.payload)) {
+          projectUiEpoch.value += 1;
+        }
       });
       await listen("workspace-reset", () => {
         workspaceResetEpoch.value += 1;
@@ -196,6 +225,7 @@ export function useProject() {
   }
 
   async function saveProject(): Promise<string | null> {
+    await flushProjectUiToStore();
     try {
       return await invoke<string>("project_save");
     } catch {
@@ -208,6 +238,7 @@ export function useProject() {
       defaultName: info.value.name,
     });
     if (!path) return null;
+    await flushProjectUiToStore();
     await invoke("project_save_path", { path });
     return path;
   }
@@ -260,6 +291,7 @@ export function useProject() {
       defaultName,
     });
     if (!path) return false;
+    await flushProjectUiToStore();
     await invoke("project_copy_without_timeline", { path });
     return true;
   }

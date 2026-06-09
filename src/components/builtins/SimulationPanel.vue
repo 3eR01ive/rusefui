@@ -10,6 +10,7 @@ import {
   initProject,
   PERSIST_KEY_SIMULATION,
   projectUiEpoch,
+  registerProjectUiFlushHook,
   useProject,
   workspaceResetEpoch,
   type SimulationRampCurve,
@@ -218,12 +219,21 @@ async function applyUiFromProject(): Promise<void> {
   }
 }
 
+async function flushUiToProject(): Promise<void> {
+  if (saveUiTimer !== 0) {
+    window.clearTimeout(saveUiTimer);
+    saveUiTimer = 0;
+  }
+  if (applyingProjectUi) return;
+  await setProjectUi(PERSIST_KEY_SIMULATION, buildUiSettings());
+}
+
 function scheduleSaveUiToProject(): void {
   if (applyingProjectUi) return;
   if (saveUiTimer !== 0) window.clearTimeout(saveUiTimer);
   saveUiTimer = window.setTimeout(() => {
     saveUiTimer = 0;
-    void setProjectUi(PERSIST_KEY_SIMULATION, buildUiSettings());
+    void flushUiToProject();
   }, 400);
 }
 
@@ -314,11 +324,17 @@ watch(
   () => scheduleSaveUiToProject(),
 );
 
+let unregUiFlush: (() => void) | null = null;
+
 onMounted(() => {
-  void initProject().then(() => applyUiFromProject());
+  void initProject().then(() => {
+    unregUiFlush = registerProjectUiFlushHook(flushUiToProject);
+    void applyUiFromProject();
+  });
 });
 
 onUnmounted(() => {
+  unregUiFlush?.();
   rampAbort?.abort();
   if (saveUiTimer !== 0) window.clearTimeout(saveUiTimer);
 });

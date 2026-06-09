@@ -19,6 +19,7 @@ import {
   initProject,
   PERSIST_KEY_OUTPUT_CHART,
   projectUiEpoch,
+  registerProjectUiFlushHook,
   workspaceResetEpoch,
   useProject,
   type LogUiSettings,
@@ -449,12 +450,21 @@ async function applyLogUiFromProject(options: { applyViewport?: boolean } = {}):
   }
 }
 
+async function flushLogUiToProject(): Promise<void> {
+  if (saveLogUiTimer !== 0) {
+    window.clearTimeout(saveLogUiTimer);
+    saveLogUiTimer = 0;
+  }
+  if (applyingProjectUi) return;
+  await setProjectUi(PERSIST_KEY_OUTPUT_CHART, buildLogUiSettings());
+}
+
 function scheduleSaveLogUiToProject(): void {
   if (applyingProjectUi) return;
   if (saveLogUiTimer !== 0) window.clearTimeout(saveLogUiTimer);
   saveLogUiTimer = window.setTimeout(() => {
     saveLogUiTimer = 0;
-    void setProjectUi(PERSIST_KEY_OUTPUT_CHART, buildLogUiSettings());
+    void flushLogUiToProject();
   }, 400);
 }
 
@@ -1509,8 +1519,11 @@ async function redrawNow(): Promise<void> {
   await redrawInflight;
 }
 
+let unregUiFlush: (() => void) | null = null;
+
 onMounted(async () => {
   await initProject();
+  unregUiFlush = registerProjectUiFlushHook(flushLogUiToProject);
   await initOutputChannels();
   await initOutputTimeline();
 
@@ -1551,6 +1564,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  unregUiFlush?.();
   if (saveLogUiTimer !== 0) window.clearTimeout(saveLogUiTimer);
   if (viewportSyncTimer !== 0) window.clearTimeout(viewportSyncTimer);
   if (localRepaintRaf !== 0) cancelAnimationFrame(localRepaintRaf);

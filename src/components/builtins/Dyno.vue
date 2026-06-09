@@ -2,6 +2,7 @@
 import {
   computed,
   nextTick,
+  onMounted,
   onUnmounted,
   ref,
   shallowRef,
@@ -30,6 +31,7 @@ import {
   initProject,
   PERSIST_KEY_DYNO,
   projectUiEpoch,
+  registerProjectUiFlushHook,
   useProject,
   workspaceResetEpoch,
   type DynoUiSettings,
@@ -403,12 +405,21 @@ async function applyDynoUiFromProject(opts?: { reloadPanelState?: boolean }): Pr
   scheduleRedraw();
 }
 
+async function flushDynoUiToProject(): Promise<void> {
+  if (saveDynoUiTimer !== 0) {
+    window.clearTimeout(saveDynoUiTimer);
+    saveDynoUiTimer = 0;
+  }
+  if (applyingProjectUi) return;
+  await setProjectUi(PERSIST_KEY_DYNO, buildDynoUiSettings());
+}
+
 function scheduleSaveDynoUiToProject(): void {
   if (applyingProjectUi) return;
   if (saveDynoUiTimer !== 0) window.clearTimeout(saveDynoUiTimer);
   saveDynoUiTimer = window.setTimeout(() => {
     saveDynoUiTimer = 0;
-    void setProjectUi(PERSIST_KEY_DYNO, buildDynoUiSettings());
+    void flushDynoUiToProject();
   }, 400);
 }
 
@@ -677,7 +688,16 @@ watch(settingsOpen, (open) => {
   if (open && tabActive.value) void ensureDynoCharsPanel();
 });
 
+let unregUiFlush: (() => void) | null = null;
+
+onMounted(() => {
+  void initProject().then(() => {
+    unregUiFlush = registerProjectUiFlushHook(flushDynoUiToProject);
+  });
+});
+
 onUnmounted(() => {
+  unregUiFlush?.();
   releaseChartRenderer();
   if (saveDynoUiTimer !== 0) window.clearTimeout(saveDynoUiTimer);
 });

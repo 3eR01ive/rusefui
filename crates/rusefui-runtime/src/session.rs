@@ -10,7 +10,7 @@ use rusefi_protocol::{ConnectionInfo, ProtocolError, SerialLink, DEFAULT_IO_TIME
 use serde::Serialize;
 
 use crate::ini::{
-    download_ini_for_signature, ensure_panels_for_ini, find_any_local_ini, load_ini_path,
+    download_ini_for_signature, ensure_panels_for_ini, load_ini_path,
     resolve_ini_for_signature, IniResolveError, OnlineDownloadStatus, PanelCacheStatus,
     ResolvedIni,
 };
@@ -378,7 +378,8 @@ impl EcuSession {
         self.config().stop();
         self.output().stop();
         self.composite().stop();
-        self.knock_scope().stop();
+        self.knock_scope().try_disable_on_ecu(self);
+        self.knock_scope().reset_idle();
         let _ = self.stop_output_data_log();
         *self.composite_data_log.lock().unwrap() = None;
         self.composite_timeline.lock().unwrap().clear();
@@ -403,7 +404,6 @@ impl EcuSession {
             }
         }
 
-        self.bootstrap_offline_ini_if_needed();
     }
 
     pub fn record_output_sample(&self, timestamp_ms: u64, values: &HashMap<String, f64>) {
@@ -540,13 +540,36 @@ impl EcuSession {
         ));
     }
 
-    /// Если output channels ещё пусты — взять локальный INI (`RUSEFI_INI_PATH`, test_data, …).
-    pub fn bootstrap_offline_ini_if_needed(&self) {
-        if !self.ini_context().channels.fields.is_empty() {
-            return;
+    pub fn clear_pending_ini_resolution(&self) {
+        if let Ok(mut guard) = self.inner.lock() {
+            guard.pending = None;
         }
-        if let Some(resolved) = find_any_local_ini() {
-            self.apply_ini(resolved);
+    }
+
+    /// Проект без `ini` в JSON — ждём явный выбор/загрузку файла (offline или с ECU).
+    pub fn set_pending_project_ini_required(
+        &self,
+        reason: impl Into<String>,
+        project_signature: Option<String>,
+    ) {
+        let (ecu_signature, port_name) = self
+            .connection_info_if_available()
+            .map(|i| (i.signature, i.port_name))
+            .unwrap_or_default();
+        let online = if ecu_signature.is_empty() {
+            OnlineDownloadStatus::NotApplicable
+        } else {
+            download_ini_for_signature(&ecu_signature)
+        };
+        if let Ok(mut guard) = self.inner.lock() {
+            guard.pending = Some(PendingIniResolution {
+                ecu_signature,
+                port_name,
+                last_error: reason.into(),
+                online,
+                project_signature,
+                suggested_ini_path: None,
+            });
         }
     }
 

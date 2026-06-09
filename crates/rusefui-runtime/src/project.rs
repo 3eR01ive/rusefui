@@ -441,6 +441,8 @@ impl ProjectStore {
     }
 
     /// После `load_from_path`: INI из проекта + снимок config в сессию.
+    ///
+    /// Без секции `ini` в JSON — `PendingIniResolution` и фаза `EcuIniMismatch` (без fallback).
     pub fn apply_to_session(&self, session: &EcuSession) -> Result<(), String> {
         let (ini_ref, ecu_config, project_path) = {
             let doc = self.doc.lock().unwrap();
@@ -453,22 +455,26 @@ impl ProjectStore {
 
         let project_ini_sig = ini_ref.as_ref().and_then(|r| r.signature.clone());
 
-        if ecu_config.is_some() {
-            Self::load_project_ini(
-                session,
-                ini_ref.as_ref(),
-                project_path.as_deref(),
-            )?;
-        } else if let Some(ini_ref) = ini_ref.as_ref() {
-            if let Some(path) = ini_ref.path.as_deref().filter(|p| !p.is_empty()) {
-                let resolved = Self::resolve_ini_path(path, project_path.as_deref());
-                if resolved.is_file() {
-                    session.load_ini_from_path(&resolved)?;
-                }
-            }
-            session.bootstrap_offline_ini_if_needed();
-        } else {
-            session.bootstrap_offline_ini_if_needed();
+        if !Self::ini_ref_actionable(ini_ref.as_ref()) {
+            println!("[workspace-fsm] apply_to_session: нет ini — pending выбор INI");
+            session.set_pending_project_ini_required(
+                "В проекте нет секции ini — выберите или загрузите файл INI",
+                project_ini_sig.clone(),
+            );
+            session.set_project_ini_signature(project_ini_sig);
+            return Ok(());
+        }
+
+        let ini = ini_ref.as_ref().expect("actionable => Some");
+        if let Err(e) = Self::load_project_ini(session, Some(ini), project_path.as_deref()) {
+            println!("[workspace-fsm] apply_to_session: ini не загружен — pending: {e}");
+            session.set_pending_project_ini_required(e, project_ini_sig.clone());
+            session.set_project_ini_signature(project_ini_sig);
+            return Ok(());
+        }
+
+        if !session.is_connected() {
+            session.clear_pending_ini_resolution();
         }
 
         if let Some(ecu) = ecu_config {
@@ -478,6 +484,31 @@ impl ProjectStore {
         }
         session.set_project_ini_signature(project_ini_sig);
         Ok(())
+    }
+
+    /// Подставить `ecuConfig` из проекта после того, как пользователь выбрал INI.
+    pub fn apply_ecu_config_if_present(&self, session: &EcuSession) -> Result<(), String> {
+        let (ecu_config, project_ini_sig) = {
+            let doc = self.doc.lock().unwrap();
+            (
+                doc.ecu_config.clone(),
+                doc.ini.as_ref().and_then(|r| r.signature.clone()),
+            )
+        };
+        if let Some(ecu) = ecu_config {
+            session
+                .config()
+                .apply_from_project(&ecu, project_ini_sig.as_deref())?;
+        }
+        Ok(())
+    }
+
+    fn ini_ref_actionable(ini_ref: Option<&ProjectIniRef>) -> bool {
+        let Some(ini) = ini_ref else {
+            return false;
+        };
+        ini.path.as_deref().is_some_and(|p| !p.is_empty())
+            || ini.signature.as_deref().is_some_and(|s| !s.is_empty())
     }
 
     /// Путь INI в JSON проекта: относительно файла `.rusefui`, если возможно.

@@ -44,3 +44,7 @@ alwaysApply: true
 ## Имена полей config
 
 См. **`no-hardcoded-config-fields.mdc`** — в Rust/TS не литералы `"cylindersCount"` и т.д.; правила и конфликты из INI + декларативного YAML.
+
+## Без fallback
+
+См. **`no-fallbacks.mdc`** — нет автоподстановки INI, config и прочих данных «из воздуха»; только явные фазы FSM и действия пользователя.

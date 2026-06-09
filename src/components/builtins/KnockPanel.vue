@@ -40,6 +40,7 @@ import { invoke } from "@tauri-apps/api/core";
 import {
   initProject,
   PERSIST_KEY_KNOCK,
+  registerProjectUiFlushHook,
   useProject,
   workspaceResetEpoch,
   type KnockUiSettings,
@@ -498,12 +499,21 @@ async function applyUiFromProject(): Promise<void> {
   scheduleRedraw();
 }
 
+async function flushUiToProject(): Promise<void> {
+  if (saveUiTimer !== 0) {
+    window.clearTimeout(saveUiTimer);
+    saveUiTimer = 0;
+  }
+  if (applyingProjectUi) return;
+  await setProjectUi(PERSIST_KEY_KNOCK, buildUiSettings());
+}
+
 function scheduleSaveUiToProject(): void {
   if (applyingProjectUi) return;
   if (saveUiTimer !== 0) window.clearTimeout(saveUiTimer);
   saveUiTimer = window.setTimeout(() => {
     saveUiTimer = 0;
-    void setProjectUi(PERSIST_KEY_KNOCK, buildUiSettings());
+    void flushUiToProject();
   }, 400);
 }
 
@@ -803,8 +813,11 @@ watch([ready, thresholdContainerRef, knockStepsRowRef], async () => {
   scheduleThresholdRedraw();
 });
 
+let unregUiFlush: (() => void) | null = null;
+
 onMounted(async () => {
   await Promise.all([initConfig(), initProject(), initKnockScope()]);
+  unregUiFlush = registerProjectUiFlushHook(flushUiToProject);
   await nextTick();
   bindSpectrogramGl();
   unsubSpectrogramGpu = subscribeKnockSpectrogramGpu((b64) => {
@@ -822,6 +835,7 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
+  unregUiFlush?.();
   unsubSpectrogramGpu?.();
   unsubSpectrogramGpu = null;
   unsubSpectrogramReset?.();

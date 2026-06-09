@@ -21,6 +21,7 @@ import { initConfig, useConfig } from "../../composables/useConfig";
 import { listen } from "@tauri-apps/api/event";
 import {
   PERSIST_KEY_COMPOSITE_CHART,
+  registerProjectUiFlushHook,
   useProject,
   type CompositeChartUiSettings,
   type CrankEdgeMode,
@@ -1164,7 +1165,10 @@ watch(
   },
 );
 
+let unregUiFlush: (() => void) | null = null;
+
 onMounted(async () => {
+  unregUiFlush = registerProjectUiFlushHook(persistUiSettings);
   await initCompositeLogger();
   await initCompositeTimeline();
   await initOutputTimeline();
@@ -1206,6 +1210,7 @@ function onDocClick() {
 }
 
 onUnmounted(() => {
+  unregUiFlush?.();
   if (wheelComputeTimer != null) {
     clearTimeout(wheelComputeTimer);
     wheelComputeTimer = null;
