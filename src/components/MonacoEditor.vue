@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from "vue";
 import type * as Monaco from "monaco-editor";
 import { defineRusefuiTheme, ensureMonacoEnvironment } from "../monaco/environment";
+import { registerLuaCompletions } from "../monaco/luaCompletions";
 import { useKeyboardSink } from "../composables/useKeyboardSink";
 
 const props = withDefaults(
@@ -38,6 +39,9 @@ async function initEditor(): Promise<void> {
   ensureMonacoEnvironment();
   monacoApi = await import("monaco-editor");
   defineRusefuiTheme(monacoApi);
+  if (props.language === "lua") {
+    await registerLuaCompletions(monacoApi);
+  }
 
   const instance = monacoApi.editor.create(rootEl.value, {
     value: props.modelValue,

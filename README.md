@@ -69,6 +69,14 @@ Output channels в реальном времени, зум и pan по врем�
   <img src="screenshots/control-console.png" alt="Стимуляция и ECU console" width="920">
 </p>
 
+### SCRIPTS — Lua на ECU
+
+Редактор Lua-скрипта (Monaco): чтение и запись поля `luaScript` в RAM ECU, `luareset`, burn. Подсказки API из [wiki rusEFI Lua-Scripting](https://github.com/rusefi/rusefi/wiki/Lua-Scripting).
+
+<p align="center">
+  <img src="screenshots/scripts.png" alt="Вкладка Scripts: редактор Lua и подсказки API" width="920">
+</p>
+
 ### CONFIG — калибровки
 
 Панели из INI: параметры двигателя, таблицы VE и УОЗ с автогенерацией по геометрии ДВС.

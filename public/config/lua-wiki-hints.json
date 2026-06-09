@@ -1,0 +1,545 @@
+{
+  "source": "https://github.com/rusefi/rusefi/wiki/Lua-Scripting",
+  "extractedAt": "2026-06-09",
+  "items": [
+    {
+      "label": "burnconfig",
+      "insertText": "burnconfig()",
+      "snippet": false,
+      "section": "User Settings",
+      "doc": "Schedule a calibration write to flash once the engine is stopped."
+    },
+    {
+      "label": "canRxAdd",
+      "insertText": "canRxAdd(${1:id})",
+      "snippet": true,
+      "section": "CAN bus",
+      "doc": ""
+    },
+    {
+      "label": "canRxAddMask",
+      "insertText": "canRxAddMask(${1:id}, ${2:mask})",
+      "snippet": true,
+      "section": "CAN bus",
+      "doc": ""
+    },
+    {
+      "label": "curve",
+      "insertText": "curve(${1:curveIdx}, ${2:x})",
+      "snippet": true,
+      "section": "Utility",
+      "doc": "Looks up a value from the specified Script Curve.\n\n- Parameters\n  - `tableIdx`: Index of the script to use, starting from 1.\n  - `x`: Axis value to look up in the table"
+    },
+    {
+      "label": "enableCanTx",
+      "insertText": "enableCanTx(${1:isEnabled})",
+      "snippet": true,
+      "section": "CAN bus",
+      "doc": "Enabled by default\n\nUse enableCanTx(false) to suppress CAN TX"
+    },
+    {
+      "label": "findCurveIndex",
+      "insertText": "findCurveIndex(${1:name})",
+      "snippet": true,
+      "section": "Utility",
+      "doc": "Finds curve index by specific curve name"
+    },
+    {
+      "label": "findSetting",
+      "insertText": "findSetting(${1:name}, ${2:defaultValue})",
+      "snippet": true,
+      "section": "User Settings",
+      "doc": "Find the User Setting with the specified name and returns the numeric value. Useful when the script developer and script consumer are different people; also useful while Lua script editing is available only in TS.\n\n- Parameters\n  - `name`: Variable name, as in corresponding 'name' field in configuration\n  - `defaultValue`: value to use if specified setting not located by name"
+    },
+    {
+      "label": "findTableIndex",
+      "insertText": "findTableIndex(${1:name})",
+      "snippet": true,
+      "section": "Utility",
+      "doc": "Find table index by specified human-readable name."
+    },
+    {
+      "label": "getAuxAnalog",
+      "insertText": "getAuxAnalog(${1:index})",
+      "snippet": true,
+      "section": "Input",
+      "doc": "More or less like getSensorRaw but always voltage of aux analog input.\n\n- Parameters\n  - `index`: Index of aux analog sensor to read. From 0 to 3\n\n- Returns\n  - Voltage of sensor reading, or nil if sensor isn't configured."
+    },
+    {
+      "label": "getAuxDigital",
+      "insertText": "getAuxDigital(${1:index})",
+      "snippet": true,
+      "section": "Input",
+      "doc": "Reads a digital input from the configurable list.\n\n- Parameters\n  - `index`: The index of the digital pin to read. Valid values are 0 through 7, one for each of the 8 user-defined digital pins. See \"Lua Digital Aux Inputs\" table under \"Advanced\" settings tab.\n\n- Returns\n  - A boolean value representing the state of the input pin. `true` = high voltage (above ~2 volts), `false` = low voltage (below ~3 volts)"
+    },
+    {
+      "label": "getCalibration",
+      "insertText": "getCalibration(${1:name})",
+      "snippet": true,
+      "section": "User Settings",
+      "doc": "Gets current calibration value for a specified scalar setting. For example: `getCalibration(\"cranking.rpm\")`\n\nFor complete list of possible calibration names (valid parameter values) and descriptions, see the generated lookup table."
+    },
+    {
+      "label": "getDigital",
+      "insertText": "getDigital(${1:index})",
+      "snippet": true,
+      "section": "Input",
+      "doc": "Reads a digital input from the specified channel.\n\n- Parameters\n  - `index`: The index of the digital channel to read. See table below for values.\n\n- Returns\n  - A boolean value representing the state of the input pin. `true` = high voltage (above ~2 volts), `false` = low voltage (below ~3 volts)\n\nValid `index` parameter values:"
+    },
+    {
+      "label": "getGpPwm",
+      "insertText": "getGpPwm(${1:index})",
+      "snippet": true,
+      "section": "Output",
+      "doc": "Gets current PWM of GPPWM by index\n\n- Parameters\n  - `index`: The index of the PWM channel to set. Valid values are 0 through 3.\n\n- Returns\n  - PWM percent, 0 to 100"
+    },
+    {
+      "label": "getOutput",
+      "insertText": "getOutput(${1:name})",
+      "snippet": true,
+      "section": "User Settings",
+      "doc": "For example `getOutput(\"clutchUpState\")` or `getOutput(\"brakePedalState\")`\n\nSee https://github.com/rusefi/rusefi/blob/master/firmware/controllers/lua/generated/output_lookup_generated.cpp for output names."
+    },
+    {
+      "label": "getSensor",
+      "insertText": "getSensor(${1:name})",
+      "snippet": true,
+      "section": "Input",
+      "doc": "Reads the specified sensor. For instance `getSensor(\"AcceleratorPedal\")`\n\n- Parameters\n  - `name`: Name of the sensor to read. A list of sensor names can be found here.\n\n- Returns\n  - A reading from the sensor, or `nil` if the sensor has a problem or isn't configured."
+    },
+    {
+      "label": "getSensorByIndex",
+      "insertText": "getSensorByIndex(${1:index})",
+      "snippet": true,
+      "section": "Input",
+      "doc": "Reads the specified sensor.\n\n- Parameters\n  - `index`: Index of the sensor to read. A list of sensor indices can be found here.\n\n- Returns\n  - A reading from the sensor, or `nil` if the sensor has a problem or isn't configured."
+    },
+    {
+      "label": "getSensorRaw",
+      "insertText": "getSensorRaw(${1:index})",
+      "snippet": true,
+      "section": "Input",
+      "doc": "Reads the raw value from the specified sensor. For most sensors, this means the analog voltage on the relevant input pin.\n\n- Parameters\n  - `index`: Index of the sensor to read. A list of sensor indices can be found here.\n\n- Returns\n  - The raw value that yielded the sensor reading, or 0 if the sensor doesn't support raw readings, isn't configured, or has failed."
+    },
+    {
+      "label": "getSentValue",
+      "insertText": "getSentValue(${1:index})",
+      "snippet": true,
+      "section": "SENT protocol",
+      "doc": ""
+    },
+    {
+      "label": "getSentValues",
+      "insertText": "getSentValues(${1:index})",
+      "snippet": true,
+      "section": "SENT protocol",
+      "doc": ""
+    },
+    {
+      "label": "getTimeSinceAcToggleMs",
+      "insertText": "getTimeSinceAcToggleMs()",
+      "snippet": false,
+      "section": "User Settings",
+      "doc": ""
+    },
+    {
+      "label": "getTsButtonCount",
+      "insertText": "getTsButtonCount(${1:id})",
+      "snippet": true,
+      "section": "Timer",
+      "doc": "`getTsButtonCount X` returns number of times specific Lua button was pressed in TS\n\nSee ts-button-example.lua"
+    },
+    {
+      "label": "hasSensor",
+      "insertText": "hasSensor(${1:index})",
+      "snippet": true,
+      "section": "Input",
+      "doc": "Checks whether a particular sensor is configured (whether it is currently valid or not).\n\n- Parameters\n  - `index`: Index of the sensor to check. A list of sensor indices can be found here.\n\n- Returns\n  - A boolean value, `true` if the sensor is configured, and `false` if not."
+    },
+    {
+      "label": "IndustrialPid:setAntiwindupFreq",
+      "insertText": "industrialPid:setAntiwindupFreq()",
+      "snippet": false,
+      "section": "PID",
+      "doc": ""
+    },
+    {
+      "label": "IndustrialPid:setDerivativeFilterLoss",
+      "insertText": "industrialPid:setDerivativeFilterLoss()",
+      "snippet": false,
+      "section": "PID",
+      "doc": ""
+    },
+    {
+      "label": "IndustrialPid.new",
+      "insertText": "IndustrialPid.new(${1:p}, ${2:i}, ${3:d}, ${4:min}, ${5:max})",
+      "snippet": true,
+      "section": "PID",
+      "doc": "Create an industrial PID controller."
+    },
+    {
+      "label": "interpolate",
+      "insertText": "interpolate(${1:x1}, ${2:y1}, ${3:x2}, ${4:y2}, ${5:x})",
+      "snippet": true,
+      "section": "Utility",
+      "doc": "Interpolates `x` placing it on the line defined by (x1, y1) and (x2, y2)"
+    },
+    {
+      "label": "isEngineStopRequested",
+      "insertText": "isEngineStopRequested()",
+      "snippet": false,
+      "section": "Engine Control",
+      "doc": "Returns true if engine stop was requested by either Lua or a start/stop button within the last five seconds."
+    },
+    {
+      "label": "isFirmwareError",
+      "insertText": "isFirmwareError()",
+      "snippet": false,
+      "section": "User Settings",
+      "doc": "Returns true if the ECU is in state of critical/fatal error."
+    },
+    {
+      "label": "mcu_standby",
+      "insertText": "mcu_standby()",
+      "snippet": false,
+      "section": "Utility",
+      "doc": "Stops MCU."
+    },
+    {
+      "label": "onCanRx",
+      "insertText": "function onCanRx(bus, id, dlc, data)\n\t$0\nend",
+      "snippet": true,
+      "section": "Callbacks",
+      "doc": "Default CAN RX callback when canRxAdd is used without a custom callback."
+    },
+    {
+      "label": "onTick",
+      "insertText": "function onTick()\n\t$0\nend",
+      "snippet": true,
+      "section": "Callbacks",
+      "doc": "Called periodically by rusEFI."
+    },
+    {
+      "label": "Pid:get",
+      "insertText": "pid:get()",
+      "snippet": false,
+      "section": "PID",
+      "doc": ""
+    },
+    {
+      "label": "Pid:reset",
+      "insertText": "pid:reset()",
+      "snippet": false,
+      "section": "PID",
+      "doc": ""
+    },
+    {
+      "label": "Pid:setOffset",
+      "insertText": "pid:setOffset()",
+      "snippet": false,
+      "section": "PID",
+      "doc": ""
+    },
+    {
+      "label": "Pid.new",
+      "insertText": "Pid.new(${1:p}, ${2:i}, ${3:d}, ${4:min}, ${5:max})",
+      "snippet": true,
+      "section": "PID",
+      "doc": "Create a PID controller."
+    },
+    {
+      "label": "print",
+      "insertText": "print(${1:msg})",
+      "snippet": true,
+      "section": "Utility",
+      "doc": "Print a line of text to the ECU's log.\n\n- Parameters\n  - `msg`: The message to print. Pass a string or number and it will be printed to the log.\n\n- Returns\n  - none"
+    },
+    {
+      "label": "readPin",
+      "insertText": "readPin(${1:pinName})",
+      "snippet": true,
+      "section": "Input",
+      "doc": "Reads physical value of arbitrary MCU pin in case of emergency. Not a proper way to implement proper logic, use Lua aux inputs.\n\n- Parameters\n  - `pinName`: string name of MCU pin, for examples \"PD15\""
+    },
+    {
+      "label": "selfStimulateRPM",
+      "insertText": "selfStimulateRPM(${1:rpm})",
+      "snippet": true,
+      "section": "Output",
+      "doc": "Positive value would start clicking injectors at specified RPM, zero value would stop self-stimulation."
+    },
+    {
+      "label": "Sensor:invalidate",
+      "insertText": "sensor:invalidate()",
+      "snippet": false,
+      "section": "Sensor",
+      "doc": ""
+    },
+    {
+      "label": "Sensor:set",
+      "insertText": "vssSensor:set(${1:value})",
+      "snippet": true,
+      "section": "Sensor",
+      "doc": "Set sensor value."
+    },
+    {
+      "label": "Sensor:setRedundant",
+      "insertText": "sensor:setRedundant(${1:value})",
+      "snippet": true,
+      "section": "Sensor",
+      "doc": ""
+    },
+    {
+      "label": "Sensor:setTimeout",
+      "insertText": "vssSensor:setTimeout(${1:ms})",
+      "snippet": true,
+      "section": "Sensor",
+      "doc": "Sensor validity timeout, ms."
+    },
+    {
+      "label": "Sensor.new",
+      "insertText": "Sensor.new(\"${1:name}\")",
+      "snippet": true,
+      "section": "Sensor",
+      "doc": "Create a virtual sensor."
+    },
+    {
+      "label": "setAcDisabled",
+      "insertText": "setAcDisabled(${1:value})",
+      "snippet": true,
+      "section": "User Settings",
+      "doc": "Disable/suppress A/C functionality regardless of how it is enabled."
+    },
+    {
+      "label": "setAcRequestState",
+      "insertText": "setAcRequestState(${1:value})",
+      "snippet": true,
+      "section": "User Settings",
+      "doc": "Use `setAcRequestState` to tell rusEFI about a CAN-based A/C request."
+    },
+    {
+      "label": "setBoostDutyAdd",
+      "insertText": "setBoostDutyAdd(${1:amount})",
+      "snippet": true,
+      "section": "Engine Control",
+      "doc": "Additive for open loop target boost pressure."
+    },
+    {
+      "label": "setBoostTargetAdd",
+      "insertText": "setBoostTargetAdd(${1:amount})",
+      "snippet": true,
+      "section": "Engine Control",
+      "doc": "Additive for closed loop target boost pressure."
+    },
+    {
+      "label": "setBoostTargetMult",
+      "insertText": "setBoostTargetMult(${1:coeff})",
+      "snippet": true,
+      "section": "Engine Control",
+      "doc": "Multiplier for closed loop target boost pressure."
+    },
+    {
+      "label": "setBrakePedalState",
+      "insertText": "setBrakePedalState(${1:value})",
+      "snippet": true,
+      "section": "User Settings",
+      "doc": "Use `setBrakePedalState` to tell rusEFI about a CAN-based brake pedal."
+    },
+    {
+      "label": "setCalibration",
+      "insertText": "setCalibration(${1:name}, ${2:value}, ${3:needEvent})",
+      "snippet": true,
+      "section": "User Settings",
+      "doc": "Sets the specified calibration setting to the specified value. Fires a calibration change event depending on the needEvent parameter.\n\nFor example: `setCalibration(\"cranking.rpm\", 900, false)`"
+    },
+    {
+      "label": "setClutchUpState",
+      "insertText": "setClutchUpState(${1:value})",
+      "snippet": true,
+      "section": "User Settings",
+      "doc": ""
+    },
+    {
+      "label": "setDacVoltage",
+      "insertText": "setDacVoltage(${1:index}, ${2:value})",
+      "snippet": true,
+      "section": "Output",
+      "doc": "Not enabled on most boards since most boards were not developer with DAC in mind! See https://github.com/rusefi/rusefi/blob/master/firmware/controllers/lua/examples/dac.txt for more info."
+    },
+    {
+      "label": "setDebug",
+      "insertText": "setDebug(${1:index}, ${2:value})",
+      "snippet": true,
+      "section": "Utility",
+      "doc": "Sets a debug channel to the specified value. Note: this only works when the ECU debug mode is set to `Lua`.\n\n- Parameters\n  - `index`: the index of the debug channel to set, 1 thru 7 inclusive.\n  - `value`: the value to set the channel to\n\n- Returns\n  - none"
+    },
+    {
+      "label": "setEtbAdd",
+      "insertText": "setEtbAdd(${1:percent})",
+      "snippet": true,
+      "section": "Engine Control",
+      "doc": "Amount of ETB to add, as a percent of the wide-open value: e.g. `10` for +10%. The value is a static amount to add to the determined value, e.g. TPS of 5% w/ `10` results in 15% ETB.\n\nThis could be used for torque reduction."
+    },
+    {
+      "label": "setEtbDisabled",
+      "insertText": "setEtbDisabled(${1:value})",
+      "snippet": true,
+      "section": "User Settings",
+      "doc": ""
+    },
+    {
+      "label": "setFuelAdd",
+      "insertText": "setFuelAdd(${1:amount})",
+      "snippet": true,
+      "section": "Engine Control",
+      "doc": "Currently not functional\n\nAmount of fuel mass to add to injection, scaled by fuel multiplier (`setFuelMult()`); initially 0."
+    },
+    {
+      "label": "setFuelMult",
+      "insertText": "setFuelMult(${1:coeff})",
+      "snippet": true,
+      "section": "Engine Control",
+      "doc": "Currently not functional\n\nAmount to scale added fuel mass by; initially 1.0;"
+    },
+    {
+      "label": "setIdleAdd",
+      "insertText": "setIdleAdd(${1:percent})",
+      "snippet": true,
+      "section": "Engine Control",
+      "doc": "Percent to add to idle (incl. open loop)."
+    },
+    {
+      "label": "setIgnDisabled",
+      "insertText": "setIgnDisabled(${1:value})",
+      "snippet": true,
+      "section": "User Settings",
+      "doc": "Use `setIgnDisabled` for all kinds of cranking safety systems."
+    },
+    {
+      "label": "setLaunchTrigger",
+      "insertText": "setLaunchTrigger()",
+      "snippet": false,
+      "section": "Engine Control",
+      "doc": ""
+    },
+    {
+      "label": "setLuaGauge",
+      "insertText": "setLuaGauge(${1:index}, ${2:value})",
+      "snippet": true,
+      "section": "Output",
+      "doc": "In an ideal world one would be using Sensor.new(\"LuaGauge1\") but looks like that's not the way at the moment :(\n\n- Parameters\n  - `index`: The index of the Lua gauge to set. Valid indices are from '1' to '8'.\n  - `value`: Desired gauge value.\n\n- Returns\n  - none"
+    },
+    {
+      "label": "setPwmDuty",
+      "insertText": "setPwmDuty(${1:index}, ${2:duty})",
+      "snippet": true,
+      "section": "Output",
+      "doc": "Set the duty cycle of the specified PWM channel.\n\n- Parameters\n  - `index`: The index of the PWM channel to set. Valid values are 0 through 7, one for each of the 8 channels.\n  - `duty`: Desired duty cycle of the output. `0.0` = fully off, and `1.0` = fully on. `0.25` = on 25% of the time, off 75% of the time.\n\n- Returns\n  - none"
+    },
+    {
+      "label": "setPwmFreq",
+      "insertText": "setPwmFreq(${1:index}, ${2:frequency})",
+      "snippet": true,
+      "section": "Output",
+      "doc": "- Parameters\n  - `index`: The index of the PWM channel to set.\n  - `frequency`: Initial frequency of the output, in hertz (cycles per second). Valid values are between 1 and 1000hz.\n\n- Returns\n  - none"
+    },
+    {
+      "label": "setSparkHardSkipRatio",
+      "insertText": "setSparkHardSkipRatio(${1:ratio})",
+      "snippet": true,
+      "section": "Engine Control",
+      "doc": "`setSparkHardSkipRatio(0)` to skip 0% of the ignition events, i.e. no skipping `setSparkHardSkipRatio(0.75)` would skip 75% of ignition events."
+    },
+    {
+      "label": "setSparkSkipRatio",
+      "insertText": "setSparkSkipRatio(${1:ratio})",
+      "snippet": true,
+      "section": "Engine Control",
+      "doc": "`setSparkSkipRatio(0)` woild skip 0% of the ignition events, i.e. no skipping `setSparkSkipRatio(0.5)` would skip half of ignition events. We never skip two consecutive ignitions.\n\nThis could be used for torque reduction."
+    },
+    {
+      "label": "setTickRate",
+      "insertText": "setTickRate(${1:hz})",
+      "snippet": true,
+      "section": "Utility",
+      "doc": "Sets the rate at which rusEFI calls your `onTick` and `onCanRx` functions, in hz. On reset default is 10hz.\n\n- Parameters\n  - `hz`: Desired tick rate, in hz. Values passed will be clamped to a minimum of 1hz, and maximum of 200hz.\n\n- Returns\n  - none"
+    },
+    {
+      "label": "setTimingAdd",
+      "insertText": "setTimingAdd(${1:angle})",
+      "snippet": true,
+      "section": "Engine Control",
+      "doc": "Use negative values to retard timing."
+    },
+    {
+      "label": "setTimingMult",
+      "insertText": "setTimingMult(${1:coeff})",
+      "snippet": true,
+      "section": "Engine Control",
+      "doc": "This could be used for torque reduction."
+    },
+    {
+      "label": "startCrankingEngine",
+      "insertText": "startCrankingEngine()",
+      "snippet": false,
+      "section": "Engine Control",
+      "doc": "Start cranking as if a physical start button was tapped."
+    },
+    {
+      "label": "startPwm",
+      "insertText": "startPwm(${1:index}, ${2:frequency}, ${3:duty})",
+      "snippet": true,
+      "section": "Output",
+      "doc": "Initializes PWM on the specified index, starting at the specified frequency and duty cycle. The index selects which config field pin to use, see \"Lua PWM Outputs\" page in TunerStudio.\n\n- Parameters\n  - `index`: The index of the PWM channel to start. Valid values are 0 through 7, one for each of the 8 channels.\n  - `frequency`: Initial frequency of the output, in hertz (cycles per second). Valid values are between 1 and 1000hz.\n  - `duty`: Initial duty cycle of the output. `0.0` = fully off, and `1.0` = fully on. `0.25` = on 25% of the time, off 75% of the time.\n\n- Returns\n  - none"
+    },
+    {
+      "label": "stopEngine",
+      "insertText": "stopEngine()",
+      "snippet": false,
+      "section": "Engine Control",
+      "doc": ""
+    },
+    {
+      "label": "table3d",
+      "insertText": "table3d(${1:tableIdx}, ${2:x}, ${3:y})",
+      "snippet": true,
+      "section": "Utility",
+      "doc": "Looks up a value from the specified Script Table.\n\n- Parameters\n  - `tableIdx`: Index of the table to use. Currently 4 tables are supported, so indices 1, 2, 3, and 4 are valid.\n  - `x`: X-axis value to look up in the table (this is often RPM)\n  - `y`: Y-axis value to look up in the table (this is often load)\n\n- Returns\n  - A number representing the value looked up from the table."
+    },
+    {
+      "label": "Timer:getElapsedSeconds",
+      "insertText": "t:getElapsedSeconds()",
+      "snippet": false,
+      "section": "Timer",
+      "doc": "`yourTimer:getElapsedSeconds();` to get number of seconds since timer was reset"
+    },
+    {
+      "label": "Timer:reset",
+      "insertText": "t:reset()",
+      "snippet": false,
+      "section": "Timer",
+      "doc": "`yourTimer:reset();` to reset timer"
+    },
+    {
+      "label": "Timer.new",
+      "insertText": "Timer.new()",
+      "snippet": false,
+      "section": "Timer",
+      "doc": "Create a Timer instance."
+    },
+    {
+      "label": "txCan",
+      "insertText": "txCan(${1:bus}, ${2:ID}, ${3:isExt}, ${4:payload})",
+      "snippet": true,
+      "section": "CAN bus",
+      "doc": "- Parameters\n  - bus: hardware CAN bus index, only '1' on most rusEFI boards, '1' or '2' on Proteus, '1-2-3' on uaCanBridge and purple gateway\n  - isExt: 0 for 11 bit mode"
+    },
+    {
+      "label": "vin",
+      "insertText": "vin(${1:index})",
+      "snippet": true,
+      "section": "Utility",
+      "doc": "Return VIN setting character at specified index\n\n- Parameters\n  - index: zero-based index"
+    }
+  ]
+}

@@ -30,7 +30,8 @@
 
 | | Направление | Описание |
 |---|-------------|----------|
-| 🟡 | **Редактор и хранилище скриптов** | Вкладка **SCRIPTS**: чтение/запись `luaScript` в RAM ECU, `luareset`, burn (как Java console). Дальше: форматирование, `-- include` / `-- scriptname`, папка скриптов, сохранение в проект. |
+| ⬜ | **Хранилище и include** | Форматирование Lua, `-- include` / `-- scriptname`, папка скриптов, сохранение в проект. |
+| ⬜ | **Подсказки из firmware** | Stubs / LuaLS: `getCalibration` / `getOutput` по generated lookup, не только wiki. |
 
 ---
 
