@@ -683,6 +683,15 @@ impl KnockScopeSource {
 
         session.composite().disable_on_ecu(&session);
         session.composite().stop();
+        // BigBuffer общий: tooth logger должен быть выключен до knock scope enable.
+        let _ = session.with_link(|link| link.set_composite_logger_enabled(false));
+
+        if config_enable_knock_scope(&session) == Some(false) {
+            return Err(
+                "В config выключен enableKnockScope — включите в настройках ECU и перезагрузите page 0."
+                    .into(),
+            );
+        }
 
         let ref_rpm = session
             .output()

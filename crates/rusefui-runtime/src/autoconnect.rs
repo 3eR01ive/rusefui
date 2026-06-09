@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use rusefi_protocol::{
     is_port_busy, list_serial_ports, port_exists, rusefi_port_candidates,
@@ -334,6 +334,64 @@ impl AutoConnectManager {
             AutoConnectTick::Idle
         }
     }
+}
+
+/// Одна попытка подключения к первому свободному rusEFI-порту.
+pub fn try_connect_ecu_once(session: &EcuSession) -> Result<bool, String> {
+    if session.is_connected() {
+        return Ok(true);
+    }
+    if session.is_io_locked() {
+        return Ok(false);
+    }
+
+    let entries = list_serial_ports().map_err(|e| e.to_string())?;
+    let candidates = rusefi_port_candidates(&entries);
+    if candidates.is_empty() {
+        return Ok(false);
+    }
+
+    for port in candidates {
+        if session.is_io_locked() {
+            break;
+        }
+        if is_port_busy(&port, DEFAULT_BAUD_RATE) {
+            continue;
+        }
+        if session
+            .connect_automatic(&port, DEFAULT_BAUD_RATE)
+            .is_ok()
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+/// Периодически сканирует порты до подключения или истечения таймаута.
+pub fn connect_ecu_blocking(session: &EcuSession, timeout: Duration) -> Result<(), String> {
+    if session.is_connected() {
+        return Ok(());
+    }
+
+    let deadline = Instant::now() + timeout;
+    let retry = Duration::from_millis(500);
+
+    while Instant::now() < deadline {
+        if try_connect_ecu_once(session)? {
+            return Ok(());
+        }
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
+            break;
+        }
+        thread::sleep(retry.min(remaining));
+    }
+
+    Err(format!(
+        "ECU не найдена за {} с",
+        timeout.as_secs().max(1)
+    ))
 }
 
 fn poll_loop(

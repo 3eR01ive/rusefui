@@ -1,3 +1,4 @@
+pub mod cli;
 mod runtime_cmds;
 
 use runtime_cmds::{

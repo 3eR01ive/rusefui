@@ -8,5 +8,9 @@ fn main() {
     #[cfg(target_os = "linux")]
     linux_appimage::prepare_webview_env();
 
+    if let Some(cmd) = rusefui_lib::cli::take_ecu_command_from_args() {
+        std::process::exit(rusefui_lib::cli::run_ecu_command(&cmd));
+    }
+
     rusefui_lib::run()
 }

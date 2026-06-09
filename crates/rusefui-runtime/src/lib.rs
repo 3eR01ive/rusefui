@@ -26,7 +26,10 @@ pub mod components;
 pub mod session;
 pub mod sources;
 
-pub use autoconnect::{AutoConnectManager, AutoConnectSnapshot, AutoConnectTick};
+pub use autoconnect::{
+    connect_ecu_blocking, try_connect_ecu_once, AutoConnectManager, AutoConnectSnapshot,
+    AutoConnectTick,
+};
 pub use component::{
     ComponentAction, ComponentLogic, ComponentMeta, EcuSyncOnMount, LogicComponentType,
 };
