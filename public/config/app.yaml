@@ -8,4 +8,5 @@ tabs:
   - $tab: run
   - $tab: knock
   - $tab: control
+  - $tab: scripts
   - $tab: ini-preview

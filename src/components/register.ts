@@ -22,6 +22,7 @@ import Dyno from "./builtins/Dyno.vue";
 import KnockPanel from "./builtins/KnockPanel.vue";
 import Spectrogram from "./builtins/Spectrogram.vue";
 import ConfigChecklist from "./builtins/ConfigChecklist.vue";
+import LuaScriptPanel from "./builtins/LuaScriptPanel.vue";
 import ProjectTimeline from "./builtins/ProjectTimeline.vue";
 
 let registered = false;
@@ -43,6 +44,7 @@ export function registerBuiltinComponents(): void {
   reg("connection", ConnectionPanel);
   reg("simulation", SimulationPanel);
   reg("command", CommandPanel);
+  reg("lua-script", LuaScriptPanel);
   reg("scalar-field", ScalarField);
   reg("string-field", StringField);
   reg("enum-field", EnumField);

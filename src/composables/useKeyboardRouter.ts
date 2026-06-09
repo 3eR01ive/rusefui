@@ -16,6 +16,7 @@ import {
   tabOrder,
   undoCallback,
 } from "./useHotkeys";
+import { isKeyboardSinkTarget } from "./useKeyboardSink";
 
 export type KeyboardHandler = (e: KeyboardEvent) => boolean;
 
@@ -193,6 +194,10 @@ function onKeydownCapture(e: KeyboardEvent): void {
         return;
       }
     }
+  }
+
+  if (isKeyboardSinkTarget(e.target) && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    return;
   }
 
   if (navMode.value === "active" && activePath.value) {

@@ -7,6 +7,7 @@ const RUST_LOGIC_TYPES = new Set([
   "config-table",
   "ignition-table",
   "command",
+  "lua-script",
 ]);
 
 export function requiresRustLogic(componentType: string): boolean {

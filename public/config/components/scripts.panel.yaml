@@ -1,0 +1,9 @@
+id: scripts.panel
+description: Lua-скрипт ECU — чтение, запись, burn
+
+children:
+  - type: lua-script
+    id: lua-editor
+    navSelectable: false
+    props:
+      scriptField: luaScript

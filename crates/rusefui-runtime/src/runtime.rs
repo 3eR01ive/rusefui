@@ -12,6 +12,7 @@ use crate::components::connection::ConnectionLogic;
 use crate::components::dyno::DynoLogic;
 use crate::components::ignition_table::IgnitionTableLogic;
 use crate::components::knock::KnockLogic;
+use crate::components::lua_script::LuaScriptLogic;
 use crate::components::simulation::SimulationLogic;
 use crate::sources::output_channels::OutputSnapshot;
 use crate::session::EcuSession;
@@ -62,12 +63,13 @@ impl ComponentRuntime {
         }
 
         if self.instances.contains_key(instance_id) {
-            if matches!(
-                LogicComponentType::from_str(component_type),
-                Some(LogicComponentType::ConfigTable) | Some(LogicComponentType::IgnitionTable)
-            ) && !payload.is_null()
-            {
-                return self.dispatch(instance_id, "set_bind", payload);
+            if !payload.is_null() {
+                let remount_action = match LogicComponentType::from_str(component_type) {
+                    Some(LogicComponentType::ConfigTable)
+                    | Some(LogicComponentType::IgnitionTable) => "set_bind",
+                    _ => "mount",
+                };
+                return self.dispatch(instance_id, remount_action, payload);
             }
             return Ok(self.state(instance_id)?);
         }
@@ -97,20 +99,19 @@ impl ComponentRuntime {
             Some(LogicComponentType::Command) => {
                 Box::new(CommandLogic::new(Arc::clone(&self.session)))
             }
+            Some(LogicComponentType::LuaScript) => {
+                Box::new(LuaScriptLogic::new(Arc::clone(&self.session)))
+            }
             None => {
                 return Err(format!("unknown logic component: {component_type}"));
             }
         };
 
         self.instances.insert(instance_id.to_string(), logic);
-        let mount_payload = if matches!(
-            LogicComponentType::from_str(component_type),
-            Some(LogicComponentType::ConfigTable) | Some(LogicComponentType::IgnitionTable)
-        ) && !payload.is_null()
-        {
-            payload
-        } else {
+        let mount_payload = if payload.is_null() {
             Value::Null
+        } else {
+            payload
         };
         self.dispatch(instance_id, "mount", mount_payload)
     }
@@ -150,6 +151,7 @@ impl ComponentRuntime {
             LogicComponentType::Knock.as_str(),
             LogicComponentType::ConfigTable.as_str(),
             LogicComponentType::Command.as_str(),
+            LogicComponentType::LuaScript.as_str(),
         ]
     }
 

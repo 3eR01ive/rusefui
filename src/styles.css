@@ -316,3 +316,24 @@ input[type="radio"]:focus-visible {
     min-height: 24rem;
   }
 }
+
+/* Scripts tab: Monaco на всю высоту панели */
+.tab-panel[data-tab-id="scripts"] {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tab-panel[data-tab-id="scripts"] .composite-root {
+  flex: 1 1 0;
+  min-height: 0;
+  gap: 0;
+}
+
+.tab-panel[data-tab-id="scripts"] .lua-script-panel {
+  flex: 1 1 0;
+  min-height: 0;
+  height: 100%;
+  box-sizing: border-box;
+}

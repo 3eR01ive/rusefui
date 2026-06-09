@@ -392,6 +392,12 @@ async function onBurn() {
             <path d="M11 11l3.5 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
             <circle cx="11" cy="11" r="1.3" fill="currentColor"/>
           </svg>
+          <!-- Scripts: code braces -->
+          <svg v-else-if="tab.id === 'scripts'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
+            <rect x="2" y="2" width="18" height="16" rx="2.5" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.3"/>
+            <path d="M8 6.5 5.5 10 8 13.5M14 6.5 16.5 10 14 13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M11.5 5.5 10 14.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".5"/>
+          </svg>
           <!-- Config: horizontal sliders -->
           <svg v-else-if="tab.id === 'ini-preview'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
             <line x1="2" y1="4.5" x2="20" y2="4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".35"/>
@@ -543,6 +549,9 @@ async function onBurn() {
 
 .app-main {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   height: calc(100vh - var(--app-header-h, 5.5rem) - var(--footer-height) - 0.75rem);
   overflow: hidden;
   padding: 0 var(--app-padding-x);

@@ -1,0 +1,6 @@
+tab:
+  id: scripts
+  title: SCRIPTS
+
+root:
+  $component: scripts.panel

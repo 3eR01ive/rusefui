@@ -11,6 +11,7 @@ pub enum LogicComponentType {
     ConfigTable,
     IgnitionTable,
     Command,
+    LuaScript,
 }
 
 impl LogicComponentType {
@@ -23,6 +24,7 @@ impl LogicComponentType {
             "config-table" => Some(Self::ConfigTable),
             "ignition-table" => Some(Self::IgnitionTable),
             "command" => Some(Self::Command),
+            "lua-script" => Some(Self::LuaScript),
             _ => None,
         }
     }
@@ -36,6 +38,7 @@ impl LogicComponentType {
             Self::ConfigTable => "config-table",
             Self::IgnitionTable => "ignition-table",
             Self::Command => "command",
+            Self::LuaScript => "lua-script",
         }
     }
 }
