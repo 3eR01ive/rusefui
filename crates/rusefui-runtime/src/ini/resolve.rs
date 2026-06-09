@@ -417,6 +417,53 @@ pub fn ini_cache_dir() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from(".rusEFI/ini_database"))
 }
 
+/// Скопировать INI в `ini_cache_dir`, если он ещё не там.
+/// Имя — `{hash}.ini` по rusEFI signature (как online-загрузка / Java Console).
+pub fn install_ini_to_cache(source: &Path, file: &IniFile) -> Result<PathBuf, IniResolveError> {
+    let cache_dir = ini_cache_dir();
+    std::fs::create_dir_all(&cache_dir).map_err(|e| IniResolveError::LoadFailed {
+        path: cache_dir.clone(),
+        message: format!("не создать каталог кэша: {e}"),
+    })?;
+
+    let source_canon = source.canonicalize().unwrap_or_else(|_| source.to_path_buf());
+    let cache_canon = cache_dir.canonicalize().unwrap_or(cache_dir);
+
+    if source_canon.starts_with(&cache_canon) {
+        return Ok(source_canon);
+    }
+
+    let dest_name = cache_file_name_for_ini(file, source)?;
+    let dest = cache_canon.join(&dest_name);
+    if dest == source_canon {
+        return Ok(dest);
+    }
+
+    std::fs::copy(&source_canon, &dest).map_err(|e| IniResolveError::LoadFailed {
+        path: dest.clone(),
+        message: format!("copy from {}: {e}", source_canon.display()),
+    })?;
+
+    Ok(dest)
+}
+
+fn cache_file_name_for_ini(file: &IniFile, source: &Path) -> Result<String, IniResolveError> {
+    if let Some(sig) = file.signature.as_deref() {
+        if let Some(parsed) = parse_rusefi_signature(sig) {
+            return Ok(format!("{}.ini", parsed.hash));
+        }
+    }
+    source
+        .file_name()
+        .and_then(|s| s.to_str())
+        .filter(|n| n.ends_with(".ini") && !n.is_empty())
+        .map(|s| s.to_string())
+        .ok_or_else(|| IniResolveError::LoadFailed {
+            path: source.to_path_buf(),
+            message: "нет rusEFI signature и некорректное имя файла для кэша".into(),
+        })
+}
+
 pub fn search_directories() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
 
@@ -511,5 +558,39 @@ mod tests {
             error: "boom".into(),
         };
         assert!(!fail.is_success());
+    }
+
+    #[test]
+    fn install_ini_to_cache_copies_external_file_by_hash() {
+        let source_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../test_data")
+            .canonicalize()
+            .expect("test_data dir");
+        let source = source_dir.join("rusefi_proteus_f7.ini");
+        let cache_root = std::env::temp_dir().join(format!(
+            "rusefui-ini-cache-test-{}",
+            std::process::id()
+        ));
+        std::fs::remove_dir_all(&cache_root).ok();
+        std::env::set_var("RUSEFI_INI_CACHE_DIR", cache_root.display().to_string());
+
+        let file = IniFile::load_file(&source).expect("load proteus ini");
+        let sig = file.signature.as_deref().expect("signature in test ini");
+        let hash = parse_rusefi_signature(sig).expect("parse signature").hash;
+        let cached = install_ini_to_cache(&source, &file).expect("install to cache");
+        assert_eq!(
+            cached,
+            cache_root.canonicalize().unwrap_or(cache_root.clone()).join(format!("{hash}.ini"))
+        );
+        assert!(cached.is_file());
+        let cached_ini = IniFile::load_file(&cached).unwrap();
+        assert_eq!(cached_ini.signature.as_deref(), Some(sig));
+
+        // Повторный вызов для файла уже в кэше — без лишней копии.
+        let again = install_ini_to_cache(&cached, &cached_ini).expect("already cached");
+        assert_eq!(again, cached.canonicalize().unwrap_or(cached));
+
+        std::env::remove_var("RUSEFI_INI_CACHE_DIR");
+        std::fs::remove_dir_all(&cache_root).ok();
     }
 }

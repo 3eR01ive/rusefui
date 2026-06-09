@@ -5,8 +5,9 @@ mod signature;
 pub use panel_cache::{ensure_panels_for_ini, PanelCacheStatus};
 pub use resolve::{
     download_ini_for_signature, enumerate_local_candidates, find_any_local_ini, ini_cache_dir,
-    load_ini_path, resolve_ini_for_signature, search_directories, signatures_match, IniCandidate,
-    IniCandidateSource, IniResolveError, OnlineDownloadStatus, ResolvedIni,
+    install_ini_to_cache, load_ini_path, resolve_ini_for_signature, search_directories,
+    signatures_match, IniCandidate, IniCandidateSource, IniResolveError, OnlineDownloadStatus,
+    ResolvedIni,
 };
 pub use signature::{ini_download_target, parse_rusefi_signature, RusEfiSignature};
 

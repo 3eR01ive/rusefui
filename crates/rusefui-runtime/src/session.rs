@@ -10,9 +10,8 @@ use rusefi_protocol::{ConnectionInfo, ProtocolError, SerialLink, DEFAULT_IO_TIME
 use serde::Serialize;
 
 use crate::ini::{
-    download_ini_for_signature, ensure_panels_for_ini, load_ini_path,
-    resolve_ini_for_signature, IniResolveError, OnlineDownloadStatus, PanelCacheStatus,
-    ResolvedIni,
+    download_ini_for_signature, ensure_panels_for_ini, install_ini_to_cache, load_ini_path,
+    resolve_ini_for_signature, IniResolveError, OnlineDownloadStatus, PanelCacheStatus, ResolvedIni,
 };
 use crate::protocol_log::ProtocolLogStore;
 use crate::stimulator_ramp::StimulatorRampRunner;
@@ -645,8 +644,16 @@ impl EcuSession {
             }
         }
 
+        let cache_path = install_ini_to_cache(path, &file).map_err(|e| e.to_string())?;
+        if cache_path != path {
+            self.protocol_log.log_info(&format!(
+                "INI установлен в кэш: {} → {}",
+                path.display(),
+                cache_path.display()
+            ));
+        }
         let resolved = ResolvedIni {
-            path: path.to_path_buf(),
+            path: cache_path,
             file,
         };
         self.apply_ini(resolved);
