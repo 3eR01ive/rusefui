@@ -87,16 +87,16 @@ export interface KnockScopeUiTick {
   spectrogramPatchPixelMax?: number;
   lastCylinder?: number | null;
   lastChannel?: number | null;
-  spectrogramMarkers?: KnockCylinderMarker[];
-  waveformChunk?: number[];
+  spectrogramMarkers?: readonly KnockCylinderMarker[];
+  waveformChunk?: readonly number[];
 }
 
 export interface KnockScopeSnapshot extends KnockScopeUiTick {
-  samples?: number[];
+  samples?: readonly number[];
   spectrogram?: {
     width: number;
     height: number;
-    pixels?: number[];
+    pixels?: readonly number[];
   };
 }
 
@@ -332,7 +332,7 @@ export async function setKnockSpectrogramFollowLive(follow: boolean): Promise<vo
   }
 }
 
-export function formatKnockCaptureStats(snap: KnockScopeUiTick, windowMs: number): string {
+export function formatKnockCaptureStats(snap: Readonly<KnockScopeUiTick>, windowMs: number): string {
   const inView = snap.spectrogramViewCaptures ?? snap.spectrogramWidth ?? 0;
   const total = snap.spectrogramTotalColumns ?? snap.captureCount ?? 0;
   const all = snap.captureCount ?? total;

@@ -145,15 +145,6 @@ pub fn read_cached_manifest(hash: &str) -> Result<PanelManifest, String> {
     serde_json::from_str(&text).map_err(|e| e.to_string())
 }
 
-/// Прочитать YAML-панель из cache hash.
-pub fn read_cached_panel_yaml(hash: &str, file: &str) -> Result<String, String> {
-    if file.contains('/') || file.contains('\\') || file.contains("..") {
-        return Err("недопустимое имя файла панели".into());
-    }
-    let path = cache_dir_for_hash(hash).join(file);
-    fs::read_to_string(&path).map_err(|e| e.to_string())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

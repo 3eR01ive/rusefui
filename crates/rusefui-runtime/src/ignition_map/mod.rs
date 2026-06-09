@@ -2,7 +2,7 @@ mod calculator;
 mod coefficients;
 mod engine;
 
-pub use calculator::{SparkAdvanceCalculator, SparkCell, SparkDiagnostics};
+pub use calculator::SparkAdvanceCalculator;
 pub use coefficients::ModelCoefficients;
 pub use engine::EngineParams;
 
@@ -22,7 +22,7 @@ pub fn generate_table_values(
         let map_kpa = load_axis[storage_row];
         for col in 0..cols {
             let rpm = rpm_axis[col];
-            flat.push(calc.advance_at(rpm, map_kpa).advance_deg);
+            flat.push(calc.advance_at(rpm, map_kpa));
         }
     }
 

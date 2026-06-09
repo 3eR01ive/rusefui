@@ -22,12 +22,10 @@ const POLL_NOT_READY: Duration = Duration::from_micros(500);
 /// Порт занят (output poll и т.д.) — yield и быстрый retry.
 const POLL_SERIAL_BUSY: Duration = Duration::from_micros(200);
 const POLL_IDLE: Duration = Duration::from_millis(40);
-const STATUS_EMIT_INTERVAL: Duration = Duration::from_millis(400);
 const STALL_HINT_AFTER: Duration = Duration::from_secs(4);
 /// Включение/выключение scope на ECU — редко, можно подождать порт.
 const SERIAL_MUTEX_WAIT: Duration = Duration::from_millis(200);
 
-const READY_FIELD: &str = "knockScopeReady";
 const CONFIG_ENABLE_FIELD: &str = "enableKnockScope";
 
 /// Частота KNOCK_ADC на Proteus F4/F7.
@@ -60,6 +58,7 @@ struct KnockScopeFrame {
 #[derive(Debug, Clone, Copy, Default)]
 struct KnockScopeBatchMeta {
     dropped_since_last: u16,
+    #[allow(dead_code)]
     total_frames_written: u32,
 }
 
@@ -428,17 +427,6 @@ fn config_enable_knock_scope(session: &EcuSession) -> Option<bool> {
         .get(CONFIG_ENABLE_FIELD)
         .copied()
         .map(|v| v >= 0.5)
-}
-
-fn output_knock_scope_ready(session: &EcuSession) -> bool {
-    session
-        .output()
-        .snapshot()
-        .values
-        .get(READY_FIELD)
-        .copied()
-        .map(|v| v >= 0.5)
-        .unwrap_or(false)
 }
 
 fn status_hint(

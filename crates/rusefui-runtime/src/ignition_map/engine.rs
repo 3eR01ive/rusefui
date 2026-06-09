@@ -74,12 +74,3 @@ impl Default for EngineParams {
         }
     }
 }
-
-impl EngineParams {
-    pub fn is_forced_induction(&self) -> bool {
-        matches!(
-            self.aspiration.as_str(),
-            "turbocharged" | "supercharged"
-        )
-    }
-}

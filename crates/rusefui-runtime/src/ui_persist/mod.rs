@@ -19,7 +19,7 @@ pub use knock::{KnockUiSettings, PERSIST_KEY_KNOCK};
 pub use output_chart::{
     LogGraphGroupJson, LogRangeInputJson, LogUiSettings, PERSIST_KEY_OUTPUT_CHART,
 };
-pub use simulation::{RampCurveKind, SimulationUiSettings, PERSIST_KEY_SIMULATION};
+pub use simulation::RampCurveKind;
 
 /// Секции UI в JSON проекта: ключ = [`ComponentUiPersist::persist_key`].
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

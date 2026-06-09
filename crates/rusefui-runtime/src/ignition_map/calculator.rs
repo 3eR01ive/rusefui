@@ -1,33 +1,10 @@
-use std::collections::HashSet;
-
 use super::coefficients::ModelCoefficients;
 use super::engine::EngineParams;
-
-#[derive(Debug, Clone)]
-pub struct SparkCell {
-    pub rpm: f64,
-    pub map_kpa: f64,
-    pub advance_deg: f64,
-    pub warnings: Vec<String>,
-}
-
-#[derive(Debug, Clone)]
-pub struct SparkDiagnostics {
-    pub burn_index: f64,
-    pub burn_duration_deg: f64,
-    pub flame_delay_deg: f64,
-    pub mbt_deg: f64,
-    pub fuel_factor: f64,
-    pub cam_retard_deg: f64,
-}
 
 pub struct SparkAdvanceCalculator {
     engine: EngineParams,
     coef: ModelCoefficients,
     boost_scale: f64,
-    burn_index: f64,
-    burn_duration: f64,
-    flame_delay: f64,
     mbt: f64,
     fuel_factor: f64,
 }
@@ -38,7 +15,8 @@ impl SparkAdvanceCalculator {
         let burn_index = Self::compute_burn_index(&engine, &coef);
         let burn_duration = coef.burn_duration_ref_deg * burn_index;
         let flame_delay = Self::compute_flame_delay(&engine, &coef);
-        let mbt = burn_duration / 2.0 + flame_delay - coef.peak_pressure_target_deg;
+        let mbt =
+            burn_duration / 2.0 + flame_delay - coef.peak_pressure_target_deg;
         let fuel_factor = coef
             .fuel_factors
             .get(&engine.fuel)
@@ -49,22 +27,8 @@ impl SparkAdvanceCalculator {
             engine,
             coef,
             boost_scale,
-            burn_index,
-            burn_duration,
-            flame_delay,
             mbt,
             fuel_factor,
-        }
-    }
-
-    pub fn diagnostics(&self) -> SparkDiagnostics {
-        SparkDiagnostics {
-            burn_index: round4(self.burn_index),
-            burn_duration_deg: round2(self.burn_duration),
-            flame_delay_deg: round2(self.flame_delay),
-            mbt_deg: round2(self.mbt),
-            fuel_factor: self.fuel_factor,
-            cam_retard_deg: round2(self.cam_retard()),
         }
     }
 
@@ -148,88 +112,15 @@ impl SparkAdvanceCalculator {
         out.max(self.coef.min_advance_deg)
     }
 
-    fn plausibility_warnings(&self, rpm: f64, map_kpa: f64, advance: f64) -> Vec<String> {
-        let c = &self.coef;
-        let mut warnings = Vec::new();
-        let is_wot = map_kpa >= c.wot_map_threshold_kpa;
-        let is_idle = rpm <= c.idle_rpm_max && map_kpa <= c.idle_map_max_kpa;
-
-        if is_wot && advance > c.plausibility_max_wot_deg {
-            warnings.push(format!(
-                "WOT advance {advance:.1}° > {}° (rpm={rpm:.0}, map={map_kpa:.0} kPa)",
-                c.plausibility_max_wot_deg
-            ));
-        }
-        if self.engine.is_forced_induction() && advance > c.plausibility_max_turbo_deg {
-            warnings.push(format!(
-                "Turbo advance {advance:.1}° > {}° (rpm={rpm:.0}, map={map_kpa:.0} kPa)",
-                c.plausibility_max_turbo_deg
-            ));
-        }
-        if is_idle && advance > c.plausibility_max_idle_deg {
-            warnings.push(format!(
-                "Idle advance {advance:.1}° > {}° (rpm={rpm:.0}, map={map_kpa:.0} kPa)",
-                c.plausibility_max_idle_deg
-            ));
-        }
-        if advance < c.plausibility_min_operating_deg {
-            warnings.push(format!(
-                "Advance {advance:.1}° < {}° (rpm={rpm:.0}, map={map_kpa:.0} kPa)",
-                c.plausibility_min_operating_deg
-            ));
-        }
-        warnings
-    }
-
-    pub fn advance_at(&self, rpm: f64, map_kpa: f64) -> SparkCell {
+    pub fn advance_at(&self, rpm: f64, map_kpa: f64) -> f64 {
         let mut advance = self.mbt
             + self.rpm_correction(rpm)
             + self.load_correction(map_kpa)
             - self.cam_retard();
         advance *= self.fuel_factor;
         advance = self.apply_limits(rpm, map_kpa, advance);
-        let warnings = self.plausibility_warnings(rpm, map_kpa, advance);
-
-        SparkCell {
-            rpm,
-            map_kpa,
-            advance_deg: (advance * 10.0).round() / 10.0,
-            warnings,
-        }
+        (advance * 10.0).round() / 10.0
     }
-
-    pub fn generate_map(
-        &self,
-        rpm_axis: &[f64],
-        map_axis: &[f64],
-    ) -> (Vec<Vec<f64>>, Vec<String>) {
-        let mut values = Vec::with_capacity(rpm_axis.len());
-        let mut seen = HashSet::new();
-        let mut warnings = Vec::new();
-
-        for &rpm in rpm_axis {
-            let mut row = Vec::with_capacity(map_axis.len());
-            for &map_kpa in map_axis {
-                let cell = self.advance_at(rpm, map_kpa);
-                for w in cell.warnings {
-                    if seen.insert(w.clone()) {
-                        warnings.push(w);
-                    }
-                }
-                row.push(cell.advance_deg);
-            }
-            values.push(row);
-        }
-        (values, warnings)
-    }
-}
-
-fn round2(v: f64) -> f64 {
-    (v * 100.0).round() / 100.0
-}
-
-fn round4(v: f64) -> f64 {
-    (v * 10_000.0).round() / 10_000.0
 }
 
 #[cfg(test)]
@@ -261,16 +152,11 @@ mod tests {
         let coef = ModelCoefficients::default_embedded().expect("coefficients");
         let calc = SparkAdvanceCalculator::new(turbo_engine(), coef);
 
-        let c = calc.advance_at(600.0, 100.0);
-        assert!((c.advance_deg - 8.7).abs() < 0.05, "600/100: {}", c.advance_deg);
+        let a600 = calc.advance_at(600.0, 100.0);
+        assert!((a600 - 8.7).abs() < 0.05, "600/100: {a600}");
 
-        let c2 = calc.advance_at(4000.0, 200.0);
-        assert!((c2.advance_deg - 14.6).abs() < 0.05, "4000/200: {}", c2.advance_deg);
-
-        let diag = calc.diagnostics();
-        assert!((diag.burn_index - 1.2189).abs() < 0.001);
-        assert!((diag.mbt_deg - 16.9).abs() < 0.1);
-        assert!((diag.fuel_factor - 0.8747).abs() < 0.001);
+        let a4000 = calc.advance_at(4000.0, 200.0);
+        assert!((a4000 - 14.6).abs() < 0.05, "4000/200: {a4000}");
     }
 
     #[test]
@@ -278,21 +164,13 @@ mod tests {
         let coef = ModelCoefficients::default_embedded().expect("coefficients");
         let mut base = turbo_engine();
         base.fuel = "gasoline_92".into();
-        let a92 = SparkAdvanceCalculator::new(base.clone(), coef.clone())
-            .advance_at(4000.0, 150.0)
-            .advance_deg;
+        let a92 = SparkAdvanceCalculator::new(base.clone(), coef.clone()).advance_at(4000.0, 150.0);
         base.fuel = "gasoline_95".into();
-        let a95 = SparkAdvanceCalculator::new(base.clone(), coef.clone())
-            .advance_at(4000.0, 150.0)
-            .advance_deg;
+        let a95 = SparkAdvanceCalculator::new(base.clone(), coef.clone()).advance_at(4000.0, 150.0);
         base.fuel = "gasoline_98".into();
-        let a98 = SparkAdvanceCalculator::new(base.clone(), coef.clone())
-            .advance_at(4000.0, 150.0)
-            .advance_deg;
+        let a98 = SparkAdvanceCalculator::new(base.clone(), coef.clone()).advance_at(4000.0, 150.0);
         base.fuel = "e85".into();
-        let ae85 = SparkAdvanceCalculator::new(base, coef)
-            .advance_at(4000.0, 150.0)
-            .advance_deg;
+        let ae85 = SparkAdvanceCalculator::new(base, coef).advance_at(4000.0, 150.0);
         assert!(a92 < a95, "92 {a92} should be < 95 {a95}");
         assert!(a95 < a98, "95 {a95} should be < 98 {a98}");
         assert!(a98 < ae85, "98 {a98} should be < e85 {ae85}");
