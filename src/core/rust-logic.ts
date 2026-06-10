@@ -8,6 +8,7 @@ const RUST_LOGIC_TYPES = new Set([
   "ignition-table",
   "command",
   "lua-script",
+  "ini-command-button",
 ]);
 
 export function requiresRustLogic(componentType: string): boolean {

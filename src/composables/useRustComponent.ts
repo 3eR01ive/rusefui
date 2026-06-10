@@ -8,7 +8,11 @@ export type ComponentViewState = Record<string, unknown>;
 
 function resolveInstanceId(instance: ComponentInstance, path: string): string {
   // config-table / ignition-table: id в YAML повторяется — уникальность по path.
-  if (instance.type === "config-table" || instance.type === "ignition-table") {
+  if (
+    instance.type === "config-table" ||
+    instance.type === "ignition-table" ||
+    instance.type === "ini-command-button"
+  ) {
     return path.replace(/\//g, "-");
   }
   return instance.id ?? path.replace(/\//g, "-");

@@ -243,7 +243,7 @@ pub fn derive_workspace(inputs: &WorkspaceInputs) -> WorkspaceSnapshot {
     let ecu_live = inputs.ecu_connected && !inputs.autoconnect.offline_mode;
 
     if !project_open {
-        // Autoconnect может подключить ECU до открытия .json — всё равно показываем выбор INI.
+        // Autoconnect может подключить ECU до открытия проекта — всё равно показываем выбор INI.
         if inputs.ini_pending_resolution && ecu_live {
             return WorkspaceSnapshot {
                 phase: WorkspacePhase::EcuIniMismatch,

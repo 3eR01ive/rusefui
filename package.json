@@ -1,12 +1,12 @@
 {
   "name": "rusefui",
   "private": true,
-  "version": "0.4.4",
+  "version": "0.4.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
-    "convert-panels": "cargo run -p rusefi-ini --bin ini-convert-panels",
+    "convert-panels": "cargo run -p rusefi-ini --bin ini-convert-panels -- --out /tmp/rusefui-panels-preview",
     "preview": "vite preview",
     "tauri": "tauri"
   },

@@ -1,3 +1,4 @@
+import { ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
@@ -18,20 +19,21 @@ export interface PanelsManifest {
 }
 
 export interface PanelsManifestResponse {
-  source: "cache" | "bundled" | string;
+  source: string;
   hash: string | null;
   manifest: PanelsManifest | null;
 }
 
 export interface PanelCacheStatus {
   hash: string;
+  projectKey: string;
   dir: string;
   manifestPath: string;
   generated: boolean;
 }
 
-const BUNDLED_MANIFEST_PATH = "/config/components/generated/manifest.json";
-const BUNDLED_PANELS_BASE = "/config/components/generated";
+/** Инкремент при смене INI / пересборке panel cache — перезагрузка generated UI. */
+export const panelsEpoch = ref(0);
 
 let cachedResponse: PanelsManifestResponse | null = null;
 let manifestPromise: Promise<PanelsManifestResponse> | null = null;
@@ -47,41 +49,26 @@ export function registerIniPanelsChangedHandler(handler: () => void): void {
 export function invalidateIniPanelsCache(): void {
   cachedResponse = null;
   manifestPromise = null;
+  panelsEpoch.value += 1;
   for (const handler of onChangedHandlers) {
     handler();
   }
 }
 
-async function fetchBundledManifest(): Promise<PanelsManifest> {
-  const res = await fetch(BUNDLED_MANIFEST_PATH);
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return (await res.json()) as PanelsManifest;
-}
-
 async function loadPanelsManifestInternal(): Promise<PanelsManifestResponse> {
-  try {
-    const response = await invoke<PanelsManifestResponse>("panels_get_manifest");
-    if (response.source === "cache" && response.manifest) {
-      cachedResponse = response;
-      return response;
-    }
-  } catch {
-    /* не Tauri / offline dev */
+  const response = await invoke<PanelsManifestResponse>("panels_get_manifest");
+  if (response.source === "cache" && response.manifest) {
+    cachedResponse = response;
+    return response;
   }
-
-  const manifest = await fetchBundledManifest();
-  const response: PanelsManifestResponse = {
-    source: "bundled",
-    hash: manifest.iniHash ?? null,
-    manifest,
-  };
-  cachedResponse = response;
-  return response;
+  throw new Error(
+    "Panel cache недоступен — откройте проект и дождитесь загрузки INI",
+  );
 }
 
-/** Актуальный manifest: user cache или bundled fallback. */
+/** Актуальный manifest из user cache текущего проекта. */
 export async function loadPanelsManifest(): Promise<PanelsManifestResponse> {
-  if (cachedResponse) return cachedResponse;
+  if (cachedResponse?.manifest) return cachedResponse;
   if (!manifestPromise) {
     manifestPromise = loadPanelsManifestInternal().finally(() => {
       manifestPromise = null;
@@ -90,40 +77,30 @@ export async function loadPanelsManifest(): Promise<PanelsManifestResponse> {
   return manifestPromise;
 }
 
-/** YAML одной автогенерированной панели. */
+/** YAML одной автогенерированной панели из project panel cache. */
 export async function loadGeneratedPanelYaml(file: string): Promise<string> {
-  try {
-    return await invoke<string>("panels_read_yaml", { file });
-  } catch {
-    return readBundledPanelYaml(file);
-  }
+  return invoke<string>("panels_read_yaml", { file });
 }
 
-/** Bundled manifest из репозитория (полный набор панелей для fallback). */
-export async function loadBundledPanelsManifest(): Promise<PanelsManifest> {
-  return fetchBundledManifest();
-}
-
-/** YAML bundled-панели (когда cache INI не содержит нужный dialog). */
-export async function readBundledPanelYaml(file: string): Promise<string> {
-  const res = await fetch(`${BUNDLED_PANELS_BASE}/${file}`);
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.text();
+export function normalizeGeneratedPanelFile(file: string): string {
+  const trimmed = file.trim();
+  if (!trimmed) return trimmed;
+  return trimmed.endsWith(".yaml") ? trimmed : `${trimmed}.yaml`;
 }
 
 export async function initIniPanels(): Promise<void> {
   if (initPromise) return initPromise;
   initPromise = (async () => {
-    await loadPanelsManifest();
     if (!unlisten) {
       unlisten = await listen<PanelCacheStatus>("ini-panels-ready", () => {
         invalidateIniPanelsCache();
       });
     }
+    try {
+      await loadPanelsManifest();
+    } catch {
+      /* cache появится после project_load + INI */
+    }
   })();
   return initPromise;
-}
-
-export function bundledPanelsManifestPath(): string {
-  return BUNDLED_MANIFEST_PATH;
 }

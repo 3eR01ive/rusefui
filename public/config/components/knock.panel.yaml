@@ -16,4 +16,7 @@ children:
         loadField: ignitionLoad
         advanceField: ignitionAdvanceCyl1
 
-  - $component: generated/softwareknock.panel
+  - type: generated-panel
+    id: knock-ini-settings
+    props:
+      file: softwareknock.panel.yaml

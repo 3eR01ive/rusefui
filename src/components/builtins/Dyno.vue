@@ -435,10 +435,13 @@ async function ensureDynoCharsPanel(): Promise<void> {
   dynoCharsLoading.value = true;
   dynoCharsError.value = null;
   try {
-    const panelId = paramStringOr("dynoCharsPanel", "generated/dynochars.panel");
-    const res = await fetch(`/config/components/${panelId}.yaml`);
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    const doc = parseYaml(await res.text()) as { children?: ComponentInstance[] };
+    const panelFile = paramStringOr("dynoCharsPanel", "dynochars.panel.yaml");
+    const { loadGeneratedPanelYaml, normalizeGeneratedPanelFile } = await import(
+      "../../composables/useIniPanels"
+    );
+    const doc = parseYaml(
+      await loadGeneratedPanelYaml(normalizeGeneratedPanelFile(panelFile)),
+    ) as { children?: ComponentInstance[] };
     dynoCharsChildren.value = doc.children ?? [];
     dynoCharsLoaded = true;
   } catch (e) {

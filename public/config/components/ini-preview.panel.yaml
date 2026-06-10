@@ -1,15 +1,13 @@
-# Временная вкладка: все панели настроек, сконвертированные из INI.
+# Временная вкладка: все панели настроек из INI текущего проекта (user cache).
 id: ini-preview.panel
-description: Превью INI → YAML (188 панелей proteus)
+description: Превью INI → YAML
 
 children:
   - type: text
     props:
-      text: "Сгенерировано `cargo run -p rusefi-ini --bin ini-convert-panels`. Поля config — заглушки scalar-field; таблицы — placeholder."
+      text: "Панели генерируются из INI проекта в ~/.rusEFI/projects/{project}/ui_panels/{ini_hash}/."
       variant: hint
 
   - type: ini-panels-browser
     id: browser
     navSelectable: false
-    props:
-      manifestPath: /config/components/generated/manifest.json

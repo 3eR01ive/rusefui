@@ -133,7 +133,7 @@ onMounted(async () => {
         <p class="project-gate-lead">
           Работа с ECU, настройками и логами ведётся внутри проекта. При создании нужно
           выбрать INI (контракт полей и UI). Откройте существующий файл проекта
-          (<code>.json</code>) или создайте новый.
+          (<code>.rusefui</code>) или создайте новый.
         </p>
         <div class="project-gate-actions">
           <button type="button" class="btn primary" :disabled="busy" @click="onCreate">

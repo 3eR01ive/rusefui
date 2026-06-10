@@ -24,6 +24,7 @@ import ProjectGate from "./ProjectGate.vue";
 import EcuConnectionModal from "./EcuConnectionModal.vue";
 import EcuIniMismatchScreen from "./EcuIniMismatchScreen.vue";
 import { initIniResolution } from "../composables/useIniResolution";
+import { initIniPanels } from "../composables/useIniPanels";
 import ProjectMenu from "./ProjectMenu.vue";
 import { useAppFooter, setFooterLed, footerToggleProtocol } from "../composables/useAppFooter";
 import { useTabState } from "../composables/useTabState";
@@ -168,6 +169,7 @@ onMounted(async () => {
   await initProject();
   await initWorkspaceState();
   await initIniResolution();
+  await initIniPanels();
   await initConfig();
   await initChecklist();
   void initOutputChannels();

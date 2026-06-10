@@ -9,7 +9,9 @@ use rusefui_runtime::{
     OutputSnapshot, OutputTimelineChunkQuery, OutputTimelineSeriesChunk,
     OutputTimelineSeriesQuery, OutputTimelineSeriesSnapshot, OutputTimelineStatus, OutputTimelineView,
     OutputTimelineViewControl,
-    PendingIniResolution, ProjectInfo, ProjectLogRef, ProjectStore, ProjectTimelineClip,
+    cache_dir_for_project_ini, read_manifest_from_dir, read_panel_yaml, PanelManifest,
+    with_project_extension, PendingIniResolution, ProjectInfo, ProjectLogRef, ProjectStore,
+    ProjectTimelineClip, PROJECT_FILE_EXTENSION, LEGACY_PROJECT_FILE_EXTENSION,
     ProtocolLogEntry,
     ProtocolLogFilterSettings, ProtocolLogStore, RampCurveKind, RecentProjectEntry, RecentProjectsStore,
     RusefuiProject, StimulatorRampParams, StimulatorRampResult, StimulatorRampStep,
@@ -685,6 +687,66 @@ pub fn register_config_burn_notify(app: &AppHandle) {
     });
 }
 
+pub fn register_panels_emitter(app: &AppHandle) {
+    let handle = app.clone();
+    let state = app.state::<RuntimeState>();
+    state.session.set_panels_changed_hook(Arc::new(move |status| {
+        let _ = handle.emit("ini-panels-ready", status);
+    }));
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PanelsManifestResponse {
+    pub source: String,
+    pub hash: Option<String>,
+    pub manifest: Option<PanelManifest>,
+}
+
+fn active_panel_cache_dir(session: &EcuSession) -> Result<std::path::PathBuf, String> {
+    let hash = session
+        .active_panel_hash()
+        .ok_or_else(|| "INI panel cache не готов — откройте проект и дождитесь загрузки INI".to_string())?;
+    Ok(cache_dir_for_project_ini(
+        &session.project_cache_key(),
+        &hash,
+    ))
+}
+
+#[tauri::command]
+pub fn panels_get_manifest(state: State<RuntimeState>) -> Result<PanelsManifestResponse, String> {
+    let session = &state.session;
+    if let Err(e) = session.ensure_ui_panels() {
+        session.log_panel_cache_error("panels_get_manifest", e);
+    }
+    let cache_dir = match active_panel_cache_dir(session) {
+        Ok(dir) => dir,
+        Err(_) => {
+            return Ok(PanelsManifestResponse {
+                source: "unavailable".into(),
+                hash: None,
+                manifest: None,
+            });
+        }
+    };
+    let manifest = read_manifest_from_dir(&cache_dir)?;
+    Ok(PanelsManifestResponse {
+        source: "cache".into(),
+        hash: session.active_panel_hash(),
+        manifest: Some(manifest),
+    })
+}
+
+#[tauri::command]
+pub fn panels_read_yaml(file: String, state: State<RuntimeState>) -> Result<String, String> {
+    let session = &state.session;
+    if let Err(e) = session.ensure_ui_panels() {
+        session.log_panel_cache_error("panels_read_yaml", e);
+    }
+    let cache_dir = active_panel_cache_dir(session)?;
+    read_panel_yaml(&cache_dir, &file)
+}
+
 pub fn register_knock_scope_emitter(app: &AppHandle) {
     let handle = app.clone();
     let state = app.state::<RuntimeState>();
@@ -791,6 +853,17 @@ pub fn component_dispatch(
     if matches!(action, "send" | "run_quick") {
         return component_dispatch_command(params, state, app);
     }
+    if action == "run" {
+        let is_ini_command = {
+            let rt = state.runtime.lock().map_err(|e| e.to_string())?;
+            rt.instance_component_type(&params.instance_id)
+                .map(|t| t == "ini-command-button")
+                .unwrap_or(false)
+        };
+        if is_ini_command {
+            return component_dispatch_ini_command(params, state, app);
+        }
+    }
 
     component_dispatch_inner(params, state, app)
 }
@@ -851,6 +924,58 @@ fn component_dispatch_simulation(
 
         if dispatch_result.is_err() {
             session.set_stimulation_active(false);
+        }
+    });
+
+    Ok(snapshot)
+}
+
+fn component_dispatch_ini_command(
+    params: DispatchParams,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<Value, String> {
+    let instance_id = params.instance_id;
+
+    let snapshot = {
+        let mut rt = state.runtime.lock().map_err(|e| e.to_string())?;
+        rt.dispatch(&instance_id, "begin_run", Value::Null)?
+    };
+    let command_key = snapshot
+        .get("command")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if command_key.is_empty() {
+        return Err("Не задана INI-команда".into());
+    }
+    emit_state(&app, &instance_id, &snapshot);
+
+    let session = Arc::clone(&state.session);
+    let app = app.clone();
+    let instance_id_bg = instance_id.clone();
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let ecu_result = session.run_ts_ini_command(&command_key);
+        let ok = ecu_result.is_ok();
+        let finish_payload = serde_json::json!({
+            "ok": ok,
+            "error": ecu_result.err(),
+        });
+
+        let state = app.state::<RuntimeState>();
+        let dispatch_result = (|| -> Result<(), String> {
+            let mut rt = state.runtime.lock().map_err(|e| e.to_string())?;
+            let snap = rt.dispatch(&instance_id_bg, "finish_run", finish_payload)?;
+            emit_state(&app, &instance_id_bg, &snap);
+            if ok {
+                sync_output_poll_session(&state.session, &app);
+            }
+            Ok(())
+        })();
+
+        if dispatch_result.is_err() {
+            eprintln!("ini-command finish_run failed: {:?}", dispatch_result);
         }
     });
 
@@ -2195,6 +2320,7 @@ pub fn project_close(state: State<RuntimeState>, app: AppHandle) -> Result<(), S
     set_burn_pending(&state, &app, false);
     reset_workspace(&state);
     state.session.set_project_ini_signature(None);
+    state.session.reset_panel_cache_state();
     clear_config_diff(&state, &app);
     emit_project(&app, &state);
     emit_workspace_reset(&app, &state);
@@ -2288,7 +2414,10 @@ pub fn project_copy_without_timeline(
 pub async fn pick_project_open_path() -> Option<String> {
     rfd::AsyncFileDialog::new()
         .set_title("Открыть проект rusefui")
-        .add_filter("rusefui project", &["json"])
+        .add_filter(
+            "rusefui project",
+            &[PROJECT_FILE_EXTENSION, LEGACY_PROJECT_FILE_EXTENSION],
+        )
         .pick_file()
         .await
         .map(|h| h.path().display().to_string())
@@ -2298,18 +2427,14 @@ pub async fn pick_project_open_path() -> Option<String> {
 pub async fn pick_project_save_path(default_name: Option<String>) -> Option<String> {
     let mut dlg = rfd::AsyncFileDialog::new()
         .set_title("Сохранить проект rusefui")
-        .add_filter("rusefui project", &["json"]);
+        .add_filter("rusefui project", &[PROJECT_FILE_EXTENSION]);
     if let Some(name) = default_name.filter(|s| !s.is_empty()) {
-        let file_name = if name.ends_with(".json") {
-            name
-        } else {
-            format!("{name}.json")
-        };
-        dlg = dlg.set_file_name(&file_name);
+        dlg = dlg.set_file_name(&with_project_extension(&name));
     }
     dlg.save_file()
         .await
         .map(|h| h.path().display().to_string())
+        .map(|path| with_project_extension(&path))
 }
 
 // --- INI resolution (несовпадение signature ECU ↔ INI) ---

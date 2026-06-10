@@ -1,6 +1,0 @@
-id: trigger_state1Dialog.panel
-description: trigger_state1
-source:
-  ini_dialog: trigger_state1Dialog
-  menu_path: View › trigger_state1
-children: []

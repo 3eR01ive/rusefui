@@ -1,6 +1,0 @@
-id: injector_modelDialog.panel
-description: injector_model
-source:
-  ini_dialog: injector_modelDialog
-  menu_path: View › injector_model
-children: []

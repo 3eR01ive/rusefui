@@ -1,6 +1,0 @@
-id: vvtDialog.panel
-description: vvt
-source:
-  ini_dialog: vvtDialog
-  menu_path: View › vvt
-children: []

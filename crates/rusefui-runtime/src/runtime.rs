@@ -11,6 +11,7 @@ use crate::components::config_table::ConfigTableLogic;
 use crate::components::connection::ConnectionLogic;
 use crate::components::dyno::DynoLogic;
 use crate::components::ignition_table::IgnitionTableLogic;
+use crate::components::ini_command_button::IniCommandButtonLogic;
 use crate::components::knock::KnockLogic;
 use crate::components::lua_script::LuaScriptLogic;
 use crate::components::simulation::SimulationLogic;
@@ -102,6 +103,9 @@ impl ComponentRuntime {
             Some(LogicComponentType::LuaScript) => {
                 Box::new(LuaScriptLogic::new(Arc::clone(&self.session)))
             }
+            Some(LogicComponentType::IniCommandButton) => {
+                Box::new(IniCommandButtonLogic::new(Arc::clone(&self.session)))
+            }
             None => {
                 return Err(format!("unknown logic component: {component_type}"));
             }
@@ -152,7 +156,14 @@ impl ComponentRuntime {
             LogicComponentType::ConfigTable.as_str(),
             LogicComponentType::Command.as_str(),
             LogicComponentType::LuaScript.as_str(),
+            LogicComponentType::IniCommandButton.as_str(),
         ]
+    }
+
+    pub fn instance_component_type(&self, instance_id: &str) -> Option<String> {
+        self.instances
+            .get(instance_id)
+            .map(|l| l.meta().component_type.clone())
     }
 
     /// Перечитать 2D-таблицы из текущего config (после `project_load` / смены INI).

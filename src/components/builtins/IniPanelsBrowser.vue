@@ -16,19 +16,13 @@ import {
   syncNavSelectionVisual,
 } from "../../composables/useWorkspaceNav";
 import { useTabActivity } from "../../composables/useTabActivity";
-
-interface ManifestEntry {
-  id: string;
-  file: string;
-  title: string;
-  menuPath: string;
-}
-
-interface Manifest {
-  iniSource: string;
-  panelCount: number;
-  panels: ManifestEntry[];
-}
+import {
+  loadGeneratedPanelYaml,
+  loadPanelsManifest,
+  panelsEpoch,
+  type PanelManifestEntry,
+  type PanelsManifest,
+} from "../../composables/useIniPanels";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -40,11 +34,7 @@ const props = defineProps<{
 
 const { isActive: tabActive } = useTabActivity();
 
-const manifestPath = computed(
-  () => String(props.props.manifestPath ?? "/config/components/generated/manifest.json"),
-);
-
-const manifest = shallowRef<Manifest | null>(null);
+const manifest = shallowRef<PanelsManifest | null>(null);
 const loadError = ref<string | null>(null);
 const filter = ref("");
 const filterInputRef = ref<HTMLInputElement | null>(null);
@@ -72,7 +62,7 @@ const groupedPanels = computed(() => {
           p.menuPath.toLowerCase().includes(q),
       )
     : list;
-  const groups = new Map<string, ManifestEntry[]>();
+  const groups = new Map<string, PanelManifestEntry[]>();
   for (const p of filtered) {
     const top = p.menuPath.split(" › ")[0] ?? "Other";
     const arr = groups.get(top) ?? [];
@@ -83,8 +73,8 @@ const groupedPanels = computed(() => {
 });
 
 /** Плоский список панелей в порядке отображения sidebar (группы → пункты). */
-const visibleMenuPanels = computed((): ManifestEntry[] => {
-  const result: ManifestEntry[] = [];
+const visibleMenuPanels = computed((): PanelManifestEntry[] => {
+  const result: PanelManifestEntry[] = [];
   for (const [, items] of groupedPanels.value) {
     result.push(...items);
   }
@@ -99,7 +89,7 @@ const menuNavPaths = computed((): string[] => {
   return paths;
 });
 
-function ensureGroupExpandedForEntry(entry: ManifestEntry): void {
+function ensureGroupExpandedForEntry(entry: PanelManifestEntry): void {
   if (filter.value.trim()) return;
   const group = entry.menuPath.split(" › ")[0] ?? "Other";
   if (expandedGroups.value.has(group)) return;
@@ -181,10 +171,9 @@ function focusFilterInput(): void {
 async function loadManifest(): Promise<void> {
   loadError.value = null;
   try {
-    const res = await fetch(manifestPath.value);
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    manifest.value = (await res.json()) as Manifest;
-    if (manifest.value.panels.length && !selectedId.value) {
+    const res = await loadPanelsManifest();
+    manifest.value = res.manifest;
+    if (manifest.value?.panels.length && !selectedId.value) {
       const first = manifest.value.panels[0]!;
       selectedId.value = first.id;
       ensureGroupExpandedForEntry(first);
@@ -203,10 +192,7 @@ async function loadPanel(id: string): Promise<void> {
   panelLoading.value = true;
   panelError.value = null;
   try {
-    const url = `/config/components/generated/${entry.file}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    const doc = parseYaml(await res.text()) as {
+    const doc = parseYaml(await loadGeneratedPanelYaml(entry.file)) as {
       id: string;
       children: ComponentInstance[];
     };
@@ -229,6 +215,10 @@ useTabEnterHandler("ini-preview", () => {
 });
 
 onMounted(() => {
+  void loadManifest();
+});
+
+watch(panelsEpoch, () => {
   void loadManifest();
 });
 

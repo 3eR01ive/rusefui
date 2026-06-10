@@ -1,6 +1,0 @@
-id: sent_stateDialog.panel
-description: sent_state
-source:
-  ini_dialog: sent_stateDialog
-  menu_path: View › sent_state
-children: []

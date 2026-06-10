@@ -11,7 +11,8 @@ use serde::Serialize;
 
 use crate::ini::{
     download_ini_for_signature, ensure_panels_for_ini, install_ini_to_cache, load_ini_path,
-    resolve_ini_for_signature, IniResolveError, OnlineDownloadStatus, PanelCacheStatus, ResolvedIni,
+    project_cache_key, resolve_ini_for_signature, IniResolveError, OnlineDownloadStatus,
+    PanelCacheStatus, ResolvedIni,
 };
 use crate::protocol_log::ProtocolLogStore;
 use crate::stimulator_ramp::StimulatorRampRunner;
@@ -46,7 +47,7 @@ pub struct PendingIniResolution {
     pub last_error: String,
     /// Что вернула попытка online-загрузки при connect.
     pub online: OnlineDownloadStatus,
-    /// Signature из `project.json`, если отличалась от ECU при connect.
+    /// Signature из файла проекта, если отличалась от ECU при connect.
     pub project_signature: Option<String>,
     /// INI уже найден автоматически, но не применён до подтверждения пользователя.
     pub suggested_ini_path: Option<String>,
@@ -80,6 +81,8 @@ pub struct EcuSession {
     project_ini_signature: Mutex<Option<String>>,
     /// Hash signature активного panel-cache (`4139280449`).
     active_panel_hash: Mutex<Option<String>>,
+    /// Ключ каталога `~/.rusEFI/projects/{key}/` для открытого проекта.
+    project_cache_key: Mutex<String>,
     panels_changed_hook: Mutex<Option<Arc<dyn Fn(PanelCacheStatus) + Send + Sync>>>,
     stimulator_ramp: StimulatorRampRunner,
 }
@@ -108,6 +111,7 @@ impl EcuSession {
             log_viewport_linked: AtomicBool::new(false),
             project_ini_signature: Mutex::new(None),
             active_panel_hash: Mutex::new(None),
+            project_cache_key: Mutex::new(project_cache_key(None)),
             panels_changed_hook: Mutex::new(None),
             stimulator_ramp: StimulatorRampRunner::new(),
         })
@@ -119,6 +123,19 @@ impl EcuSession {
 
     pub fn active_panel_hash(&self) -> Option<String> {
         self.active_panel_hash.lock().unwrap().clone()
+    }
+
+    pub fn project_cache_key(&self) -> String {
+        self.project_cache_key.lock().unwrap().clone()
+    }
+
+    pub fn set_project_cache_key(&self, project_path: Option<&std::path::Path>) {
+        *self.project_cache_key.lock().unwrap() = project_cache_key(project_path);
+    }
+
+    pub fn reset_panel_cache_state(&self) {
+        *self.active_panel_hash.lock().unwrap() = None;
+        self.set_project_cache_key(None);
     }
 
     /// Panel-cache для текущего INI (cache miss → генерация). Не вызывать из offline bootstrap.
@@ -135,7 +152,8 @@ impl EcuSession {
             .ok_or_else(|| "INI path не задан — нельзя построить panel cache".to_string())?;
 
         let prev = self.active_panel_hash.lock().unwrap().clone();
-        let status = ensure_panels_for_ini(&path, &signature)?;
+        let project_key = self.project_cache_key();
+        let status = ensure_panels_for_ini(&path, &signature, &project_key)?;
         *self.active_panel_hash.lock().unwrap() = Some(status.hash.clone());
 
         if prev.as_deref() != Some(status.hash.as_str()) || status.generated {
@@ -614,7 +632,8 @@ impl EcuSession {
                     .lock()
                     .ok()
                     .and_then(|g| g.pending.as_ref().map(|p| p.ecu_signature.clone()))
-            });
+            })
+            .filter(|s| !s.is_empty());
 
         if let Some(ecu_sig) = ecu_signature.as_deref() {
             match file.signature.as_deref() {
@@ -817,7 +836,7 @@ impl EcuSession {
         let project_sig_mismatch = project_sig
             .as_deref()
             .filter(|s| !s.is_empty())
-            .is_some_and(|ps| ps != info.signature);
+            .is_some_and(|ps| !info.signature.is_empty() && ps != info.signature);
 
         let mut guard = self
             .inner
@@ -1046,6 +1065,26 @@ impl EcuSession {
 
     pub fn stimulator_ramp(&self) -> &StimulatorRampRunner {
         &self.stimulator_ramp
+    }
+
+    /// Сырой CRC-payload из INI `[ControllerCommands]` (`cmd_etb_auto_calibrate` и т.д.).
+    pub fn run_ts_ini_command(&self, command_key: &str) -> Result<(), String> {
+        if !self.is_connected() {
+            return Err("ECU не подключена".into());
+        }
+        let key = command_key.trim();
+        if key.is_empty() {
+            return Err("Не задана команда".into());
+        }
+        let payload = self
+            .ini_context()
+            .ts_commands
+            .get(key)
+            .cloned()
+            .ok_or_else(|| format!("команда «{key}» не найдена в INI"))?;
+        self.run_without_output_poll(|session| {
+            session.with_link(|link| link.send_binary_command(&payload))
+        })
     }
 
     /// Консольная `E` + чтение ответа `G` (Java console CommandQueue).

@@ -1,6 +1,0 @@
-id: sentInputs.panel
-description: SENT protocol inputs
-source:
-  ini_dialog: sentInputs
-  menu_path: Sensors › Chassis sensors › SENT inputs
-children: []

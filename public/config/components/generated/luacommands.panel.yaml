@@ -1,6 +1,0 @@
-id: luaCommands.panel
-description: Lua Buttons
-source:
-  ini_dialog: luaCommands
-  menu_path: Advanced › Lua › Lua Buttons
-children: []

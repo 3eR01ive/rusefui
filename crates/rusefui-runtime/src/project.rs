@@ -1,4 +1,4 @@
-//! Файл проекта rusefui (JSON): снимок config ECU, ссылки на логи, настройки UI.
+//! Файл проекта rusefui (`.rusefui`, JSON внутри): снимок config ECU, логи, UI.
 
 use std::collections::HashMap;
 use std::fs;
@@ -21,6 +21,40 @@ use crate::project_timeline::{
 use crate::ui_persist::{self, ProjectUi};
 
 pub const FORMAT_VERSION: u32 = 1;
+
+/// Расширение файла проекта на диске.
+pub const PROJECT_FILE_EXTENSION: &str = "rusefui";
+
+/// Старое расширение — по-прежнему открываем для обратной совместимости.
+pub const LEGACY_PROJECT_FILE_EXTENSION: &str = "json";
+
+/// Путь сохранения с расширением `.rusefui` (`.json` в имени заменяется).
+pub fn with_project_extension(path: &str) -> String {
+    let path = path.trim();
+    if path.is_empty() {
+        return format!("Новый проект.{PROJECT_FILE_EXTENSION}");
+    }
+    let p = Path::new(path);
+    let stem = p
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or(path);
+    let file_name = format!("{stem}.{PROJECT_FILE_EXTENSION}");
+    match p.parent().filter(|parent| !parent.as_os_str().is_empty()) {
+        Some(parent) => parent.join(&file_name).display().to_string(),
+        None => file_name,
+    }
+}
+
+pub fn is_project_file_path(path: &Path) -> bool {
+    match path.extension().and_then(|e| e.to_str()) {
+        Some(ext) => {
+            ext.eq_ignore_ascii_case(PROJECT_FILE_EXTENSION)
+                || ext.eq_ignore_ascii_case(LEGACY_PROJECT_FILE_EXTENSION)
+        }
+        None => false,
+    }
+}
 
 fn now_ms() -> u64 {
     SystemTime::now()
@@ -454,6 +488,7 @@ impl ProjectStore {
         };
 
         let project_ini_sig = ini_ref.as_ref().and_then(|r| r.signature.clone());
+        session.set_project_cache_key(project_path.as_deref());
 
         if !Self::ini_ref_actionable(ini_ref.as_ref()) {
             println!("[workspace-fsm] apply_to_session: нет ini — pending выбор INI");
@@ -691,12 +726,35 @@ mod tests {
         )));
         let dir = std::env::temp_dir().join(format!("rusefui-copy-test-{}", now_ms()));
         fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("copy.json");
+        let path = dir.join("copy.rusefui");
         store.write_copy_without_timeline(&path, &session).unwrap();
         let text = fs::read_to_string(&path).unwrap();
         let back: RusefuiProject = serde_json::from_str(&text).unwrap();
         assert!(back.timeline.clips.is_empty());
         assert!(back.name.contains("(копия)"));
         let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn with_project_extension_normalizes_save_path() {
+        assert_eq!(
+            with_project_extension("MyTune"),
+            "MyTune.rusefui"
+        );
+        assert_eq!(
+            with_project_extension("/tmp/MyTune.json"),
+            "/tmp/MyTune.rusefui"
+        );
+        assert_eq!(
+            with_project_extension("/tmp/MyTune.rusefui"),
+            "/tmp/MyTune.rusefui"
+        );
+    }
+
+    #[test]
+    fn is_project_file_path_accepts_legacy_json() {
+        assert!(is_project_file_path(Path::new("/a.rusefui")));
+        assert!(is_project_file_path(Path::new("/a.json")));
+        assert!(!is_project_file_path(Path::new("/a.ini")));
     }
 }

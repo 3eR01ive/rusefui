@@ -124,8 +124,8 @@ mod tests {
     fn record_moves_to_front_and_dedupes() {
         let (store, dir) = temp_store();
         fs::create_dir_all(&dir).unwrap();
-        let a = dir.join("a.json");
-        let b = dir.join("b.json");
+        let a = dir.join("a.rusefui");
+        let b = dir.join("b.rusefui");
         fs::write(&a, "{}").unwrap();
         fs::write(&b, "{}").unwrap();
         store.record(&a).unwrap();

@@ -2,7 +2,10 @@ mod panel_cache;
 mod resolve;
 mod signature;
 
-pub use panel_cache::{ensure_panels_for_ini, PanelCacheStatus};
+pub use panel_cache::{
+    cache_dir_for_project_ini, ensure_panels_for_ini, project_cache_key, read_manifest_from_dir,
+    read_panel_yaml, PanelCacheStatus,
+};
 pub use resolve::{
     download_ini_for_signature, enumerate_local_candidates, find_any_local_ini, ini_cache_dir,
     install_ini_to_cache, load_ini_path, resolve_ini_for_signature, search_directories,

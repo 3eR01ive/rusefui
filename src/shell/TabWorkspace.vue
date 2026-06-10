@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { loadAppConfig, type LoadedAppConfig } from "../core/config-loader";
+import { panelsEpoch } from "../composables/useIniPanels";
 import type { ResolvedTab } from "../core/types";
 import ComponentHost from "../components/ComponentHost.vue";
 import TabActivityScope from "../components/TabActivityScope.vue";
@@ -106,15 +107,24 @@ function resetNavForTab(): void {
   });
 }
 
-onMounted(async () => {
-  registerTabBinding(onTabKeydown);
+async function loadWorkspaceConfig(): Promise<void> {
   try {
     config.value = await loadAppConfig();
     syncActiveTab((config.value?.tabs ?? []).map((t) => t.id));
     resetNavForTab();
+    loadError.value = null;
   } catch (e) {
     loadError.value = String(e);
   }
+}
+
+onMounted(async () => {
+  registerTabBinding(onTabKeydown);
+  await loadWorkspaceConfig();
+});
+
+watch(panelsEpoch, () => {
+  void loadWorkspaceConfig();
 });
 
 onUnmounted(() => {

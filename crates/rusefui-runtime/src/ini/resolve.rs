@@ -308,7 +308,7 @@ pub fn enumerate_local_candidates(ecu_signature: Option<&str>) -> Vec<IniCandida
             }
             Err(_) => (None, None),
         };
-        let matches_ecu = match (ecu_signature, signature.as_deref()) {
+        let matches_ecu = match (ecu_signature.filter(|s| !s.is_empty()), signature.as_deref()) {
             (Some(ecu), Some(ini)) => ecu == ini,
             _ => false,
         };

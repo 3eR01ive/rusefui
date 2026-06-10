@@ -3,7 +3,7 @@
 //! ```sh
 //! cargo run -p rusefi-ini --bin ini-convert-panels -- \
 //!   --ini test_data/rusefi_proteus_f7.ini \
-//!   --out public/config/components/generated
+//!   --out /tmp/rusefui-panels-preview
 //! ```
 
 use std::fs;
@@ -11,9 +11,16 @@ use std::path::PathBuf;
 
 use rusefi_ini::convert_ini_path;
 
+fn default_out_dir() -> PathBuf {
+    if let Ok(dir) = std::env::var("RUSEFI_UI_PANELS_DIR") {
+        return PathBuf::from(dir).join("_manual_convert");
+    }
+    std::env::temp_dir().join("rusefui-panels-preview")
+}
+
 fn main() {
     let mut ini_path = PathBuf::from("test_data/rusefi_proteus_f7.ini");
-    let mut out_dir = PathBuf::from("public/config/components/generated");
+    let mut out_dir = default_out_dir();
 
     let args: Vec<String> = std::env::args().collect();
     let mut i = 1;
@@ -30,7 +37,7 @@ fn main() {
             "--help" | "-h" => {
                 eprintln!(
                     "Usage: ini-convert-panels [--ini PATH] [--out DIR]\n\
-                     Default: test_data/rusefi_proteus_f7.ini → public/config/components/generated"
+                     Default: test_data/rusefi_proteus_f7.ini → ~/.rusEFI/projects/_manual_convert"
                 );
                 return;
             }

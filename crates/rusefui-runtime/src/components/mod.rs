@@ -3,6 +3,7 @@ pub mod config_table;
 pub mod connection;
 pub mod dyno;
 pub mod ignition_table;
+pub mod ini_command_button;
 pub mod knock;
 pub mod lua_script;
 pub mod simulation;

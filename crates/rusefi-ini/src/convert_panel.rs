@@ -266,7 +266,7 @@ fn convert_dialog_items(
                 ));
             }
             DialogItem::CommandButton { label, command } => {
-                out.push(hint_node(&format!("Кнопка: {label} ({command})")));
+                out.push(command_button_node(label, command));
             }
         }
     }
@@ -513,6 +513,25 @@ fn scalar_node(field: &str, label: &str) -> YamlNode {
     }
 }
 
+fn command_button_node(label: &str, command: &str) -> YamlNode {
+    YamlNode {
+        node_type: "ini-command-button".into(),
+        id: Some(slugify(command)),
+        props: Some({
+            let mut m = HashMap::new();
+            m.insert("label".into(), serde_yaml::Value::String(label.to_string()));
+            m.insert(
+                "command".into(),
+                serde_yaml::Value::String(command.to_string()),
+            );
+            m
+        }),
+        bind: None,
+        children: None,
+        nav_selectable: Some(false),
+    }
+}
+
 fn hint_node(text: &str) -> YamlNode {
     YamlNode {
         node_type: "text".into(),
@@ -594,5 +613,11 @@ mod tests {
             enginechars.contains("- type: string-field\n    id: vehiclename"),
             "vehicleName should be string-field"
         );
+        let etb = result.files.get("etbdialog.panel.yaml").unwrap();
+        assert!(
+            etb.contains("- type: ini-command-button"),
+            "commandButton should become ini-command-button"
+        );
+        assert!(etb.contains("cmd_etb_auto_calibrate"));
     }
 }

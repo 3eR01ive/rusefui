@@ -55,14 +55,18 @@ pub use stimulator_ramp::{
     StimulatorRampStep, DEFAULT_RAMP_STEP_MS,
 };
 pub use ini::{
-    download_ini_for_signature, enumerate_local_candidates, explicit_ini_path,
-    find_any_local_ini, ini_cache_dir, ini_download_target, install_ini_to_cache, load_ini_path,
-    parse_rusefi_signature, resolve_ini_for_signature, search_directories, signatures_match,
-    IniCandidate, IniCandidateSource, IniResolveError, OnlineDownloadStatus, ResolvedIni,
-    RusEfiSignature,
+    cache_dir_for_project_ini, download_ini_for_signature, enumerate_local_candidates,
+    ensure_panels_for_ini, explicit_ini_path, find_any_local_ini, ini_cache_dir, ini_download_target,
+    install_ini_to_cache, load_ini_path, parse_rusefi_signature, project_cache_key,
+    read_manifest_from_dir, read_panel_yaml, resolve_ini_for_signature, search_directories,
+    signatures_match, IniCandidate, IniCandidateSource, IniResolveError, OnlineDownloadStatus,
+    PanelCacheStatus, ResolvedIni, RusEfiSignature,
 };
+pub use rusefi_ini::PanelManifest;
 pub use project::{
-    ProjectEcuConfig, ProjectInfo, ProjectLogRef, ProjectStore, RusefuiProject, FORMAT_VERSION,
+    is_project_file_path, with_project_extension, ProjectEcuConfig, ProjectInfo, ProjectLogRef,
+    ProjectStore, RusefuiProject, FORMAT_VERSION, LEGACY_PROJECT_FILE_EXTENSION,
+    PROJECT_FILE_EXTENSION,
 };
 pub use project_timeline::{
     channel as project_timeline_channel, ProjectTimeline, ProjectTimelineClip,

@@ -1,39 +1,38 @@
 import { parse as parseYaml } from "yaml";
 import type { ComponentInstance, DataBinding } from "../core/types";
 import type { ChecklistEditor } from "./useConfig";
+import {
+  loadGeneratedPanelYaml,
+  loadPanelsManifest,
+  panelsEpoch,
+  registerIniPanelsChangedHandler,
+} from "./useIniPanels";
 
-interface ManifestEntry {
-  id: string;
-  file: string;
-}
-
-interface Manifest {
-  panels: ManifestEntry[];
-}
-
-const MANIFEST_PATH = "/config/components/generated/manifest.json";
 const panelChildrenCache = new Map<string, ComponentInstance[]>();
 const fieldLocationCache = new Map<string, ComponentInstance | null>();
-let manifestPromise: Promise<Manifest> | null = null;
+let manifestCache: Awaited<ReturnType<typeof loadPanelsManifest>> | null = null;
 
-async function loadManifest(): Promise<Manifest> {
-  if (!manifestPromise) {
-    manifestPromise = (async () => {
-      const res = await fetch(MANIFEST_PATH);
-      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-      return (await res.json()) as Manifest;
-    })();
+function invalidateChecklistPanelCache(): void {
+  panelChildrenCache.clear();
+  fieldLocationCache.clear();
+  manifestCache = null;
+}
+
+registerIniPanelsChangedHandler(invalidateChecklistPanelCache);
+
+async function loadManifest() {
+  if (!manifestCache) {
+    manifestCache = await loadPanelsManifest();
   }
-  return manifestPromise;
+  return manifestCache.manifest!;
 }
 
 async function loadPanelChildren(file: string): Promise<ComponentInstance[]> {
   const cached = panelChildrenCache.get(file);
   if (cached) return cached;
 
-  const res = await fetch(`/config/components/generated/${file}`);
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  const doc = parseYaml(await res.text()) as { children?: ComponentInstance[] };
+  const text = await loadGeneratedPanelYaml(file);
+  const doc = parseYaml(text) as { children?: ComponentInstance[] };
   const children = doc.children ?? [];
   panelChildrenCache.set(file, children);
   return children;
@@ -86,6 +85,7 @@ async function findFieldComponentInManifest(
   field: string,
   componentId?: string | null,
 ): Promise<ComponentInstance | null> {
+  void panelsEpoch.value;
   const key = fieldCacheKey(field, componentId);
   if (fieldLocationCache.has(key)) {
     const hit = fieldLocationCache.get(key);

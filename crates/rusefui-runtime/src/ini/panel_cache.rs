@@ -1,6 +1,8 @@
-//! Кэш YAML-панелей, сгенерированных из INI (`~/.rusEFI/ui_panels/{hash}/`).
+//! Кэш YAML-панелей из INI: `~/.rusEFI/projects/{project_key}/ui_panels/{ini_hash}/`.
 
+use std::collections::hash_map::DefaultHasher;
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -10,12 +12,13 @@ use serde::Serialize;
 use super::signature::parse_rusefi_signature;
 
 /// Увеличивать при изменении конвертера INI → YAML (устаревший cache пересоздаётся).
-pub const PANEL_CACHE_GENERATOR_VERSION: u32 = 1;
+pub const PANEL_CACHE_GENERATOR_VERSION: u32 = 2;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PanelCacheStatus {
     pub hash: String,
+    pub project_key: String,
     pub dir: String,
     pub manifest_path: String,
     pub generated: bool,
@@ -28,22 +31,35 @@ fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
-/// Каталог user-level cache для UI-панелей (не в проекте, не в bundle).
-pub fn ui_panels_cache_dir() -> PathBuf {
+/// Стабильный ключ каталога для файла проекта (или `scratch` без пути).
+pub fn project_cache_key(project_path: Option<&Path>) -> String {
+    match project_path {
+        None => "scratch".into(),
+        Some(p) => {
+            let canonical = p.canonicalize().unwrap_or_else(|_| p.to_path_buf());
+            let mut hasher = DefaultHasher::new();
+            canonical.hash(&mut hasher);
+            format!("{:016x}", hasher.finish())
+        }
+    }
+}
+
+/// Корень user-level cache (`~/.rusEFI/projects/`).
+pub fn projects_cache_root() -> PathBuf {
     if let Ok(dir) = std::env::var("RUSEFI_UI_PANELS_DIR") {
         return PathBuf::from(dir);
     }
     dirs::home_dir()
-        .map(|home| home.join(".rusEFI").join("ui_panels"))
-        .unwrap_or_else(|| PathBuf::from(".rusEFI/ui_panels"))
+        .map(|home| home.join(".rusEFI").join("projects"))
+        .unwrap_or_else(|| PathBuf::from(".rusEFI/projects"))
 }
 
-pub fn cache_dir_for_hash(hash: &str) -> PathBuf {
-    ui_panels_cache_dir().join(hash)
+pub fn project_panels_root(project_key: &str) -> PathBuf {
+    projects_cache_root().join(project_key).join("ui_panels")
 }
 
-pub fn manifest_path_for_hash(hash: &str) -> PathBuf {
-    cache_dir_for_hash(hash).join("manifest.json")
+pub fn cache_dir_for_project_ini(project_key: &str, ini_hash: &str) -> PathBuf {
+    project_panels_root(project_key).join(ini_hash)
 }
 
 fn remove_cache_dir(cache_dir: &Path) -> Result<(), String> {
@@ -77,18 +93,23 @@ fn is_cache_valid(manifest: &PanelManifest, cache_dir: &Path, ini_path: &Path) -
 }
 
 /// Создать cache при miss или устаревшем hit; валидный hit — только вернуть путь.
-pub fn ensure_panels_for_ini(ini_path: &Path, signature: &str) -> Result<PanelCacheStatus, String> {
+pub fn ensure_panels_for_ini(
+    ini_path: &Path,
+    signature: &str,
+    project_key: &str,
+) -> Result<PanelCacheStatus, String> {
     let parsed = parse_rusefi_signature(signature)
         .ok_or_else(|| format!("signature не парсится для panel cache: {signature}"))?;
     let hash = parsed.hash;
-    let cache_dir = cache_dir_for_hash(&hash);
+    let cache_dir = cache_dir_for_project_ini(project_key, &hash);
     let manifest_path = cache_dir.join("manifest.json");
 
     if manifest_path.is_file() {
-        if let Ok(manifest) = read_cached_manifest(&hash) {
+        if let Ok(manifest) = read_manifest_from_dir(&cache_dir) {
             if is_cache_valid(&manifest, &cache_dir, ini_path) {
                 return Ok(PanelCacheStatus {
                     hash,
+                    project_key: project_key.to_string(),
                     dir: cache_dir.display().to_string(),
                     manifest_path: manifest_path.display().to_string(),
                     generated: false,
@@ -103,6 +124,7 @@ pub fn ensure_panels_for_ini(ini_path: &Path, signature: &str) -> Result<PanelCa
 
     Ok(PanelCacheStatus {
         hash,
+        project_key: project_key.to_string(),
         dir: cache_dir.display().to_string(),
         manifest_path: manifest_path.display().to_string(),
         generated: true,
@@ -138,11 +160,16 @@ fn write_panel_cache(
     Ok(())
 }
 
-/// Прочитать manifest.json из cache hash (если есть).
-pub fn read_cached_manifest(hash: &str) -> Result<PanelManifest, String> {
-    let path = manifest_path_for_hash(hash);
+/// Прочитать manifest.json из каталога cache.
+pub fn read_manifest_from_dir(cache_dir: &Path) -> Result<PanelManifest, String> {
+    let path = cache_dir.join("manifest.json");
     let text = fs::read_to_string(&path).map_err(|e| e.to_string())?;
     serde_json::from_str(&text).map_err(|e| e.to_string())
+}
+
+pub fn read_panel_yaml(cache_dir: &Path, file: &str) -> Result<String, String> {
+    let path = cache_dir.join(file);
+    fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 #[cfg(test)]
@@ -165,19 +192,22 @@ mod tests {
         let ini_path = rusefi_ini::default_test_ini_path();
         let ini = rusefi_ini::IniFile::load_file(&ini_path).unwrap();
         let sig = ini.signature.expect("test ini signature");
+        let project_key = "test-project";
 
-        let status = ensure_panels_for_ini(&ini_path, &sig).expect("ensure");
+        let status = ensure_panels_for_ini(&ini_path, &sig, project_key).expect("ensure");
         assert!(status.generated);
+        assert_eq!(status.project_key, project_key);
         assert!(PathBuf::from(&status.manifest_path).is_file());
 
-        let manifest = read_cached_manifest(&status.hash).expect("manifest");
+        let manifest = read_manifest_from_dir(&cache_dir_for_project_ini(project_key, &status.hash))
+            .expect("manifest");
         assert_eq!(
             manifest.generator_version,
             Some(PANEL_CACHE_GENERATOR_VERSION)
         );
         assert!(manifest.panel_count >= 200);
 
-        let again = ensure_panels_for_ini(&ini_path, &sig).expect("hit");
+        let again = ensure_panels_for_ini(&ini_path, &sig, project_key).expect("hit");
         assert!(!again.generated);
 
         std::env::remove_var("RUSEFI_UI_PANELS_DIR");
@@ -198,7 +228,8 @@ mod tests {
         let ini = rusefi_ini::IniFile::load_file(&ini_path).unwrap();
         let sig = ini.signature.expect("test ini signature");
         let parsed = parse_rusefi_signature(&sig).expect("signature");
-        let cache_dir = cache_dir_for_hash(&parsed.hash);
+        let project_key = "stale-project";
+        let cache_dir = cache_dir_for_project_ini(project_key, &parsed.hash);
 
         std::fs::create_dir_all(&cache_dir).unwrap();
         let stale = PanelManifest {
@@ -222,10 +253,10 @@ mod tests {
         .unwrap();
         fs::write(cache_dir.join("stale.panel.yaml"), "children: []\n").unwrap();
 
-        let status = ensure_panels_for_ini(&ini_path, &sig).expect("regenerate");
+        let status = ensure_panels_for_ini(&ini_path, &sig, project_key).expect("regenerate");
         assert!(status.generated);
 
-        let manifest = read_cached_manifest(&status.hash).expect("manifest");
+        let manifest = read_manifest_from_dir(&cache_dir).expect("manifest");
         assert_eq!(
             manifest.generator_version,
             Some(PANEL_CACHE_GENERATOR_VERSION)
@@ -237,6 +268,25 @@ mod tests {
                 .iter()
                 .any(|p| p.id == "IgnitionTableDialog")
         );
+
+        std::env::remove_var("RUSEFI_UI_PANELS_DIR");
+        let _ = std::fs::remove_dir_all(temp);
+    }
+
+    #[test]
+    fn different_projects_get_separate_cache_dirs() {
+        let _guard = test_lock();
+        let temp = std::env::temp_dir().join(format!("rusefui_panel_cache_sep_{}", std::process::id()));
+        std::fs::create_dir_all(&temp).unwrap();
+        std::env::set_var("RUSEFI_UI_PANELS_DIR", &temp);
+
+        let ini_path = rusefi_ini::default_test_ini_path();
+        let ini = rusefi_ini::IniFile::load_file(&ini_path).unwrap();
+        let sig = ini.signature.expect("test ini signature");
+
+        let a = ensure_panels_for_ini(&ini_path, &sig, "project-a").expect("a");
+        let b = ensure_panels_for_ini(&ini_path, &sig, "project-b").expect("b");
+        assert_ne!(a.dir, b.dir);
 
         std::env::remove_var("RUSEFI_UI_PANELS_DIR");
         let _ = std::fs::remove_dir_all(temp);

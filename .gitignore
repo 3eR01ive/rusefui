@@ -29,6 +29,9 @@ dist-ssr
 *.sln
 *.sw?
 
+# INI-generated UI panels (user cache: ~/.rusEFI/projects/…/ui_panels/)
+public/config/components/generated/
+
 # Research outputs
 research/**/output/*.csv
 research/**/__pycache__/

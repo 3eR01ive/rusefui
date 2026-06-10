@@ -7,7 +7,7 @@ children:
     navSelectable: false
     props:
       height: 360
-      dynoCharsPanel: generated/dynochars.panel
+      dynoCharsPanel: dynochars.panel.yaml
     bind:
       source: outputChannels
       params:

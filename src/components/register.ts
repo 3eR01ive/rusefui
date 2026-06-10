@@ -23,6 +23,8 @@ import KnockPanel from "./builtins/KnockPanel.vue";
 import Spectrogram from "./builtins/Spectrogram.vue";
 import ConfigChecklist from "./builtins/ConfigChecklist.vue";
 import LuaScriptPanel from "./builtins/LuaScriptPanel.vue";
+import IniCommandButton from "./builtins/IniCommandButton.vue";
+import GeneratedPanel from "./builtins/GeneratedPanel.vue";
 import ProjectTimeline from "./builtins/ProjectTimeline.vue";
 
 let registered = false;
@@ -45,6 +47,8 @@ export function registerBuiltinComponents(): void {
   reg("simulation", SimulationPanel);
   reg("command", CommandPanel);
   reg("lua-script", LuaScriptPanel);
+  reg("ini-command-button", IniCommandButton);
+  reg("generated-panel", GeneratedPanel);
   reg("scalar-field", ScalarField);
   reg("string-field", StringField);
   reg("enum-field", EnumField);
