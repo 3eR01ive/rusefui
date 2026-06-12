@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.6 — 2026-06-12
+
+- **Windows fix** — IPC-фоллбек при загрузке UI-конфига: WebView2 возвращал SPA HTML вместо YAML, теперь читается через `read_ui_config` напрямую из бандла.
+
 ## 0.4.5 — 2026-06-09
 
 - **INI-кнопки** — `commandButton` из TunerStudio (Auto Calibrate ETB и др.) как `ini-command-button`, отправка `Z`-команд из INI.
