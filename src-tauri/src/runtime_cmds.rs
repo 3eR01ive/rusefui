@@ -747,6 +747,16 @@ pub fn panels_read_yaml(file: String, state: State<RuntimeState>) -> Result<Stri
     read_panel_yaml(&cache_dir, &file)
 }
 
+/// Читает статический UI-конфиг из бандла (обход Windows WebView2 SPA-fallback для YAML).
+#[tauri::command]
+pub fn read_ui_config(app: AppHandle, path: String) -> Result<String, String> {
+    let key = format!("/config/{}", path.trim_start_matches('/'));
+    match app.asset_resolver().get(key.clone()) {
+        Some(asset) => String::from_utf8(asset.bytes).map_err(|e| e.to_string()),
+        None => Err(format!("UI config not found in bundle: {key}")),
+    }
+}
+
 pub fn register_knock_scope_emitter(app: &AppHandle) {
     let handle = app.clone();
     let state = app.state::<RuntimeState>();

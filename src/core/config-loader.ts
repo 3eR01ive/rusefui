@@ -1,3 +1,4 @@
+import { invoke } from "@tauri-apps/api/core";
 import { parse as parseYaml } from "yaml";
 import type {
   AppConfigFile,
@@ -19,9 +20,8 @@ async function fetchText(path: string): Promise<string> {
   }
   const ct = res.headers.get("content-type") ?? "";
   if (ct.includes("text/html")) {
-    throw new Error(
-      `Config not found (got HTML): ${url} — проверьте путь и имя файла в YAML`,
-    );
+    // Windows WebView2 возвращает index.html (SPA-fallback) вместо YAML-файла — читаем через IPC.
+    return invoke<string>("read_ui_config", { path });
   }
   return res.text();
 }
