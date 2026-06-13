@@ -166,6 +166,8 @@ const CLICK_PAN_THRESHOLD_PX = 5;
 let ro: ResizeObserver | null = null;
 
 let liveDrawRaf = 0;
+let pendingPanPx = 0;
+let panWheelRafId = 0;
 
 // ---- WebGL renderer ---------------------------------------------------------
 const renderer = new CompositeChartRenderer();
@@ -730,7 +732,18 @@ function onCanvasWheel(e: WheelEvent) {
   // Plain scroll = pan horizontally through time
   const PIXELS_PER_LINE = 40;
   const rawDelta = e.deltaMode === 0 /* pixels */ ? dy || dx : (dy || dx) * PIXELS_PER_LINE;
-  void panByWheelDelta(rawDelta);
+  scheduleWheelPan(rawDelta);
+}
+
+function scheduleWheelPan(rawPx: number) {
+  pendingPanPx += rawPx;
+  if (panWheelRafId !== 0) return;
+  panWheelRafId = requestAnimationFrame(() => {
+    panWheelRafId = 0;
+    const px = pendingPanPx;
+    pendingPanPx = 0;
+    void panByWheelDelta(px);
+  });
 }
 
 async function panByWheelDelta(rawPx: number) {
@@ -880,8 +893,20 @@ watch(
 watch(compositeTimelineLoadEpoch, () => { void refreshReviewEvents(); });
 
 async function onViewportLinkChange(checked: boolean) {
+  // Snapshot current output position BEFORE any async calls
+  let savedViewport: { viewEndSec: number; spanSec: number } | undefined;
+  if (!checked && viewportLinked.value && reviewMode.value) {
+    const range = currentTimeRangeFromOutput();
+    savedViewport = { viewEndSec: range.tEnd / 1_000_000, spanSec: range.spanUs / 1_000_000 };
+  }
+  // Unlink FIRST so that side-effects (watch on timelineStatus, Tauri event listener)
+  // already see viewportLinked=false and don't re-fetch with the output viewport
   await setViewportLinked(checked);
-  if (checked && reviewMode.value) await refreshReviewEvents();
+  if (savedViewport) {
+    // Now push the saved position into the composite timeline's own view
+    await controlTimelineView({ followLive: false, ...savedViewport });
+  }
+  if (reviewMode.value) await refreshReviewEvents();
 }
 
 watch(
@@ -1130,6 +1155,7 @@ function onDocClick() { durationDropdownOpen.value = false; }
 onUnmounted(() => {
   unregUiFlush?.();
   if (wheelComputeTimer != null) { clearTimeout(wheelComputeTimer); wheelComputeTimer = null; }
+  if (panWheelRafId !== 0) { cancelAnimationFrame(panWheelRafId); panWheelRafId = 0; }
   clearAutoStopTimer();
   stopLiveDraw();
   document.removeEventListener("click", onDocClick);
