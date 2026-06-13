@@ -136,16 +136,9 @@ watch(
 const statusText = computed(() => {
   if (localError.value) return localError.value;
   const conflict = currentPinConflict.value;
-  if (conflict && !conflict.selectable) {
-    return conflict.title || "конфликт пинов";
-  }
-  if (saving.value) return "сохранение…";
-  if (snapshot.value.loading) return "загрузка конфига…";
-  if (snapshot.value.lastError) return snapshot.value.lastError;
-  if (snapshot.value.readOnly && snapshot.value.loaded) return "проект (offline)";
-  if (!snapshot.value.connected && !configCanView(snapshot.value)) return "нет подключения";
-  if (!snapshot.value.loaded) return "ожидание данных…";
-  return pinPool.value ? "enum · пины" : "enum";
+  if (conflict && !conflict.selectable) return conflict.title || "конфликт пинов";
+  if (saving.value) return "…";
+  return "";
 });
 
 const disabled = computed(
@@ -217,11 +210,9 @@ async function commit() {
       </option>
     </select>
     <span
+      v-if="statusText"
       class="field-badge"
-      :class="{
-        'field-badge--error':
-          !!localError || !!snapshot.lastError || !!currentPinConflict?.title,
-      }"
+      :class="{ 'field-badge--error': !!localError || !!currentPinConflict?.title }"
     >
       {{ statusText }}
     </span>
@@ -238,7 +229,8 @@ async function commit() {
 }
 
 .field-label {
-  flex: 0 1 auto;
+  flex: 0 0 var(--field-label-w, auto);
+  width: var(--field-label-w, auto);
   min-width: 0;
   font-size: 0.78rem;
   color: var(--color-gray);

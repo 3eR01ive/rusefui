@@ -47,6 +47,7 @@ const title = computed(() => String(props.props.title ?? ""));
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
+  --field-label-w: 9rem;
 }
 
 .section-body > :deep(*) {

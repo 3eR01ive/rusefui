@@ -25,5 +25,6 @@ defineProps<{
   max-width: 100%;
   min-width: 0;
   align-items: stretch;
+  --field-label-w: 9rem;
 }
 </style>

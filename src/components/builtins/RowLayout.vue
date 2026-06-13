@@ -23,6 +23,7 @@ defineProps<{
   gap: 1rem;
   align-items: flex-start;
   width: 100%;
+  --field-label-w: 9rem;
 }
 
 .layout-row > :deep(*) {

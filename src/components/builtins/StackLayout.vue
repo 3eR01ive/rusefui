@@ -23,5 +23,6 @@ defineProps<{
   flex-direction: column;
   gap: 1rem;
   width: 100%;
+  --field-label-w: 9rem;
 }
 </style>

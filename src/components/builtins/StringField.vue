@@ -49,13 +49,8 @@ watch(
 
 const statusText = computed(() => {
   if (localError.value) return localError.value;
-  if (saving.value) return "сохранение…";
-  if (snapshot.value.loading) return "загрузка конфига…";
-  if (snapshot.value.lastError) return snapshot.value.lastError;
-  if (snapshot.value.readOnly && snapshot.value.loaded) return "проект (offline)";
-  if (!snapshot.value.connected && !configCanView(snapshot.value)) return "нет подключения";
-  if (!snapshot.value.loaded) return "ожидание данных…";
-  return maxLength.value ? `до ${maxLength.value} симв.` : "config";
+  if (saving.value) return "…";
+  return maxLength.value ? `до ${maxLength.value} симв.` : "";
 });
 
 const disabled = computed(
@@ -103,7 +98,7 @@ async function commit() {
       @change="commit"
       @keydown.enter="($event.target as HTMLInputElement)?.blur()"
     />
-    <span class="field-badge" :class="{ 'field-badge--error': !!localError || !!snapshot.lastError }">
+    <span v-if="statusText" class="field-badge" :class="{ 'field-badge--error': !!localError }">
       {{ statusText }}
     </span>
   </div>
@@ -119,7 +114,8 @@ async function commit() {
 }
 
 .field-label {
-  flex: 0 1 auto;
+  flex: 0 0 var(--field-label-w, auto);
+  width: var(--field-label-w, auto);
   min-width: 0;
   font-size: 0.78rem;
   color: var(--color-gray);
