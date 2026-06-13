@@ -112,23 +112,29 @@ async function commit() {
 <style scoped>
 .string-field {
   display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  max-width: none;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
   width: 100%;
 }
 
 .field-label {
+  flex: 0 1 auto;
+  min-width: 0;
   font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
   color: var(--color-gray);
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .field-input {
-  padding: 0.5rem 0.65rem;
-  border-radius: var(--radius-md);
+  flex: 1 1 60px;
+  min-width: 0;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.85rem;
+  border-radius: var(--radius-sm, var(--radius-md));
   border: 1px solid var(--color-border-strong);
   background: var(--color-bg);
   color: var(--color-text);
@@ -144,8 +150,10 @@ async function commit() {
 }
 
 .field-badge {
-  font-size: 0.7rem;
+  flex: 0 0 auto;
+  font-size: 0.68rem;
   color: var(--color-text-subtle);
+  white-space: nowrap;
 }
 
 .field-badge--error {
