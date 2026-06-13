@@ -10,8 +10,8 @@ use rusefui_runtime::{
     OutputTimelineSeriesQuery, OutputTimelineSeriesSnapshot, OutputTimelineStatus, OutputTimelineView,
     OutputTimelineViewControl,
     cache_dir_for_project_ini, read_manifest_from_dir, read_panel_yaml, PanelManifest,
-    with_project_extension, PendingIniResolution, ProjectInfo, ProjectLogRef, ProjectStore,
-    ProjectTimelineClip, PROJECT_FILE_EXTENSION, LEGACY_PROJECT_FILE_EXTENSION,
+    CommitSummary, PendingIniResolution, ProjectGitRepo, ProjectInfo, ProjectListEntry,
+    ProjectLogRef, ProjectScript, ProjectStore, ProjectTimelineClip,
     ProtocolLogEntry,
     ProtocolLogFilterSettings, ProtocolLogStore, RampCurveKind, RecentProjectEntry, RecentProjectsStore,
     RusefuiProject, StimulatorRampParams, StimulatorRampResult, StimulatorRampStep,
@@ -2177,7 +2177,7 @@ pub fn workspace_get_state(state: State<RuntimeState>) -> WorkspaceSnapshot {
     workspace_snapshot_for_ui(&state, snap)
 }
 
-// --- Проект (JSON) ---
+// --- Проект (git-backed) ---
 
 #[tauri::command]
 pub fn project_get_info(state: State<RuntimeState>) -> ProjectInfo {
@@ -2218,20 +2218,16 @@ pub fn project_ui_persist_keys(state: State<RuntimeState>) -> Vec<String> {
         .collect()
 }
 
+/// Создать новый проект в `~/.rusefui/projects/{name}/`.
 #[tauri::command]
 pub fn project_create_new(
-    path: String,
-    name: Option<String>,
+    name: String,
     state: State<RuntimeState>,
     app: AppHandle,
 ) -> Result<(), String> {
-    let label = name.unwrap_or_else(|| "Новый проект".into());
-    let path_ref = std::path::Path::new(&path);
-    let store = state.project.lock().unwrap();
-    store.new_document(label);
-    store.save_to_path(path_ref)?;
-    drop(store);
-    record_recent_project(&state, path_ref);
+    let label = if name.trim().is_empty() { "Новый проект".into() } else { name };
+    let dir = state.project.lock().unwrap().create_project(&label)?;
+    record_recent_project(&state, &dir);
     reset_workspace(&state);
     state.project.lock().unwrap().apply_to_session(&state.session)?;
     clear_config_diff(&state, &app);
@@ -2242,37 +2238,29 @@ pub fn project_create_new(
     Ok(())
 }
 
+/// Открыть проект: принимает путь к папке (git-проект) или legacy .rusefui файл.
 #[tauri::command]
 pub fn project_load(path: String, state: State<RuntimeState>, app: AppHandle) -> Result<(), String> {
     println!("[workspace-fsm] project_load: {path}");
     let path_ref = std::path::Path::new(&path);
 
-    let apply_result = {
-        let store = state.project.lock().unwrap();
-        println!("[workspace-fsm] project_load: load_from_path…");
-        let load_result = store.load_from_path(path_ref);
-        if let Err(ref e) = load_result {
-            println!("[workspace-fsm] project_load failed at load_from_path: {e}");
-            return load_result;
-        }
-        println!("[workspace-fsm] project_load: reset_workspace…");
-        reset_workspace(&state);
-        println!("[workspace-fsm] project_load: apply_to_session…");
-        store.apply_to_session(&state.session)
-    };
+    let open_result = state.project.lock().unwrap().open_project_path(path_ref);
+    if let Err(ref e) = open_result {
+        println!("[workspace-fsm] project_load failed: {e}");
+        return Err(open_result.unwrap_err());
+    }
+    let dir = open_result.unwrap();
 
+    reset_workspace(&state);
+    let apply_result = state.project.lock().unwrap().apply_to_session(&state.session);
     if let Err(ref e) = apply_result {
-        println!("[workspace-fsm] project_load failed at apply_to_session: {e}");
-        state
-            .project
-            .lock()
-            .unwrap()
-            .new_document("Новый проект".into());
+        println!("[workspace-fsm] project_load apply_to_session failed: {e}");
+        state.project.lock().unwrap().new_document("Новый проект".into());
         return apply_result;
     }
 
-    println!("[workspace-fsm] project_load: ok, emit_workspace_reset…");
-    record_recent_project(&state, path_ref);
+    println!("[workspace-fsm] project_load: ok");
+    record_recent_project(&state, &dir);
     clear_config_diff(&state, &app);
     emit_project(&app, &state);
     emit_ini_resolution(&app, &state);
@@ -2284,34 +2272,23 @@ pub fn project_load(path: String, state: State<RuntimeState>, app: AppHandle) ->
     Ok(())
 }
 
+/// Сохранить проект (git commit). Возвращает commit id.
 #[tauri::command]
-pub fn project_save(state: State<RuntimeState>, app: AppHandle) -> Result<String, String> {
-    let store = state.project.lock().unwrap();
-    let path = store
-        .saved_path()
-        .ok_or_else(|| "Укажите файл: «Сохранить как…»".to_string())?;
-    store.prepare_for_save(&state.session)?;
-    store.save_to_path(&path)?;
-    drop(store);
-    record_recent_project(&state, &path);
-    emit_project(&app, &state);
-    Ok(path.display().to_string())
-}
-
-#[tauri::command]
-pub fn project_save_path(
-    path: String,
+pub fn project_save(
+    message: Option<String>,
     state: State<RuntimeState>,
     app: AppHandle,
-) -> Result<(), String> {
-    let path_ref = std::path::Path::new(&path);
+) -> Result<String, String> {
     let store = state.project.lock().unwrap();
     store.prepare_for_save(&state.session)?;
-    store.save_to_path(path_ref)?;
     drop(store);
-    record_recent_project(&state, path_ref);
+    let commit_id = state.project.lock().unwrap().commit(message.as_deref())?;
+    let dir = state.project.lock().unwrap().project_dir();
+    if let Some(d) = dir {
+        record_recent_project(&state, &d);
+    }
     emit_project(&app, &state);
-    Ok(())
+    Ok(commit_id)
 }
 
 #[tauri::command]
@@ -2319,14 +2296,26 @@ pub fn recent_projects_list(state: State<RuntimeState>) -> Vec<RecentProjectEntr
     state.recent_projects.lock().unwrap().list_entries()
 }
 
-/// Закрыть проект и вернуть UI в фазу Gate (экран создания/открытия).
+/// Список всех git-проектов в `~/.rusefui/projects/`.
+#[tauri::command]
+pub fn project_list() -> Vec<ProjectListEntry> {
+    ProjectGitRepo::list_all()
+}
+
+/// Выбрать папку через диалог (для проектов за пределами ~/.rusefui/projects/).
+#[tauri::command]
+pub async fn pick_project_dir() -> Option<String> {
+    rfd::AsyncFileDialog::new()
+        .set_title("Выбрать папку проекта rusefui")
+        .pick_folder()
+        .await
+        .map(|h| h.path().display().to_string())
+}
+
+/// Закрыть проект и вернуть UI в фазу Gate.
 #[tauri::command]
 pub fn project_close(state: State<RuntimeState>, app: AppHandle) -> Result<(), String> {
-    state
-        .project
-        .lock()
-        .unwrap()
-        .new_document("Новый проект".into());
+    state.project.lock().unwrap().new_document("Новый проект".into());
     set_burn_pending(&state, &app, false);
     reset_workspace(&state);
     state.session.set_project_ini_signature(None);
@@ -2343,11 +2332,7 @@ pub fn project_capture_ecu_config(
     state: State<RuntimeState>,
     app: AppHandle,
 ) -> Result<(), String> {
-    state
-        .project
-        .lock()
-        .unwrap()
-        .capture_ecu_config(&state.session)?;
+    state.project.lock().unwrap().capture_ecu_config(&state.session)?;
     emit_project(&app, &state);
     Ok(())
 }
@@ -2393,23 +2378,21 @@ pub fn project_clear_timeline(state: State<RuntimeState>, app: AppHandle) -> Res
     Ok(changed)
 }
 
+/// Форк проекта без timeline (новый git-проект). new_name = "" → автоимя.
 #[tauri::command]
 pub fn project_copy_without_timeline(
-    path: String,
+    new_name: String,
     state: State<RuntimeState>,
     app: AppHandle,
 ) -> Result<(), String> {
-    let path_ref = std::path::Path::new(&path);
-    {
-        let store = state.project.lock().unwrap();
-        store.write_copy_without_timeline(path_ref, &state.session)?;
-    }
-    let store = state.project.lock().unwrap();
-    store.load_from_path(path_ref)?;
+    let dir = state
+        .project
+        .lock()
+        .unwrap()
+        .fork_without_timeline(&new_name, &state.session)?;
     reset_workspace(&state);
-    store.apply_to_session(&state.session)?;
-    drop(store);
-    record_recent_project(&state, path_ref);
+    state.project.lock().unwrap().apply_to_session(&state.session)?;
+    record_recent_project(&state, &dir);
     clear_config_diff(&state, &app);
     emit_project(&app, &state);
     emit_workspace_reset(&app, &state);
@@ -2420,31 +2403,161 @@ pub fn project_copy_without_timeline(
     Ok(())
 }
 
+// --- История проекта (git) ---
+
 #[tauri::command]
-pub async fn pick_project_open_path() -> Option<String> {
-    rfd::AsyncFileDialog::new()
-        .set_title("Открыть проект rusefui")
-        .add_filter(
-            "rusefui project",
-            &[PROJECT_FILE_EXTENSION, LEGACY_PROJECT_FILE_EXTENSION],
-        )
-        .pick_file()
-        .await
-        .map(|h| h.path().display().to_string())
+pub fn project_history_list(state: State<RuntimeState>) -> Result<Vec<CommitSummary>, String> {
+    state.project.lock().unwrap().history()
 }
 
 #[tauri::command]
-pub async fn pick_project_save_path(default_name: Option<String>) -> Option<String> {
-    let mut dlg = rfd::AsyncFileDialog::new()
-        .set_title("Сохранить проект rusefui")
-        .add_filter("rusefui project", &[PROJECT_FILE_EXTENSION]);
-    if let Some(name) = default_name.filter(|s| !s.is_empty()) {
-        dlg = dlg.set_file_name(&with_project_extension(&name));
-    }
-    dlg.save_file()
-        .await
-        .map(|h| h.path().display().to_string())
-        .map(|path| with_project_extension(&path))
+pub fn project_diff(
+    from_id: String,
+    to_id: Option<String>,
+    state: State<RuntimeState>,
+) -> Result<String, String> {
+    state.project.lock().unwrap().diff(&from_id, to_id.as_deref())
+}
+
+#[tauri::command]
+pub fn project_checkout(
+    commit_id: String,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    state.project.lock().unwrap().checkout_commit(&commit_id)?;
+    emit_project(&app, &state);
+    Ok(())
+}
+
+// --- Project scripts ---
+
+#[tauri::command]
+pub fn project_script_list(state: State<RuntimeState>) -> Vec<rusefui_runtime::ProjectScript> {
+    state.project.lock().unwrap().list_scripts()
+}
+
+#[tauri::command]
+pub fn project_script_create(
+    name: String,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<rusefui_runtime::ProjectScript, String> {
+    let script = state.project.lock().unwrap().create_script(&name)?;
+    emit_project(&app, &state);
+    Ok(script)
+}
+
+#[tauri::command]
+pub fn project_script_delete(
+    id: String,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    state.project.lock().unwrap().delete_script(&id)?;
+    emit_project(&app, &state);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn project_script_get_content(
+    id: String,
+    state: State<RuntimeState>,
+) -> Result<String, String> {
+    state.project.lock().unwrap().get_script_content(&id)
+}
+
+#[tauri::command]
+pub fn project_script_set_content(
+    id: String,
+    content: String,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<(), String> {
+    state.project.lock().unwrap().set_script_content(&id, &content)?;
+    emit_project(&app, &state);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn project_script_ecu_read(
+    script_field: String,
+    state: State<RuntimeState>,
+) -> Result<String, String> {
+    rusefui_runtime::ecu_script_read(&state.session, &script_field)
+}
+
+#[tauri::command]
+pub fn project_script_ecu_write(
+    script_field: String,
+    content: String,
+    state: State<RuntimeState>,
+) -> Result<(), String> {
+    rusefui_runtime::ecu_script_write(&state.session, &script_field, &content)
+}
+
+#[tauri::command]
+pub fn project_script_ecu_burn(state: State<RuntimeState>) -> Result<(), String> {
+    rusefui_runtime::ecu_script_burn(&state.session)
+}
+
+#[tauri::command]
+pub async fn pick_script_file() -> Option<String> {
+    let handle = rfd::AsyncFileDialog::new()
+        .add_filter("Lua", &["lua"])
+        .set_title("Открыть Lua-скрипт")
+        .pick_file()
+        .await?;
+    Some(handle.path().to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+pub fn project_script_import(
+    path: String,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<ProjectScript, String> {
+    let script = state
+        .project
+        .lock()
+        .unwrap()
+        .import_script_file(std::path::Path::new(&path))?;
+    emit_project(&app, &state);
+    Ok(script)
+}
+
+#[tauri::command]
+pub fn project_script_history(
+    id: String,
+    state: State<RuntimeState>,
+) -> Result<Vec<CommitSummary>, String> {
+    state.project.lock().unwrap().script_history(&id)
+}
+
+#[tauri::command]
+pub fn project_script_diff(
+    id: String,
+    from_id: String,
+    to_id: Option<String>,
+    state: State<RuntimeState>,
+) -> Result<String, String> {
+    state
+        .project
+        .lock()
+        .unwrap()
+        .script_diff(&id, &from_id, to_id.as_deref())
+}
+
+#[tauri::command]
+pub fn project_script_checkout_version(
+    id: String,
+    commit_id: String,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<String, String> {
+    let content = state.project.lock().unwrap().checkout_script(&id, &commit_id)?;
+    emit_project(&app, &state);
+    Ok(content)
 }
 
 // --- INI resolution (несовпадение signature ECU ↔ INI) ---

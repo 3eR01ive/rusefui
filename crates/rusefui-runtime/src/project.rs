@@ -1,7 +1,7 @@
-//! Файл проекта rusefui (`.rusefui`, JSON внутри): снимок config ECU, логи, UI.
+//! Файл проекта rusefui (`project.json`): снимок config ECU, логи, UI.
+//! Хранение — git-репозиторий в `~/.rusefui/projects/{name}/`.
 
 use std::collections::HashMap;
-use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -12,51 +12,16 @@ use serde_json::Value;
 
 use crate::config_diff::encode_scalar_into_page;
 use crate::ini::resolve_ini_for_signature;
-use crate::session::EcuSession;
-use crate::sources::config::{build_project_ecu_config, pages_from_project_ecu};
+use crate::project_repo::ProjectGitRepo;
 use crate::project_timeline::{
     channel, clip_with_default_end, validate_channel, ProjectTimeline, ProjectTimelineClip,
     ProjectTimelineRecordRef,
 };
+use crate::session::EcuSession;
+use crate::sources::config::{build_project_ecu_config, pages_from_project_ecu};
 use crate::ui_persist::{self, ProjectUi};
 
-pub const FORMAT_VERSION: u32 = 1;
-
-/// Расширение файла проекта на диске.
-pub const PROJECT_FILE_EXTENSION: &str = "rusefui";
-
-/// Старое расширение — по-прежнему открываем для обратной совместимости.
-pub const LEGACY_PROJECT_FILE_EXTENSION: &str = "json";
-
-/// Путь сохранения с расширением `.rusefui` (`.json` в имени заменяется).
-pub fn with_project_extension(path: &str) -> String {
-    let path = path.trim();
-    if path.is_empty() {
-        return format!("Новый проект.{PROJECT_FILE_EXTENSION}");
-    }
-    let p = Path::new(path);
-    let stem = p
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or(path);
-    let file_name = format!("{stem}.{PROJECT_FILE_EXTENSION}");
-    match p.parent().filter(|parent| !parent.as_os_str().is_empty()) {
-        Some(parent) => parent.join(&file_name).display().to_string(),
-        None => file_name,
-    }
-}
-
-pub fn is_project_file_path(path: &Path) -> bool {
-    match path.extension().and_then(|e| e.to_str()) {
-        Some(ext) => {
-            ext.eq_ignore_ascii_case(PROJECT_FILE_EXTENSION)
-                || ext.eq_ignore_ascii_case(LEGACY_PROJECT_FILE_EXTENSION)
-        }
-        None => false,
-    }
-}
-
-fn now_ms() -> u64 {
+pub fn now_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
@@ -66,6 +31,7 @@ fn now_ms() -> u64 {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RusefuiProject {
+    #[serde(default)]
     pub format_version: u32,
     pub name: String,
     pub created_at_ms: u64,
@@ -78,6 +44,8 @@ pub struct RusefuiProject {
     pub logs: Vec<ProjectLogRef>,
     #[serde(default)]
     pub timeline: ProjectTimeline,
+    #[serde(default)]
+    pub scripts: Vec<ProjectScript>,
     #[serde(default)]
     pub ui: ProjectUi,
 }
@@ -94,13 +62,18 @@ pub struct ProjectIniRef {
 pub struct ProjectEcuConfig {
     pub captured_at_ms: u64,
     pub page_size: u32,
-    /// Сырой INI page 1 (основная калибровка), base64.
     pub raw_page0_base64: String,
-    /// Доп. страницы INI (`"2"`…`"4"` → base64). Second ignition/VE — page 4.
     #[serde(default, skip_serializing_if = "HashMap::is_empty")]
     pub config_pages_base64: HashMap<String, String>,
-    /// Декодированные скаляры/enum для просмотра и diff.
     pub values: HashMap<String, f64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectScript {
+    pub id: String,
+    pub name: String,
+    pub created_at_ms: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,7 +83,6 @@ pub struct ProjectLogRef {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub label: Option<String>,
     pub added_at_ms: u64,
-    /// Например `output_csv`.
     pub kind: String,
 }
 
@@ -120,7 +92,7 @@ impl RusefuiProject {
         let mut ui = ProjectUi::default();
         ui_persist::init_document_ui(&mut ui);
         Self {
-            format_version: FORMAT_VERSION,
+            format_version: 2,
             name: name.into(),
             created_at_ms: t,
             updated_at_ms: t,
@@ -128,6 +100,7 @@ impl RusefuiProject {
             ecu_config: None,
             logs: Vec::new(),
             timeline: ProjectTimeline::default(),
+            scripts: Vec::new(),
             ui,
         }
     }
@@ -140,6 +113,7 @@ impl RusefuiProject {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectInfo {
+    /// Project directory path (None when no project is open).
     pub path: Option<String>,
     pub name: String,
     pub dirty: bool,
@@ -148,10 +122,32 @@ pub struct ProjectInfo {
     pub has_ecu_config: bool,
 }
 
+// ---------------------------------------------------------------------------
+// Internal state
+// ---------------------------------------------------------------------------
+
+struct ProjectInner {
+    repo: Option<ProjectGitRepo>,
+    doc: RusefuiProject,
+    dirty: bool,
+}
+
+impl ProjectInner {
+    fn scratch() -> Self {
+        Self {
+            repo: None,
+            doc: RusefuiProject::new_named("Новый проект"),
+            dirty: false,
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ProjectStore
+// ---------------------------------------------------------------------------
+
 pub struct ProjectStore {
-    path: Mutex<Option<PathBuf>>,
-    dirty: Mutex<bool>,
-    doc: Mutex<RusefuiProject>,
+    inner: Mutex<ProjectInner>,
 }
 
 impl Default for ProjectStore {
@@ -162,45 +158,42 @@ impl Default for ProjectStore {
 
 impl ProjectStore {
     pub fn new() -> Self {
-        Self {
-            path: Mutex::new(None),
-            dirty: Mutex::new(false),
-            doc: Mutex::new(RusefuiProject::new_named("Новый проект")),
-        }
+        Self { inner: Mutex::new(ProjectInner::scratch()) }
     }
 
     pub fn info(&self) -> ProjectInfo {
-        let path = self.path.lock().unwrap().clone();
-        let dirty = *self.dirty.lock().unwrap();
-        let doc = self.doc.lock().unwrap();
+        let inner = self.inner.lock().unwrap();
         ProjectInfo {
-            path: path.map(|p| p.display().to_string()),
-            name: doc.name.clone(),
-            dirty,
-            log_count: doc.logs.len(),
-            timeline_clip_count: doc.timeline.clips.len(),
-            has_ecu_config: doc.ecu_config.is_some(),
+            path: inner.repo.as_ref().map(|r| r.dir().display().to_string()),
+            name: inner.doc.name.clone(),
+            dirty: inner.dirty,
+            log_count: inner.doc.logs.len(),
+            timeline_clip_count: inner.doc.timeline.clips.len(),
+            has_ecu_config: inner.doc.ecu_config.is_some(),
         }
     }
 
     pub fn document(&self) -> RusefuiProject {
-        self.doc.lock().unwrap().clone()
+        self.inner.lock().unwrap().doc.clone()
+    }
+
+    pub fn project_dir(&self) -> Option<PathBuf> {
+        self.inner.lock().unwrap().repo.as_ref().map(|r| r.dir().to_path_buf())
     }
 
     pub fn ui_get(&self, key: &str) -> Result<Value, String> {
-        let doc = self.doc.lock().unwrap();
-        ui_persist::get(&doc.ui, key)
+        let inner = self.inner.lock().unwrap();
+        ui_persist::get(&inner.doc.ui, key)
     }
 
     pub fn ui_set(&self, key: &str, value: Value) -> Result<(), String> {
-        let mut doc = self.doc.lock().unwrap();
-        // Не помечать грязным если значение не изменилось (например, восстановление UI после загрузки).
-        let existing = doc.ui.sections.get(key).cloned();
-        ui_persist::set(&mut doc.ui, key, value)?;
-        let changed = existing.as_ref() != doc.ui.sections.get(key);
+        let mut inner = self.inner.lock().unwrap();
+        let existing = inner.doc.ui.sections.get(key).cloned();
+        ui_persist::set(&mut inner.doc.ui, key, value)?;
+        let changed = existing.as_ref() != inner.doc.ui.sections.get(key);
         if changed {
-            doc.touch();
-            *self.dirty.lock().unwrap() = true;
+            inner.doc.touch();
+            inner.dirty = true;
         }
         Ok(())
     }
@@ -209,104 +202,234 @@ impl ProjectStore {
         ui_persist::persist_keys()
     }
 
+    /// Reset to scratch (no project open — Gate screen).
     pub fn new_document(&self, name: String) {
-        *self.doc.lock().unwrap() = RusefuiProject::new_named(name);
-        *self.path.lock().unwrap() = None;
-        *self.dirty.lock().unwrap() = false;
+        let mut inner = self.inner.lock().unwrap();
+        *inner = ProjectInner::scratch();
+        inner.doc.name = name;
     }
 
     pub fn set_name(&self, name: String) {
-        let mut doc = self.doc.lock().unwrap();
-        doc.name = name;
-        doc.touch();
-        *self.dirty.lock().unwrap() = true;
+        let mut inner = self.inner.lock().unwrap();
+        inner.doc.name = name;
+        inner.doc.touch();
+        inner.dirty = true;
     }
 
-    pub fn load_from_path(&self, path: &Path) -> Result<(), String> {
-        let text = fs::read_to_string(path).map_err(|e| e.to_string())?;
-        let mut doc: RusefuiProject = serde_json::from_str(&text)
-            .map_err(|e| format!("Некорректный JSON проекта: {e}"))?;
-        if doc.format_version != FORMAT_VERSION {
-            return Err(format!(
-                "Версия формата {} не поддерживается (ожидается {FORMAT_VERSION})",
-                doc.format_version
-            ));
+    // -----------------------------------------------------------------------
+    // Git operations
+    // -----------------------------------------------------------------------
+
+    /// Create a new project in `~/.rusefui/projects/`. Returns the project directory path.
+    pub fn create_project(&self, name: &str) -> Result<PathBuf, String> {
+        let (repo, doc) = ProjectGitRepo::create(name)?;
+        let dir = repo.dir().to_path_buf();
+        let mut inner = self.inner.lock().unwrap();
+        *inner = ProjectInner { repo: Some(repo), doc, dirty: false };
+        Ok(dir)
+    }
+
+    /// Open a project directory or migrate a legacy `.rusefui` file. Returns dir path.
+    pub fn open_project_path(&self, path: &Path) -> Result<PathBuf, String> {
+        let is_legacy = path.extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.eq_ignore_ascii_case("rusefui") || e.eq_ignore_ascii_case("json"))
+            .unwrap_or(false);
+
+        let (repo, doc) = if is_legacy {
+            // Legacy file → migrate to git project
+            let text = std::fs::read_to_string(path)
+                .map_err(|e| format!("Не удалось прочитать файл: {e}"))?;
+            let name = path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("project")
+                .to_string();
+            println!("[project] migrate legacy: {}", path.display());
+            ProjectGitRepo::import_legacy(&text, &name)?
+        } else {
+            // Git project directory
+            ProjectGitRepo::open(path)?
+        };
+
+        let dir = repo.dir().to_path_buf();
+        let mut inner = self.inner.lock().unwrap();
+        *inner = ProjectInner { repo: Some(repo), doc, dirty: false };
+        Ok(dir)
+    }
+
+    /// Commit current in-memory doc. Returns commit id hex string.
+    pub fn commit(&self, message: Option<&str>) -> Result<String, String> {
+        let (doc_clone, repo_dir) = {
+            let inner = self.inner.lock().unwrap();
+            let repo = inner.repo.as_ref().ok_or("Проект не открыт")?;
+            let mut doc = inner.doc.clone();
+            doc.touch();
+            (doc, repo.dir().to_path_buf())
+        };
+
+        let repo = ProjectGitRepo { dir: repo_dir };
+        let commit_id = repo.write_doc_and_commit(&doc_clone, message.unwrap_or("Сохранение"))?;
+
+        let mut inner = self.inner.lock().unwrap();
+        inner.doc.updated_at_ms = doc_clone.updated_at_ms;
+        inner.dirty = false;
+        Ok(commit_id)
+    }
+
+    pub fn history(&self) -> Result<Vec<crate::project_repo::CommitSummary>, String> {
+        let inner = self.inner.lock().unwrap();
+        let repo = inner.repo.as_ref().ok_or("Проект не открыт")?;
+        repo.history()
+    }
+
+    pub fn diff(&self, from_id: &str, to_id: Option<&str>) -> Result<String, String> {
+        let inner = self.inner.lock().unwrap();
+        let repo = inner.repo.as_ref().ok_or("Проект не открыт")?;
+        match to_id {
+            Some(to) => repo.diff_commits(from_id, to),
+            None => repo.diff_working(from_id, &inner.doc),
         }
-        doc.timeline.migrate_legacy();
-        *self.doc.lock().unwrap() = doc;
-        *self.path.lock().unwrap() = Some(path.to_path_buf());
-        *self.dirty.lock().unwrap() = false;
+    }
+
+    pub fn checkout_commit(&self, commit_id: &str) -> Result<(), String> {
+        let repo_dir = {
+            let inner = self.inner.lock().unwrap();
+            let repo = inner.repo.as_ref().ok_or("Проект не открыт")?;
+            repo.dir().to_path_buf()
+        };
+
+        let repo = ProjectGitRepo { dir: repo_dir };
+        let doc = repo.checkout(commit_id)?;
+
+        let mut inner = self.inner.lock().unwrap();
+        inner.doc = doc;
+        inner.dirty = false;
         Ok(())
     }
 
-    /// Перед `save_to_path`: скопировать в JSON актуальный page 0 из сессии.
-    ///
-    /// Иначе в файле остаётся старый `ecuConfig` (первый «Снимок config» или прошлое
-    /// открытие проекта), хотя на экране уже данные после чтения с ECU.
+    // -----------------------------------------------------------------------
+    // Script management
+    // -----------------------------------------------------------------------
+
+    pub fn list_scripts(&self) -> Vec<ProjectScript> {
+        self.inner.lock().unwrap().doc.scripts.clone()
+    }
+
+    pub fn create_script(&self, name: &str) -> Result<ProjectScript, String> {
+        let (repo_dir, id) = {
+            let inner = self.inner.lock().unwrap();
+            let repo = inner.repo.as_ref().ok_or("Проект не открыт")?;
+            let id = format!("{:x}", now_ms());
+            std::fs::create_dir_all(repo.scripts_dir()).map_err(|e| e.to_string())?;
+            std::fs::write(repo.script_path(&id), "-- Lua script\n")
+                .map_err(|e| e.to_string())?;
+            (repo.dir().to_path_buf(), id)
+        };
+        let script = ProjectScript {
+            id: id.clone(),
+            name: name.to_string(),
+            created_at_ms: now_ms(),
+        };
+        let mut inner = self.inner.lock().unwrap();
+        inner.doc.scripts.push(script.clone());
+        inner.dirty = true;
+        let _ = repo_dir; // ensure not dropped early
+        Ok(script)
+    }
+
+    pub fn delete_script(&self, id: &str) -> Result<(), String> {
+        let repo_dir = {
+            let inner = self.inner.lock().unwrap();
+            let repo = inner.repo.as_ref().ok_or("Проект не открыт")?;
+            repo.delete_script_file(id)?;
+            repo.dir().to_path_buf()
+        };
+        let mut inner = self.inner.lock().unwrap();
+        inner.doc.scripts.retain(|s| s.id != id);
+        inner.dirty = true;
+        let _ = repo_dir;
+        Ok(())
+    }
+
+    pub fn get_script_content(&self, id: &str) -> Result<String, String> {
+        let inner = self.inner.lock().unwrap();
+        let repo = inner.repo.as_ref().ok_or("Проект не открыт")?;
+        repo.read_script_content(id)
+    }
+
+    pub fn set_script_content(&self, id: &str, content: &str) -> Result<(), String> {
+        let repo_dir = {
+            let inner = self.inner.lock().unwrap();
+            let repo = inner.repo.as_ref().ok_or("Проект не открыт")?;
+            if !inner.doc.scripts.iter().any(|s| s.id == id) {
+                return Err(format!("Скрипт {id} не найден"));
+            }
+            repo.dir().to_path_buf()
+        };
+        let repo = ProjectGitRepo { dir: repo_dir };
+        repo.write_script_content(id, content)?;
+        self.inner.lock().unwrap().dirty = true;
+        Ok(())
+    }
+
+    /// Import a .lua file from disk into the project's scripts dir.
+    pub fn import_script_file(&self, path: &Path) -> Result<ProjectScript, String> {
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| format!("Не удалось прочитать файл: {e}"))?;
+        let name = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("script")
+            .to_string();
+        let id = format!("{:x}", now_ms());
+        {
+            let inner = self.inner.lock().unwrap();
+            let repo = inner.repo.as_ref().ok_or("Проект не открыт")?;
+            std::fs::create_dir_all(repo.scripts_dir()).map_err(|e| e.to_string())?;
+            std::fs::write(repo.script_path(&id), &content).map_err(|e| e.to_string())?;
+        }
+        let script = ProjectScript { id, name, created_at_ms: now_ms() };
+        let mut inner = self.inner.lock().unwrap();
+        inner.doc.scripts.push(script.clone());
+        inner.dirty = true;
+        Ok(script)
+    }
+
+    pub fn script_history(&self, id: &str) -> Result<Vec<crate::project_repo::CommitSummary>, String> {
+        let inner = self.inner.lock().unwrap();
+        let repo = inner.repo.as_ref().ok_or("Проект не открыт")?;
+        repo.script_history(id)
+    }
+
+    pub fn script_diff(&self, id: &str, from_id: &str, to_id: Option<&str>) -> Result<String, String> {
+        let inner = self.inner.lock().unwrap();
+        let repo = inner.repo.as_ref().ok_or("Проект не открыт")?;
+        repo.script_diff(id, from_id, to_id)
+    }
+
+    /// Restore a script to the version from `commit_id`. Returns the restored content.
+    pub fn checkout_script(&self, id: &str, commit_id: &str) -> Result<String, String> {
+        let repo_dir = {
+            let inner = self.inner.lock().unwrap();
+            inner.repo.as_ref().ok_or("Проект не открыт")?.dir().to_path_buf()
+        };
+        let repo = ProjectGitRepo { dir: repo_dir };
+        let content = repo.script_content_at_commit(id, commit_id)?;
+        repo.write_script_content(id, &content)?;
+        self.inner.lock().unwrap().dirty = true;
+        Ok(content)
+    }
+
+    // -----------------------------------------------------------------------
+    // Legacy-compatible session operations (internal impl now git-aware)
+    // -----------------------------------------------------------------------
+
     pub fn prepare_for_save(&self, session: &EcuSession) -> Result<(), String> {
         if session.config().snapshot().loaded {
             self.sync_ecu_config_from_session(session)?;
         }
         Ok(())
-    }
-
-    pub fn save_to_path(&self, path: &Path) -> Result<(), String> {
-        let mut doc = self.doc.lock().unwrap();
-        doc.touch();
-        Self::write_document_to_path(&doc, path)?;
-        drop(doc);
-        *self.path.lock().unwrap() = Some(path.to_path_buf());
-        *self.dirty.lock().unwrap() = false;
-        Ok(())
-    }
-
-    fn write_document_to_path(doc: &RusefuiProject, path: &Path) -> Result<(), String> {
-        if let Some(parent) = path.parent() {
-            if !parent.as_os_str().is_empty() {
-                fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-            }
-        }
-        let text =
-            serde_json::to_string_pretty(doc).map_err(|e| format!("Сериализация: {e}"))?;
-        fs::write(path, text).map_err(|e| e.to_string())?;
-        Ok(())
-    }
-
-    /// Копия проекта на диск без секции `timeline` (клипы не переносятся).
-    pub fn write_copy_without_timeline(
-        &self,
-        path: &Path,
-        session: &EcuSession,
-    ) -> Result<(), String> {
-        self.prepare_for_save(session)?;
-        let mut doc = self.doc.lock().unwrap().clone();
-        doc.timeline = ProjectTimeline::default();
-        let base = doc.name.trim();
-        doc.name = if base.ends_with("(копия)") {
-            base.to_string()
-        } else {
-            format!("{base} (копия)")
-        };
-        let t = now_ms();
-        doc.created_at_ms = t;
-        doc.updated_at_ms = t;
-        Self::write_document_to_path(&doc, path)
-    }
-
-    pub fn clear_timeline(&self) -> bool {
-        let mut doc = self.doc.lock().unwrap();
-        if doc.timeline.clips.is_empty() {
-            return false;
-        }
-        doc.timeline.clips.clear();
-        doc.touch();
-        drop(doc);
-        *self.dirty.lock().unwrap() = true;
-        true
-    }
-
-    pub fn saved_path(&self) -> Option<PathBuf> {
-        self.path.lock().unwrap().clone()
     }
 
     pub fn capture_ecu_config(&self, session: &EcuSession) -> Result<(), String> {
@@ -320,65 +443,57 @@ impl ProjectStore {
         let ini = session.ini_context();
         let mut ecu = build_project_ecu_config(&pages, &ini, snap.values.clone());
         ecu.captured_at_ms = now_ms();
-        let mut doc = self.doc.lock().unwrap();
-        doc.ecu_config = Some(ecu);
-        doc.ini = Some(ProjectIniRef {
+
+        let mut inner = self.inner.lock().unwrap();
+        let project_dir = inner.repo.as_ref().map(|r| r.dir().to_path_buf());
+        inner.doc.ecu_config = Some(ecu);
+        inner.doc.ini = Some(ProjectIniRef {
             path: session.loaded_ini_path().map(|p| {
-                Self::ini_path_for_project_store(
-                    p.as_path(),
-                    self.path.lock().unwrap().as_deref(),
-                )
+                ini_path_for_project(p.as_path(), project_dir.as_deref())
             }),
             signature: ini.signature.clone(),
         });
-        doc.touch();
-        *self.dirty.lock().unwrap() = true;
+        inner.doc.touch();
+        inner.dirty = true;
         Ok(())
     }
 
-    /// Перезаписать ссылку на INI в проекте (вызывается после ручного применения
-    /// несовпадавшего INI, чтобы при следующем `project_load` подгрузить нужный файл).
     pub fn set_ini_ref(&self, path: Option<String>, signature: Option<String>) {
-        let mut doc = self.doc.lock().unwrap();
-        doc.ini = Some(ProjectIniRef { path, signature });
-        doc.touch();
-        *self.dirty.lock().unwrap() = true;
+        let mut inner = self.inner.lock().unwrap();
+        inner.doc.ini = Some(ProjectIniRef { path, signature });
+        inner.doc.touch();
+        inner.dirty = true;
     }
 
-    pub fn add_log(
-        &self,
-        path: impl AsRef<Path>,
-        label: Option<String>,
-        kind: Option<&str>,
-    ) {
+    pub fn add_log(&self, path: impl AsRef<Path>, label: Option<String>, kind: Option<&str>) {
         let path = path.as_ref();
         let path_str = path.display().to_string();
-        let mut doc = self.doc.lock().unwrap();
-        if doc.logs.iter().any(|l| l.path == path_str) {
+        let mut inner = self.inner.lock().unwrap();
+        if inner.doc.logs.iter().any(|l| l.path == path_str) {
             return;
         }
-        doc.logs.push(ProjectLogRef {
+        inner.doc.logs.push(ProjectLogRef {
             path: path_str,
             label,
             added_at_ms: now_ms(),
             kind: kind.unwrap_or("output_csv").into(),
         });
-        doc.touch();
-        *self.dirty.lock().unwrap() = true;
+        inner.doc.touch();
+        inner.dirty = true;
     }
 
     pub fn remove_log(&self, path: &str) {
-        let mut doc = self.doc.lock().unwrap();
-        doc.logs.retain(|l| l.path != path);
-        doc.timeline.clips.retain(|c| c.record.path != path);
-        doc.touch();
-        *self.dirty.lock().unwrap() = true;
+        let mut inner = self.inner.lock().unwrap();
+        inner.doc.logs.retain(|l| l.path != path);
+        inner.doc.timeline.clips.retain(|c| c.record.path != path);
+        inner.doc.touch();
+        inner.dirty = true;
     }
 
     pub fn list_timeline_clips(&self) -> Vec<ProjectTimelineClip> {
-        let doc = self.doc.lock().unwrap();
-        let mut clips = doc.timeline.clips.clone();
-        for (idx, log) in doc.logs.iter().enumerate() {
+        let inner = self.inner.lock().unwrap();
+        let mut clips = inner.doc.timeline.clips.clone();
+        for (idx, log) in inner.doc.logs.iter().enumerate() {
             if clips.iter().any(|c| c.record.path == log.path) {
                 continue;
             }
@@ -408,18 +523,28 @@ impl ProjectStore {
         if clip.end_ms.is_some_and(|end| end < clip.start_ms) {
             return Err("Конец записи раньше начала".into());
         }
-        let mut doc = self.doc.lock().unwrap();
-        if let Some(existing) = doc.timeline.clips.iter_mut().find(|c| c.id == clip.id) {
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(existing) = inner.doc.timeline.clips.iter_mut().find(|c| c.id == clip.id) {
             *existing = clip;
         } else {
-            doc.timeline.clips.push(clip);
+            inner.doc.timeline.clips.push(clip);
         }
-        doc.touch();
-        *self.dirty.lock().unwrap() = true;
+        inner.doc.touch();
+        inner.dirty = true;
         Ok(())
     }
 
-    /// Скопировать текущий page 0 из сессии в `ecuConfig` проекта (offline-редактирование).
+    pub fn clear_timeline(&self) -> bool {
+        let mut inner = self.inner.lock().unwrap();
+        if inner.doc.timeline.clips.is_empty() {
+            return false;
+        }
+        inner.doc.timeline.clips.clear();
+        inner.doc.touch();
+        inner.dirty = true;
+        true
+    }
+
     pub fn sync_ecu_config_from_session(&self, session: &EcuSession) -> Result<(), String> {
         let snap = session.config().snapshot();
         if !snap.loaded {
@@ -430,19 +555,20 @@ impl ProjectStore {
             return Err("Пустой образ config".into());
         }
         let ini = session.ini_context();
-        let owned: Vec<(u8, Vec<u8>)> = pages.iter().map(|(p, v)| (*p, v.clone())).collect();
-        let slices: Vec<(u8, &[u8])> = owned.iter().map(|(p, v)| (*p, v.as_slice())).collect();
+        let owned: Vec<(u8, Vec<u8>)> =
+            pages.iter().map(|(p, v)| (*p, v.clone())).collect();
+        let slices: Vec<(u8, &[u8])> =
+            owned.iter().map(|(p, v)| (*p, v.as_slice())).collect();
         let values = decode_config_fields_pages(&ini.config_fields, &slices);
         let mut ecu = build_project_ecu_config(&pages, &ini, values);
         ecu.captured_at_ms = now_ms();
-        let mut doc = self.doc.lock().unwrap();
-        doc.ecu_config = Some(ecu);
-        doc.touch();
-        *self.dirty.lock().unwrap() = true;
+        let mut inner = self.inner.lock().unwrap();
+        inner.doc.ecu_config = Some(ecu);
+        inner.doc.touch();
+        inner.dirty = true;
         Ok(())
     }
 
-    /// Обновить одно поле в `ecuConfig` проекта (после выбора значения с ECU в diff).
     pub fn patch_ecu_config_field(
         &self,
         session: &EcuSession,
@@ -450,8 +576,9 @@ impl ProjectStore {
         value: f64,
     ) -> Result<(), String> {
         let ini = session.ini_context();
-        let mut doc = self.doc.lock().unwrap();
-        let ecu = doc
+        let mut inner = self.inner.lock().unwrap();
+        let ecu = inner
+            .doc
             .ecu_config
             .as_mut()
             .ok_or_else(|| "В проекте нет снимка ecuConfig".to_string())?;
@@ -464,33 +591,32 @@ impl ProjectStore {
         let page_len = ini_page_size(ini_page, &ini) as usize;
         let raw = pages.entry(ini_page).or_insert_with(|| vec![0u8; page_len]);
         encode_scalar_into_page(&ini, raw, field, value)?;
-        let owned: Vec<(u8, Vec<u8>)> = pages.iter().map(|(p, v)| (*p, v.clone())).collect();
-        let slices: Vec<(u8, &[u8])> = owned.iter().map(|(p, v)| (*p, v.as_slice())).collect();
+        let owned: Vec<(u8, Vec<u8>)> =
+            pages.iter().map(|(p, v)| (*p, v.clone())).collect();
+        let slices: Vec<(u8, &[u8])> =
+            owned.iter().map(|(p, v)| (*p, v.as_slice())).collect();
         let mut values = decode_config_fields_pages(&ini.config_fields, &slices);
         values.insert(field.to_string(), value);
         *ecu = build_project_ecu_config(&pages, &ini, values);
-        doc.touch();
-        *self.dirty.lock().unwrap() = true;
+        inner.doc.touch();
+        inner.dirty = true;
         Ok(())
     }
 
-    /// После `load_from_path`: INI из проекта + снимок config в сессию.
-    ///
-    /// Без секции `ini` в JSON — `PendingIniResolution` и фаза `EcuIniMismatch` (без fallback).
     pub fn apply_to_session(&self, session: &EcuSession) -> Result<(), String> {
-        let (ini_ref, ecu_config, project_path) = {
-            let doc = self.doc.lock().unwrap();
+        let (ini_ref, ecu_config, project_dir) = {
+            let inner = self.inner.lock().unwrap();
             (
-                doc.ini.clone(),
-                doc.ecu_config.clone(),
-                self.path.lock().unwrap().clone(),
+                inner.doc.ini.clone(),
+                inner.doc.ecu_config.clone(),
+                inner.repo.as_ref().map(|r| r.dir().to_path_buf()),
             )
         };
 
         let project_ini_sig = ini_ref.as_ref().and_then(|r| r.signature.clone());
-        session.set_project_cache_key(project_path.as_deref());
+        session.set_project_cache_key(project_dir.as_deref());
 
-        if !Self::ini_ref_actionable(ini_ref.as_ref()) {
+        if !ini_ref_actionable(ini_ref.as_ref()) {
             println!("[workspace-fsm] apply_to_session: нет ini — pending выбор INI");
             session.set_pending_project_ini_required(
                 "В проекте нет секции ini — выберите или загрузите файл INI",
@@ -501,7 +627,7 @@ impl ProjectStore {
         }
 
         let ini = ini_ref.as_ref().expect("actionable => Some");
-        if let Err(e) = Self::load_project_ini(session, Some(ini), project_path.as_deref()) {
+        if let Err(e) = load_project_ini(session, Some(ini), project_dir.as_deref()) {
             println!("[workspace-fsm] apply_to_session: ini не загружен — pending: {e}");
             session.set_pending_project_ini_required(e, project_ini_sig.clone());
             session.set_project_ini_signature(project_ini_sig);
@@ -521,13 +647,12 @@ impl ProjectStore {
         Ok(())
     }
 
-    /// Подставить `ecuConfig` из проекта после того, как пользователь выбрал INI.
     pub fn apply_ecu_config_if_present(&self, session: &EcuSession) -> Result<(), String> {
         let (ecu_config, project_ini_sig) = {
-            let doc = self.doc.lock().unwrap();
+            let inner = self.inner.lock().unwrap();
             (
-                doc.ecu_config.clone(),
-                doc.ini.as_ref().and_then(|r| r.signature.clone()),
+                inner.doc.ecu_config.clone(),
+                inner.doc.ini.as_ref().and_then(|r| r.signature.clone()),
             )
         };
         if let Some(ecu) = ecu_config {
@@ -538,81 +663,91 @@ impl ProjectStore {
         Ok(())
     }
 
-    fn ini_ref_actionable(ini_ref: Option<&ProjectIniRef>) -> bool {
-        let Some(ini) = ini_ref else {
-            return false;
-        };
-        ini.path.as_deref().is_some_and(|p| !p.is_empty())
-            || ini.signature.as_deref().is_some_and(|s| !s.is_empty())
-    }
-
-    /// Путь INI в JSON проекта: относительно файла `.rusefui`, если возможно.
-    fn ini_path_for_project_store(ini: &Path, project_file: Option<&Path>) -> String {
-        if let Some(proj) = project_file {
-            if let Some(parent) = proj.parent() {
-                if let Ok(rel) = ini.strip_prefix(parent) {
-                    return rel.display().to_string();
-                }
-            }
-        }
-        ini.display().to_string()
-    }
-
-    fn resolve_ini_path(path: &str, project_file: Option<&Path>) -> PathBuf {
-        let p = Path::new(path);
-        if p.is_absolute() {
-            return p.to_path_buf();
-        }
-        if let Some(dir) = project_file.and_then(|f| f.parent()) {
-            return dir.join(p);
-        }
-        p.to_path_buf()
-    }
-
-    /// INI с тем же layout, что при `capture_ecu_config` (path или signature из проекта).
-    fn load_project_ini(
+    /// Fork current project without timeline. Returns the new project's directory.
+    pub fn fork_without_timeline(
+        &self,
+        new_name: &str,
         session: &EcuSession,
-        ini_ref: Option<&ProjectIniRef>,
-        project_file: Option<&Path>,
-    ) -> Result<(), String> {
-        let Some(ini_ref) = ini_ref else {
-            return Err(
-                "В проекте нет секции ini — сохраните проект после загрузки config с ECU".into(),
-            );
-        };
+    ) -> Result<PathBuf, String> {
+        self.prepare_for_save(session)?;
+        let doc = self.inner.lock().unwrap().doc.clone();
+        let (repo, new_doc) = ProjectGitRepo::fork_without_timeline(&doc, new_name)?;
+        let dir = repo.dir().to_path_buf();
+        let mut inner = self.inner.lock().unwrap();
+        *inner = ProjectInner { repo: Some(repo), doc: new_doc, dirty: false };
+        Ok(dir)
+    }
+}
 
-        if let Some(path) = ini_ref.path.as_deref().filter(|p| !p.is_empty()) {
-            let resolved = Self::resolve_ini_path(path, project_file);
-            if resolved.is_file() {
-                session.load_ini_from_path(&resolved)?;
-                return Ok(());
-            }
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+fn ini_ref_actionable(ini_ref: Option<&ProjectIniRef>) -> bool {
+    let Some(ini) = ini_ref else { return false; };
+    ini.path.as_deref().is_some_and(|p| !p.is_empty())
+        || ini.signature.as_deref().is_some_and(|s| !s.is_empty())
+}
+
+/// INI path stored in project.json: relative to the project directory if possible.
+fn ini_path_for_project(ini: &Path, project_dir: Option<&Path>) -> String {
+    if let Some(dir) = project_dir {
+        if let Ok(rel) = ini.strip_prefix(dir) {
+            return rel.display().to_string();
         }
+    }
+    ini.display().to_string()
+}
 
-        if let Some(sig) = ini_ref.signature.as_deref().filter(|s| !s.is_empty()) {
-            let resolved = resolve_ini_for_signature(sig).map_err(|e| {
-                format!(
-                    "INI для signature проекта не найден ({sig}): {e}. \
-                     Укажите корректный ini.path рядом с файлом проекта."
-                )
-            })?;
-            session.apply_ini(resolved);
+fn resolve_ini_path(path: &str, project_dir: Option<&Path>) -> PathBuf {
+    let p = Path::new(path);
+    if p.is_absolute() {
+        return p.to_path_buf();
+    }
+    if let Some(dir) = project_dir {
+        return dir.join(p);
+    }
+    p.to_path_buf()
+}
+
+fn load_project_ini(
+    session: &EcuSession,
+    ini_ref: Option<&ProjectIniRef>,
+    project_dir: Option<&Path>,
+) -> Result<(), String> {
+    let Some(ini_ref) = ini_ref else {
+        return Err(
+            "В проекте нет секции ini — сохраните проект после загрузки config с ECU".into(),
+        );
+    };
+
+    if let Some(path) = ini_ref.path.as_deref().filter(|p| !p.is_empty()) {
+        let resolved = resolve_ini_path(path, project_dir);
+        if resolved.is_file() {
+            session.load_ini_from_path(&resolved)?;
             return Ok(());
         }
-
-        Err(
-            "В проекте нет рабочего ini.path и ini.signature — нельзя декодировать ecuConfig"
-                .into(),
-        )
     }
+
+    if let Some(sig) = ini_ref.signature.as_deref().filter(|s| !s.is_empty()) {
+        let resolved = resolve_ini_for_signature(sig).map_err(|e| {
+            format!(
+                "INI для signature проекта не найден ({sig}): {e}. \
+                 Поместите ini.path рядом с папкой проекта."
+            )
+        })?;
+        session.apply_ini(resolved);
+        return Ok(());
+    }
+
+    Err(
+        "В проекте нет рабочего ini.path и ini.signature — нельзя декодировать ecuConfig".into(),
+    )
 }
 
 fn ini_page_size(ini_page: u8, ini: &crate::sources::output_channels::IniContext) -> u32 {
     let idx = ini_page.saturating_sub(1) as usize;
-    ini.page_sizes
-        .get(idx)
-        .copied()
-        .unwrap_or(ini.page_size)
+    ini.page_sizes.get(idx).copied().unwrap_or(ini.page_size)
 }
 
 #[cfg(test)]
@@ -703,58 +838,5 @@ mod tests {
         assert!(store.clear_timeline());
         assert_eq!(store.info().timeline_clip_count, 0);
         assert!(!store.clear_timeline());
-    }
-
-    #[test]
-    fn copy_without_timeline_writes_empty_timeline_section() {
-        use crate::protocol_log::ProtocolLogStore;
-        use crate::session::EcuSession;
-
-        let store = ProjectStore::new();
-        store
-            .upsert_timeline_clip(ProjectTimelineClip {
-                id: "c1".into(),
-                channel: channel::LOGS.into(),
-                start_ms: 1,
-                end_ms: None,
-                record: ProjectTimelineRecordRef::new("/tmp/a.csv", Some("output_csv".into())),
-                label: None,
-            })
-            .unwrap();
-        let session = EcuSession::new_arc(ProtocolLogStore::new(std::env::temp_dir().join(
-            format!("rusefui-proto-test-{}", now_ms()),
-        )));
-        let dir = std::env::temp_dir().join(format!("rusefui-copy-test-{}", now_ms()));
-        fs::create_dir_all(&dir).unwrap();
-        let path = dir.join("copy.rusefui");
-        store.write_copy_without_timeline(&path, &session).unwrap();
-        let text = fs::read_to_string(&path).unwrap();
-        let back: RusefuiProject = serde_json::from_str(&text).unwrap();
-        assert!(back.timeline.clips.is_empty());
-        assert!(back.name.contains("(копия)"));
-        let _ = fs::remove_dir_all(dir);
-    }
-
-    #[test]
-    fn with_project_extension_normalizes_save_path() {
-        assert_eq!(
-            with_project_extension("MyTune"),
-            "MyTune.rusefui"
-        );
-        assert_eq!(
-            with_project_extension("/tmp/MyTune.json"),
-            "/tmp/MyTune.rusefui"
-        );
-        assert_eq!(
-            with_project_extension("/tmp/MyTune.rusefui"),
-            "/tmp/MyTune.rusefui"
-        );
-    }
-
-    #[test]
-    fn is_project_file_path_accepts_legacy_json() {
-        assert!(is_project_file_path(Path::new("/a.rusefui")));
-        assert!(is_project_file_path(Path::new("/a.json")));
-        assert!(!is_project_file_path(Path::new("/a.ini")));
     }
 }

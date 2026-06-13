@@ -1,0 +1,8 @@
+id: project-history.panel
+description: История версий проекта и diff между коммитами
+
+children:
+  - type: project-history
+    id: project-history-panel
+    navSelectable: false
+    props: {}

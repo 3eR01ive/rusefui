@@ -16,6 +16,7 @@ mod knock;
 mod layout;
 mod ini;
 mod project;
+mod project_repo;
 mod project_timeline;
 mod recent_projects;
 mod ui_persist;
@@ -64,10 +65,11 @@ pub use ini::{
 };
 pub use rusefi_ini::PanelManifest;
 pub use project::{
-    is_project_file_path, with_project_extension, ProjectEcuConfig, ProjectInfo, ProjectLogRef,
-    ProjectStore, RusefuiProject, FORMAT_VERSION, LEGACY_PROJECT_FILE_EXTENSION,
-    PROJECT_FILE_EXTENSION,
+    ProjectEcuConfig, ProjectInfo, ProjectIniRef, ProjectLogRef, ProjectScript, ProjectStore,
+    RusefuiProject,
 };
+pub use project_repo::{CommitSummary, ProjectGitRepo, ProjectListEntry};
+pub use components::lua_script::{ecu_script_burn, ecu_script_read, ecu_script_write};
 pub use project_timeline::{
     channel as project_timeline_channel, ProjectTimeline, ProjectTimelineClip,
     ProjectTimelineRecordRef,

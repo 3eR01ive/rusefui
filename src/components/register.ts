@@ -26,6 +26,8 @@ import LuaScriptPanel from "./builtins/LuaScriptPanel.vue";
 import IniCommandButton from "./builtins/IniCommandButton.vue";
 import GeneratedPanel from "./builtins/GeneratedPanel.vue";
 import ProjectTimeline from "./builtins/ProjectTimeline.vue";
+import ProjectHistory from "./builtins/ProjectHistory.vue";
+import ProjectScripts from "./builtins/ProjectScripts.vue";
 
 let registered = false;
 
@@ -64,4 +66,6 @@ export function registerBuiltinComponents(): void {
   reg("spectrogram", Spectrogram);
   reg("config-checklist", ConfigChecklist);
   reg("project-timeline", ProjectTimeline);
+  reg("project-history", ProjectHistory);
+  reg("project-scripts", ProjectScripts);
 }

@@ -16,7 +16,6 @@ const emit = defineEmits<{
   openProject: [];
   closeProject: [];
   saveProject: [];
-  saveProjectAs: [];
   captureConfig: [];
   copyProjectWithoutTimeline: [];
   clearTimeline: [];
@@ -98,7 +97,7 @@ onUnmounted(() => {
 
     <div v-if="open" class="project-dropdown" role="menu">
       <div class="project-dropdown-header">
-        <span class="project-dropdown-name" :title="projectPath ?? '(файл не сохранён)'">
+        <span class="project-dropdown-name" :title="projectPath ?? '(проект не открыт)'">
           {{ projectName }}
         </span>
         <span v-if="projectDirty" class="project-dropdown-unsaved">несохранён</span>
@@ -159,19 +158,6 @@ onUnmounted(() => {
         </span>
         Сохранить
         <span class="menu-item-shortcut">Ctrl+S</span>
-      </button>
-
-      <button
-        type="button"
-        role="menuitem"
-        class="menu-item"
-        :disabled="projectBusy"
-        @click="action(() => emit('saveProjectAs'))"
-      >
-        <span class="menu-item-icon">
-          <svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="1.5" fill="currentColor" opacity=".15"/><rect x="2" y="2" width="12" height="12" rx="1.5" stroke="currentColor" stroke-width="1.2"/><rect x="5" y="2" width="6" height="4" rx=".5" fill="currentColor" opacity=".5"/><rect x="4" y="9" width="8" height="4" rx=".75" fill="currentColor" opacity=".4"/><path d="M11 11l2 2M11 13l2-2" stroke="white" stroke-width="1.1" stroke-linecap="round"/></svg>
-        </span>
-        Сохранить как…
       </button>
 
       <div class="project-dropdown-sep" />

@@ -1,9 +1,9 @@
 id: scripts.panel
-description: Lua-скрипт ECU — чтение, запись, burn
+description: Проектные Lua-скрипты — список, редактор Monaco, ECU read/write/burn
 
 children:
-  - type: lua-script
-    id: lua-editor
+  - type: project-scripts
+    id: project-scripts-editor
     navSelectable: false
     props:
       scriptField: luaScript

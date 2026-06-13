@@ -22,12 +22,31 @@ export interface CompositeChartUiSettings {
 }
 
 export interface ProjectInfo {
+  /** Directory path of the open git project; null when no project is open. */
   path: string | null;
   name: string;
   dirty: boolean;
   logCount: number;
   timelineClipCount: number;
   hasEcuConfig: boolean;
+}
+
+export interface ProjectScript {
+  id: string;
+  name: string;
+  createdAtMs: number;
+}
+
+export interface CommitSummary {
+  id: string;
+  shortId: string;
+  message: string;
+  timestampMs: number;
+}
+
+export interface ProjectListEntry {
+  dir: string;
+  name: string;
 }
 
 export interface LogGraphGroupJson {
@@ -184,33 +203,39 @@ export async function initProject(): Promise<void> {
 }
 
 export function useProject() {
-  /** Проект привязан к файлу на диске — можно работать с ECU и настройками. */
+  /** Проект привязан к директории на диске — можно работать с ECU и настройками. */
   const hasOpenProject = computed(() => Boolean(info.value.path));
   const hasPath = hasOpenProject;
 
   /**
-   * Новый проект: выбрать файл, создать и сбросить UI.
-   * Проверку несохранённого проекта / burn выполняет вызывающий код.
-   * @returns false если пользователь отменил диалог файла
+   * Новый проект: запросить имя, создать в ~/.rusefui/projects/.
+   * @returns false если пользователь отменил
    */
   async function createNewProject(): Promise<boolean> {
-    const path = await invoke<string | null>("pick_project_save_path", {
-      defaultName: "Новый проект",
-    });
-    if (!path) return false;
-
-    await invoke("project_create_new", { path, name: null });
+    const name = window.prompt("Название проекта:", "Новый проект");
+    if (name === null) return false;
+    const trimmed = name.trim() || "Новый проект";
+    await invoke("project_create_new", { name: trimmed });
     return true;
   }
 
-  async function openProject(): Promise<boolean> {
-    const path = await invoke<string | null>("pick_project_open_path");
-    if (!path) return false;
+  /** Список проектов в ~/.rusefui/projects/ */
+  async function listProjects(): Promise<ProjectListEntry[]> {
+    return invoke<ProjectListEntry[]>("project_list");
+  }
+
+  /** Открыть проект из конкретного пути (папка или legacy .rusefui файл). */
+  async function openProjectAtPath(path: string): Promise<boolean> {
     await invoke("project_load", { path });
     return true;
   }
 
-  async function openProjectAtPath(path: string): Promise<boolean> {
+  /**
+   * Показать системный диалог выбора папки (для проектов вне ~/.rusefui/projects/).
+   */
+  async function openProject(): Promise<boolean> {
+    const path = await invoke<string | null>("pick_project_dir");
+    if (!path) return false;
     await invoke("project_load", { path });
     return true;
   }
@@ -224,23 +249,9 @@ export function useProject() {
     return invoke<RecentProjectEntry[]>("recent_projects_list");
   }
 
-  async function saveProject(): Promise<string | null> {
+  async function saveProject(message?: string): Promise<string | null> {
     await flushProjectUiToStore();
-    try {
-      return await invoke<string>("project_save");
-    } catch {
-      return saveProjectAs();
-    }
-  }
-
-  async function saveProjectAs(): Promise<string | null> {
-    const path = await invoke<string | null>("pick_project_save_path", {
-      defaultName: info.value.name,
-    });
-    if (!path) return null;
-    await flushProjectUiToStore();
-    await invoke("project_save_path", { path });
-    return path;
+    return invoke<string>("project_save", { message: message ?? null });
   }
 
   async function captureEcuConfig(): Promise<void> {
@@ -283,17 +294,86 @@ export function useProject() {
     return invoke<boolean>("project_clear_timeline");
   }
 
-  async function copyProjectWithoutTimeline(): Promise<boolean> {
-    const defaultName = info.value.name.trim().endsWith("(копия)")
-      ? info.value.name
-      : `${info.value.name} (копия)`;
-    const path = await invoke<string | null>("pick_project_save_path", {
-      defaultName,
-    });
-    if (!path) return false;
+  /** Форк без timeline. newName = "" → автоимя "... (копия)". */
+  async function copyProjectWithoutTimeline(newName?: string): Promise<boolean> {
+    const name = newName ?? "";
     await flushProjectUiToStore();
-    await invoke("project_copy_without_timeline", { path });
+    await invoke("project_copy_without_timeline", { newName: name });
     return true;
+  }
+
+  // --- Скрипты ---
+
+  async function listScripts(): Promise<ProjectScript[]> {
+    return invoke<ProjectScript[]>("project_script_list");
+  }
+
+  async function createScript(name: string): Promise<ProjectScript> {
+    return invoke<ProjectScript>("project_script_create", { name });
+  }
+
+  async function deleteScript(id: string): Promise<void> {
+    await invoke("project_script_delete", { id });
+  }
+
+  async function getScriptContent(id: string): Promise<string> {
+    return invoke<string>("project_script_get_content", { id });
+  }
+
+  async function setScriptContent(id: string, content: string): Promise<void> {
+    await invoke("project_script_set_content", { id, content });
+  }
+
+  async function scriptEcuRead(scriptField: string): Promise<string> {
+    return invoke<string>("project_script_ecu_read", { scriptField });
+  }
+
+  async function scriptEcuWrite(scriptField: string, content: string): Promise<void> {
+    await invoke("project_script_ecu_write", { scriptField, content });
+  }
+
+  async function scriptEcuBurn(): Promise<void> {
+    await invoke("project_script_ecu_burn");
+  }
+
+  async function importScript(path: string): Promise<ProjectScript> {
+    return invoke<ProjectScript>("project_script_import", { path });
+  }
+
+  async function scriptHistory(id: string): Promise<CommitSummary[]> {
+    return invoke<CommitSummary[]>("project_script_history", { id });
+  }
+
+  async function scriptDiff(id: string, fromId: string, toId?: string): Promise<string> {
+    return invoke<string>("project_script_diff", {
+      id,
+      fromId,
+      toId: toId ?? null,
+    });
+  }
+
+  async function checkoutScriptVersion(id: string, commitId: string): Promise<string> {
+    return invoke<string>("project_script_checkout_version", { id, commitId });
+  }
+
+  // --- История ---
+
+  async function historyList(): Promise<CommitSummary[]> {
+    return invoke<CommitSummary[]>("project_history_list");
+  }
+
+  async function diffCommits(
+    fromId: string,
+    toId?: string,
+  ): Promise<string> {
+    return invoke<string>("project_diff", {
+      fromId,
+      toId: toId ?? null,
+    });
+  }
+
+  async function checkoutCommit(commitId: string): Promise<void> {
+    await invoke("project_checkout", { commitId });
   }
 
   return {
@@ -305,10 +385,10 @@ export function useProject() {
     createNewProject,
     openProject,
     openProjectAtPath,
+    listProjects,
     listRecentProjects,
     closeProject,
     saveProject,
-    saveProjectAs,
     captureEcuConfig,
     addLog,
     removeLog,
@@ -318,5 +398,20 @@ export function useProject() {
     listPersistKeys,
     clearTimeline,
     copyProjectWithoutTimeline,
+    listScripts,
+    createScript,
+    deleteScript,
+    getScriptContent,
+    setScriptContent,
+    scriptEcuRead,
+    scriptEcuWrite,
+    scriptEcuBurn,
+    importScript,
+    scriptHistory,
+    scriptDiff,
+    checkoutScriptVersion,
+    historyList,
+    diffCommits,
+    checkoutCommit,
   };
 }

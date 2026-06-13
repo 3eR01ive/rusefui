@@ -183,6 +183,63 @@ impl LuaScriptLogic {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Standalone ECU helpers (used by project script commands)
+// ---------------------------------------------------------------------------
+
+pub fn ecu_script_read(session: &Arc<EcuSession>, script_field: &str) -> Result<String, String> {
+    if session.is_connected() {
+        session.config().reload_page_from_ecu(session)?;
+    }
+    let snap = session.config().snapshot();
+    if !snap.loaded {
+        return Err("Config не загружен".into());
+    }
+    Ok(snap.string_values.get(script_field).cloned().unwrap_or_default())
+}
+
+pub fn ecu_script_write(
+    session: &Arc<EcuSession>,
+    script_field: &str,
+    content: &str,
+) -> Result<(), String> {
+    let ini = session.ini_context();
+    let max_bytes = ini
+        .config_fields
+        .get(script_field)
+        .and_then(|f| match f {
+            ConfigFieldKind::String(s) => Some(s.length as usize),
+            _ => None,
+        })
+        .unwrap_or(0);
+
+    if max_bytes > 0 && content.len() >= max_bytes {
+        return Err(format!(
+            "Скрипт {} байт — лимит поля {} байт (нужен запас под \\0)",
+            content.len(),
+            max_bytes
+        ));
+    }
+    if !session.is_connected() {
+        return Err("ECU не подключена".into());
+    }
+    let snap = session.config().snapshot();
+    if snap.read_only {
+        return Err("Config только для чтения".into());
+    }
+    session.config().write_string(session, script_field, content)?;
+    session.run_console_command("luareset")?;
+    Ok(())
+}
+
+pub fn ecu_script_burn(session: &Arc<EcuSession>) -> Result<(), String> {
+    if !session.is_connected() {
+        return Err("ECU не подключена".into());
+    }
+    session.config().burn_to_flash(session)?;
+    Ok(())
+}
+
 impl ComponentLogic for LuaScriptLogic {
     fn meta(&self) -> ComponentMeta {
         ComponentMeta {

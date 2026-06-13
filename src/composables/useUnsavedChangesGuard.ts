@@ -16,7 +16,6 @@ export interface UnsavedChangesCheck {
   ecuConnected: boolean;
   canBurn: boolean;
   saveProject: () => Promise<string | null>;
-  saveProjectAs: () => Promise<string | null>;
   burnConfig: () => Promise<void>;
 }
 
@@ -60,9 +59,7 @@ export async function confirmUnsavedChanges(check: UnsavedChangesCheck): Promise
     const result = await showDialog({ kind: "project", context: check.context });
     if (result === "cancel") return false;
     if (result === "primary") {
-      const saved = check.projectPath
-        ? await check.saveProject()
-        : await check.saveProjectAs();
+      const saved = await check.saveProject();
       if (saved === null) return false;
     }
   }

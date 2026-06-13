@@ -1,0 +1,6 @@
+tab:
+  id: history
+  title: HISTORY
+
+root:
+  $component: project-history.panel

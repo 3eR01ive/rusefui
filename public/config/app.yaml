@@ -10,3 +10,4 @@ tabs:
   - $tab: control
   - $tab: scripts
   - $tab: ini-preview
+  - $tab: history

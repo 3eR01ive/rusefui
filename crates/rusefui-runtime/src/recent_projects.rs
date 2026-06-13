@@ -54,7 +54,7 @@ impl RecentProjectsStore {
 
     pub fn record(&self, path: &Path) -> Result<(), String> {
         let path = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
-        if !path.is_file() {
+        if !path.exists() {
             return Ok(());
         }
         let key = path.to_string_lossy().into_owned();
@@ -92,12 +92,19 @@ impl RecentProjectsStore {
 }
 
 fn entry_from_path(path: &Path) -> RecentProjectEntry {
-    let exists = path.is_file();
-    let label = path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or_else(|| path.file_name().and_then(|s| s.to_str()).unwrap_or(""))
-        .to_string();
+    let exists = path.exists();
+    // For directories (new git projects): use file_name. For legacy files: strip extension.
+    let label = if path.is_dir() {
+        path.file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("")
+            .to_string()
+    } else {
+        path.file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_else(|| path.file_name().and_then(|s| s.to_str()).unwrap_or(""))
+            .to_string()
+    };
     RecentProjectEntry {
         path: path.to_string_lossy().into_owned(),
         label,

@@ -49,7 +49,6 @@ const {
   openProject,
   closeProject,
   saveProject,
-  saveProjectAs,
   captureEcuConfig,
   clearTimeline,
   copyProjectWithoutTimeline,
@@ -160,7 +159,6 @@ function unsavedCheck(context: "quit" | "switch") {
     ecuConnected: dataCtx.connection.value.connected,
     canBurn: canBurn.value,
     saveProject,
-    saveProjectAs,
     burnConfig: onBurn,
   };
 }
@@ -236,12 +234,6 @@ function onCloseProject(): void {
 function onSaveProject(): void {
   void runProjectAction(async () => {
     await saveProject();
-  });
-}
-
-function onSaveProjectAs(): void {
-  void runProjectAction(async () => {
-    await saveProjectAs();
   });
 }
 
@@ -326,7 +318,6 @@ async function onBurn() {
         @open-project="onOpenProject"
         @close-project="onCloseProject"
         @save-project="onSaveProject"
-        @save-project-as="onSaveProjectAs"
         @capture-config="onCaptureConfigToProject"
         @copy-project-without-timeline="onCopyProjectWithoutTimeline"
         @clear-timeline="onClearTimeline"

@@ -16,3 +16,5 @@ thiserror = "2.0"
 dirs = "6"
 ureq = "2"
 rustfft = "6.2"
+gix = { version = "0.84", features = ["revision"] }
+similar = "3"

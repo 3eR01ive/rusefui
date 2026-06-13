@@ -54,7 +54,7 @@ async function openRecentAt(index: number): Promise<void> {
   const item = recent.value[index];
   if (!item || busy.value) return;
   if (!item.exists) {
-    error.value = "Файл проекта не найден";
+    error.value = "Папка проекта не найдена";
     return;
   }
   await run(() => openProjectAtPath(item.path));
@@ -131,16 +131,16 @@ onMounted(async () => {
       <div class="project-gate-panel">
         <h2 id="project-gate-title" class="project-gate-title">Проект rusefui</h2>
         <p class="project-gate-lead">
-          Работа с ECU, настройками и логами ведётся внутри проекта. При создании нужно
-          выбрать INI (контракт полей и UI). Откройте существующий файл проекта
-          (<code>.rusefui</code>) или создайте новый.
+          Работа с ECU, настройками и логами ведётся внутри проекта. Каждый проект —
+          git-репозиторий в <code>~/.rusefui/projects/</code>. История изменений и
+          дифф доступны на вкладке HISTORY.
         </p>
         <div class="project-gate-actions">
           <button type="button" class="btn primary" :disabled="busy" @click="onCreate">
-            Создать проект (INI + файл)…
+            Создать проект…
           </button>
           <button type="button" class="btn secondary" :disabled="busy" @click="onOpen">
-            Открыть проект…
+            Открыть папку проекта…
           </button>
         </div>
         <section
