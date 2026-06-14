@@ -36,6 +36,8 @@ export interface ComponentLayoutHint {
   minH?: number;
   /** Запрет перемещения в edit-mode. */
   locked?: boolean;
+  /** Может перекрываться с другими (парит поверх, не участвует в overlap resolution). */
+  floating?: boolean;
 }
 
 /** Инстанс компонента в дереве layout (из YAML). */

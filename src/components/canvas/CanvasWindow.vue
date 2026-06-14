@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import type { CanvasItemRect } from "../../composables/useCanvasLayout";
 import { snapGrid } from "../../composables/useCanvasLayout";
 
@@ -14,12 +14,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "update:rect", rect: CanvasItemRect): void;
+  /** Drag/resize завершён — можно проверять перекрытие */
+  (e: "commit", rect: CanvasItemRect): void;
   (e: "activate"): void;
 }>();
 
 const MIN_W = computed(() => props.minW ?? 80);
 const MIN_H = computed(() => props.minH ?? 48);
 
+// ── Drag / resize ──────────────────────────────────────────────
 type ResizeDir = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 type DragType = "move" | ResizeDir;
 
@@ -39,8 +42,8 @@ function startDrag(e: PointerEvent, type: DragType) {
   emit("activate");
 }
 
-function onPointerMove(e: PointerEvent) {
-  if (!drag) return;
+function calcRect(e: PointerEvent): CanvasItemRect {
+  if (!drag) return props.rect;
   const dx = e.clientX - drag.sx;
   const dy = e.clientY - drag.sy;
   const o = drag.orig;
@@ -53,38 +56,65 @@ function onPointerMove(e: PointerEvent) {
     const dir = drag.type;
     if (dir.includes("e")) w = snapGrid(Math.max(MIN_W.value, o.w + dx));
     if (dir.includes("s")) h = snapGrid(Math.max(MIN_H.value, o.h + dy));
-    if (dir.includes("w")) {
-      w = snapGrid(Math.max(MIN_W.value, o.w - dx));
-      x = o.x + o.w - w;
-    }
-    if (dir.includes("n")) {
-      h = snapGrid(Math.max(MIN_H.value, o.h - dy));
-      y = o.y + o.h - h;
-    }
+    if (dir.includes("w")) { w = snapGrid(Math.max(MIN_W.value, o.w - dx)); x = o.x + o.w - w; }
+    if (dir.includes("n")) { h = snapGrid(Math.max(MIN_H.value, o.h - dy)); y = o.y + o.h - h; }
   }
-
-  emit("update:rect", { x, y, w, h, z });
+  return { x, y, w, h, z };
 }
 
-function onPointerUp() {
+function onPointerMove(e: PointerEvent) {
+  if (!drag) return;
+  emit("update:rect", calcRect(e));
+}
+
+function onPointerUp(e: PointerEvent) {
+  if (!drag) return;
+  const final = calcRect(e);
   drag = null;
+  emit("update:rect", final);
+  emit("commit", final); // сигнал для overlap resolution
 }
+
+// ── ResizeObserver: контент вырос — расширяем окно ────────────
+const rootRef = ref<HTMLElement | null>(null);
+let ro: ResizeObserver | null = null;
+
+onMounted(() => {
+  if (!rootRef.value) return;
+  ro = new ResizeObserver((entries) => {
+    if (drag) return; // игнорируем во время ручного resize
+    const entry = entries[0];
+    if (!entry) return;
+    const actualH = Math.ceil(
+      entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height,
+    );
+    // Обновляем сохранённую высоту если контент вырос за min-height
+    if (actualH > props.rect.h + 4) {
+      emit("update:rect", { ...props.rect, h: snapGrid(actualH) });
+      // Не emit("commit") — рост контента не должен двигать соседей
+    }
+  });
+  ro.observe(rootRef.value);
+});
 
 onBeforeUnmount(() => {
+  ro?.disconnect();
   drag = null;
 });
 
+// ── Style: minHeight вместо height — контент может расти ──────
 const windowStyle = computed(() => ({
   left: `${props.rect.x}px`,
   top: `${props.rect.y}px`,
   width: `${props.rect.w}px`,
-  height: `${props.rect.h}px`,
+  minHeight: `${props.rect.h}px`,
   zIndex: props.rect.z,
 }));
 </script>
 
 <template>
   <div
+    ref="rootRef"
     class="cw"
     :class="{ 'cw--edit': editMode }"
     :style="windowStyle"
@@ -139,7 +169,6 @@ const windowStyle = computed(() => ({
   flex-direction: column;
 }
 
-/* edit mode: рамка + тень */
 .cw--edit {
   border: 1.5px dashed var(--color-border);
   border-radius: var(--radius-md);
@@ -147,7 +176,6 @@ const windowStyle = computed(() => ({
   box-shadow: 0 2px 8px rgba(0,0,0,.12);
 }
 
-/* drag bar */
 .cw-bar {
   display: flex;
   align-items: center;
@@ -172,50 +200,32 @@ const windowStyle = computed(() => ({
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.cw-drag-icon { width: 10px; height: 10px; color: var(--color-text-subtle); flex-shrink: 0; }
 
-.cw-drag-icon {
-  width: 10px;
-  height: 10px;
-  color: var(--color-text-subtle);
-  flex-shrink: 0;
-}
-
-/* content */
 .cw-content {
   flex: 1;
   min-height: 0;
-  overflow: auto;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
 }
 
 /* resize handles */
-.cw-h {
-  position: absolute;
-  z-index: 10;
-}
+.cw-h { position: absolute; z-index: 10; }
+.cw-n  { top: -4px;    left: 8px;   right: 8px;   height: 8px;  cursor: n-resize; }
+.cw-s  { bottom: -4px; left: 8px;   right: 8px;   height: 8px;  cursor: s-resize; }
+.cw-e  { right: -4px;  top: 8px;    bottom: 8px;  width: 8px;   cursor: e-resize; }
+.cw-w  { left: -4px;   top: 8px;    bottom: 8px;  width: 8px;   cursor: w-resize; }
+.cw-nw { top: -4px;    left: -4px;  width: 12px;  height: 12px; cursor: nw-resize; }
+.cw-ne { top: -4px;    right: -4px; width: 12px;  height: 12px; cursor: ne-resize; }
+.cw-sw { bottom: -4px; left: -4px;  width: 12px;  height: 12px; cursor: sw-resize; }
+.cw-se { bottom: -4px; right: -4px; width: 12px;  height: 12px; cursor: se-resize; }
 
-/* edge handles: thin strips */
-.cw-n { top: -4px;  left: 8px;  right: 8px;  height: 8px; cursor: n-resize; }
-.cw-s { bottom: -4px; left: 8px;  right: 8px;  height: 8px; cursor: s-resize; }
-.cw-e { right: -4px; top: 8px;   bottom: 8px;  width: 8px;  cursor: e-resize; }
-.cw-w { left: -4px;  top: 8px;   bottom: 8px;  width: 8px;  cursor: w-resize; }
-
-/* corner handles: 12×12 squares */
-.cw-nw { top: -4px;    left: -4px;   width: 12px; height: 12px; cursor: nw-resize; }
-.cw-ne { top: -4px;    right: -4px;  width: 12px; height: 12px; cursor: ne-resize; }
-.cw-sw { bottom: -4px; left: -4px;   width: 12px; height: 12px; cursor: sw-resize; }
-.cw-se { bottom: -4px; right: -4px;  width: 12px; height: 12px; cursor: se-resize; }
-
-/* corner dots in edit mode */
 .cw--edit .cw-ne, .cw--edit .cw-nw, .cw--edit .cw-se, .cw--edit .cw-sw {
   background: var(--color-accent, #3b82f6);
   border-radius: 2px;
   opacity: 0.7;
 }
 .cw--edit .cw-ne:hover, .cw--edit .cw-nw:hover,
-.cw--edit .cw-se:hover, .cw--edit .cw-sw:hover {
-  opacity: 1;
-}
+.cw--edit .cw-se:hover, .cw--edit .cw-sw:hover { opacity: 1; }
 </style>
