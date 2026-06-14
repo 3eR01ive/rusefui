@@ -103,20 +103,57 @@ async function toggleLayout() {
 
 function resetLayout() { reset(); editMode.value = false; }
 
+// ── Swap при перетаскивании ────────────────────────────────────
+// swapSource = "виртуальный дом" тянимого элемента.
+// При каждом свапе: другой компонент получает swapSource, swapSource ← позиция другого.
+// Это позволяет цепочку свапов за один drag.
+let activeDragKey: string | null = null;
+let swapSource: { x: number; y: number } | null = null;
+
+function onDragStart(child: ComponentInstance, i: number) {
+  const key = childKey(child, i);
+  activeDragKey = key;
+  const base = stored.value.items[key];
+  swapSource = base ? { x: base.x, y: base.y } : null;
+}
+
+function checkAndSwap(draggedId: string, draggedRect: CanvasItemRect) {
+  if (!swapSource) return;
+  const cx = draggedRect.x + draggedRect.w / 2;
+  const cy = draggedRect.y + draggedRect.h / 2;
+
+  for (const [otherId, otherRect] of Object.entries(stored.value.items)) {
+    if (otherId === draggedId || otherRect.floating) continue;
+    if (
+      cx >= otherRect.x && cx < otherRect.x + otherRect.w &&
+      cy >= otherRect.y && cy < otherRect.y + otherRect.h
+    ) {
+      // Перемещаем другой компонент на позицию swapSource
+      setRect(otherId, { ...otherRect, x: swapSource.x, y: swapSource.y });
+      // swapSource обновляется — теперь там где был другой
+      swapSource = { x: otherRect.x, y: otherRect.y };
+      break; // один свап за кадр
+    }
+  }
+}
+
 // ── Events from CanvasWindow ────────────────────────────────────
 function onUpdateRect(child: ComponentInstance, i: number, rect: CanvasItemRect) {
-  // Обновляем stored (setRect) — computedRects пересчитается реактивно
-  setRect(childKey(child, i), rect);
+  const key = childKey(child, i);
+  setRect(key, rect);
+  // Swap-проверка только для move (не resize) и non-floating
+  if (activeDragKey === key && swapSource && !isFloating(child)) {
+    checkAndSwap(key, rect);
+  }
 }
 
 function onCommit(child: ComponentInstance, i: number) {
-  // Drag/resize завершён: сохраняем resolved позиции соседей в stored
+  activeDragKey = null;
+  swapSource = null;
   commitRect(childKey(child, i));
 }
 
 function onActualHeight(child: ComponentInstance, i: number, h: number) {
-  // ResizeObserver: фактическая высота изменилась.
-  // setActualHeight → computedRects пересчитается → соседи двигаются/возвращаются.
   setActualHeight(childKey(child, i), h);
 }
 
@@ -168,6 +205,7 @@ if (!loaded) { loaded = true; void load(); }
       :locked="Boolean(child.layout?.locked)"
       :min-w="child.layout?.minW"
       :min-h="child.layout?.minH"
+      @drag-start="onDragStart(child, i)"
       @update:rect="onUpdateRect(child, i, $event)"
       @commit="onCommit(child, i)"
       @actual-height="onActualHeight(child, i, $event)"

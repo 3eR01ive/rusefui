@@ -15,9 +15,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "update:rect", rect: CanvasItemRect): void;
-  /** Drag/resize завершён — сохраняем resolved позиции соседей. */
+  (e: "drag-start"): void;
   (e: "commit"): void;
-  /** ResizeObserver сообщает фактическую высоту (не меняет stored). */
   (e: "actual-height", h: number): void;
   (e: "activate"): void;
 }>();
@@ -39,6 +38,7 @@ function startDrag(e: PointerEvent, type: DragType) {
   drag = { sx: e.clientX, sy: e.clientY, orig: { ...props.rect }, type };
   (e.target as Element).setPointerCapture(e.pointerId);
   emit("activate");
+  if (type === "move") emit("drag-start");
 }
 
 function calcRect(e: PointerEvent): CanvasItemRect {
