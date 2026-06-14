@@ -9,7 +9,7 @@ use rusefui_runtime::{
     OutputSnapshot, OutputTimelineChunkQuery, OutputTimelineSeriesChunk,
     OutputTimelineSeriesQuery, OutputTimelineSeriesSnapshot, OutputTimelineStatus, OutputTimelineView,
     OutputTimelineViewControl,
-    cache_dir_for_project_ini, read_manifest_from_dir, read_panel_yaml, PanelManifest,
+    read_manifest_from_dir, read_panel_yaml, PanelManifest,
     CommitSummary, PendingIniResolution, ProjectGitRepo, ProjectInfo, ProjectListEntry,
     ProjectLogRef, ProjectScript, ProjectStore, ProjectTimelineClip,
     ProtocolLogEntry,
@@ -707,10 +707,7 @@ fn active_panel_cache_dir(session: &EcuSession) -> Result<std::path::PathBuf, St
     let hash = session
         .active_panel_hash()
         .ok_or_else(|| "INI panel cache не готов — откройте проект и дождитесь загрузки INI".to_string())?;
-    Ok(cache_dir_for_project_ini(
-        &session.project_cache_key(),
-        &hash,
-    ))
+    Ok(session.panels_root().join(hash))
 }
 
 #[tauri::command]
@@ -755,6 +752,22 @@ pub fn read_ui_config(app: AppHandle, path: String) -> Result<String, String> {
         Some(asset) => String::from_utf8(asset.bytes).map_err(|e| e.to_string()),
         None => Err(format!("UI config not found in bundle: {key}")),
     }
+}
+
+/// Читает UI-конфиг из папки проекта.
+#[tauri::command]
+pub fn project_read_ui_config(
+    path: String,
+    state: State<RuntimeState>,
+) -> Result<String, String> {
+    let dir = state
+        .project
+        .lock()
+        .unwrap()
+        .project_dir()
+        .ok_or_else(|| "no project open".to_string())?;
+    let config_path = dir.join("config").join(path.trim_start_matches('/'));
+    std::fs::read_to_string(&config_path).map_err(|e| format!("{path}: {e}"))
 }
 
 pub fn register_knock_scope_emitter(app: &AppHandle) {

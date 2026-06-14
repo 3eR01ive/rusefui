@@ -1,4 +1,5 @@
 import type * as Monaco from "monaco-editor";
+import { readProjectUiConfig } from "../core/config-loader";
 
 interface LuaWikiHint {
   label: string;
@@ -19,11 +20,8 @@ async function loadHints(): Promise<LuaWikiHint[]> {
   if (hintsCache) {
     return hintsCache;
   }
-  const res = await fetch("/config/lua-wiki-hints.json");
-  if (!res.ok) {
-    throw new Error(`lua-wiki-hints.json: HTTP ${res.status}`);
-  }
-  const data = (await res.json()) as LuaWikiHintsFile;
+  const text = await readProjectUiConfig("lua-wiki-hints.json");
+  const data = JSON.parse(text) as LuaWikiHintsFile;
   hintsCache = data.items ?? [];
   return hintsCache;
 }

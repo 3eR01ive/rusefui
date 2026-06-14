@@ -614,7 +614,7 @@ impl ProjectStore {
         };
 
         let project_ini_sig = ini_ref.as_ref().and_then(|r| r.signature.clone());
-        session.set_project_cache_key(project_dir.as_deref());
+        session.set_project_panels_root(project_dir.as_deref());
 
         if !ini_ref_actionable(ini_ref.as_ref()) {
             println!("[workspace-fsm] apply_to_session: нет ini — pending выбор INI");

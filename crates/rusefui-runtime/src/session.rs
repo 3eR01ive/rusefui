@@ -11,7 +11,7 @@ use serde::Serialize;
 
 use crate::ini::{
     download_ini_for_signature, ensure_panels_for_ini, install_ini_to_cache, load_ini_path,
-    project_cache_key, resolve_ini_for_signature, IniResolveError, OnlineDownloadStatus,
+    panels_root_for_project, resolve_ini_for_signature, IniResolveError, OnlineDownloadStatus,
     PanelCacheStatus, ResolvedIni,
 };
 use crate::protocol_log::ProtocolLogStore;
@@ -81,8 +81,8 @@ pub struct EcuSession {
     project_ini_signature: Mutex<Option<String>>,
     /// Hash signature активного panel-cache (`4139280449`).
     active_panel_hash: Mutex<Option<String>>,
-    /// Ключ каталога `~/.rusEFI/projects/{key}/` для открытого проекта.
-    project_cache_key: Mutex<String>,
+    /// Корень `ui_panels/` внутри открытого проекта (или scratch-каталог).
+    panels_root: Mutex<PathBuf>,
     panels_changed_hook: Mutex<Option<Arc<dyn Fn(PanelCacheStatus) + Send + Sync>>>,
     stimulator_ramp: StimulatorRampRunner,
 }
@@ -111,7 +111,7 @@ impl EcuSession {
             log_viewport_linked: AtomicBool::new(false),
             project_ini_signature: Mutex::new(None),
             active_panel_hash: Mutex::new(None),
-            project_cache_key: Mutex::new(project_cache_key(None)),
+            panels_root: Mutex::new(panels_root_for_project(None)),
             panels_changed_hook: Mutex::new(None),
             stimulator_ramp: StimulatorRampRunner::new(),
         })
@@ -125,17 +125,17 @@ impl EcuSession {
         self.active_panel_hash.lock().unwrap().clone()
     }
 
-    pub fn project_cache_key(&self) -> String {
-        self.project_cache_key.lock().unwrap().clone()
+    pub fn panels_root(&self) -> PathBuf {
+        self.panels_root.lock().unwrap().clone()
     }
 
-    pub fn set_project_cache_key(&self, project_path: Option<&std::path::Path>) {
-        *self.project_cache_key.lock().unwrap() = project_cache_key(project_path);
+    pub fn set_project_panels_root(&self, project_dir: Option<&std::path::Path>) {
+        *self.panels_root.lock().unwrap() = panels_root_for_project(project_dir);
     }
 
     pub fn reset_panel_cache_state(&self) {
         *self.active_panel_hash.lock().unwrap() = None;
-        self.set_project_cache_key(None);
+        self.set_project_panels_root(None);
     }
 
     /// Panel-cache для текущего INI (cache miss → генерация). Не вызывать из offline bootstrap.
@@ -152,8 +152,8 @@ impl EcuSession {
             .ok_or_else(|| "INI path не задан — нельзя построить panel cache".to_string())?;
 
         let prev = self.active_panel_hash.lock().unwrap().clone();
-        let project_key = self.project_cache_key();
-        let status = ensure_panels_for_ini(&path, &signature, &project_key)?;
+        let panels_root = self.panels_root();
+        let status = ensure_panels_for_ini(&path, &signature, &panels_root)?;
         *self.active_panel_hash.lock().unwrap() = Some(status.hash.clone());
 
         if prev.as_deref() != Some(status.hash.as_str()) || status.generated {

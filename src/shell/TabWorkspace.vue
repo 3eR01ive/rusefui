@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { listen } from "@tauri-apps/api/event";
 import { loadAppConfig, type LoadedAppConfig } from "../core/config-loader";
 import { panelsEpoch } from "../composables/useIniPanels";
 import type { ResolvedTab } from "../core/types";
@@ -118,9 +119,14 @@ async function loadWorkspaceConfig(): Promise<void> {
   }
 }
 
+let unlistenReset: (() => void) | null = null;
+
 onMounted(async () => {
   registerTabBinding(onTabKeydown);
   await loadWorkspaceConfig();
+  unlistenReset = await listen("workspace-reset", () => {
+    void loadWorkspaceConfig();
+  });
 });
 
 watch(panelsEpoch, () => {
@@ -129,6 +135,7 @@ watch(panelsEpoch, () => {
 
 onUnmounted(() => {
   unregisterTabBinding();
+  unlistenReset?.();
 });
 
 watch(activeTabId, () => {

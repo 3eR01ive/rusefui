@@ -1,5 +1,6 @@
 import { computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { readProjectUiConfig } from "../core/config-loader";
 import { useFooterSlot } from "./useAppFooter";
 import { useTabAlertBinding } from "./useTabAlerts";
 import { configCanView, initConfig, useConfig } from "./useConfig";
@@ -13,12 +14,7 @@ export async function initChecklist(): Promise<void> {
   initPromise = (async () => {
     await initConfig();
     try {
-      const res = await fetch("/config/checklist.yaml");
-      if (!res.ok) {
-        console.warn("checklist.yaml:", res.status, res.statusText);
-        return;
-      }
-      const yaml = await res.text();
+      const yaml = await readProjectUiConfig("checklist.yaml");
       await invoke("checklist_load_rules", { yaml });
     } catch (e) {
       console.warn("checklist rules load failed:", e);

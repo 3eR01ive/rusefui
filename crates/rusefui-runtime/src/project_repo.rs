@@ -74,6 +74,7 @@ impl ProjectGitRepo {
         let dir = Self::unique_dir_for_name(name);
         std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
         gix::init(&dir).map_err(|e| e.to_string())?;
+        std::fs::write(dir.join(".gitignore"), "ui_panels/\n").map_err(|e| e.to_string())?;
         let doc = RusefuiProject::new_named(name);
         let repo = Self { dir };
         repo.write_doc_and_commit(&doc, "Начало проекта")?;

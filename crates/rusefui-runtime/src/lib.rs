@@ -58,7 +58,7 @@ pub use stimulator_ramp::{
 pub use ini::{
     cache_dir_for_project_ini, download_ini_for_signature, enumerate_local_candidates,
     ensure_panels_for_ini, explicit_ini_path, find_any_local_ini, ini_cache_dir, ini_download_target,
-    install_ini_to_cache, load_ini_path, parse_rusefi_signature, project_cache_key,
+    install_ini_to_cache, load_ini_path, panels_root_for_project, parse_rusefi_signature,
     read_manifest_from_dir, read_panel_yaml, resolve_ini_for_signature, search_directories,
     signatures_match, IniCandidate, IniCandidateSource, IniResolveError, OnlineDownloadStatus,
     PanelCacheStatus, ResolvedIni, RusEfiSignature,

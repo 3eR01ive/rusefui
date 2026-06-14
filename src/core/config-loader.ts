@@ -10,20 +10,12 @@ import type {
 } from "./types";
 import { isComponentRef } from "./types";
 
-const CONFIG_BASE = "/config";
+export async function readProjectUiConfig(path: string): Promise<string> {
+  return invoke<string>("project_read_ui_config", { path });
+}
 
 async function fetchText(path: string): Promise<string> {
-  const url = `${CONFIG_BASE}/${path}`.replace(/\/+/g, "/");
-  const res = await fetch(url);
-  if (!res.ok) {
-    throw new Error(`Config not found: ${url} (${res.status})`);
-  }
-  const ct = res.headers.get("content-type") ?? "";
-  if (ct.includes("text/html")) {
-    // Windows WebView2 возвращает index.html (SPA-fallback) вместо YAML-файла — читаем через IPC.
-    return invoke<string>("read_ui_config", { path });
-  }
-  return res.text();
+  return readProjectUiConfig(path);
 }
 
 function parseFile<T>(text: string, path: string): T {

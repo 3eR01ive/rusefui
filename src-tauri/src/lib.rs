@@ -79,6 +79,7 @@ pub fn run() {
             runtime_cmds::panels_get_manifest,
             runtime_cmds::panels_read_yaml,
             runtime_cmds::read_ui_config,
+            runtime_cmds::project_read_ui_config,
             runtime_cmds::autoconnect_get_state,
             runtime_cmds::autoconnect_get_connection,
             runtime_cmds::autoconnect_set_offline_mode,

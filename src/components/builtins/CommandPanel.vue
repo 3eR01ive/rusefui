@@ -4,6 +4,7 @@ import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useDataContext } from "../../core/data-context";
 import { useRustComponent } from "../../composables/useRustComponent";
 import { useComponentBinding } from "../../composables/useKeyboardRouter";
+import { readProjectUiConfig } from "../../core/config-loader";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -15,16 +16,10 @@ const props = defineProps<{
 
 async function loadQuickCommandsYaml(): Promise<Record<string, unknown>> {
   const rel = String(props.props.quickCommands ?? "console/quick-commands.yaml");
-  const url = `/config/${rel}`.replace(/\/+/g, "/");
   try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      console.warn("quick-commands.yaml:", res.status, url);
-      return { quickCommandsYaml: "" };
-    }
-    return { quickCommandsYaml: await res.text() };
+    return { quickCommandsYaml: await readProjectUiConfig(rel) };
   } catch (e) {
-    console.warn("quick-commands.yaml fetch failed", e);
+    console.warn("quick-commands.yaml load failed", e);
     return { quickCommandsYaml: "" };
   }
 }
