@@ -5,7 +5,8 @@ import { snapGrid } from "../../composables/useCanvasLayout";
 
 const props = defineProps<{
   id: string;
-  rect: CanvasItemRect;
+  rect: CanvasItemRect;       // display rect из computedRects
+  storedH: number;            // base h из stored (для min-height)
   editMode: boolean;
   minW?: number;
   minH?: number;
@@ -14,8 +15,10 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "update:rect", rect: CanvasItemRect): void;
-  /** Drag/resize завершён — можно проверять перекрытие */
-  (e: "commit", rect: CanvasItemRect): void;
+  /** Drag/resize завершён — сохраняем resolved позиции соседей. */
+  (e: "commit"): void;
+  /** ResizeObserver сообщает фактическую высоту (не меняет stored). */
+  (e: "actual-height", h: number): void;
   (e: "activate"): void;
 }>();
 
@@ -26,11 +29,7 @@ const MIN_H = computed(() => props.minH ?? 48);
 type ResizeDir = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 type DragType = "move" | ResizeDir;
 
-let drag: {
-  sx: number; sy: number;
-  orig: CanvasItemRect;
-  type: DragType;
-} | null = null;
+let drag: { sx: number; sy: number; orig: CanvasItemRect; type: DragType } | null = null;
 
 function startDrag(e: PointerEvent, type: DragType) {
   if (!props.editMode) return;
@@ -47,7 +46,7 @@ function calcRect(e: PointerEvent): CanvasItemRect {
   const dx = e.clientX - drag.sx;
   const dy = e.clientY - drag.sy;
   const o = drag.orig;
-  let { x, y, w, h, z } = o;
+  let { x, y, w, h, z, floating } = o;
 
   if (drag.type === "move") {
     x = snapGrid(Math.max(0, o.x + dx));
@@ -59,7 +58,7 @@ function calcRect(e: PointerEvent): CanvasItemRect {
     if (dir.includes("w")) { w = snapGrid(Math.max(MIN_W.value, o.w - dx)); x = o.x + o.w - w; }
     if (dir.includes("n")) { h = snapGrid(Math.max(MIN_H.value, o.h - dy)); y = o.y + o.h - h; }
   }
-  return { x, y, w, h, z };
+  return { x, y, w, h, z, floating };
 }
 
 function onPointerMove(e: PointerEvent) {
@@ -69,29 +68,28 @@ function onPointerMove(e: PointerEvent) {
 
 function onPointerUp(e: PointerEvent) {
   if (!drag) return;
-  const final = calcRect(e);
+  emit("update:rect", calcRect(e));
   drag = null;
-  emit("update:rect", final);
-  emit("commit", final); // сигнал для overlap resolution
+  emit("commit");
 }
 
-// ── ResizeObserver: контент вырос — расширяем окно ────────────
+// ── ResizeObserver: только сообщаем высоту, не трогаем stored ─
 const rootRef = ref<HTMLElement | null>(null);
 let ro: ResizeObserver | null = null;
+let lastReportedH = 0;
 
 onMounted(() => {
   if (!rootRef.value) return;
   ro = new ResizeObserver((entries) => {
-    if (drag) return; // игнорируем во время ручного resize
+    if (drag) return; // во время ручного resize не мешаем
     const entry = entries[0];
     if (!entry) return;
-    const actualH = Math.ceil(
+    const h = Math.ceil(
       entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height,
     );
-    // Обновляем сохранённую высоту если контент вырос за min-height
-    if (actualH > props.rect.h + 4) {
-      emit("update:rect", { ...props.rect, h: snapGrid(actualH) });
-      // Не emit("commit") — рост контента не должен двигать соседей
+    if (h !== lastReportedH) {
+      lastReportedH = h;
+      emit("actual-height", h);
     }
   });
   ro.observe(rootRef.value);
@@ -102,12 +100,16 @@ onBeforeUnmount(() => {
   drag = null;
 });
 
-// ── Style: minHeight вместо height — контент может расти ──────
+// ── Style ──────────────────────────────────────────────────────
+// x/y/w из computedRects (с учётом выталкивания соседями).
+// Высота: min-height = storedH (пользовательский минимум),
+// но если computedRects.h больше (из-за роста соседей) — используем его.
+// Контент может делать элемент ещё выше через min-height.
 const windowStyle = computed(() => ({
   left: `${props.rect.x}px`,
   top: `${props.rect.y}px`,
   width: `${props.rect.w}px`,
-  minHeight: `${props.rect.h}px`,
+  minHeight: `${Math.max(props.storedH, props.rect.h)}px`,
   zIndex: props.rect.z,
 }));
 </script>
@@ -122,7 +124,6 @@ const windowStyle = computed(() => ({
     @pointermove="onPointerMove"
     @pointerup="onPointerUp"
   >
-    <!-- drag bar — только в edit mode -->
     <div
       v-if="editMode"
       class="cw-bar"
@@ -142,12 +143,8 @@ const windowStyle = computed(() => ({
       </svg>
     </div>
 
-    <!-- content -->
-    <div class="cw-content">
-      <slot />
-    </div>
+    <div class="cw-content"><slot /></div>
 
-    <!-- resize handles — только в edit mode и не locked -->
     <template v-if="editMode && !locked">
       <div class="cw-h cw-n"  @pointerdown.stop="startDrag($event, 'n')" />
       <div class="cw-h cw-s"  @pointerdown.stop="startDrag($event, 's')" />
@@ -168,49 +165,31 @@ const windowStyle = computed(() => ({
   display: flex;
   flex-direction: column;
 }
-
 .cw--edit {
   border: 1.5px dashed var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-bg-elevated);
   box-shadow: 0 2px 8px rgba(0,0,0,.12);
 }
-
 .cw-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 0 0.5rem;
-  height: 22px;
-  flex-shrink: 0;
-  cursor: grab;
-  user-select: none;
+  display: flex; align-items: center; gap: 0.3rem;
+  padding: 0 0.5rem; height: 22px; flex-shrink: 0;
+  cursor: grab; user-select: none;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-bg-muted);
   border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 .cw-bar:active { cursor: grabbing; }
 .cw-bar--locked { cursor: default; }
-
 .cw-bar-label {
-  font-size: 0.65rem;
-  color: var(--color-text-muted);
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 0.65rem; color: var(--color-text-muted);
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .cw-drag-icon { width: 10px; height: 10px; color: var(--color-text-subtle); flex-shrink: 0; }
-
 .cw-content {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
+  flex: 1; min-height: 0;
+  display: flex; align-items: flex-start; justify-content: flex-start;
 }
-
-/* resize handles */
 .cw-h { position: absolute; z-index: 10; }
 .cw-n  { top: -4px;    left: 8px;   right: 8px;   height: 8px;  cursor: n-resize; }
 .cw-s  { bottom: -4px; left: 8px;   right: 8px;   height: 8px;  cursor: s-resize; }
@@ -220,11 +199,8 @@ const windowStyle = computed(() => ({
 .cw-ne { top: -4px;    right: -4px; width: 12px;  height: 12px; cursor: ne-resize; }
 .cw-sw { bottom: -4px; left: -4px;  width: 12px;  height: 12px; cursor: sw-resize; }
 .cw-se { bottom: -4px; right: -4px; width: 12px;  height: 12px; cursor: se-resize; }
-
 .cw--edit .cw-ne, .cw--edit .cw-nw, .cw--edit .cw-se, .cw--edit .cw-sw {
-  background: var(--color-accent, #3b82f6);
-  border-radius: 2px;
-  opacity: 0.7;
+  background: var(--color-accent, #3b82f6); border-radius: 2px; opacity: 0.7;
 }
 .cw--edit .cw-ne:hover, .cw--edit .cw-nw:hover,
 .cw--edit .cw-se:hover, .cw--edit .cw-sw:hover { opacity: 1; }

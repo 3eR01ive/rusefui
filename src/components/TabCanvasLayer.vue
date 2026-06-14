@@ -14,7 +14,6 @@ const emit = defineEmits<{
   (e: "activate-path", path: string): void;
 }>();
 
-// Дети root-компонента таба — верхние блоки которые мы позиционируем.
 const rootChildren = computed<ComponentInstance[]>(() => {
   const ch = props.tab.root.children;
   if (ch && ch.length > 0) return ch;
@@ -35,26 +34,33 @@ function isFloating(child: ComponentInstance): boolean {
 }
 
 // ── Layout state ──────────────────────────────────────────────
-const { editMode, load, getRect, setRect, resolveOverlaps, bringToFront, reset, stored } =
-  useCanvasLayout(`tab-${props.tab.id}`);
+const {
+  editMode, load,
+  getRect, setRect, commitRect, setActualHeight,
+  computedRects,
+  bringToFront, reset, stored,
+} = useCanvasLayout(`tab-${props.tab.id}`);
 
 const hasLayout = computed(() => Object.keys(stored.value.items).length > 0);
 
-function getChildRect(child: ComponentInstance, i: number): CanvasItemRect {
-  return getRect(childKey(child, i), {
-    x: child.layout?.x,
-    y: child.layout?.y,
-    w: child.layout?.w,
-    h: child.layout?.h,
+/** Display rect из computedRects (с учётом роста контента + выталкивания) */
+function displayRect(child: ComponentInstance, i: number): CanvasItemRect {
+  const key = childKey(child, i);
+  return computedRects.value[key] ?? getRect(key, {
+    x: child.layout?.x, y: child.layout?.y,
+    w: child.layout?.w, h: child.layout?.h,
     floating: isFloating(child),
   });
 }
 
-// ── Flow mode refs для захвата DOM-позиций ──────────────────
-const flowRefs: (HTMLElement | null)[] = [];
-function setFlowRef(i: number, el: unknown) {
-  flowRefs[i] = el as HTMLElement | null;
+/** Сохранённая базовая высота (для min-height на CanvasWindow) */
+function storedH(child: ComponentInstance, i: number): number {
+  return stored.value.items[childKey(child, i)]?.h ?? child.layout?.h ?? 160;
 }
+
+// ── Flow mode refs ─────────────────────────────────────────────
+const flowRefs: (HTMLElement | null)[] = [];
+function setFlowRef(i: number, el: unknown) { flowRefs[i] = el as HTMLElement | null; }
 const containerRef = ref<HTMLElement | null>(null);
 
 // Минимальная высота канваса
@@ -62,13 +68,13 @@ const CANVAS_PAD = 80;
 const canvasMinH = computed(() => {
   let max = 400;
   rootChildren.value.forEach((child, i) => {
-    const r = getChildRect(child, i);
+    const r = displayRect(child, i);
     max = Math.max(max, r.y + r.h + CANVAS_PAD);
   });
   return max;
 });
 
-// ── Toggle Layout ──────────────────────────────────────────────
+// ── Toggle layout ──────────────────────────────────────────────
 async function toggleLayout() {
   if (!hasLayout.value) {
     await nextTick();
@@ -95,17 +101,23 @@ async function toggleLayout() {
   }
 }
 
-function resetLayout() {
-  reset();
-  editMode.value = false;
+function resetLayout() { reset(); editMode.value = false; }
+
+// ── Events from CanvasWindow ────────────────────────────────────
+function onUpdateRect(child: ComponentInstance, i: number, rect: CanvasItemRect) {
+  // Обновляем stored (setRect) — computedRects пересчитается реактивно
+  setRect(childKey(child, i), rect);
 }
 
-// ── Commit: drag/resize завершён → разрешаем перекрытия ───────
-function onCommit(child: ComponentInstance, i: number, rect: CanvasItemRect) {
-  setRect(childKey(child, i), rect);
-  if (!isFloating(child)) {
-    resolveOverlaps(childKey(child, i));
-  }
+function onCommit(child: ComponentInstance, i: number) {
+  // Drag/resize завершён: сохраняем resolved позиции соседей в stored
+  commitRect(childKey(child, i));
+}
+
+function onActualHeight(child: ComponentInstance, i: number, h: number) {
+  // ResizeObserver: фактическая высота изменилась.
+  // setActualHeight → computedRects пересчитается → соседи двигаются/возвращаются.
+  setActualHeight(childKey(child, i), h);
 }
 
 let loaded = false;
@@ -127,7 +139,6 @@ if (!loaded) { loaded = true; void load(); }
         @activate-path="emit('activate-path', $event)"
       />
     </div>
-
     <button class="tcl-fab" @click="toggleLayout">
       <svg viewBox="0 0 16 16" fill="none" class="tcl-fab-icon">
         <rect x="1" y="1" width="6" height="6" rx="1" stroke="currentColor" stroke-width="1.3"/>
@@ -151,13 +162,15 @@ if (!loaded) { loaded = true; void load(); }
       v-for="(child, i) in rootChildren"
       :key="childKey(child, i)"
       :id="childKey(child, i)"
-      :rect="getChildRect(child, i)"
+      :rect="displayRect(child, i)"
+      :stored-h="storedH(child, i)"
       :edit-mode="editMode"
       :locked="Boolean(child.layout?.locked)"
       :min-w="child.layout?.minW"
       :min-h="child.layout?.minH"
-      @update:rect="setRect(childKey(child, i), $event)"
-      @commit="onCommit(child, i, $event)"
+      @update:rect="onUpdateRect(child, i, $event)"
+      @commit="onCommit(child, i)"
+      @actual-height="onActualHeight(child, i, $event)"
       @activate="bringToFront(childKey(child, i))"
     >
       <ComponentHost
@@ -187,64 +200,38 @@ if (!loaded) { loaded = true; void load(); }
 .tcl-flow { position: relative; width: 100%; }
 
 .tcl-canvas {
-  position: relative;
-  width: 100%;
-  overflow: auto;
-  background: var(--color-bg);
+  position: relative; width: 100%;
+  overflow: auto; background: var(--color-bg);
 }
 .tcl-canvas--edit {
   background-image: radial-gradient(circle, var(--color-border) 1px, transparent 1px);
-  background-size: 16px 16px;
-  background-position: 8px 8px;
+  background-size: 16px 16px; background-position: 8px 8px;
 }
 
-/* FAB */
 .tcl-fab-row {
-  position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
+  position: fixed; bottom: 1.5rem; right: 1.5rem;
+  z-index: 1000; display: flex; align-items: center; gap: 0.4rem;
 }
-.tcl-flow .tcl-fab {
-  position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  z-index: 1000;
-}
+.tcl-flow .tcl-fab { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1000; }
 .tcl-fab {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.45rem 0.85rem;
-  font-size: 0.78rem;
-  font-weight: 500;
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-elevated);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  display: flex; align-items: center; gap: 0.35rem;
+  padding: 0.45rem 0.85rem; font-size: 0.78rem; font-weight: 500;
+  border: 1.5px solid var(--color-border); border-radius: var(--radius-md);
+  background: var(--color-bg-elevated); color: var(--color-text-muted);
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.15);
   transition: border-color 0.1s, color 0.1s;
 }
 .tcl-fab:hover { border-color: var(--color-text-muted); color: var(--color-text); }
 .tcl-fab--edit {
-  border-color: var(--color-accent, #3b82f6);
-  color: var(--color-accent, #3b82f6);
+  border-color: var(--color-accent, #3b82f6); color: var(--color-accent, #3b82f6);
   background: color-mix(in srgb, var(--color-accent, #3b82f6) 12%, var(--color-bg-elevated));
 }
 .tcl-fab-icon { width: 16px; height: 16px; }
 .tcl-reset {
-  padding: 0.45rem 0.7rem;
-  font-size: 0.75rem;
-  border: 1.5px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-elevated);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  padding: 0.45rem 0.7rem; font-size: 0.75rem;
+  border: 1.5px solid var(--color-border); border-radius: var(--radius-md);
+  background: var(--color-bg-elevated); color: var(--color-text-muted);
+  cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.15);
 }
 .tcl-reset:hover { border-color: var(--color-danger, #dc2626); color: var(--color-danger, #dc2626); }
 </style>

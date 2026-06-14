@@ -22,7 +22,10 @@ defineEmits<{
 // canvas id из instance.id или path
 const canvasId = computed(() => props.instance.id ?? props.path.replace(/\//g, "-"));
 
-const { editMode, load, getRect, setRect, bringToFront } = useCanvasLayout(canvasId.value);
+const {
+  editMode, load, getRect, setRect, commitRect, setActualHeight,
+  computedRects, bringToFront, stored,
+} = useCanvasLayout(canvasId.value);
 
 const children = computed(() => props.instance.children ?? []);
 
@@ -88,12 +91,15 @@ onMounted(() => { void load(); });
         v-for="(child, i) in children"
         :key="childId(child, i)"
         :id="childId(child, i)"
-        :rect="getChildRect(child, i)"
+        :rect="computedRects[childId(child, i)] ?? getChildRect(child, i)"
+        :stored-h="stored.items[childId(child, i)]?.h ?? child.layout?.h ?? 160"
         :edit-mode="editMode"
         :locked="Boolean(child.layout?.locked)"
         :min-w="child.layout?.minW"
         :min-h="child.layout?.minH"
         @update:rect="setRect(childId(child, i), $event)"
+        @commit="commitRect(childId(child, i))"
+        @actual-height="setActualHeight(childId(child, i), $event)"
         @activate="bringToFront(childId(child, i))"
       >
         <ComponentHost

@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { readonly, ref } from "vue";
+import { computed, readonly, ref } from "vue";
 
 export interface CanvasItemRect {
   x: number;
@@ -7,7 +7,6 @@ export interface CanvasItemRect {
   w: number;
   h: number;
   z: number;
-  /** true — может перекрываться с другими (парит поверх) */
   floating?: boolean;
 }
 
@@ -16,7 +15,7 @@ interface StoredState {
 }
 
 const GRID = 8;
-const GAP = 8; // зазор между окнами при разрешении перекрытий
+const GAP = 8;
 
 export function snapGrid(v: number): number {
   return Math.round(v / GRID) * GRID;
@@ -26,19 +25,75 @@ function rectsOverlap(a: CanvasItemRect, b: CanvasItemRect): boolean {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }
 
-export function useCanvasLayout(canvasId: string) {
-  const stored = ref<StoredState>({ items: {} });
-  const editMode = ref(false);
+/**
+ * Чистая функция — разрешает перекрытия не трогая stored state.
+ * Используется как для drag-commit (→ сохраняем), так и для
+ * live-вычисления позиций при росте контента (→ не сохраняем).
+ */
+function resolveOverlapsFor(
+  items: Record<string, CanvasItemRect>,
+): Record<string, CanvasItemRect> {
+  const result: Record<string, CanvasItemRect> = {};
+  for (const [k, v] of Object.entries(items)) result[k] = { ...v };
 
+  let changed = true;
+  let iter = 0;
+  while (changed && iter++ < 15) {
+    changed = false;
+    const keys = Object.keys(result);
+    for (const aId of keys) {
+      const aRect = result[aId]!;
+      if (aRect.floating) continue;
+      for (const bId of keys) {
+        if (aId === bId) continue;
+        const bRect = result[bId]!;
+        if (bRect.floating) continue;
+        if (!rectsOverlap(aRect, bRect)) continue;
+
+        const pushR = aRect.x + aRect.w - bRect.x;
+        const pushL = bRect.x + bRect.w - aRect.x;
+        const pushD = aRect.y + aRect.h - bRect.y;
+        const pushU = bRect.y + bRect.h - aRect.y;
+        const min = Math.min(pushR, pushL, pushD, pushU);
+
+        let nx = bRect.x, ny = bRect.y;
+        if (min === pushD)      ny = snapGrid(aRect.y + aRect.h + GAP);
+        else if (min === pushU) ny = snapGrid(aRect.y - bRect.h - GAP);
+        else if (min === pushR) nx = snapGrid(aRect.x + aRect.w + GAP);
+        else                    nx = snapGrid(aRect.x - bRect.w - GAP);
+
+        nx = Math.max(0, nx);
+        ny = Math.max(0, ny);
+
+        if (nx !== bRect.x || ny !== bRect.y) {
+          result[bId] = { ...bRect, x: nx, y: ny };
+          changed = true;
+        }
+      }
+    }
+  }
+  return result;
+}
+
+export function useCanvasLayout(canvasId: string) {
+  /** Постоянные "базовые" позиции: меняются только через drag/resize. */
+  const stored = ref<StoredState>({ items: {} });
+
+  /**
+   * Фактические высоты окон от ResizeObserver — НЕ сохраняются на диск.
+   * Когда контент растёт (открылись настройки) → высота растёт → соседи двигаются.
+   * Когда контент схлопывается → высота падает → соседи возвращаются.
+   */
+  const actualHeights = ref<Record<string, number>>({});
+
+  const editMode = ref(false);
   const storageKey = `canvas:${canvasId}`;
 
   async function load() {
     try {
       const raw = await invoke<StoredState>("project_ui_get", { key: storageKey });
       if (raw && typeof raw.items === "object") stored.value = raw;
-    } catch {
-      // no saved layout yet — use defaults from layout hints
-    }
+    } catch { /* нет сохранённого layout */ }
   }
 
   let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -49,76 +104,51 @@ export function useCanvasLayout(canvasId: string) {
     }, 400);
   }
 
+  /**
+   * Позиции для отображения = базовые + фактические высоты → overlap resolution.
+   * Эти позиции НЕ сохраняются. Когда контент схлопывается — соседи возвращаются.
+   */
+  const computedRects = computed<Record<string, CanvasItemRect>>(() => {
+    const effective: Record<string, CanvasItemRect> = {};
+    for (const [id, rect] of Object.entries(stored.value.items)) {
+      const actualH = actualHeights.value[id] ?? 0;
+      effective[id] = { ...rect, h: Math.max(rect.h, actualH) };
+    }
+    return resolveOverlapsFor(effective);
+  });
+
   function getRect(id: string, hint: Partial<CanvasItemRect>): CanvasItemRect {
-    const saved = stored.value.items[id];
-    if (saved) return saved;
-    return {
-      x: hint.x ?? 0,
-      y: hint.y ?? 0,
-      w: hint.w ?? 200,
-      h: hint.h ?? 160,
-      z: 1,
-      floating: hint.floating ?? false,
+    return stored.value.items[id] ?? {
+      x: hint.x ?? 0, y: hint.y ?? 0,
+      w: hint.w ?? 200, h: hint.h ?? 160,
+      z: 1, floating: hint.floating ?? false,
     };
   }
 
+  /** Обновляет базовую позицию (drag/resize). */
   function setRect(id: string, rect: CanvasItemRect) {
-    stored.value = {
-      ...stored.value,
-      items: { ...stored.value.items, [id]: rect },
-    };
+    stored.value = { ...stored.value, items: { ...stored.value.items, [id]: rect } };
     scheduleSave();
   }
 
   /**
-   * Разрешает перекрытия после завершения drag/resize для non-floating элементов.
-   * Алгоритм: повторяем проходы пока есть перекрытия (макс. 15 итераций).
-   * Двигаем перекрывающийся элемент в направлении наименьшего выхода.
+   * Завершение drag/resize: сохраняем resolved позиции соседей в stored.
+   * Это делает позиции permanentными (в отличие от роста контента).
    */
-  function resolveOverlaps(movedId: string) {
-    const movedRect = stored.value.items[movedId];
-    if (!movedRect || movedRect.floating) return;
-
-    const items = { ...stored.value.items };
-    let changed = true;
-    let iter = 0;
-
-    while (changed && iter++ < 15) {
-      changed = false;
-      for (const [aId, aRect] of Object.entries(items)) {
-        if (aRect.floating) continue;
-        for (const [bId, bRect] of Object.entries(items)) {
-          if (aId === bId || bRect.floating) continue;
-          if (!rectsOverlap(aRect, bRect)) continue;
-
-          // Глубина перекрытия по каждой оси
-          const overlapRight = aRect.x + aRect.w - bRect.x;  // сколько B надо сдвинуть вправо
-          const overlapLeft  = bRect.x + bRect.w - aRect.x;  // сколько B надо сдвинуть влево
-          const overlapDown  = aRect.y + aRect.h - bRect.y;  // сколько B надо сдвинуть вниз
-          const overlapUp    = bRect.y + bRect.h - aRect.y;  // сколько B надо сдвинуть вверх
-
-          // Двигаем B в направлении минимального выхода
-          const min = Math.min(overlapRight, overlapLeft, overlapDown, overlapUp);
-
-          let newX = bRect.x, newY = bRect.y;
-          if (min === overlapDown)       newY = snapGrid(aRect.y + aRect.h + GAP);
-          else if (min === overlapUp)    newY = snapGrid(aRect.y - bRect.h - GAP);
-          else if (min === overlapRight) newX = snapGrid(aRect.x + aRect.w + GAP);
-          else                           newX = snapGrid(aRect.x - bRect.w - GAP);
-
-          newX = Math.max(0, newX);
-          newY = Math.max(0, newY);
-
-          if (newX !== bRect.x || newY !== bRect.y) {
-            items[bId] = { ...bRect, x: newX, y: newY };
-            changed = true;
-          }
-        }
-      }
-    }
-
-    stored.value = { ...stored.value, items };
+  function commitRect(_id: string) {
+    const resolved = resolveOverlapsFor({ ...stored.value.items });
+    stored.value = { ...stored.value, items: resolved };
     scheduleSave();
+  }
+
+  /**
+   * Вызывается ResizeObserver'ом в CanvasWindow.
+   * Обновляет фактическую высоту — НЕ меняет stored.
+   * Автоматически пересчитывает computedRects.
+   */
+  function setActualHeight(id: string, h: number) {
+    if ((actualHeights.value[id] ?? 0) === h) return;
+    actualHeights.value = { ...actualHeights.value, [id]: h };
   }
 
   function bringToFront(id: string) {
@@ -136,6 +166,7 @@ export function useCanvasLayout(canvasId: string) {
 
   function reset() {
     stored.value = { items: {} };
+    actualHeights.value = {};
     void invoke("project_ui_set", { key: storageKey, value: { items: {} } }).catch(() => {});
   }
 
@@ -144,7 +175,9 @@ export function useCanvasLayout(canvasId: string) {
     load,
     getRect,
     setRect,
-    resolveOverlaps,
+    commitRect,
+    setActualHeight,
+    computedRects,
     bringToFront,
     reset,
     stored: readonly(stored),
