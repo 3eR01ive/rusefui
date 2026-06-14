@@ -1,5 +1,6 @@
 import type { Component } from "vue";
 import { registerComponent } from "../core/registry";
+import CanvasLayout from "./builtins/CanvasLayout.vue";
 import StackLayout from "./builtins/StackLayout.vue";
 import RowLayout from "./builtins/RowLayout.vue";
 import SectionLayout from "./builtins/SectionLayout.vue";
@@ -36,10 +37,18 @@ function reg(type: string, component: Component): void {
   registerComponent({ type, label: type, mode: "display", isContainer: false }, component);
 }
 
+function regCanvas(type: string, component: Component): void {
+  registerComponent(
+    { type, label: type, mode: "display", isContainer: true, handlesOwnChildren: true },
+    component,
+  );
+}
+
 export function registerBuiltinComponents(): void {
   if (registered) return;
   registered = true;
 
+  regCanvas("canvas", CanvasLayout);
   reg("stack", StackLayout);
   reg("row", RowLayout);
   reg("section", SectionLayout);

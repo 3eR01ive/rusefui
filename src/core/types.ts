@@ -23,6 +23,21 @@ export interface DataBinding {
   params?: Record<string, unknown>;
 }
 
+/**
+ * Подсказка позиционирования для дочернего элемента canvas-контейнера.
+ * Используется как default-позиция до первого сохранения layout.
+ */
+export interface ComponentLayoutHint {
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+  minW?: number;
+  minH?: number;
+  /** Запрет перемещения в edit-mode. */
+  locked?: boolean;
+}
+
 /** Инстанс компонента в дереве layout (из YAML). */
 export interface ComponentInstance {
   /** Уникальный id инстанса на вкладке. */
@@ -37,6 +52,8 @@ export interface ComponentInstance {
   navSelectable?: boolean;
   /** false — только выбор, без Enter/active (YAML). */
   navActivatable?: boolean;
+  /** Позиционирование в CanvasLayout (x/y/w/h в пикселях). */
+  layout?: ComponentLayoutHint;
 }
 
 /**
@@ -96,6 +113,11 @@ export interface ComponentMeta {
   mode: ComponentMode;
   /** Может содержать дочерние инстансы (есть `children` в YAML). */
   isContainer: boolean;
+  /**
+   * Компонент сам рендерит своих детей (например, CanvasLayout).
+   * ComponentHost не будет инжектировать children через slot.
+   */
+  handlesOwnChildren?: boolean;
   description?: string;
 }
 

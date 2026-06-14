@@ -84,8 +84,11 @@ function onNodeMouseDown(): void {
     :props="instance.props ?? {}"
     :binding="binding"
     :meta="entry.meta"
+    @select-path="emit('select-path', $event)"
+    @activate-path="emit('activate-path', $event)"
   >
-    <template v-if="hasChildren">
+    <!-- handlesOwnChildren=true: компонент сам управляет детьми (напр. CanvasLayout) -->
+    <template v-if="hasChildren && !entry.meta.handlesOwnChildren">
       <ComponentHost
         v-for="(child, index) in childInstances"
         :key="child.id ?? `${path}-${index}`"
