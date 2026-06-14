@@ -118,6 +118,7 @@ pub fn run() {
             runtime_cmds::project_script_ecu_read,
             runtime_cmds::project_script_ecu_write,
             runtime_cmds::project_script_ecu_burn,
+            runtime_cmds::ecu_console_poll,
             runtime_cmds::pick_script_file,
             runtime_cmds::project_script_import,
             runtime_cmds::project_script_history,

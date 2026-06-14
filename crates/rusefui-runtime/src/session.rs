@@ -1087,6 +1087,17 @@ impl EcuSession {
         })
     }
 
+    /// `G` — не блокируя output-poll: пропускает цикл если шина занята.
+    pub fn poll_console_text(&self) -> String {
+        if !self.is_connected() {
+            return String::new();
+        }
+        match self.try_with_link(|link| link.get_console_text()) {
+            Some(Ok(text)) => text,
+            _ => String::new(),
+        }
+    }
+
     /// Консольная `E` + чтение ответа `G` (Java console CommandQueue).
     pub fn run_console_command(self: &Arc<Self>, text: &str) -> Result<String, String> {
         if !self.is_connected() {

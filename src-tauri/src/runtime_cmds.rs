@@ -2502,6 +2502,11 @@ pub fn project_script_ecu_burn(state: State<RuntimeState>) -> Result<(), String>
 }
 
 #[tauri::command]
+pub fn ecu_console_poll(state: State<RuntimeState>) -> String {
+    state.session.poll_console_text()
+}
+
+#[tauri::command]
 pub async fn pick_script_file() -> Option<String> {
     let handle = rfd::AsyncFileDialog::new()
         .add_filter("Lua", &["lua"])

@@ -8,6 +8,7 @@ import {
   type CommitSummary,
   type ProjectScript,
 } from "../../composables/useProject";
+import { useEcuConsole } from "../../composables/useEcuConsole";
 import MonacoEditor from "../MonacoEditor.vue";
 
 const props = defineProps<{
@@ -52,6 +53,18 @@ const error = ref<string | null>(null);
 const ecuBusy = ref(false);
 const ecuMsg = ref<string | null>(null);
 const ecuError = ref(false);
+
+// --- ECU console ---
+const consoleOpen = ref(false);
+const consoleScrollRef = ref<HTMLElement | null>(null);
+const autoScroll = ref(true);
+const { lines: consoleLines, clear: consoleClear } = useEcuConsole();
+
+watch(consoleLines, () => {
+  if (autoScroll.value && consoleScrollRef.value) {
+    consoleScrollRef.value.scrollTop = consoleScrollRef.value.scrollHeight;
+  }
+}, { flush: "post" });
 
 // --- History panel ---
 const historyOpen = ref(false);
@@ -348,10 +361,22 @@ function diffLines(text: string) {
               </svg>
               История
             </button>
+            <button
+              class="ps-btn ps-btn--history"
+              :class="{ active: consoleOpen }"
+              title="Вывод ECU (Lua print)"
+              @click="consoleOpen = !consoleOpen"
+            >
+              <svg viewBox="0 0 14 14" fill="none" style="width:0.8rem;height:0.8rem;vertical-align:-1px">
+                <rect x="1.5" y="2.5" width="11" height="9" rx="1.2" stroke="currentColor" stroke-width="1.2"/>
+                <path d="M3.5 5.5l2 2-2 2M7 9.5h3.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Консоль
+            </button>
           </div>
 
           <!-- Monaco editor -->
-          <div class="ps-monaco-wrap" :class="{ 'has-history': historyOpen }">
+          <div class="ps-monaco-wrap" :class="{ 'has-history': historyOpen, 'has-console': consoleOpen && !historyOpen }">
             <div v-if="loadingContent" class="ps-loading-overlay"><span class="ps-spinner"/></div>
             <MonacoEditor
               v-if="selectedId"
@@ -411,6 +436,26 @@ function diffLines(text: string) {
 </span></pre>
                 <div v-else-if="historySelectedId" class="ps-history-empty">Нет изменений</div>
                 <div v-else class="ps-history-empty">Выберите версию</div>
+              </div>
+            </div>
+          </div>
+          <!-- ECU console panel -->
+          <div v-if="consoleOpen" class="ps-console-panel">
+            <div class="ps-console-toolbar">
+              <span class="ps-console-title">Вывод ECU</span>
+              <label class="ps-console-autoscroll" title="Автопрокрутка">
+                <input v-model="autoScroll" type="checkbox"/>
+                Auto
+              </label>
+              <button class="ps-btn ps-btn--sm" @click="consoleClear">Очистить</button>
+            </div>
+            <div ref="consoleScrollRef" class="ps-console-body">
+              <div v-if="consoleLines.length === 0" class="ps-console-empty">
+                Нет вывода — ECU не подключена или Lua не печатает
+              </div>
+              <div v-for="line in consoleLines" :key="line.id" class="ps-console-line">
+                <span class="ps-console-ts">{{ line.ts }}</span>
+                <span class="ps-console-text">{{ line.text }}</span>
               </div>
             </div>
           </div>
@@ -554,6 +599,7 @@ function diffLines(text: string) {
 
 .ps-monaco-wrap { flex: 1; position: relative; min-height: 0; overflow: hidden; transition: flex 0.15s; }
 .ps-monaco-wrap.has-history { flex: 0 0 55%; }
+.ps-monaco-wrap.has-console { flex: 0 0 60%; }
 .ps-monaco { width: 100%; height: 100%; }
 .ps-no-selection {
   display: flex;
@@ -662,4 +708,67 @@ function diffLines(text: string) {
   animation: ps-spin 0.7s linear infinite;
 }
 @keyframes ps-spin { to { transform: rotate(360deg); } }
+
+/* ---- ECU console ---- */
+.ps-console-panel {
+  flex: 0 0 40%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--color-border);
+  overflow: hidden;
+}
+.ps-console-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.6rem;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+.ps-console-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  flex: 1;
+}
+.ps-console-autoscroll {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+.ps-console-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0.3rem 0.5rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.77rem;
+  line-height: 1.5;
+}
+.ps-console-empty {
+  color: var(--color-text-muted);
+  font-style: italic;
+  padding: 0.3rem;
+}
+.ps-console-line {
+  display: flex;
+  gap: 0.5rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.ps-console-ts {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  padding-top: 0.05em;
+}
+.ps-console-text {
+  color: var(--color-text);
+}
 </style>
