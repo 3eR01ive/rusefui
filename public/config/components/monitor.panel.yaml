@@ -33,54 +33,33 @@ children:
           source: compositeLogger
           # autoStopSec: 0  # авто-disable на ECU через N с (0 = только в UI)
 
-  - type: canvas
-    id: live-canvas
+  - type: section
     props:
       title: Live values
     children:
-      - id: rpm
-        type: output-value
-        props:
-          label: RPM
-          unit: rpm
-          decimals: 0
-          displayType: gauge
-          min: 0
-          max: 8000
-        bind:
-          source: outputChannels
-          field: RPMValue
-        layout:
-          x: 8
-          y: 8
-          w: 136
-          h: 136
+      - type: row
+        children:
+          - type: output-value
+            id: rpm
+            props:
+              label: RPM
+              unit: rpm
+              decimals: 0
+            bind:
+              source: outputChannels
+              field: RPMValue
 
-      - id: clt
-        type: output-value
-        props:
-          label: CLT
-          unit: "°C"
-          decimals: 1
-          displayType: gauge
-          min: -20
-          max: 120
-        bind:
-          source: outputChannels
-          field: coolant
-        layout:
-          x: 152
-          y: 8
-          w: 136
-          h: 136
+          - type: output-value
+            id: clt
+            props:
+              label: CLT
+              unit: "°C"
+              decimals: 1
+            bind:
+              source: outputChannels
+              field: coolant
 
-      - id: hint
-        type: text
+      - type: text
         props:
           text: "Output: live snapshot + OutputTimeline (окно, перемотка, CSV-сессия). Log читает через timeline."
           variant: hint
-        layout:
-          x: 8
-          y: 160
-          w: 480
-          h: 48

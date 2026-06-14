@@ -76,5 +76,10 @@ export function useCanvasLayout(canvasId: string) {
     scheduleSave();
   }
 
-  return { editMode, load, getRect, setRect, bringToFront, stored: readonly(stored) };
+  function reset() {
+    stored.value = { items: {} };
+    void invoke("project_ui_set", { key: storageKey, value: { items: {} } }).catch(() => {});
+  }
+
+  return { editMode, load, getRect, setRect, bringToFront, reset, stored: readonly(stored) };
 }

@@ -3,8 +3,8 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { loadAppConfig, type LoadedAppConfig } from "../core/config-loader";
 import { panelsEpoch } from "../composables/useIniPanels";
 import type { ResolvedTab } from "../core/types";
-import ComponentHost from "../components/ComponentHost.vue";
 import TabActivityScope from "../components/TabActivityScope.vue";
+import TabCanvasLayer from "../components/TabCanvasLayer.vue";
 import { activeTabId } from "../composables/useTabState";
 import { tabOrder } from "../composables/useHotkeys";
 import {
@@ -151,9 +151,8 @@ watch(activeTabId, () => {
         :aria-label="tab.title"
       >
         <TabActivityScope :tab-id="tab.id">
-          <ComponentHost
-            :instance="tab.root"
-            :path="`tab/${tab.id}`"
+          <TabCanvasLayer
+            :tab="tab"
             @select-path="selectComponent"
             @activate-path="(path) => { if (isNavActivatablePath(path)) { activateComponent(path); focusComponent(path); } }"
           />
