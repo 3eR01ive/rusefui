@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import {
   computed,
+  inject,
+  nextTick,
   onMounted,
   onUnmounted,
   ref,
@@ -93,6 +95,8 @@ const ZOOM_STEP_MIN = 1;
 const ZOOM_STEP_MAX = 40;
 
 const settingsExpanded = ref(false);
+const chartRootRef = ref<HTMLElement | null>(null);
+const cwReportContentH = inject<((h: number) => void) | null>('cwReportContentH', null);
 
 function clampZoomStepPct(n: number): number {
   if (!Number.isFinite(n)) return 1;
@@ -121,6 +125,22 @@ function toggleSettingsExpanded(): void {
   }
   scheduleSaveLogUiToProject();
 }
+
+async function reportNaturalH(): Promise<void> {
+  if (!cwReportContentH) return;
+  if (!settingsExpanded.value) { cwReportContentH(0); return; }
+  await nextTick();
+  const el = chartRootRef.value;
+  if (!el) return;
+  // Временно убираем flex-shrink чтобы измерить естественную высоту
+  el.style.flexShrink = '0';
+  void el.offsetHeight; // принудительный reflow
+  const h = el.offsetHeight;
+  el.style.flexShrink = '';
+  cwReportContentH(h);
+}
+
+watch(settingsExpanded, () => { void reportNaturalH(); });
 
 const instanceRef = computed(() => props.instance);
 const { fields: boundFields, source: bindSource } = useInstanceBind(instanceRef);
@@ -416,7 +436,10 @@ async function applyLogUiFromProject(options: { applyViewport?: boolean } = {}):
     chartSizeOverride.window = ui.windowSeconds > 0 ? ui.windowSeconds : null;
     chartSizeOverride.height = ui.chartHeight > 120 ? ui.chartHeight : null;
     zoomStepPct.value = clampZoomStepPct(ui.zoomStepPct);
-    settingsExpanded.value = ui.settingsExpanded;
+    // При обновлении project UI (canvas layout и т.п.) settingsExpanded не сбрасываем —
+    // иначе bringToFront → project-changed → applyLogUiFromProject закрывает только что
+    // открытые настройки. Восстанавливаем только при полном сбросе воркспейса.
+    if (applyViewport) settingsExpanded.value = ui.settingsExpanded;
     graphGroups.value =
       ui.graphGroups.length > 0
         ? ui.graphGroups.map((g) => ({ id: g.id, fieldNames: [...g.fieldNames] }))
@@ -1648,6 +1671,7 @@ watch(tabActive, (active, wasActive) => {
 
 <template>
   <div
+    ref="chartRootRef"
     class="output-chart log-chart"
     :class="{ 'log-chart--compact': !settingsExpanded }"
     @mouseenter="logPanelHover = true"

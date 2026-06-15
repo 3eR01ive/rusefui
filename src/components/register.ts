@@ -1,4 +1,5 @@
 import type { Component } from "vue";
+import type { ComponentBindMeta } from "../core/types";
 import { registerComponent } from "../core/registry";
 import CanvasLayout from "./builtins/CanvasLayout.vue";
 import StackLayout from "./builtins/StackLayout.vue";
@@ -32,14 +33,13 @@ import ProjectScripts from "./builtins/ProjectScripts.vue";
 
 let registered = false;
 
-/** type → Vue SFC. Nav/container — в YAML инстанса panel. */
-function reg(type: string, component: Component): void {
-  registerComponent({ type, label: type, mode: "display", isContainer: false }, component);
+function reg(type: string, label: string, component: Component, bindMeta?: ComponentBindMeta): void {
+  registerComponent({ type, label, mode: "display", isContainer: false, bindMeta }, component);
 }
 
-function regCanvas(type: string, component: Component): void {
+function regCanvas(type: string, label: string, component: Component): void {
   registerComponent(
-    { type, label: type, mode: "display", isContainer: true, handlesOwnChildren: true },
+    { type, label, mode: "display", isContainer: true, handlesOwnChildren: true },
     component,
   );
 }
@@ -48,33 +48,47 @@ export function registerBuiltinComponents(): void {
   if (registered) return;
   registered = true;
 
-  regCanvas("canvas", CanvasLayout);
-  reg("stack", StackLayout);
-  reg("row", RowLayout);
-  reg("section", SectionLayout);
-  reg("composite", CompositeLayout);
-  reg("text", TextBlock);
-  reg("connection", ConnectionPanel);
-  reg("simulation", SimulationPanel);
-  reg("command", CommandPanel);
-  reg("lua-script", LuaScriptPanel);
-  reg("ini-command-button", IniCommandButton);
-  reg("generated-panel", GeneratedPanel);
-  reg("scalar-field", ScalarField);
-  reg("string-field", StringField);
-  reg("enum-field", EnumField);
-  reg("config-table", ConfigTable);
-  reg("ignition-table", IgnitionTable);
-  reg("curve", ConfigCurve);
-  reg("ini-panels-browser", IniPanelsBrowser);
-  reg("output-chart", OutputChart);
-  reg("composite-chart", CompositeChart);
-  reg("output-value", OutputValue);
-  reg("dyno", Dyno);
-  reg("knock", KnockPanel);
-  reg("spectrogram", Spectrogram);
-  reg("config-checklist", ConfigChecklist);
-  reg("project-timeline", ProjectTimeline);
-  reg("project-history", ProjectHistory);
-  reg("project-scripts", ProjectScripts);
+  regCanvas("canvas", "Canvas Layout", CanvasLayout);
+  reg("stack",   "Stack Layout",  StackLayout);
+  reg("row",     "Row Layout",    RowLayout);
+  reg("section", "Section",       SectionLayout);
+  reg("composite", "Composite",   CompositeLayout);
+  reg("text",    "Text Block",    TextBlock);
+
+  reg("connection",  "Connection",         ConnectionPanel);
+  reg("simulation",  "Simulation",         SimulationPanel);
+  reg("command",     "Command Panel",      CommandPanel);
+  reg("lua-script",  "Lua Script",         LuaScriptPanel);
+  reg("ini-command-button", "INI Command Button", IniCommandButton);
+  reg("generated-panel",    "Generated Panel",    GeneratedPanel);
+  reg("ini-panels-browser", "INI Panels Browser", IniPanelsBrowser);
+  reg("config-checklist",   "Config Checklist",   ConfigChecklist);
+
+  reg("scalar-field", "Scalar Field", ScalarField,
+    { autoSource: "config", needsConfigField: true });
+  reg("string-field", "String Field", StringField,
+    { autoSource: "config", needsConfigField: true });
+  reg("enum-field",   "Enum Field",   EnumField,
+    { autoSource: "config", needsConfigField: true });
+
+  reg("config-table",    "Config Table",    ConfigTable,    { needsTable: true });
+  reg("ignition-table",  "Ignition Table",  IgnitionTable,  { needsTable: true });
+  reg("curve",           "Config Curve",    ConfigCurve,    { needsCurve: true });
+
+  reg("output-chart",    "Log (Output Chart)",  OutputChart,
+    { autoSource: "outputChannels" });
+  reg("composite-chart", "Composite Chart",     CompositeChart,
+    { autoSource: "compositeLogger" });
+  reg("output-value",    "Output Value",        OutputValue,
+    { autoSource: "outputChannels" });
+  reg("dyno",            "Dyno",                Dyno,
+    { autoSource: "outputChannels" });
+  reg("knock",           "Knock Panel",         KnockPanel,
+    { autoSource: "outputChannels" });
+  reg("spectrogram",     "Spectrogram",         Spectrogram,
+    { autoSource: "knockScope" });
+
+  reg("project-timeline", "Project Timeline", ProjectTimeline);
+  reg("project-history",  "Project History",  ProjectHistory);
+  reg("project-scripts",  "Project Scripts",  ProjectScripts);
 }

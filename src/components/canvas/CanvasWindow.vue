@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, provide, ref } from "vue";
 import type { CanvasItemRect } from "../../composables/useCanvasLayout";
 import { snapGrid } from "../../composables/useCanvasLayout";
 
@@ -11,6 +11,7 @@ const props = defineProps<{
   minW?: number;
   minH?: number;
   locked?: boolean;
+  removable?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -19,6 +20,7 @@ const emit = defineEmits<{
   (e: "commit"): void;
   (e: "actual-height", h: number): void;
   (e: "activate"): void;
+  (e: "remove"): void;
 }>();
 
 const MIN_W = computed(() => props.minW ?? 80);
@@ -47,6 +49,8 @@ function calcRect(e: PointerEvent): CanvasItemRect {
   const dy = e.clientY - drag.sy;
   const o = drag.orig;
   let { x, y, w, h, z, floating } = o;
+  // Нельзя сжать окно меньше фактического контента (lastReportedH)
+  const effectiveMinH = Math.max(MIN_H.value, lastReportedH);
 
   if (drag.type === "move") {
     x = snapGrid(Math.max(0, o.x + dx));
@@ -54,9 +58,9 @@ function calcRect(e: PointerEvent): CanvasItemRect {
   } else {
     const dir = drag.type;
     if (dir.includes("e")) w = snapGrid(Math.max(MIN_W.value, o.w + dx));
-    if (dir.includes("s")) h = snapGrid(Math.max(MIN_H.value, o.h + dy));
+    if (dir.includes("s")) h = snapGrid(Math.max(effectiveMinH, o.h + dy));
     if (dir.includes("w")) { w = snapGrid(Math.max(MIN_W.value, o.w - dx)); x = o.x + o.w - w; }
-    if (dir.includes("n")) { h = snapGrid(Math.max(MIN_H.value, o.h - dy)); y = o.y + o.h - h; }
+    if (dir.includes("n")) { h = snapGrid(Math.max(effectiveMinH, o.h - dy)); y = o.y + o.h - h; }
   }
   return { x, y, w, h, z, floating };
 }
@@ -72,6 +76,14 @@ function onPointerUp(e: PointerEvent) {
   drag = null;
   emit("commit");
 }
+
+// ── Сигнал от слот-контента о нужной высоте (без ResizeObserver) ─
+provide('cwReportContentH', (h: number) => {
+  const target = h > 0 ? h : props.storedH;
+  if (target === lastReportedH) return;
+  lastReportedH = target;
+  emit('actual-height', target);
+});
 
 // ── ResizeObserver: только сообщаем высоту, не трогаем stored ─
 const rootRef = ref<HTMLElement | null>(null);
@@ -141,6 +153,13 @@ const windowStyle = computed(() => ({
         <rect x="2" y="4" width="6" height="5" rx="1" stroke="currentColor" stroke-width="1.2" fill="none"/>
         <path d="M3.5 4V3a1.5 1.5 0 1 1 3 0v1" stroke="currentColor" stroke-width="1.2" fill="none"/>
       </svg>
+      <button
+        v-if="removable"
+        class="cw-remove-btn"
+        title="Удалить с канваса"
+        @pointerdown.stop
+        @click.stop="emit('remove')"
+      >×</button>
     </div>
 
     <div class="cw-content">
@@ -188,6 +207,14 @@ const windowStyle = computed(() => ({
   flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .cw-drag-icon { width: 10px; height: 10px; color: var(--color-text-subtle); flex-shrink: 0; }
+.cw-remove-btn {
+  margin-left: 2px; padding: 0 4px; height: 16px; line-height: 1;
+  font-size: 0.85rem; font-weight: 600;
+  border: none; border-radius: 3px;
+  background: transparent; color: var(--color-text-subtle);
+  cursor: pointer; flex-shrink: 0;
+}
+.cw-remove-btn:hover { background: var(--color-danger, #dc2626); color: #fff; }
 .cw-content {
   flex: 1; min-height: 0;
   display: flex;

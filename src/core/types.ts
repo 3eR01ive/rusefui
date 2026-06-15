@@ -109,6 +109,18 @@ export interface ResolvedTab {
   root: ComponentInstance;
 }
 
+/** Метаданные для настройки bind при добавлении компонента на канвас. */
+export interface ComponentBindMeta {
+  /** Автоматически выставить bind.source (без участия пользователя). */
+  autoSource?: DataSourceId;
+  /** Нужно выбрать 2D-таблицу из INI (zBins/xBins/yBins). */
+  needsTable?: boolean;
+  /** Нужно выбрать кривую из INI (xBins/yBins). */
+  needsCurve?: boolean;
+  /** Нужно ввести имя поля конфига (bind.field). */
+  needsConfigField?: boolean;
+}
+
 export interface ComponentMeta {
   type: string;
   label: string;
@@ -121,6 +133,8 @@ export interface ComponentMeta {
    */
   handlesOwnChildren?: boolean;
   description?: string;
+  /** Метаданные bind для канвас-пикера. */
+  bindMeta?: ComponentBindMeta;
 }
 
 export interface RegisteredComponent {

@@ -73,6 +73,8 @@ pub fn run() {
             runtime_cmds::ini_get_info,
             runtime_cmds::ini_get_resolution,
             runtime_cmds::ini_list_candidates,
+            runtime_cmds::ini_list_tables,
+            runtime_cmds::ini_list_curves,
             runtime_cmds::ini_apply_path,
             runtime_cmds::ini_retry_online_download,
             runtime_cmds::ini_pick_file,

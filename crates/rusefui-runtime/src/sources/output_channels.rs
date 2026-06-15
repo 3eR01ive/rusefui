@@ -5,7 +5,8 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use rusefi_ini::{
-    decode_output_channels, ConfigFieldKind, FieldKind, IniFile, IniTableDef, OutputChannels,
+    decode_output_channels, ConfigFieldKind, FieldKind, IniCurveDef, IniFile, IniTableDef,
+    OutputChannels,
 };
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -86,8 +87,10 @@ pub struct IniContext {
     pub config_fields: HashMap<String, ConfigFieldKind>,
     /// `[ControllerCommands]` — сырые CRC-payload (`cmd_enable_self_stim` и т.д.).
     pub ts_commands: HashMap<String, Vec<u8>>,
-    /// 2D-таблицы из `[TableEditor]` — нужны для определения output channel осей.
+    /// 2D-таблицы из `[TableEditor]`.
     pub tables: HashMap<String, IniTableDef>,
+    /// Кривые из `[CurveEditor]`.
+    pub curves: HashMap<String, IniCurveDef>,
     pub inter_write_delay_ms: u16,
     pub page_activation_delay_ms: u16,
 }
@@ -145,6 +148,7 @@ impl IniContext {
             config_fields: HashMap::new(),
             ts_commands: HashMap::new(),
             tables: HashMap::new(),
+            curves: HashMap::new(),
             inter_write_delay_ms: 10,
             page_activation_delay_ms: 500,
         }
@@ -163,6 +167,7 @@ impl IniContext {
             config_fields: ini.config_fields.clone(),
             ts_commands: ini.ts_commands.clone(),
             tables: ini.tables.clone(),
+            curves: ini.curves.clone(),
             inter_write_delay_ms: ini.inter_write_delay_ms,
             page_activation_delay_ms: ini.page_activation_delay_ms,
         }

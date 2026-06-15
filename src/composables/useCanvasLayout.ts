@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { computed, readonly, ref } from "vue";
+import type { ComponentInstance } from "../core/types";
 
 export interface CanvasItemRect {
   x: number;
@@ -12,6 +13,10 @@ export interface CanvasItemRect {
 
 interface StoredState {
   items: Record<string, CanvasItemRect>;
+  /** Инстансы, добавленные пользователем через picker (не из YAML). */
+  extra?: ComponentInstance[];
+  /** ID YAML-детей, скрытых пользователем. */
+  hidden?: string[];
 }
 
 const GRID = 8;
@@ -27,8 +32,9 @@ function rectsOverlap(a: CanvasItemRect, b: CanvasItemRect): boolean {
 
 /**
  * Чистая функция — разрешает перекрытия не трогая stored state.
- * Используется как для drag-commit (→ сохраняем), так и для
- * live-вычисления позиций при росте контента (→ не сохраняем).
+ * Направление вытеснения определяется по вектору центр→центр:
+ * если B в основном ниже/выше A → толкаем вертикально,
+ * если правее/левее → горизонтально.
  */
 function resolveOverlapsFor(
   items: Record<string, CanvasItemRect>,
@@ -38,9 +44,14 @@ function resolveOverlapsFor(
 
   let changed = true;
   let iter = 0;
-  while (changed && iter++ < 15) {
+  while (changed && iter++ < 20) {
     changed = false;
-    const keys = Object.keys(result);
+    // Сортируем по y→x: верхние/левые компоненты — «якоря»
+    const keys = Object.keys(result).sort((a, b) => {
+      const ra = result[a]!, rb = result[b]!;
+      return ra.y !== rb.y ? ra.y - rb.y : ra.x - rb.x;
+    });
+
     for (const aId of keys) {
       const aRect = result[aId]!;
       if (aRect.floating) continue;
@@ -50,17 +61,20 @@ function resolveOverlapsFor(
         if (bRect.floating) continue;
         if (!rectsOverlap(aRect, bRect)) continue;
 
-        const pushR = aRect.x + aRect.w - bRect.x;
-        const pushL = bRect.x + bRect.w - aRect.x;
-        const pushD = aRect.y + aRect.h - bRect.y;
-        const pushU = bRect.y + bRect.h - aRect.y;
-        const min = Math.min(pushR, pushL, pushD, pushU);
+        // Вектор от центра A к центру B
+        const dx = (bRect.x + bRect.w / 2) - (aRect.x + aRect.w / 2);
+        const dy = (bRect.y + bRect.h / 2) - (aRect.y + aRect.h / 2);
 
         let nx = bRect.x, ny = bRect.y;
-        if (min === pushD)      ny = snapGrid(aRect.y + aRect.h + GAP);
-        else if (min === pushU) ny = snapGrid(aRect.y - bRect.h - GAP);
-        else if (min === pushR) nx = snapGrid(aRect.x + aRect.w + GAP);
-        else                    nx = snapGrid(aRect.x - bRect.w - GAP);
+        if (Math.abs(dy) >= Math.abs(dx)) {
+          // Основное смещение вертикальное → толкаем вверх/вниз
+          if (dy >= 0) ny = snapGrid(aRect.y + aRect.h + GAP);
+          else         ny = snapGrid(aRect.y - bRect.h - GAP);
+        } else {
+          // Основное смещение горизонтальное → толкаем вправо/влево
+          if (dx >= 0) nx = snapGrid(aRect.x + aRect.w + GAP);
+          else         nx = snapGrid(aRect.x - bRect.w - GAP);
+        }
 
         nx = Math.max(0, nx);
         ny = Math.max(0, ny);
@@ -134,7 +148,6 @@ export function useCanvasLayout(canvasId: string) {
   /**
    * Завершение drag/resize: сохраняем только перетаскиваемый компонент.
    * Соседи НЕ сохраняются — их визуальные позиции вычисляются в computedRects.
-   * Это позволяет им «вернуться» когда контент схлопывается обратно.
    */
   function commitRect(id: string) {
     const computed = computedRects.value[id];
@@ -153,7 +166,6 @@ export function useCanvasLayout(canvasId: string) {
   /**
    * Вызывается ResizeObserver'ом в CanvasWindow.
    * Обновляет фактическую высоту — НЕ меняет stored.
-   * Автоматически пересчитывает computedRects.
    */
   function setActualHeight(id: string, h: number) {
     if ((actualHeights.value[id] ?? 0) === h) return;
@@ -173,10 +185,72 @@ export function useCanvasLayout(canvasId: string) {
     scheduleSave();
   }
 
+  // ── Добавление / скрытие / удаление инстансов ────────────────
+
+  /** Возвращает позицию для нового компонента (ниже всех существующих). */
+  function nextAddPosition(): { x: number; y: number } {
+    const items = Object.values(stored.value.items);
+    if (!items.length) return { x: snapGrid(16), y: snapGrid(16) };
+    const maxBottom = items.reduce((m, r) => Math.max(m, r.y + r.h), 0);
+    return { x: snapGrid(16), y: snapGrid(maxBottom + 16) };
+  }
+
+  /**
+   * Добавляет экстра-инстанс (не из YAML). Присваивает уникальный id.
+   * Возвращает назначенный id.
+   */
+  function addExtraInstance(instance: ComponentInstance, layout?: Partial<CanvasItemRect>): string {
+    const usedIds = new Set([
+      ...(stored.value.extra ?? []).map(e => e.id ?? ''),
+      ...Object.keys(stored.value.items),
+    ]);
+    let n = 0;
+    let id: string;
+    do { id = `extra_${n++}`; } while (usedIds.has(id));
+
+    const inst: ComponentInstance = { ...instance, id };
+    const pos = nextAddPosition();
+    const rect: CanvasItemRect = {
+      x: layout?.x ?? pos.x,
+      y: layout?.y ?? pos.y,
+      w: layout?.w ?? 400,
+      h: layout?.h ?? 240,
+      z: Object.keys(stored.value.items).length + 1,
+      floating: false,
+    };
+
+    stored.value = {
+      ...stored.value,
+      extra: [...(stored.value.extra ?? []), inst],
+      items: { ...stored.value.items, [id]: rect },
+    };
+    scheduleSave();
+    return id;
+  }
+
+  /** Скрывает YAML-ребёнка (добавляет в hidden list). */
+  function hideInstance(id: string) {
+    if ((stored.value.hidden ?? []).includes(id)) return;
+    stored.value = { ...stored.value, hidden: [...(stored.value.hidden ?? []), id] };
+    scheduleSave();
+  }
+
+  /** Полностью удаляет экстра-инстанс. */
+  function removeExtraInstance(id: string) {
+    const newItems = { ...stored.value.items };
+    delete newItems[id];
+    stored.value = {
+      ...stored.value,
+      extra: (stored.value.extra ?? []).filter(e => e.id !== id),
+      items: newItems,
+    };
+    scheduleSave();
+  }
+
   function reset() {
-    stored.value = { items: {} };
+    stored.value = { items: {}, extra: [], hidden: [] };
     actualHeights.value = {};
-    void invoke("project_ui_set", { key: storageKey, value: { items: {} } }).catch(() => {});
+    void invoke("project_ui_set", { key: storageKey, value: { items: {}, extra: [], hidden: [] } }).catch(() => {});
   }
 
   return {
@@ -190,5 +264,8 @@ export function useCanvasLayout(canvasId: string) {
     bringToFront,
     reset,
     stored: readonly(stored),
+    addExtraInstance,
+    hideInstance,
+    removeExtraInstance,
   };
 }

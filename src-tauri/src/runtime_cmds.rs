@@ -2638,6 +2638,60 @@ pub fn ini_get_resolution(state: State<RuntimeState>) -> IniResolutionInfo {
     build_ini_resolution_info(&state)
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IniTableEntry {
+    pub id: String,
+    pub title: String,
+    pub z_bins: String,
+    pub x_bins: Option<String>,
+    pub y_bins: Option<String>,
+}
+
+#[tauri::command]
+pub fn ini_list_tables(state: State<RuntimeState>) -> Vec<IniTableEntry> {
+    let ctx = state.session.ini_context();
+    let mut entries: Vec<IniTableEntry> = ctx
+        .tables
+        .iter()
+        .map(|(id, def)| IniTableEntry {
+            id: id.clone(),
+            title: def.title.clone(),
+            z_bins: def.z_bins.clone(),
+            x_bins: def.x_bins.clone(),
+            y_bins: def.y_bins.clone(),
+        })
+        .collect();
+    entries.sort_by(|a, b| a.title.cmp(&b.title));
+    entries
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IniCurveEntry {
+    pub id: String,
+    pub title: String,
+    pub x_bins: String,
+    pub y_bins: String,
+}
+
+#[tauri::command]
+pub fn ini_list_curves(state: State<RuntimeState>) -> Vec<IniCurveEntry> {
+    let ctx = state.session.ini_context();
+    let mut entries: Vec<IniCurveEntry> = ctx
+        .curves
+        .iter()
+        .map(|(id, def)| IniCurveEntry {
+            id: id.clone(),
+            title: def.title.clone(),
+            x_bins: def.x_bins.clone(),
+            y_bins: def.y_bins.clone(),
+        })
+        .collect();
+    entries.sort_by(|a, b| a.title.cmp(&b.title));
+    entries
+}
+
 #[tauri::command]
 pub fn ini_list_candidates(state: State<RuntimeState>) -> Vec<IniCandidate> {
     let ecu_sig = state
