@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use rusefi_ini::config_field_ini_page;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
@@ -1214,13 +1214,14 @@ pub(crate) fn build_project_ecu_config(
         .get(&DEFAULT_INI_PAGE)
         .cloned()
         .unwrap_or_default();
-    let mut config_pages_base64 = HashMap::new();
+    let mut config_pages_base64 = BTreeMap::new();
     for (p, raw) in pages {
         if *p == DEFAULT_INI_PAGE {
             continue;
         }
         config_pages_base64.insert(p.to_string(), B64.encode(raw));
     }
+    let values: BTreeMap<String, f64> = values.into_iter().collect();
     ProjectEcuConfig {
         captured_at_ms: 0,
         page_size: ini.page_size,

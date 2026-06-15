@@ -1,7 +1,7 @@
 //! Файл проекта rusefui (`project.json`): снимок config ECU, логи, UI.
 //! Хранение — git-репозиторий в `~/.rusefui/projects/{name}/`.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -63,9 +63,9 @@ pub struct ProjectEcuConfig {
     pub captured_at_ms: u64,
     pub page_size: u32,
     pub raw_page0_base64: String,
-    #[serde(default, skip_serializing_if = "HashMap::is_empty")]
-    pub config_pages_base64: HashMap<String, String>,
-    pub values: HashMap<String, f64>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub config_pages_base64: BTreeMap<String, String>,
+    pub values: BTreeMap<String, f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

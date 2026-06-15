@@ -220,8 +220,9 @@ async function onEcuBurn(): Promise<void> {
 async function toggleHistory(): Promise<void> {
   if (!selectedId.value) return;
   historyOpen.value = !historyOpen.value;
-  if (historyOpen.value && historyCommits.value.length === 0) {
-    await loadHistory();
+  if (historyOpen.value) {
+    consoleOpen.value = false;
+    if (historyCommits.value.length === 0) await loadHistory();
   }
 }
 
@@ -365,7 +366,7 @@ function diffLines(text: string) {
               class="ps-btn ps-btn--history"
               :class="{ active: consoleOpen }"
               title="Вывод ECU (Lua print)"
-              @click="consoleOpen = !consoleOpen"
+              @click="consoleOpen = !consoleOpen; if (consoleOpen) historyOpen = false"
             >
               <svg viewBox="0 0 14 14" fill="none" style="width:0.8rem;height:0.8rem;vertical-align:-1px">
                 <rect x="1.5" y="2.5" width="11" height="9" rx="1.2" stroke="currentColor" stroke-width="1.2"/>
@@ -599,7 +600,7 @@ function diffLines(text: string) {
 
 .ps-monaco-wrap { flex: 1; position: relative; min-height: 0; overflow: hidden; transition: flex 0.15s; }
 .ps-monaco-wrap.has-history { flex: 0 0 55%; }
-.ps-monaco-wrap.has-console { flex: 0 0 60%; }
+.ps-monaco-wrap.has-console { flex: 0 0 50%; }
 .ps-monaco { width: 100%; height: 100%; }
 .ps-no-selection {
   display: flex;
@@ -711,7 +712,7 @@ function diffLines(text: string) {
 
 /* ---- ECU console ---- */
 .ps-console-panel {
-  flex: 0 0 40%;
+  flex: 0 0 50%;
   min-height: 0;
   display: flex;
   flex-direction: column;

@@ -6,7 +6,7 @@ mod knock;
 mod output_chart;
 mod simulation;
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -26,7 +26,7 @@ pub use simulation::RampCurveKind;
 #[serde(rename_all = "camelCase")]
 pub struct ProjectUi {
     #[serde(default)]
-    pub sections: HashMap<String, Value>,
+    pub sections: BTreeMap<String, Value>,
 }
 
 pub trait ComponentUiPersist: Send + Sync {

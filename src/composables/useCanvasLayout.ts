@@ -132,12 +132,21 @@ export function useCanvasLayout(canvasId: string) {
   }
 
   /**
-   * Завершение drag/resize: сохраняем resolved позиции соседей в stored.
-   * Это делает позиции permanentными (в отличие от роста контента).
+   * Завершение drag/resize: сохраняем только перетаскиваемый компонент.
+   * Соседи НЕ сохраняются — их визуальные позиции вычисляются в computedRects.
+   * Это позволяет им «вернуться» когда контент схлопывается обратно.
    */
-  function commitRect(_id: string) {
-    const resolved = resolveOverlapsFor({ ...stored.value.items });
-    stored.value = { ...stored.value, items: resolved };
+  function commitRect(id: string) {
+    const computed = computedRects.value[id];
+    const storedRect = stored.value.items[id];
+    if (!computed || !storedRect) { scheduleSave(); return; }
+    stored.value = {
+      ...stored.value,
+      items: {
+        ...stored.value.items,
+        [id]: { ...computed, h: storedRect.h },
+      },
+    };
     scheduleSave();
   }
 

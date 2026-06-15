@@ -400,6 +400,12 @@ async function onBurn() {
             <circle cx="14" cy="10" r="2.8" fill="currentColor" stroke="var(--color-bg-elevated)" stroke-width="1.2"/>
             <circle cx="9" cy="15.5" r="2.8" fill="currentColor" stroke="var(--color-bg-elevated)" stroke-width="1.2"/>
           </svg>
+          <svg v-else-if="tab.id === 'history'" class="tab-icon" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+            <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.3"/>
+            <polyline points="11,6.5 11,11 14.5,13.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4.5 8 A7 7 0 0 1 5.5 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            <polyline points="3,5.5 4.5,8 7,6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
           <!-- fallback -->
           <svg v-else class="tab-icon" viewBox="0 0 22 22" fill="none" aria-hidden="true">
             <rect x="3" y="3" width="16" height="16" rx="2.5" fill="currentColor" opacity=".25" stroke="currentColor" stroke-width="1.3"/>

@@ -85,11 +85,14 @@ async function toggleLayout() {
         const el = flowRefs[i];
         if (!el) return;
         const r = el.getBoundingClientRect();
+        const y = snapGrid(Math.max(0, r.top - cr.top + scrollTop));
+        // Cap height so y + h + CANVAS_PAD <= cr.height → no initial scrollbar
+        const maxH = Math.max(160, cr.height - y - CANVAS_PAD);
         setRect(childKey(child, i), {
           x: snapGrid(Math.max(0, r.left - cr.left)),
-          y: snapGrid(Math.max(0, r.top - cr.top + scrollTop)),
+          y,
           w: snapGrid(Math.max(80, r.width)),
-          h: snapGrid(Math.max(48, r.height)),
+          h: snapGrid(Math.max(48, Math.min(r.height, maxH))),
           z: i + 1,
           floating: isFloating(child),
         });
@@ -193,7 +196,7 @@ if (!loaded) { loaded = true; void load(); }
     ref="containerRef"
     class="tcl-canvas"
     :class="{ 'tcl-canvas--edit': editMode }"
-    :style="{ minHeight: `${canvasMinH}px` }"
+    :style="editMode ? { minHeight: `${canvasMinH}px` } : undefined"
   >
     <CanvasWindow
       v-for="(child, i) in rootChildren"
@@ -239,7 +242,10 @@ if (!loaded) { loaded = true; void load(); }
 
 .tcl-canvas {
   position: relative; width: 100%;
-  overflow: auto; background: var(--color-bg);
+  height: 100%; min-height: 0;
+  overflow: hidden auto;
+  scrollbar-gutter: stable;
+  background: var(--color-bg);
 }
 .tcl-canvas--edit {
   background-image: radial-gradient(circle, var(--color-border) 1px, transparent 1px);

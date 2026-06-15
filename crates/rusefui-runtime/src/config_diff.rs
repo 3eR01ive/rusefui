@@ -43,7 +43,7 @@ pub fn values_differ(a: f64, b: f64) -> bool {
 
 /// Поля scalar/enum, присутствующие в обоих снимках и отличающиеся по значению.
 pub fn compute_config_diff(
-    project: &HashMap<String, f64>,
+    project: &std::collections::BTreeMap<String, f64>,
     ecu: &HashMap<String, f64>,
     config_fields: &HashMap<String, ConfigFieldKind>,
 ) -> Vec<ConfigDiffEntry> {

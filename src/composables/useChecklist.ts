@@ -1,5 +1,6 @@
 import { computed } from "vue";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { readProjectUiConfig } from "../core/config-loader";
 import { useFooterSlot } from "./useAppFooter";
 import { useTabAlertBinding } from "./useTabAlerts";
@@ -7,20 +8,27 @@ import { configCanView, initConfig, useConfig } from "./useConfig";
 import { useWorkspaceState } from "./useWorkspaceState";
 
 let initPromise: Promise<void> | null = null;
+let listenerSetup = false;
+
+async function loadChecklistRules(): Promise<void> {
+  await initConfig();
+  try {
+    const yaml = await readProjectUiConfig("checklist.yaml");
+    await invoke("checklist_load_rules", { yaml });
+  } catch (e) {
+    console.warn("checklist rules load failed:", e);
+  }
+}
 
 export async function initChecklist(): Promise<void> {
+  if (!listenerSetup) {
+    listenerSetup = true;
+    void listen("workspace-reset", () => {
+      initPromise = loadChecklistRules();
+    });
+  }
   if (initPromise) return initPromise;
-
-  initPromise = (async () => {
-    await initConfig();
-    try {
-      const yaml = await readProjectUiConfig("checklist.yaml");
-      await invoke("checklist_load_rules", { yaml });
-    } catch (e) {
-      console.warn("checklist rules load failed:", e);
-    }
-  })();
-
+  initPromise = loadChecklistRules();
   return initPromise;
 }
 

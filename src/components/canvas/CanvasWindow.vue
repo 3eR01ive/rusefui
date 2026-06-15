@@ -101,15 +101,15 @@ onBeforeUnmount(() => {
 });
 
 // ── Style ──────────────────────────────────────────────────────
-// x/y/w из computedRects (с учётом выталкивания соседями).
-// Высота: min-height = storedH (пользовательский минимум),
-// но если computedRects.h больше (из-за роста соседей) — используем его.
-// Контент может делать элемент ещё выше через min-height.
+// Явная height (не min-height) необходима чтобы дочерние компоненты
+// с height:100% (Monaco, flex-fill layouts) получали конкретное
+// значение — браузер не резолвит % от auto-высоты.
+// rect.h = max(stored.h, actualHeight) из computedRects.
 const windowStyle = computed(() => ({
   left: `${props.rect.x}px`,
   top: `${props.rect.y}px`,
   width: `${props.rect.w}px`,
-  minHeight: `${Math.max(props.storedH, props.rect.h)}px`,
+  height: `${props.rect.h}px`,
   zIndex: props.rect.z,
 }));
 </script>
@@ -143,7 +143,9 @@ const windowStyle = computed(() => ({
       </svg>
     </div>
 
-    <div class="cw-content"><slot /></div>
+    <div class="cw-content">
+      <div class="cw-slot"><slot /></div>
+    </div>
 
     <template v-if="editMode && !locked">
       <div class="cw-h cw-n"  @pointerdown.stop="startDrag($event, 'n')" />
@@ -188,7 +190,11 @@ const windowStyle = computed(() => ({
 .cw-drag-icon { width: 10px; height: 10px; color: var(--color-text-subtle); flex-shrink: 0; }
 .cw-content {
   flex: 1; min-height: 0;
-  display: flex; align-items: flex-start; justify-content: flex-start;
+  display: flex;
+}
+.cw-slot {
+  flex: 1; min-width: 0; min-height: 0;
+  display: flex; flex-direction: column;
 }
 .cw-h { position: absolute; z-index: 10; }
 .cw-n  { top: -4px;    left: 8px;   right: 8px;   height: 8px;  cursor: n-resize; }

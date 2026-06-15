@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -37,7 +37,7 @@ pub struct LogUiSettings {
     #[serde(default = "default_active_graph")]
     pub active_graph_id: String,
     #[serde(default)]
-    pub range_inputs: HashMap<String, LogRangeInputJson>,
+    pub range_inputs: BTreeMap<String, LogRangeInputJson>,
     #[serde(default)]
     pub follow_live: bool,
     /// 0 — взять `window_seconds` (legacy / только окно из props).
@@ -70,7 +70,7 @@ impl Default for LogUiSettings {
                 field_names: vec!["RPMValue".into(), "coolant".into()],
             }],
             active_graph_id: "g1".into(),
-            range_inputs: HashMap::new(),
+            range_inputs: BTreeMap::new(),
             follow_live: true,
             span_sec: 0.0,
         }

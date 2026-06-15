@@ -10,7 +10,7 @@ import {
 } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useDataContext } from "../../core/data-context";
-import { initConfig, useConfig } from "../../composables/useConfig";
+import { configDataRevision, initConfig, useConfig } from "../../composables/useConfig";
 import {
   drawKnockThresholdChart,
   type KnockRpmValuePoint,
@@ -687,6 +687,9 @@ watch(ready, (r) => {
 watch(workspaceResetEpoch, () => void applyUiFromProject());
 watch(configLoaded, (loaded) => {
   if (loaded) void reloadConfigThresholdCurve();
+});
+watch(configDataRevision, () => {
+  if (configLoaded.value) void reloadConfigThresholdCurve();
 });
 watch(recordingThreshold, (rec, wasRec) => {
   if (wasRec && !rec) void reloadConfigThresholdCurve();

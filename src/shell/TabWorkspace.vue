@@ -185,7 +185,8 @@ watch(activeTabId, () => {
   flex: 1;
   min-height: 0;
   width: 100%;
-  overflow: auto;
+  overflow: hidden auto;
+  scrollbar-gutter: stable;
   box-sizing: border-box;
   padding-top: 0.35rem;
 }
