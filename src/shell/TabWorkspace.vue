@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { loadAppConfig, type LoadedAppConfig } from "../core/config-loader";
 import { panelsEpoch } from "../composables/useIniPanels";
 import type { ResolvedTab } from "../core/types";
+import { loadCustomTabs, useCustomTabs } from "../composables/useCustomTabs";
 import TabActivityScope from "../components/TabActivityScope.vue";
 import TabCanvasLayer from "../components/TabCanvasLayer.vue";
 import { activeTabId } from "../composables/useTabState";
@@ -31,7 +32,19 @@ import {
 
 const config = ref<LoadedAppConfig | null>(null);
 const loadError = ref<string | null>(null);
-const tabs = computed<ResolvedTab[]>(() => config.value?.tabs ?? []);
+const { customTabDefs } = useCustomTabs();
+
+const tabs = computed<ResolvedTab[]>(() => {
+  const yamlTabs = config.value?.tabs ?? [];
+  const extraTabs: ResolvedTab[] = customTabDefs.value.map((def) => ({
+    id: def.id,
+    title: def.title,
+    isCustom: true,
+    root: { type: "stack", id: "custom_root", children: [] },
+  }));
+  return [...yamlTabs, ...extraTabs];
+});
+
 const workspaceRef = ref<HTMLElement | null>(null);
 
 defineExpose({ tabs });
@@ -111,7 +124,8 @@ function resetNavForTab(): void {
 async function loadWorkspaceConfig(): Promise<void> {
   try {
     config.value = await loadAppConfig();
-    syncActiveTab((config.value?.tabs ?? []).map((t) => t.id));
+    await loadCustomTabs();
+    syncActiveTab(tabs.value.map((t) => t.id));
     resetNavForTab();
     loadError.value = null;
   } catch (e) {

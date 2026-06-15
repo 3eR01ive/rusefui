@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onBeforeUnmount, ref } from "vue";
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import type { ComponentInstance, DataBinding, ResolvedTab } from "../core/types";
 import { childPath as makeChildPath } from "../core/instance";
@@ -18,9 +18,13 @@ const emit = defineEmits<{
 
 const rootChildren = computed<ComponentInstance[]>(() => {
   const ch = props.tab.root.children;
-  if (ch && ch.length > 0) return ch;
+  // Для кастомных табов children явно [], возвращаем пустой массив
+  if (ch !== undefined) return ch;
   return [props.tab.root];
 });
+
+// Кастомный таб всегда показывает canvas-режим (даже без layout)
+const showCanvas = computed(() => hasLayout.value || Boolean(props.tab.isCustom));
 
 function childKey(child: ComponentInstance, index: number): string {
   return child.id ?? `c${index}`;
@@ -99,31 +103,42 @@ const canvasMinH = computed(() => {
 // ── Toggle layout ──────────────────────────────────────────────
 async function toggleLayout() {
   if (!hasLayout.value) {
-    await nextTick();
-    const cr = containerRef.value?.getBoundingClientRect();
-    if (cr) {
-      const scrollTop = containerRef.value?.scrollTop ?? 0;
-      rootChildren.value.forEach((child, i) => {
-        const el = flowRefs[i];
-        if (!el) return;
-        const r = el.getBoundingClientRect();
-        const y = snapGrid(Math.max(0, r.top - cr.top + scrollTop));
-        const maxH = Math.max(160, cr.height - y - CANVAS_PAD);
-        setRect(childKey(child, i), {
-          x: snapGrid(Math.max(0, r.left - cr.left)),
-          y,
-          w: snapGrid(Math.max(80, r.width)),
-          h: snapGrid(Math.max(48, Math.min(r.height, maxH))),
-          z: i + 1,
-          floating: isFloating(child),
+    if (rootChildren.value.length > 0) {
+      await nextTick();
+      const cr = containerRef.value?.getBoundingClientRect();
+      if (cr) {
+        const scrollTop = containerRef.value?.scrollTop ?? 0;
+        rootChildren.value.forEach((child, i) => {
+          const el = flowRefs[i];
+          if (!el) return;
+          const r = el.getBoundingClientRect();
+          const y = snapGrid(Math.max(0, r.top - cr.top + scrollTop));
+          const maxH = Math.max(160, cr.height - y - CANVAS_PAD);
+          setRect(childKey(child, i), {
+            x: snapGrid(Math.max(0, r.left - cr.left)),
+            y,
+            w: snapGrid(Math.max(80, r.width)),
+            h: snapGrid(Math.max(48, Math.min(r.height, maxH))),
+            z: i + 1,
+            floating: isFloating(child),
+          });
         });
-      });
+      }
     }
     editMode.value = true;
   } else {
     editMode.value = !editMode.value;
   }
 }
+
+// Для кастомных табов сразу входим в edit-режим после загрузки layout
+watch(
+  () => stored.value,
+  () => {
+    if (props.tab.isCustom && !editMode.value) editMode.value = true;
+  },
+  { immediate: true },
+);
 
 function resetLayout() { reset(); editMode.value = false; }
 
@@ -178,19 +193,23 @@ function onRemoveItem(key: string, isExtra: boolean) {
 // ── Context menu ──────────────────────────────────────────────
 interface ConfigFieldEntry { name: string; units?: string; ty: string; }
 
+interface OutputFieldEntry { name: string; units?: string; kind: string; }
+
 interface CtxState {
   menuX: number;
   menuY: number;
   canvasX: number;
   canvasY: number;
-  stage: 'types' | 'table' | 'curve' | 'field';
+  stage: 'types' | 'table' | 'curve' | 'field' | 'output-field';
   selectedType: string | null;
   tables: Array<{ id: string; title: string; zBins: string; xBins?: string; yBins?: string }>;
+  tableFilter: string;
   curves: Array<{ id: string; title: string; xBins: string; yBins: string }>;
-  /** Для stage=field: полный список полей (по типу компонента) */
+  curveFilter: string;
   configFields: ConfigFieldEntry[];
-  /** Строка поиска в stage=field */
   fieldFilter: string;
+  outputFields: OutputFieldEntry[];
+  outputFilter: string;
   loading: boolean;
 }
 
@@ -211,6 +230,26 @@ const filteredConfigFields = computed<ConfigFieldEntry[]>(() => {
     : ctx.value.configFields;
 });
 
+const filteredTables = computed(() => {
+  if (!ctx.value || ctx.value.stage !== 'table') return [];
+  const q = ctx.value.tableFilter.toLowerCase();
+  return q ? ctx.value.tables.filter(t => t.title.toLowerCase().includes(q) || t.id.toLowerCase().includes(q)) : ctx.value.tables;
+});
+
+const filteredCurves = computed(() => {
+  if (!ctx.value || ctx.value.stage !== 'curve') return [];
+  const q = ctx.value.curveFilter.toLowerCase();
+  return q ? ctx.value.curves.filter(c => c.title.toLowerCase().includes(q) || c.id.toLowerCase().includes(q)) : ctx.value.curves;
+});
+
+const filteredOutputFields = computed<OutputFieldEntry[]>(() => {
+  if (!ctx.value || ctx.value.stage !== 'output-field') return [];
+  const q = ctx.value.outputFilter.toLowerCase();
+  return q
+    ? ctx.value.outputFields.filter(f => f.name.toLowerCase().includes(q) || (f.units ?? '').toLowerCase().includes(q))
+    : ctx.value.outputFields;
+});
+
 function onCanvasContextMenu(e: MouseEvent) {
   if (!editMode.value) return;
   e.preventDefault();
@@ -228,7 +267,10 @@ function onCanvasContextMenu(e: MouseEvent) {
     canvasX: snapGrid(Math.max(0, e.clientX - cr.left)),
     canvasY: snapGrid(Math.max(0, e.clientY - cr.top + scrollTop)),
     stage: 'types', selectedType: null,
-    tables: [], curves: [], configFields: [], fieldFilter: '',
+    tables: [], tableFilter: '',
+    curves: [], curveFilter: '',
+    configFields: [], fieldFilter: '',
+    outputFields: [], outputFilter: '',
     loading: false,
   };
 }
@@ -285,6 +327,19 @@ async function onSelectType(type: string) {
     } finally {
       ctx.value.loading = false;
     }
+    return;
+  }
+
+  if (bm.needsOutputField) {
+    ctx.value.loading = true;
+    ctx.value.stage = 'output-field';
+    ctx.value.outputFilter = '';
+    ctx.value.outputFields = [];
+    try {
+      ctx.value.outputFields = await invoke<OutputFieldEntry[]>('output_list_fields');
+    } finally {
+      ctx.value.loading = false;
+    }
   }
 }
 
@@ -318,6 +373,16 @@ function onSelectConfigField(name: string) {
   addExtraInstance({
     type: ctx.value.selectedType,
     bind: { source: bm?.autoSource ?? 'config', field: name },
+  }, { x: ctx.value.canvasX, y: ctx.value.canvasY });
+  ctx.value = null;
+}
+
+function onSelectOutputField(name: string) {
+  if (!ctx.value?.selectedType) return;
+  const bm = menuTypes.find(m => m.type === ctx.value!.selectedType)?.bindMeta;
+  addExtraInstance({
+    type: ctx.value.selectedType,
+    bind: { source: bm?.autoSource ?? 'outputChannels', field: name },
   }, { x: ctx.value.canvasX, y: ctx.value.canvasY });
   ctx.value = null;
 }
@@ -356,7 +421,7 @@ if (!loaded) { loaded = true; void load(); }
 
 <template>
   <!-- ── Flow mode ── -->
-  <div v-if="!hasLayout" ref="containerRef" class="tcl-flow">
+  <div v-if="!showCanvas" ref="containerRef" class="tcl-flow">
     <div
       v-for="(child, i) in rootChildren"
       :key="childKey(child, i)"
@@ -382,7 +447,7 @@ if (!loaded) { loaded = true; void load(); }
 
   <!-- ── Canvas mode ── -->
   <div
-    v-else
+    v-else-if="showCanvas"
     ref="containerRef"
     class="tcl-canvas"
     :class="{ 'tcl-canvas--edit': editMode }"
@@ -452,17 +517,23 @@ if (!loaded) { loaded = true; void load(); }
             Выберите таблицу
           </div>
           <div v-if="ctx.loading" class="tcl-ctx-hint">Загрузка…</div>
-          <div v-else-if="!ctx.tables.length" class="tcl-ctx-hint">INI не загружен или таблиц нет</div>
-          <div v-else class="tcl-ctx-scroll">
-            <button
-              v-for="t in ctx.tables"
-              :key="t.id"
-              type="button"
-              class="tcl-ctx-item"
-              @pointerdown.stop
-              @click="onSelectTable(t)"
-            >{{ t.title }}</button>
-          </div>
+          <template v-else-if="ctx.tables.length">
+            <div class="tcl-ctx-field-search" @pointerdown.stop>
+              <input v-model="ctx.tableFilter" class="tcl-ctx-field-input" placeholder="Поиск…" autofocus @keydown.stop />
+            </div>
+            <div v-if="!filteredTables.length" class="tcl-ctx-hint">Нет совпадений</div>
+            <div v-else class="tcl-ctx-scroll">
+              <button
+                v-for="t in filteredTables"
+                :key="t.id"
+                type="button"
+                class="tcl-ctx-item"
+                @pointerdown.stop
+                @click="onSelectTable(t)"
+              >{{ t.title }}</button>
+            </div>
+          </template>
+          <div v-else class="tcl-ctx-hint">INI не загружен или таблиц нет</div>
         </template>
 
         <!-- Stage: выбор кривой -->
@@ -472,17 +543,23 @@ if (!loaded) { loaded = true; void load(); }
             Выберите кривую
           </div>
           <div v-if="ctx.loading" class="tcl-ctx-hint">Загрузка…</div>
-          <div v-else-if="!ctx.curves.length" class="tcl-ctx-hint">INI не загружен или кривых нет</div>
-          <div v-else class="tcl-ctx-scroll">
-            <button
-              v-for="c in ctx.curves"
-              :key="c.id"
-              type="button"
-              class="tcl-ctx-item"
-              @pointerdown.stop
-              @click="onSelectCurve(c)"
-            >{{ c.title }}</button>
-          </div>
+          <template v-else-if="ctx.curves.length">
+            <div class="tcl-ctx-field-search" @pointerdown.stop>
+              <input v-model="ctx.curveFilter" class="tcl-ctx-field-input" placeholder="Поиск…" autofocus @keydown.stop />
+            </div>
+            <div v-if="!filteredCurves.length" class="tcl-ctx-hint">Нет совпадений</div>
+            <div v-else class="tcl-ctx-scroll">
+              <button
+                v-for="c in filteredCurves"
+                :key="c.id"
+                type="button"
+                class="tcl-ctx-item"
+                @pointerdown.stop
+                @click="onSelectCurve(c)"
+              >{{ c.title }}</button>
+            </div>
+          </template>
+          <div v-else class="tcl-ctx-hint">INI не загружен или кривых нет</div>
         </template>
 
         <!-- Stage: выбор поля конфига -->
@@ -517,8 +594,46 @@ if (!loaded) { loaded = true; void load(); }
             </button>
           </div>
         </template>
+
+        <!-- Stage: выбор output-канала -->
+        <template v-else-if="ctx.stage === 'output-field'">
+          <div class="tcl-ctx-header tcl-ctx-header--nav">
+            <button class="tcl-ctx-back" @pointerdown.stop @click="ctxBack">‹</button>
+            Выберите канал
+          </div>
+          <div class="tcl-ctx-field-search" @pointerdown.stop>
+            <input
+              v-model="ctx.outputFilter"
+              class="tcl-ctx-field-input"
+              placeholder="Поиск…"
+              autofocus
+              @keydown.stop
+            />
+          </div>
+          <div v-if="ctx.loading" class="tcl-ctx-hint">Загрузка…</div>
+          <div v-else-if="!ctx.outputFields.length" class="tcl-ctx-hint">INI не загружен</div>
+          <div v-else-if="!filteredOutputFields.length" class="tcl-ctx-hint">Нет совпадений</div>
+          <div v-else class="tcl-ctx-scroll">
+            <button
+              v-for="f in filteredOutputFields"
+              :key="f.name"
+              type="button"
+              class="tcl-ctx-item"
+              @pointerdown.stop
+              @click="onSelectOutputField(f.name)"
+            >
+              <span class="tcl-ctx-item-label">{{ f.name }}</span>
+              <span v-if="f.units" class="tcl-ctx-item-units">{{ f.units }}</span>
+            </button>
+          </div>
+        </template>
       </div>
     </Teleport>
+
+    <!-- Подсказка для пустого кастомного таба -->
+    <div v-if="props.tab.isCustom && allItems.length === 0" class="tcl-empty-hint">
+      Правый клик по канвасу — добавить компонент
+    </div>
 
     <div class="tcl-fab-row">
       <button v-if="editMode" class="tcl-reset" @click="resetLayout">Сброс</button>
@@ -576,6 +691,18 @@ if (!loaded) { loaded = true; void load(); }
   cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.15);
 }
 .tcl-reset:hover { border-color: var(--color-danger, #dc2626); color: var(--color-danger, #dc2626); }
+
+.tcl-empty-hint {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.82rem;
+  color: var(--color-text-subtle);
+  text-align: center;
+  pointer-events: none;
+  user-select: none;
+}
 </style>
 
 <style>

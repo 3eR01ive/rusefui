@@ -107,6 +107,8 @@ export interface ResolvedTab {
   id: string;
   title: string;
   root: ComponentInstance;
+  /** Таб создан пользователем (не из YAML). */
+  isCustom?: boolean;
 }
 
 /** Метаданные для настройки bind при добавлении компонента на канвас. */
@@ -119,6 +121,8 @@ export interface ComponentBindMeta {
   needsCurve?: boolean;
   /** Нужно ввести имя поля конфига (bind.field). */
   needsConfigField?: boolean;
+  /** Нужно выбрать output-канал (bind.field из outputChannels). */
+  needsOutputField?: boolean;
 }
 
 export interface ComponentMeta {

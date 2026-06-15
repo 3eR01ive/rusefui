@@ -28,6 +28,7 @@ import { initIniPanels } from "../composables/useIniPanels";
 import ProjectMenu from "./ProjectMenu.vue";
 import { useAppFooter, setFooterLed, footerToggleProtocol } from "../composables/useAppFooter";
 import { useTabState } from "../composables/useTabState";
+import { useCustomTabs } from "../composables/useCustomTabs";
 import { useKeyboardRouter } from "../composables/useKeyboardRouter";
 import { saveProjectCallback, openProjectCallback, burnCallback, undoCallback, redoCallback } from "../composables/useHotkeys";
 import { undoConfigChange, redoConfigChange } from "../composables/configCommands";
@@ -60,7 +61,42 @@ const iniMismatchActive = computed(
 );
 
 const { activeTabId, setTab } = useTabState();
-const tabWorkspaceRef = useTemplateRef<{ tabs: { id: string; title: string }[] }>("tabWorkspace");
+const tabWorkspaceRef = useTemplateRef<{ tabs: { id: string; title: string; isCustom?: boolean }[] }>("tabWorkspace");
+const { addCustomTab, removeCustomTab, renameCustomTab } = useCustomTabs();
+
+const renamingTabId = ref<string | null>(null);
+const renameTitle = ref("");
+
+async function onAddCustomTab() {
+  const id = await addCustomTab();
+  setTab(id);
+}
+
+async function onRemoveCustomTab(id: string) {
+  if (activeTabId.value === id) {
+    const tabs = tabWorkspaceRef.value?.tabs ?? [];
+    const idx = tabs.findIndex((t) => t.id === id);
+    const next = tabs[idx - 1] ?? tabs[idx + 1];
+    if (next) setTab(next.id);
+  }
+  await removeCustomTab(id);
+}
+
+function startRename(id: string, title: string) {
+  renamingTabId.value = id;
+  renameTitle.value = title;
+}
+
+async function commitRename() {
+  if (!renamingTabId.value) return;
+  const title = renameTitle.value.trim() || "Таб";
+  await renameCustomTab(renamingTabId.value, title);
+  renamingTabId.value = null;
+}
+
+function cancelRename() {
+  renamingTabId.value = null;
+}
 useKeyboardRouter();
 saveProjectCallback.value = () => onSaveProject();
 openProjectCallback.value = () => onOpenProject();
@@ -335,84 +371,119 @@ async function onBurn() {
           v-for="tab in (tabWorkspaceRef?.tabs ?? [])"
           :key="tab.id"
           class="header-tab-slot"
-          :class="tabAlertClasses(tab.id)"
+          :class="[tabAlertClasses(tab.id), tab.isCustom ? 'header-tab-slot--custom' : '']"
         >
-          <button
-            type="button"
-            role="tab"
-            class="header-tab-btn"
-            :class="{ active: tab.id === activeTabId }"
-            :aria-selected="tab.id === activeTabId"
-            :title="tab.title"
-            @click="setTab(tab.id)"
-          >
-          <!-- Monitor: screen + ECG waveform -->
-          <svg v-if="tab.id === 'monitor'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
-            <rect x="1.5" y="1.5" width="19" height="13" rx="2.5" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M4 9.5L6.5 6.5l2.2 3.8 2.8-6.3L14 9.5l2-2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M8.5 14.5v2.5M13.5 14.5v2.5M6 17h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-          </svg>
-          <!-- Timeline: horizontal axis + markers -->
-          <svg v-else-if="tab.id === 'timeline'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
-            <line x1="2" y1="14" x2="20" y2="14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".35"/>
-            <circle cx="6" cy="14" r="2.2" fill="currentColor"/>
-            <circle cx="11" cy="14" r="2.2" fill="currentColor" opacity=".65"/>
-            <circle cx="16.5" cy="14" r="2.2" fill="currentColor" opacity=".45"/>
-            <path d="M4 4.5h14M4 8h10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".25"/>
-          </svg>
-          <!-- Knock: waveform bars -->
-          <svg v-else-if="tab.id === 'knock'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
-            <rect x="2" y="2" width="18" height="16" rx="2.5" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.3"/>
-            <path d="M5 14V10M8.5 14V6M12 14V8M15.5 14V4M19 14V11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-          </svg>
-          <!-- Control: spark plug -->
-          <svg v-else-if="tab.id === 'control'" class="tab-icon" viewBox="0 0 22 22" fill="none" aria-hidden="true">
-            <rect x="7.5" y="1.5" width="7" height="5" rx="1.5" fill="currentColor" opacity=".45" stroke="currentColor" stroke-width="1.3"/>
-            <path d="M7.5 6.5h7v1.5a3.5 3.5 0 0 1-7 0V6.5Z" fill="currentColor" opacity=".2" stroke="currentColor" stroke-width="1.3"/>
-            <path d="M11 10v4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
-            <path d="M8.5 14h5l-1.8 3h1.5L11 21l.6-4H8.5l2-3Z" fill="currentColor"/>
-          </svg>
-          <!-- CHKLST: clipboard + checks -->
-          <svg v-else-if="tab.id === 'checklist'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
-            <rect x="4" y="1.5" width="14" height="17" rx="2.5" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.4"/>
-            <path d="M7.5 6.5h7M7.5 10h7M7.5 13.5h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".35"/>
-            <path d="M5.8 6.3l1 1 1.8-2M5.8 9.8l1 1 1.8-2M5.8 13.3l1 1 1.8-2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <!-- Run: tachometer -->
-          <svg v-else-if="tab.id === 'run'" class="tab-icon" viewBox="0 0 22 22" fill="none" aria-hidden="true">
-            <path d="M11 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Z" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.4"/>
-            <path d="M11 11V7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            <path d="M11 11l3.5 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-            <circle cx="11" cy="11" r="1.3" fill="currentColor"/>
-          </svg>
-          <!-- Scripts: code braces -->
-          <svg v-else-if="tab.id === 'scripts'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
-            <rect x="2" y="2" width="18" height="16" rx="2.5" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.3"/>
-            <path d="M8 6.5 5.5 10 8 13.5M14 6.5 16.5 10 14 13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M11.5 5.5 10 14.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".5"/>
-          </svg>
-          <!-- Config: horizontal sliders -->
-          <svg v-else-if="tab.id === 'ini-preview'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
-            <line x1="2" y1="4.5" x2="20" y2="4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".35"/>
-            <line x1="2" y1="10" x2="20" y2="10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".35"/>
-            <line x1="2" y1="15.5" x2="20" y2="15.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".35"/>
-            <circle cx="7" cy="4.5" r="2.8" fill="currentColor" stroke="var(--color-bg-elevated)" stroke-width="1.2"/>
-            <circle cx="14" cy="10" r="2.8" fill="currentColor" stroke="var(--color-bg-elevated)" stroke-width="1.2"/>
-            <circle cx="9" cy="15.5" r="2.8" fill="currentColor" stroke="var(--color-bg-elevated)" stroke-width="1.2"/>
-          </svg>
-          <svg v-else-if="tab.id === 'history'" class="tab-icon" viewBox="0 0 22 22" fill="none" aria-hidden="true">
-            <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.3"/>
-            <polyline points="11,6.5 11,11 14.5,13.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M4.5 8 A7 7 0 0 1 5.5 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-            <polyline points="3,5.5 4.5,8 7,6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          <!-- fallback -->
-          <svg v-else class="tab-icon" viewBox="0 0 22 22" fill="none" aria-hidden="true">
-            <rect x="3" y="3" width="16" height="16" rx="2.5" fill="currentColor" opacity=".25" stroke="currentColor" stroke-width="1.3"/>
-          </svg>
-          <span class="header-tab-label">{{ tab.title }}</span>
-          </button>
+          <!-- Inline rename input для кастомных табов -->
+          <input
+            v-if="renamingTabId === tab.id"
+            class="header-tab-rename-input"
+            :value="renameTitle"
+            :ref="(el) => { if (el) (el as HTMLInputElement).focus(); }"
+            @input="renameTitle = ($event.target as HTMLInputElement).value"
+            @blur="commitRename"
+            @keydown.enter.prevent="commitRename"
+            @keydown.escape.prevent="cancelRename"
+            @click.stop
+            @pointerdown.stop
+          />
+          <template v-else>
+            <button
+              type="button"
+              role="tab"
+              class="header-tab-btn"
+              :class="{ active: tab.id === activeTabId }"
+              :aria-selected="tab.id === activeTabId"
+              :title="tab.isCustom ? tab.title + ' (двойной клик — переименовать)' : tab.title"
+              @click="setTab(tab.id)"
+              @dblclick="tab.isCustom ? startRename(tab.id, tab.title) : undefined"
+            >
+            <!-- Monitor: screen + ECG waveform -->
+            <svg v-if="tab.id === 'monitor'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
+              <rect x="1.5" y="1.5" width="19" height="13" rx="2.5" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M4 9.5L6.5 6.5l2.2 3.8 2.8-6.3L14 9.5l2-2.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M8.5 14.5v2.5M13.5 14.5v2.5M6 17h10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
+            <!-- Timeline: horizontal axis + markers -->
+            <svg v-else-if="tab.id === 'timeline'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
+              <line x1="2" y1="14" x2="20" y2="14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity=".35"/>
+              <circle cx="6" cy="14" r="2.2" fill="currentColor"/>
+              <circle cx="11" cy="14" r="2.2" fill="currentColor" opacity=".65"/>
+              <circle cx="16.5" cy="14" r="2.2" fill="currentColor" opacity=".45"/>
+              <path d="M4 4.5h14M4 8h10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".25"/>
+            </svg>
+            <!-- Knock: waveform bars -->
+            <svg v-else-if="tab.id === 'knock'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
+              <rect x="2" y="2" width="18" height="16" rx="2.5" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M5 14V10M8.5 14V6M12 14V8M15.5 14V4M19 14V11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            </svg>
+            <!-- Control: spark plug -->
+            <svg v-else-if="tab.id === 'control'" class="tab-icon" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+              <rect x="7.5" y="1.5" width="7" height="5" rx="1.5" fill="currentColor" opacity=".45" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M7.5 6.5h7v1.5a3.5 3.5 0 0 1-7 0V6.5Z" fill="currentColor" opacity=".2" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M11 10v4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+              <path d="M8.5 14h5l-1.8 3h1.5L11 21l.6-4H8.5l2-3Z" fill="currentColor"/>
+            </svg>
+            <!-- CHKLST: clipboard + checks -->
+            <svg v-else-if="tab.id === 'checklist'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
+              <rect x="4" y="1.5" width="14" height="17" rx="2.5" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.4"/>
+              <path d="M7.5 6.5h7M7.5 10h7M7.5 13.5h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".35"/>
+              <path d="M5.8 6.3l1 1 1.8-2M5.8 9.8l1 1 1.8-2M5.8 13.3l1 1 1.8-2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <!-- Run: tachometer -->
+            <svg v-else-if="tab.id === 'run'" class="tab-icon" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+              <path d="M11 3.5a8.5 8.5 0 1 1 0 17 8.5 8.5 0 0 1 0-17Z" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.4"/>
+              <path d="M11 11V7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <path d="M11 11l3.5 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              <circle cx="11" cy="11" r="1.3" fill="currentColor"/>
+            </svg>
+            <!-- Scripts: code braces -->
+            <svg v-else-if="tab.id === 'scripts'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
+              <rect x="2" y="2" width="18" height="16" rx="2.5" fill="currentColor" opacity=".12" stroke="currentColor" stroke-width="1.3"/>
+              <path d="M8 6.5 5.5 10 8 13.5M14 6.5 16.5 10 14 13.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M11.5 5.5 10 14.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".5"/>
+            </svg>
+            <!-- Config: horizontal sliders -->
+            <svg v-else-if="tab.id === 'ini-preview'" class="tab-icon" viewBox="0 0 22 20" fill="none" aria-hidden="true">
+              <line x1="2" y1="4.5" x2="20" y2="4.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".35"/>
+              <line x1="2" y1="10" x2="20" y2="10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".35"/>
+              <line x1="2" y1="15.5" x2="20" y2="15.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".35"/>
+              <circle cx="7" cy="4.5" r="2.8" fill="currentColor" stroke="var(--color-bg-elevated)" stroke-width="1.2"/>
+              <circle cx="14" cy="10" r="2.8" fill="currentColor" stroke="var(--color-bg-elevated)" stroke-width="1.2"/>
+              <circle cx="9" cy="15.5" r="2.8" fill="currentColor" stroke="var(--color-bg-elevated)" stroke-width="1.2"/>
+            </svg>
+            <svg v-else-if="tab.id === 'history'" class="tab-icon" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="1.3"/>
+              <polyline points="11,6.5 11,11 14.5,13.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M4.5 8 A7 7 0 0 1 5.5 6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+              <polyline points="3,5.5 4.5,8 7,6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <!-- Custom tab: grid icon -->
+            <svg v-else-if="tab.isCustom" class="tab-icon" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+              <rect x="2" y="2" width="8" height="8" rx="1.5" fill="currentColor" opacity=".35" stroke="currentColor" stroke-width="1.3"/>
+              <rect x="12" y="2" width="8" height="8" rx="1.5" fill="currentColor" opacity=".35" stroke="currentColor" stroke-width="1.3"/>
+              <rect x="2" y="12" width="8" height="8" rx="1.5" fill="currentColor" opacity=".35" stroke="currentColor" stroke-width="1.3"/>
+              <rect x="12" y="12" width="8" height="8" rx="1.5" fill="currentColor" opacity=".35" stroke="currentColor" stroke-width="1.3"/>
+            </svg>
+            <!-- fallback -->
+            <svg v-else class="tab-icon" viewBox="0 0 22 22" fill="none" aria-hidden="true">
+              <rect x="3" y="3" width="16" height="16" rx="2.5" fill="currentColor" opacity=".25" stroke="currentColor" stroke-width="1.3"/>
+            </svg>
+            <span class="header-tab-label">{{ tab.title }}</span>
+            </button>
+            <!-- Кнопка удаления кастомного таба -->
+            <button
+              v-if="tab.isCustom"
+              type="button"
+              class="header-tab-close"
+              :title="`Удалить таб «${tab.title}»`"
+              @pointerdown.stop
+              @click.stop="onRemoveCustomTab(tab.id)"
+            >×</button>
+          </template>
         </div>
+
+        <!-- Кнопка добавления кастомного таба -->
+        <button type="button" class="header-tab-add" title="Добавить таб" @click="onAddCustomTab">+</button>
       </nav>
 
       <div class="header-actions">
@@ -587,8 +658,79 @@ async function onBurn() {
 .header-tab-slot {
   position: relative;
   display: inline-flex;
+  align-items: center;
   border-radius: calc(var(--radius-md) + 2px);
   padding: 2px;
+  flex-shrink: 0;
+}
+
+.header-tab-close {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  line-height: 1;
+  border-radius: 50%;
+  border: none;
+  background: var(--color-bg-muted);
+  color: var(--color-text-subtle);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  padding: 0;
+  z-index: 10;
+}
+
+.header-tab-slot--custom:hover .header-tab-close {
+  opacity: 1;
+}
+
+.header-tab-close:hover {
+  background: var(--color-danger, #dc2626);
+  color: #fff;
+}
+
+.header-tab-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  font-size: 1.1rem;
+  font-weight: 400;
+  line-height: 1;
+  border: 1.5px dashed var(--color-border);
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-text-subtle);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.header-tab-add:hover {
+  border-color: var(--color-accent, #3b82f6);
+  color: var(--color-accent, #3b82f6);
+}
+
+.header-tab-rename-input {
+  width: 4rem;
+  height: 3.2rem;
+  box-sizing: border-box;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+  border: 1.5px solid var(--color-accent, #3b82f6);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  outline: none;
   flex-shrink: 0;
 }
 

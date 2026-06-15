@@ -80,7 +80,7 @@ export function registerBuiltinComponents(): void {
   reg("composite-chart", "Composite Chart",     CompositeChart,
     { autoSource: "compositeLogger" });
   reg("output-value",    "Output Value",        OutputValue,
-    { autoSource: "outputChannels" });
+    { autoSource: "outputChannels", needsOutputField: true });
   reg("dyno",            "Dyno",                Dyno,
     { autoSource: "outputChannels" });
   reg("knock",           "Knock Panel",         KnockPanel,
