@@ -60,6 +60,8 @@ pub fn parse_table_and_curve_editors(
                             z_bins: String::new(),
                             x_label: None,
                             y_label: None,
+                            x_output: None,
+                            y_output: None,
                         });
                     }
                     continue;
@@ -126,11 +128,15 @@ fn apply_table_line(line: &str, table: &mut IniTableDef) {
         return;
     }
     if let Some(rest) = ini_rhs(line, "xBins") {
-        table.x_bins = parse_bins_field(rest);
+        let (field, output) = parse_bins_pair(rest);
+        table.x_bins = field;
+        table.x_output = output;
         return;
     }
     if let Some(rest) = ini_rhs(line, "yBins") {
-        table.y_bins = parse_bins_field(rest);
+        let (field, output) = parse_bins_pair(rest);
+        table.y_bins = field;
+        table.y_output = output;
         return;
     }
     if let Some(rest) = ini_rhs(line, "zBins") {
@@ -155,13 +161,17 @@ fn apply_curve_line(line: &str, curve: &mut IniCurveDef) {
 }
 
 fn parse_bins_field(rest: &str) -> Option<String> {
+    parse_bins_pair(rest).0
+}
+
+fn parse_bins_pair(rest: &str) -> (Option<String>, Option<String>) {
     let rest = rest.trim().trim_start_matches('=').trim();
-    let parts = split_ini_args(rest).ok()?;
-    let first = parts.first()?.trim().trim_start_matches('=').trim();
-    if first.is_empty() || first.starts_with('{') {
-        return None;
-    }
-    Some(first.to_string())
+    let parts = split_ini_args(rest).ok().unwrap_or_default();
+    let field = parts.first().map(|s| s.trim().trim_start_matches('=').trim().to_string())
+        .filter(|s| !s.is_empty() && !s.starts_with('{'));
+    let output = parts.get(1).map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty() && !s.starts_with('{'));
+    (field, output)
 }
 
 fn parse_label_pair(rest: &str) -> (Option<String>, Option<String>) {

@@ -40,6 +40,10 @@ pub struct IniTableDef {
     pub z_bins: String,
     pub x_label: Option<String>,
     pub y_label: Option<String>,
+    /// Output channel name for the X axis (second arg of `xBins` line).
+    pub x_output: Option<String>,
+    /// Output channel name for the Y axis (second arg of `yBins` line).
+    pub y_output: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]

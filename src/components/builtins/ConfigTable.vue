@@ -7,6 +7,7 @@ import { initConfig, useConfig } from "../../composables/useConfig";
 import { dispatchConfigTableWithHistory } from "../../composables/configTableDispatch";
 import { readClipboardText, writeClipboardText } from "../../composables/clipboardText";
 import { useComponentBinding } from "../../composables/useKeyboardRouter";
+import { initOutputChannels, useOutputChannels } from "../../composables/useOutputChannels";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -17,6 +18,7 @@ const props = defineProps<{
 }>();
 
 void initConfig();
+void initOutputChannels();
 
 const instanceRef = computed(() => props.instance);
 const propsRef = computed(() => props.props);
@@ -167,6 +169,38 @@ const xAxis = computed(() => state.value.xAxis as AxisBarView | undefined);
 const yAxis = computed(() => state.value.yAxis as AxisBarView | undefined);
 const canEditX = computed(() => Boolean(state.value.canEditX));
 const canEditY = computed(() => Boolean(state.value.canEditY));
+
+// ── Live cell (текущее положение по осям из OutputParams) ────────
+const { snapshot: outputSnapshot } = useOutputChannels();
+const xOutputChannel = computed(() => state.value.xOutputChannel as string | undefined);
+const yOutputChannel = computed(() => state.value.yOutputChannel as string | undefined);
+
+function findLiveIndex(bins: number[], value: number): number {
+  if (bins.length === 0) return -1;
+  // Нижняя граница: наибольший индекс где bins[i] <= value
+  let idx = 0;
+  for (let i = 0; i < bins.length; i++) {
+    if (bins[i] <= value) idx = i;
+    else break;
+  }
+  return idx;
+}
+
+const liveCol = computed(() => {
+  const ch = xOutputChannel.value;
+  if (!ch) return -1;
+  const v = outputSnapshot.value.values[ch];
+  if (v === undefined) return -1;
+  return findLiveIndex(xValues.value, v);
+});
+
+const liveRow = computed(() => {
+  const ch = yOutputChannel.value;
+  if (!ch) return -1;
+  const v = outputSnapshot.value.values[ch];
+  if (v === undefined) return -1;
+  return findLiveIndex(yValues.value, v);
+});
 
 function xAxisCell(col: number): AxisCellView | undefined {
   return xAxis.value?.cells.find((c) => c.index === col);
@@ -486,6 +520,7 @@ function onCellFocus(row: number, col: number, e: FocusEvent) {
                 'axis-head--cursor-x': editFocus === 'x' && xAxisCell(col)?.cursor,
                 'axis-head--sel-start': isAxisSelectionEdge('x', col, 'start'),
                 'axis-head--sel-end': isAxisSelectionEdge('x', col, 'end'),
+                'axis-head--live': liveCol >= 0 && col === liveCol,
               }"
               @mousedown="onXAxisMouseDown(col, $event)"
               @mouseenter="onXAxisMouseEnter(col)"
@@ -513,6 +548,7 @@ function onCellFocus(row: number, col: number, e: FocusEvent) {
                 'axis-head--cursor-y': editFocus === 'y' && yAxisCell(row)?.cursor,
                 'axis-head--sel-start': isAxisSelectionEdge('y', row, 'start'),
                 'axis-head--sel-end': isAxisSelectionEdge('y', row, 'end'),
+                'axis-head--live': liveRow >= 0 && row === liveRow,
               }"
               @mousedown="onYAxisMouseDown(row, $event)"
               @mouseenter="onYAxisMouseEnter(row)"
@@ -540,6 +576,7 @@ function onCellFocus(row: number, col: number, e: FocusEvent) {
                 'cell-td--sel-bottom': isSelectionEdge(row, col, 'bottom'),
                 'cell-td--sel-left': isSelectionEdge(row, col, 'left'),
                 'cell-td--sel-right': isSelectionEdge(row, col, 'right'),
+                'cell-td--live': liveRow >= 0 && liveCol >= 0 && row === liveRow && col === liveCol,
               }"
               :style="{ background: cellAt(row, col)?.heatBg }"
               @mousedown="onCellMouseDown(row, col, $event)"
@@ -736,5 +773,24 @@ function onCellFocus(row: number, col: number, e: FocusEvent) {
   margin: 0;
   font-size: 0.68rem;
   color: var(--color-text-subtle);
+}
+
+/* ── Live cell highlight ─────────────────────────────────────────── */
+.axis-head--live {
+  background-image: linear-gradient(
+    rgba(34, 197, 94, 0.18),
+    rgba(34, 197, 94, 0.18)
+  );
+}
+
+.axis-head--live .axis-input {
+  color: var(--color-success, #16a34a);
+  font-weight: 600;
+}
+
+.cell-td--live {
+  box-shadow: inset 0 0 0 2px var(--color-success, #16a34a);
+  z-index: 1;
+  position: relative;
 }
 </style>

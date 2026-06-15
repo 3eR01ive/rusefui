@@ -34,6 +34,8 @@ struct ConfigTableViewState {
     status_text: String,
     local_error: Option<String>,
     edit_buffer: String,
+    x_output_channel: Option<String>,
+    y_output_channel: Option<String>,
 }
 
 pub struct ConfigTableLogic {
@@ -55,6 +57,8 @@ pub struct ConfigTableLogic {
     edit_focus: EditFocus,
     x_axis: Axis1dState,
     y_axis: Axis1dState,
+    x_output_channel: Option<String>,
+    y_output_channel: Option<String>,
 }
 
 impl ConfigTableLogic {
@@ -78,6 +82,8 @@ impl ConfigTableLogic {
             edit_focus: EditFocus::Grid,
             x_axis: Axis1dState::new(),
             y_axis: Axis1dState::new(),
+            x_output_channel: None,
+            y_output_channel: None,
         }
     }
 
@@ -720,6 +726,12 @@ impl ConfigTableLogic {
         }
         if payload.get("zBins").is_some() {
             self.z_field = Self::bind_str(payload, "zBins");
+            // Look up output channel names from INI table definitions.
+            let ini = self.session.ini_context();
+            let table_def = self.z_field.as_deref()
+                .and_then(|z| ini.tables.values().find(|t| t.z_bins == z));
+            self.x_output_channel = table_def.and_then(|t| t.x_output.clone());
+            self.y_output_channel = table_def.and_then(|t| t.y_output.clone());
         }
         if payload.get("nudgeStep").is_some() {
             self.nudge_step = Self::bind_f64(payload, "nudgeStep")
@@ -761,6 +773,8 @@ impl ConfigTableLogic {
             status_text: self.status_text(),
             local_error: self.local_error.clone(),
             edit_buffer: self.edit_buffer.clone(),
+            x_output_channel: self.x_output_channel.clone(),
+            y_output_channel: self.y_output_channel.clone(),
         }
     }
 
