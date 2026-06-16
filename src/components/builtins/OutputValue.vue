@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, inject, onMounted, ref, watch, watchEffect } from "vue";
 import type { ComponentInstance, ComponentMeta, DataBinding } from "../../core/types";
 import { initOutputChannels, useOutputChannels } from "../../composables/useOutputChannels";
 import { useTabFrozenDisplay } from "../../composables/useTabActivity";
@@ -53,6 +53,15 @@ watch(() => props.props, (p) => {
   if (p.min != null) minVal.value = Number(p.min);
   if (p.max != null) maxVal.value = Number(p.max);
   if (p.warnings != null) warnings.value = parseWarnings(p.warnings);
+});
+
+// Сообщаем CanvasWindow минимальные размеры под тип отображения
+const cwReportMinW = inject<((w: number) => void) | undefined>('cwReportMinW', undefined);
+const cwReportMinH = inject<((h: number) => void) | undefined>('cwReportMinH', undefined);
+watchEffect(() => {
+  const isGauge = displayType.value === 'gauge';
+  cwReportMinW?.(isGauge ? 128 : 144); // gauge=8rem, badge=9rem
+  cwReportMinH?.(isGauge ? 128 : 56);  // gauge=8rem square, badge=~3.5rem
 });
 
 const settingsOpen = ref(false);
@@ -307,7 +316,7 @@ const needleBase = computed(() => gaugePt(frac.value, -8));
 
 /* Badge: compact card */
 .ov--badge {
-  width: 9rem;
+  min-width: 9rem;
   background: var(--color-bg-muted);
   border: 1px solid var(--color-border);
 }
@@ -320,8 +329,7 @@ const needleBase = computed(() => gaugePt(frac.value, -8));
   background: transparent !important;
   border: none !important;
   padding: 0;
-  width: 8rem;
-  min-width: 0;
+  min-width: 8rem;
 }
 
 .ov.log-loading { animation: ov-pulse 1.2s ease-in-out infinite; }

@@ -49,17 +49,17 @@ function calcRect(e: PointerEvent): CanvasItemRect {
   const dy = e.clientY - drag.sy;
   const o = drag.orig;
   let { x, y, w, h, z, floating } = o;
-  // Нельзя сжать окно меньше фактического контента (lastReportedH)
-  const effectiveMinH = Math.max(MIN_H.value, lastReportedH);
+  const effectiveMinW = Math.max(MIN_W.value, lastReportedMinW);
+  const effectiveMinH = Math.max(MIN_H.value, lastReportedH, lastReportedMinH);
 
   if (drag.type === "move") {
     x = snapGrid(Math.max(0, o.x + dx));
     y = snapGrid(Math.max(0, o.y + dy));
   } else {
     const dir = drag.type;
-    if (dir.includes("e")) w = snapGrid(Math.max(MIN_W.value, o.w + dx));
+    if (dir.includes("e")) w = snapGrid(Math.max(effectiveMinW, o.w + dx));
     if (dir.includes("s")) h = snapGrid(Math.max(effectiveMinH, o.h + dy));
-    if (dir.includes("w")) { w = snapGrid(Math.max(MIN_W.value, o.w - dx)); x = o.x + o.w - w; }
+    if (dir.includes("w")) { w = snapGrid(Math.max(effectiveMinW, o.w - dx)); x = o.x + o.w - w; }
     if (dir.includes("n")) { h = snapGrid(Math.max(effectiveMinH, o.h - dy)); y = o.y + o.h - h; }
   }
   return { x, y, w, h, z, floating };
@@ -77,32 +77,34 @@ function onPointerUp(e: PointerEvent) {
   emit("commit");
 }
 
-// ── Сигнал от слот-контента о нужной высоте (без ResizeObserver) ─
+// ── Минимальные размеры, сообщаемые дочерним компонентом ─────
+let lastReportedH = 0;   // для авторасширения (cwReportContentH)
+let lastReportedMinW = 0; // явный минимум ширины
+let lastReportedMinH = 0; // явный минимум высоты
+
 provide('cwReportContentH', (h: number) => {
   const target = h > 0 ? h : props.storedH;
   if (target === lastReportedH) return;
   lastReportedH = target;
   emit('actual-height', target);
 });
+provide('cwReportMinW', (w: number) => { lastReportedMinW = w; });
+provide('cwReportMinH', (h: number) => { lastReportedMinH = h; });
 
-// ── ResizeObserver: только сообщаем высоту, не трогаем stored ─
+// ── ResizeObserver: сообщаем actual-height (авторост), не пишем в lastReportedH ─
 const rootRef = ref<HTMLElement | null>(null);
 let ro: ResizeObserver | null = null;
-let lastReportedH = 0;
 
 onMounted(() => {
   if (!rootRef.value) return;
   ro = new ResizeObserver((entries) => {
-    if (drag) return; // во время ручного resize не мешаем
+    if (drag) return;
     const entry = entries[0];
     if (!entry) return;
     const h = Math.ceil(
       entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height,
     );
-    if (h !== lastReportedH) {
-      lastReportedH = h;
-      emit("actual-height", h);
-    }
+    emit("actual-height", h);
   });
   ro.observe(rootRef.value);
 });
