@@ -135,6 +135,7 @@ const windowStyle = computed(() => ({
     @pointerdown="emit('activate')"
     @pointermove="onPointerMove"
     @pointerup="onPointerUp"
+    @contextmenu.prevent
   >
     <div
       v-if="editMode"
@@ -222,6 +223,13 @@ const windowStyle = computed(() => ({
 .cw-slot {
   flex: 1; min-width: 0; min-height: 0;
   display: flex; flex-direction: column;
+}
+.cw-slot :deep(.host-node) {
+  flex: 1;
+  align-self: stretch;
+  width: 100%;
+  min-height: 0;
+  box-sizing: border-box;
 }
 .cw-h { position: absolute; z-index: 10; }
 .cw-n  { top: -4px;    left: 8px;   right: 8px;   height: 8px;  cursor: n-resize; }

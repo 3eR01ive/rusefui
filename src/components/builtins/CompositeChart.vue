@@ -715,6 +715,7 @@ async function zoomAtPointerFactor(clientX: number, factor: number) {
   scheduleDraw();
 }
 
+
 function onCanvasWheel(e: WheelEvent) {
   const events = chartEvents();
   if (!viewportLinked.value && events.length < 2) return;
@@ -723,15 +724,13 @@ function onCanvasWheel(e: WheelEvent) {
   if (dy === 0 && dx === 0) return;
   e.preventDefault();
 
-  // Ctrl+scroll = zoom (same axis as Log +/- buttons)
   if (e.ctrlKey) {
     void zoomAtPointerFactor(e.clientX, dy < 0 ? ZOOM_STEP : 1 / ZOOM_STEP);
     return;
   }
 
-  // Plain scroll = pan horizontally through time
   const PIXELS_PER_LINE = 40;
-  const rawDelta = e.deltaMode === 0 /* pixels */ ? dy || dx : (dy || dx) * PIXELS_PER_LINE;
+  const rawDelta = e.deltaMode === 0 ? dy || dx : (dy || dx) * PIXELS_PER_LINE;
   scheduleWheelPan(rawDelta);
 }
 
@@ -1359,9 +1358,9 @@ const statusLine = computed(() => {
           ? 'Клик — реальный TDC; перетаскивание — сдвиг; Esc — отмена'
           : viewportLinked && reviewMode
             ? 'Связано с Log: управление на графике Log'
-            : 'Клик — зум, Ctrl+клик — зум-аут, drag — пан, Ctrl+скролл — зум, скролл — пан'
+            : 'Клик — зум, Ctrl+клик — зум-аут, drag — пан'
       "
-      @wheel.prevent="onCanvasWheel"
+      @wheel="onCanvasWheel"
       @dblclick="onPlotDblClick"
     >
       <!-- WebGL waveform canvas -->

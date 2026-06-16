@@ -235,6 +235,15 @@ export function useCanvasLayout(canvasId: string) {
     scheduleSave();
   }
 
+  /** Обновляет bind у экстра-инстанса. */
+  function updateExtraInstanceBind(id: string, bind: import("../core/types").DataBinding | undefined) {
+    stored.value = {
+      ...stored.value,
+      extra: (stored.value.extra ?? []).map(e => e.id === id ? { ...e, bind } : e),
+    };
+    scheduleSave();
+  }
+
   /** Полностью удаляет экстра-инстанс. */
   function removeExtraInstance(id: string) {
     const newItems = { ...stored.value.items };
@@ -265,6 +274,7 @@ export function useCanvasLayout(canvasId: string) {
     reset,
     stored: readonly(stored),
     addExtraInstance,
+    updateExtraInstanceBind,
     hideInstance,
     removeExtraInstance,
   };

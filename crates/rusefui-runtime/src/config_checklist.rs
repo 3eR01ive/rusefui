@@ -82,6 +82,12 @@ enum CheckSpec {
         prefix: String,
         count_field: String,
         min: f64,
+        /// Поле режима (напр. ignitionMode). Если задано — смотрим в mode_divisors.
+        #[serde(default)]
+        mode_field: Option<String>,
+        /// mode_value → делитель (напр. 2 → 2 для WastedSpark).
+        #[serde(default)]
+        mode_divisors: std::collections::HashMap<u32, u32>,
     },
 }
 
@@ -216,6 +222,21 @@ pub fn evaluate_checklist(
         );
         let editor = resolve_editor(rules, &primary);
 
+        // For PinsAssigned: compute all actual pin fields/editors dynamically.
+        let (final_fields, final_field_labels, pin_editors) =
+            if let CheckSpec::PinsAssigned { prefix, count_field, min: _, mode_field, mode_divisors } = &check.check {
+                let count = effective_pin_count(snapshot, count_field, mode_field.as_deref(), mode_divisors);
+                let pin_fields: Vec<String> = (1..=count).map(|i| format!("{prefix}{i}")).collect();
+                let all_fields: Vec<String> = std::iter::once(count_field.clone())
+                    .chain(pin_fields.iter().cloned())
+                    .collect();
+                let all_labels = field_labels_for(rules, &all_fields);
+                let editors = resolve_editors(rules, &pin_fields);
+                (all_fields, all_labels, editors)
+            } else {
+                (fields.clone(), field_labels.clone(), Vec::new())
+            };
+
         items.push(ChecklistItem {
             id: check.id.clone(),
             level: check.level.clone(),
@@ -226,10 +247,10 @@ pub fn evaluate_checklist(
             ok,
             message: check.message.clone(),
             value_display,
-            fields: fields.clone(),
-            field_labels: field_labels.clone(),
+            fields: final_fields.clone(),
+            field_labels: final_field_labels.clone(),
             editor,
-            editors: Vec::new(),
+            editors: pin_editors.clone(),
         });
 
         if !ok {
@@ -248,8 +269,8 @@ pub fn evaluate_checklist(
                 level_title: level_def.title.clone(),
                 severity: level_def.severity.clone(),
                 message: check.message.clone(),
-                fields,
-                field_labels,
+                fields: final_fields,
+                field_labels: final_field_labels,
             });
         }
     }
@@ -439,10 +460,10 @@ fn format_value_display(
             prefix,
             count_field,
             min,
+            mode_field,
+            mode_divisors,
         } => {
-            let count = scalar_value(snapshot, count_field)
-                .map(|v| v.round().max(0.0) as usize)
-                .unwrap_or(0);
+            let count = effective_pin_count(snapshot, count_field, mode_field.as_deref(), mode_divisors);
             let assigned = (1..=count)
                 .filter(|i| {
                     scalar_value(snapshot, &format!("{prefix}{i}"))
@@ -533,7 +554,9 @@ fn check_passes(snapshot: &ConfigSnapshot, config: &ConfigSource, check: &CheckS
             prefix,
             count_field,
             min,
-        } => pins_assigned(snapshot, prefix, count_field, *min),
+            mode_field,
+            mode_divisors,
+        } => pins_assigned(snapshot, prefix, count_field, mode_field.as_deref(), mode_divisors, *min),
     }
 }
 
@@ -551,16 +574,40 @@ fn array_all_min_exclusive(config: &ConfigSource, field: &str, min: f64) -> bool
     }
 }
 
-fn pins_assigned(snapshot: &ConfigSnapshot, prefix: &str, count_field: &str, min: f64) -> bool {
+fn effective_pin_count(
+    snapshot: &ConfigSnapshot,
+    count_field: &str,
+    mode_field: Option<&str>,
+    mode_divisors: &std::collections::HashMap<u32, u32>,
+) -> usize {
     let count = scalar_value(snapshot, count_field)
         .map(|v| v.round().max(0.0) as usize)
         .unwrap_or(0);
+    if let Some(mf) = mode_field {
+        if let Some(mode) = scalar_value(snapshot, mf).map(|v| v.round() as u32) {
+            if let Some(&div) = mode_divisors.get(&mode) {
+                let div = div as usize;
+                return (count + div - 1) / div; // ceiling division
+            }
+        }
+    }
+    count
+}
+
+fn pins_assigned(
+    snapshot: &ConfigSnapshot,
+    prefix: &str,
+    count_field: &str,
+    mode_field: Option<&str>,
+    mode_divisors: &std::collections::HashMap<u32, u32>,
+    min: f64,
+) -> bool {
+    let count = effective_pin_count(snapshot, count_field, mode_field, mode_divisors);
     if count == 0 {
         return false;
     }
     (1..=count).all(|i| {
-        let name = format!("{prefix}{i}");
-        scalar_value(snapshot, &name)
+        scalar_value(snapshot, &format!("{prefix}{i}"))
             .map(|v| v > min)
             .unwrap_or(false)
     })

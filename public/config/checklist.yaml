@@ -313,10 +313,12 @@ checks:
     level: startup_minimum
     group: ignition
     label: "Пины катушек зажигания"
-    fields: [ignitionPins1, cylindersCount]
     type: pins_assigned
     prefix: ignitionPins
     count_field: cylindersCount
+    mode_field: ignitionMode
+    mode_divisors:
+      2: 2   # WastedSpark: нужна половина катушек (попарная искра)
     min: 0
     message: "Назначьте выходы катушек для всех цилиндров"
 
