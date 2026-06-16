@@ -153,6 +153,11 @@ export function useCanvasLayout(canvasId: string) {
     const computed = computedRects.value[id];
     const storedRect = stored.value.items[id];
     if (!computed || !storedRect) { scheduleSave(); return; }
+    // Если пользователь уменьшил окно — сбрасываем кеш actualHeights,
+    // иначе max(stored.h, actualH) не даст окну схлопнуться.
+    if (storedRect.h < (actualHeights.value[id] ?? 0)) {
+      actualHeights.value = { ...actualHeights.value, [id]: 0 };
+    }
     stored.value = {
       ...stored.value,
       items: {

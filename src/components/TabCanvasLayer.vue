@@ -127,15 +127,6 @@ async function toggleLayout() {
   }
 }
 
-// Для кастомных табов сразу входим в edit-режим после загрузки layout
-watch(
-  () => stored.value,
-  () => {
-    if (props.tab.isCustom && !editMode.value) editMode.value = true;
-  },
-  { immediate: true },
-);
-
 function resetLayout() { reset(); editMode.value = false; }
 
 // ── Drag / swap ───────────────────────────────────────────────
