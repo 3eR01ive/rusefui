@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from "vue";
 import { parse as parseYaml } from "yaml";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
+import { childPath } from "../../core/instance";
 import ComponentHost from "../ComponentHost.vue";
 import {
   loadGeneratedPanelYaml,
   normalizeGeneratedPanelFile,
   panelsEpoch,
 } from "../../composables/useIniPanels";
+import { setNavExtension } from "../../composables/useWorkspaceNav";
 
 const props = defineProps<{
   instance: ComponentInstance;
@@ -45,12 +47,17 @@ async function loadPanel(): Promise<void> {
   }
 }
 
-onMounted(() => {
-  void loadPanel();
-});
+onMounted(() => { void loadPanel(); });
+onUnmounted(() => { setNavExtension(props.path, null); });
 
-watch([panelFile, panelsEpoch], () => {
-  void loadPanel();
+watch([panelFile, panelsEpoch], () => { void loadPanel(); });
+
+// Регистрируем детей в nav-дереве: basePath = props.path, collectNavPathsFromTree
+// генерирует те же пути что childPath(props.path, index, child) в шаблоне.
+watch(children, (c) => {
+  setNavExtension(props.path,
+    c.length ? { type: 'composite', id: props.instance.id ?? 'gen', children: c } : null
+  );
 });
 </script>
 
@@ -62,7 +69,7 @@ watch([panelFile, panelsEpoch], () => {
       v-for="(child, index) in children"
       :key="child.id ?? `${path}-${index}`"
       :instance="child"
-      :path="`${path}/gen/${index}`"
+      :path="childPath(path, index, child)"
     />
   </div>
 </template>

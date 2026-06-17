@@ -2,8 +2,11 @@ import { onMounted, onUnmounted } from "vue";
 import { activeTabId } from "./useTabState";
 import {
   activePath,
+  activateComponent,
   deactivateComponent,
+  focusComponent,
   isFilterNavPath,
+  isNavActivatablePath,
   navMode,
   selectedPath,
 } from "./useWorkspaceNav";
@@ -22,6 +25,8 @@ export type KeyboardHandler = (e: KeyboardEvent) => boolean;
 
 const componentBindings = new Map<string, KeyboardHandler>();
 let tabBinding: KeyboardHandler | null = null;
+// true когда пользователь навигировал Ctrl+Arrow — при отпускании Ctrl активируем
+let ctrlNavActive = false;
 
 function isEditableTarget(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
@@ -201,10 +206,11 @@ function onKeydownCapture(e: KeyboardEvent): void {
   }
 
   if (navMode.value === "active" && activePath.value) {
-    const arrow = hasNoModifiers(e) && isArrowKey(e.key);
+    const noMod = hasNoModifiers(e);
+    const ctrlArrow = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && isArrowKey(e.key);
 
     if (isEditableInActiveComponent(e)) {
-      if (e.key === "Escape" && hasNoModifiers(e)) {
+      if (e.key === "Escape" && noMod) {
         blockKey(e);
         deactivateComponent();
         return;
@@ -214,18 +220,24 @@ function onKeydownCapture(e: KeyboardEvent): void {
         blockKey(e);
         return;
       }
-      if (arrow && !shouldAllowArrowDefault(e)) {
+      if (noMod && isArrowKey(e.key) && !shouldAllowArrowDefault(e)) {
         blockKey(e);
+      }
+      if (ctrlArrow) {
+        blockKey(e);
+        deactivateComponent();
+        if (tabBinding?.(e)) ctrlNavActive = true;
       }
       return;
     }
 
-    if (e.key === "Escape" && hasNoModifiers(e)) {
+    if (e.key === "Escape" && noMod) {
       blockKey(e);
+      ctrlNavActive = false;
       deactivateComponent();
       return;
     }
-    if (e.key === "Enter" && hasNoModifiers(e)) {
+    if (e.key === "Enter" && noMod) {
       const handler = componentBindings.get(activePath.value);
       if (handler?.(e)) {
         blockKey(e);
@@ -240,9 +252,9 @@ function onKeydownCapture(e: KeyboardEvent): void {
       blockKey(e);
       return;
     }
-    if (arrow) {
+    if (ctrlArrow) {
       deactivateComponent();
-      tabBinding?.(e);
+      if (tabBinding?.(e)) ctrlNavActive = true;
       blockKey(e);
       return;
     }
@@ -296,15 +308,28 @@ function onKeydownCapture(e: KeyboardEvent): void {
     }
   }
 
+  const ctrlArrowSelect = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && isArrowKey(e.key);
   if (tabBinding?.(e)) {
     blockKey(e);
-  } else if (
-    hasNoModifiers(e) &&
-    isArrowKey(e.key) &&
-    navMode.value === "select"
-  ) {
-    // Режим выбора: стрелки только для nav, без прокрутки страницы.
+    if (ctrlArrowSelect) ctrlNavActive = true;
+  } else if (ctrlArrowSelect && navMode.value === "select") {
+    // Ctrl+Arrow в режиме выбора — блокируем, чтобы браузер не делал ничего своего.
     blockKey(e);
+  }
+}
+
+function onKeyupCapture(e: KeyboardEvent): void {
+  if ((e.key === "Control" || e.key === "Meta") && ctrlNavActive) {
+    ctrlNavActive = false;
+    const path = selectedPath.value;
+    if (navMode.value === "select" && path) {
+      if (isNavActivatablePath(path)) {
+        activateComponent(path);
+        focusComponent(path);
+      } else if (isFilterNavPath(path)) {
+        focusComponent(path);
+      }
+    }
   }
 }
 
@@ -328,10 +353,12 @@ export function useComponentBinding(path: string, handler: (e: KeyboardEvent) =>
 export function useKeyboardRouter(): void {
   onMounted(() => {
     window.addEventListener("keydown", onKeydownCapture, true);
+    window.addEventListener("keyup", onKeyupCapture, true);
     window.addEventListener("mousedown", onDocumentMouseDown, true);
   });
   onUnmounted(() => {
     window.removeEventListener("keydown", onKeydownCapture, true);
+    window.removeEventListener("keyup", onKeyupCapture, true);
     window.removeEventListener("mousedown", onDocumentMouseDown, true);
   });
 }

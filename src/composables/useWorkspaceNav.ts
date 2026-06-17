@@ -24,14 +24,27 @@ export const navPaths = ref<string[]>([]);
 export const navExtensions = ref<NavExtension[]>([]);
 /** Пункты бокового меню вместо leaf-оболочки (checklist, INI browser…). */
 export const navMenuPaths = ref<Map<string, string[]>>(new Map());
-/** Выбранный пункт меню для возврата ← из редактора. */
-export const navSidebarAnchor = ref("");
 
 export type NavArrowKey = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight";
-export type NavRegion = "sidebar" | "main" | "default";
 
 /** Флаги nav по path (из YAML + menu/filter). */
 export const navPathFlags = ref<Map<string, NavPathFlags>>(new Map());
+
+// Пространственные позиции (центры) nav-узлов — строятся при входе на таб.
+interface SpatialPos { cx: number; cy: number }
+const spatialData = new Map<string, SpatialPos>();
+
+/** Сканирует DOM-позиции всех nav-узлов и запоминает их центры. */
+export function buildSpatialData(paths: readonly string[]): void {
+  spatialData.clear();
+  for (const path of paths) {
+    const el = navNodeEl(path);
+    if (!el) continue;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 && r.height === 0) continue;
+    spatialData.set(path, { cx: r.left + r.width / 2, cy: r.top + r.height / 2 });
+  }
+}
 
 export function isFilterNavPath(path: string): boolean {
   return path.endsWith("/filter");
@@ -159,9 +172,6 @@ export function selectComponent(path: string): void {
   if (navMode.value === "active" && activePath.value !== path) {
     deactivateComponent();
   }
-  if (path.includes("/menu/")) {
-    navSidebarAnchor.value = path;
-  }
   selectedPath.value = path;
   syncNavSelectionVisual(path);
 }
@@ -175,131 +185,65 @@ export function resetWorkspaceNav(): void {
   navMode.value = "select";
   selectedPath.value = "";
   activePath.value = "";
-  navSidebarAnchor.value = "";
   navPathFlags.value = new Map();
+  spatialData.clear();
   clearNavSelectionVisual();
 }
 
-export function navRegion(path: string): NavRegion {
-  if (path.includes("/menu/") || path.endsWith("/filter")) return "sidebar";
-  if (
-    path.includes("/editor/") ||
-    path.endsWith("/editor") ||
-    path.includes("/preview/") ||
-    path.endsWith("/preview")
-  ) {
-    return "main";
-  }
-  return "default";
-}
-
-function pathsInRegion(paths: readonly string[], region: NavRegion): string[] {
-  return paths.filter((p) => navRegion(p) === region);
-}
-
-function moveLinear(delta: -1 | 1): void {
-  const paths = navPaths.value;
-  if (!paths.length) return;
-  const cur = paths.indexOf(selectedPath.value);
-  const next =
-    cur < 0
-      ? delta > 0
-        ? 0
-        : paths.length - 1
-      : Math.max(0, Math.min(cur + delta, paths.length - 1));
-  const path = paths[next]!;
-  selectComponent(path);
-  scrollNavPathIntoView(path);
-}
-
-function moveWithinRegion(delta: -1 | 1, region: NavRegion): void {
-  const regionPaths = pathsInRegion(navPaths.value, region);
-  if (!regionPaths.length) return;
-  const cur = regionPaths.indexOf(selectedPath.value);
-  const next =
-    cur < 0
-      ? delta > 0
-        ? 0
-        : regionPaths.length - 1
-      : Math.max(0, Math.min(cur + delta, regionPaths.length - 1));
-  const path = regionPaths[next]!;
-  selectComponent(path);
-  scrollNavPathIntoView(path);
-}
-
-function jumpToMain(): void {
-  const mains = pathsInRegion(navPaths.value, "main");
-  if (!mains.length) return;
-  const path = mains[0]!;
-  selectComponent(path);
-  scrollNavPathIntoView(path);
-}
-
-function jumpToSidebarAnchor(): void {
-  const paths = navPaths.value;
-  const anchor = navSidebarAnchor.value;
-  if (anchor && paths.includes(anchor)) {
-    selectComponent(anchor);
-    scrollNavPathIntoView(anchor);
-    return;
-  }
-  const sidebarMenus = paths.filter((p) => navRegion(p) === "sidebar" && p.includes("/menu/"));
-  const fallback = sidebarMenus[0];
-  if (fallback) {
-    selectComponent(fallback);
-    scrollNavPathIntoView(fallback);
-  }
-}
-
+/**
+ * Пространственная навигация: от текущего компонента находим ближайший
+ * в запрошенном направлении по координатам центров.
+ * score = primary_dist + secondary_dist * 0.5
+ */
 export function moveNavSelection(key: NavArrowKey): void {
   const paths = navPaths.value;
   if (!paths.length) return;
-  const cur = selectedPath.value;
-  const region = navRegion(cur);
 
-  if (region === "default") {
-    const delta = key === "ArrowDown" || key === "ArrowRight" ? 1 : -1;
-    moveLinear(delta);
-    return;
-  }
+  const curPath = selectedPath.value;
+  const cur = spatialData.get(curPath);
 
-  if (region === "sidebar") {
-    if (key === "ArrowDown") {
-      moveWithinRegion(1, "sidebar");
-      return;
-    }
-    if (key === "ArrowUp") {
-      moveWithinRegion(-1, "sidebar");
-      return;
-    }
-    if (key === "ArrowRight") {
-      if (cur.includes("/menu/")) {
-        navSidebarAnchor.value = cur;
-      }
-      jumpToMain();
-      return;
-    }
-    if (key === "ArrowLeft") {
-      moveWithinRegion(-1, "sidebar");
-    }
+  // Нет пространственных данных — просто первый/последний
+  if (!cur) {
+    const path =
+      key === "ArrowDown" || key === "ArrowRight"
+        ? paths[0]!
+        : paths[paths.length - 1]!;
+    selectComponent(path);
+    scrollNavPathIntoView(path);
     return;
   }
 
-  // main (редактор / preview)
-  if (key === "ArrowDown") {
-    moveWithinRegion(1, "main");
-    return;
+  let bestPath = "";
+  let bestScore = Infinity;
+  // Небольшой порог игнорирования — чтобы компоненты почти на одном уровне
+  // не блокировали друг друга.
+  const EPS = 12;
+
+  for (const path of paths) {
+    if (path === curPath) continue;
+    const r = spatialData.get(path);
+    if (!r) continue;
+
+    const dx = r.cx - cur.cx;
+    const dy = r.cy - cur.cy;
+    let primary: number;
+    let secondary: number;
+
+    switch (key) {
+      case "ArrowRight": if (dx <= EPS)  continue; primary = dx;  secondary = Math.abs(dy); break;
+      case "ArrowLeft":  if (dx >= -EPS) continue; primary = -dx; secondary = Math.abs(dy); break;
+      case "ArrowDown":  if (dy <= EPS)  continue; primary = dy;  secondary = Math.abs(dx); break;
+      case "ArrowUp":    if (dy >= -EPS) continue; primary = -dy; secondary = Math.abs(dx); break;
+      default: continue;
+    }
+
+    const score = primary + secondary * 0.5;
+    if (score < bestScore) { bestScore = score; bestPath = path; }
   }
-  if (key === "ArrowUp") {
-    moveWithinRegion(-1, "main");
-    return;
-  }
-  if (key === "ArrowLeft") {
-    jumpToSidebarAnchor();
-    return;
-  }
-  if (key === "ArrowRight") {
-    moveWithinRegion(1, "main");
+
+  if (bestPath) {
+    selectComponent(bestPath);
+    scrollNavPathIntoView(bestPath);
   }
 }
 

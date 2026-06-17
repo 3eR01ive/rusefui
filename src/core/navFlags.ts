@@ -20,6 +20,8 @@ function propsVariant(instance: ComponentInstance): string | undefined {
 export function resolveNavSelectable(instance: ComponentInstance): boolean {
   if (instance.navSelectable !== undefined) return instance.navSelectable;
   if (instance.type === "text" && propsVariant(instance) === "hint") return false;
+  // generated-panel загружает детей динамически — они регистрируются как extension
+  if (instance.type === "generated-panel") return false;
   return true;
 }
 

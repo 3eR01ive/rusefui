@@ -233,6 +233,15 @@ const windowStyle = computed(() => ({
   min-height: 0;
   box-sizing: border-box;
 }
+
+/* Bars must fill the canvas window — override OutputValue's shrink-to-content defaults */
+.cw-slot :deep(.ov--bar-h),
+.cw-slot :deep(.ov--bar-v) {
+  width: 100% !important;
+  height: 100% !important;
+  align-self: stretch !important;
+  flex-shrink: 1 !important;
+}
 .cw-h { position: absolute; z-index: 10; }
 .cw-n  { top: -4px;    left: 8px;   right: 8px;   height: 8px;  cursor: n-resize; }
 .cw-s  { bottom: -4px; left: 8px;   right: 8px;   height: 8px;  cursor: s-resize; }

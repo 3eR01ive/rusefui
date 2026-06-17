@@ -19,9 +19,14 @@ const label = computed(() => String(props.props.label ?? (fieldName.value || "�
 const unit = computed(() => String(props.props.unit ?? ""));
 const decimals = computed(() => Number(props.props.decimals ?? 1));
 
-const displayType = ref<"badge" | "gauge">(
-  (props.props.displayType as string) === "gauge" ? "gauge" : "badge",
-);
+type DisplayType = "badge" | "gauge" | "bar-h" | "bar-v";
+function parseDisplayType(v: unknown): DisplayType {
+  if (v === "gauge") return "gauge";
+  if (v === "bar-h") return "bar-h";
+  if (v === "bar-v") return "bar-v";
+  return "badge";
+}
+const displayType = ref<DisplayType>(parseDisplayType(props.props.displayType));
 const minVal = ref(Number(props.props.min ?? 0));
 const maxVal = ref(Number(props.props.max ?? 100));
 
@@ -49,7 +54,7 @@ const warnings = ref<WarnCondition[]>(parseWarnings(props.props.warnings));
 
 watch(() => props.props, (p) => {
   if (typeof p.displayType === "string")
-    displayType.value = p.displayType === "gauge" ? "gauge" : "badge";
+    displayType.value = parseDisplayType(p.displayType);
   if (p.min != null) minVal.value = Number(p.min);
   if (p.max != null) maxVal.value = Number(p.max);
   if (p.warnings != null) warnings.value = parseWarnings(p.warnings);
@@ -59,9 +64,11 @@ watch(() => props.props, (p) => {
 const cwReportMinW = inject<((w: number) => void) | undefined>('cwReportMinW', undefined);
 const cwReportMinH = inject<((h: number) => void) | undefined>('cwReportMinH', undefined);
 watchEffect(() => {
-  const isGauge = displayType.value === 'gauge';
-  cwReportMinW?.(isGauge ? 128 : 144); // gauge=8rem, badge=9rem
-  cwReportMinH?.(isGauge ? 128 : 56);  // gauge=8rem square, badge=~3.5rem
+  const dt = displayType.value;
+  const minW = dt === 'gauge' ? 128 : dt === 'bar-h' ? 120 : dt === 'bar-v' ? 48 : 144;
+  const minH = dt === 'gauge' ? 128 : dt === 'bar-h' ? 40  : dt === 'bar-v' ? 80 : 56;
+  cwReportMinW?.(minW);
+  cwReportMinH?.(minH);
 });
 
 const settingsOpen = ref(false);
@@ -193,8 +200,35 @@ const ticks = computed(() => {
 });
 
 const needlePt = computed(() => gaugePt(frac.value, R_NEEDLE));
-// needle base offset slightly from center for visual
 const needleBase = computed(() => gaugePt(frac.value, -8));
+
+// ── Bar SVG constants ───────────────────────────────────────────
+// bar-h: viewBox 0 0 280 52, track x=10 y=28 w=260 h=14
+// bar-v: viewBox 0 0 60 280, track x=20 y=28 w=20 h=232
+const BH = { x: 10, y: 28, w: 260, h: 14 };
+const BV = { x: 20, y: 28, w: 20, h: 232 };
+const uid = `ov${Math.random().toString(36).slice(2, 7)}`;
+
+function barZones(mn: number, mx: number) {
+  if (mx <= mn) return [];
+  return warnings.value.map((w) => {
+    const f = Math.max(0, Math.min(1, (w.value - mn) / (mx - mn)));
+    const f0 = (w.op === "lt" || w.op === "lte") ? 0 : f;
+    const f1 = (w.op === "lt" || w.op === "lte") ? f : 1;
+    if (f0 >= f1) return null;
+    return { f0, f1, level: w.level };
+  }).filter(Boolean) as { f0: number; f1: number; level: string }[];
+}
+const barWarnZonesH = computed(() =>
+  barZones(minVal.value, maxVal.value).map(z => ({
+    x: BH.x + z.f0 * BH.w, width: (z.f1 - z.f0) * BH.w, level: z.level,
+  }))
+);
+const barWarnZonesV = computed(() =>
+  barZones(minVal.value, maxVal.value).map(z => ({
+    y: BV.y + BV.h * (1 - z.f1), height: (z.f1 - z.f0) * BV.h, level: z.level,
+  }))
+);
 </script>
 
 <template>
@@ -216,6 +250,125 @@ const needleBase = computed(() => gaugePt(frac.value, -8));
       <div class="ov-badge-val">
         <span class="ov-value">{{ displayValue }}</span>
         <span v-if="unit" class="ov-unit">{{ unit }}</span>
+      </div>
+    </template>
+
+    <!-- ── Horizontal bar ── -->
+    <template v-else-if="displayType === 'bar-h'">
+      <div class="ov-bar-wrap">
+      <svg class="ov-bar-h" viewBox="0 0 280 52" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <clipPath :id="`${uid}-bh`">
+            <rect :x="BH.x" :y="BH.y" :width="BH.w" :height="BH.h" rx="7"/>
+          </clipPath>
+        </defs>
+        <!-- face -->
+        <rect x="0" y="0" width="280" height="52" rx="8" class="b-face"/>
+        <!-- label -->
+        <text x="10" y="17" class="b-label">{{ label }}</text>
+        <!-- value -->
+        <text x="270" y="17" text-anchor="end" class="b-value" :class="warnClass">{{ displayValue }}<tspan v-if="unit" class="b-unit"> {{ unit }}</tspan></text>
+        <!-- track bg -->
+        <rect :x="BH.x" :y="BH.y" :width="BH.w" :height="BH.h" rx="7" class="b-track"/>
+        <!-- warn zones + fill (clipped) -->
+        <g :clip-path="`url(#${uid}-bh)`">
+          <rect v-for="(z,i) in barWarnZonesH" :key="i"
+            :x="z.x" :y="BH.y" :width="z.width" :height="BH.h"
+            class="b-zone" :class="`b-zone--${z.level}`"/>
+          <rect :x="BH.x" :y="BH.y" :width="frac * BH.w" :height="BH.h"
+            class="b-fill" :class="warnClass"/>
+        </g>
+        <!-- src + gear -->
+        <text x="270" y="49" text-anchor="end" class="b-src" :class="{ 'b-src--log': isLogMode }">{{ logLoading ? '…' : (isLogMode ? 'log' : 'live') }}</text>
+        <g class="b-gear-btn" @click="settingsOpen = !settingsOpen">
+          <circle cx="269" cy="10" r="8" class="b-gear-bg"/>
+          <circle cx="269" cy="10" r="4" class="b-gear-ring" :class="{ active: settingsOpen }"/>
+          <circle cx="269" cy="10" r="1.5" class="b-gear-dot"/>
+        </g>
+      </svg>
+      <div v-if="settingsOpen" class="ov-settings ov-settings--bar">
+        <div class="s-row">
+          <button class="s-type" :class="{ active: displayType === 'badge' }" @click="displayType = 'badge'">Плашка</button>
+          <button class="s-type" :class="{ active: displayType === 'gauge' }" @click="displayType = 'gauge'">Gauge</button>
+          <button class="s-type" :class="{ active: displayType === 'bar-h' }" @click="displayType = 'bar-h'">Bar →</button>
+          <button class="s-type" :class="{ active: displayType === 'bar-v' }" @click="displayType = 'bar-v'">Bar ↑</button>
+          <span class="s-spacer"/>
+          <span class="s-lbl">Min</span><input v-model.number="minVal" type="number" class="s-num"/>
+          <span class="s-lbl">Max</span><input v-model.number="maxVal" type="number" class="s-num"/>
+        </div>
+        <div v-for="(w, i) in warnings" :key="i" class="s-row">
+          <select v-model="w.op" class="s-sel"><option value="gt">&gt;</option><option value="gte">≥</option><option value="lt">&lt;</option><option value="lte">≤</option></select>
+          <input v-model.number="w.value" type="number" class="s-num"/>
+          <select v-model="w.level" class="s-sel"><option value="warn">warn</option><option value="danger">danger</option></select>
+          <button class="s-rm" @click="removeWarning(i)">✕</button>
+        </div>
+        <div class="s-row">
+          <select v-model="newOp" class="s-sel"><option value="gt">&gt;</option><option value="gte">≥</option><option value="lt">&lt;</option><option value="lte">≤</option></select>
+          <input v-model.number="newValue" type="number" class="s-num"/>
+          <select v-model="newLevel" class="s-sel"><option value="warn">warn</option><option value="danger">danger</option></select>
+          <button class="s-add" @click="addWarning">＋</button>
+        </div>
+      </div>
+      </div>
+    </template>
+
+    <!-- ── Vertical bar ── -->
+    <template v-else-if="displayType === 'bar-v'">
+      <div class="ov-bar-wrap">
+      <svg class="ov-bar-v" viewBox="0 0 60 280" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <clipPath :id="`${uid}-bv`">
+            <rect :x="BV.x" :y="BV.y" :width="BV.w" :height="BV.h" rx="10"/>
+          </clipPath>
+        </defs>
+        <!-- face -->
+        <rect x="0" y="0" width="60" height="280" rx="8" class="b-face"/>
+        <!-- value -->
+        <text x="30" y="18" text-anchor="middle" class="b-value" :class="warnClass">{{ displayValue }}</text>
+        <text v-if="unit" x="30" y="27" text-anchor="middle" class="b-unit">{{ unit }}</text>
+        <!-- track bg -->
+        <rect :x="BV.x" :y="BV.y" :width="BV.w" :height="BV.h" rx="10" class="b-track"/>
+        <!-- warn zones + fill (clipped, bottom-up) -->
+        <g :clip-path="`url(#${uid}-bv)`">
+          <rect v-for="(z,i) in barWarnZonesV" :key="i"
+            :x="BV.x" :y="z.y" :width="BV.w" :height="z.height"
+            class="b-zone" :class="`b-zone--${z.level}`"/>
+          <rect :x="BV.x" :y="BV.y + BV.h * (1 - frac)" :width="BV.w" :height="BV.h * frac"
+            class="b-fill" :class="warnClass"/>
+        </g>
+        <!-- label -->
+        <text x="30" y="272" text-anchor="middle" class="b-label">{{ label }}</text>
+        <!-- src + gear -->
+        <text x="50" y="275" text-anchor="end" class="b-src" :class="{ 'b-src--log': isLogMode }">{{ logLoading ? '…' : (isLogMode ? 'log' : 'live') }}</text>
+        <g class="b-gear-btn" @click="settingsOpen = !settingsOpen">
+          <circle cx="49" cy="11" r="8" class="b-gear-bg"/>
+          <circle cx="49" cy="11" r="4" class="b-gear-ring" :class="{ active: settingsOpen }"/>
+          <circle cx="49" cy="11" r="1.5" class="b-gear-dot"/>
+        </g>
+      </svg>
+      <div v-if="settingsOpen" class="ov-settings ov-settings--bar">
+        <div class="s-row">
+          <button class="s-type" :class="{ active: displayType === 'badge' }" @click="displayType = 'badge'">Плашка</button>
+          <button class="s-type" :class="{ active: displayType === 'gauge' }" @click="displayType = 'gauge'">Gauge</button>
+          <button class="s-type" :class="{ active: displayType === 'bar-h' }" @click="displayType = 'bar-h'">Bar →</button>
+          <button class="s-type" :class="{ active: displayType === 'bar-v' }" @click="displayType = 'bar-v'">Bar ↑</button>
+          <span class="s-spacer"/>
+          <span class="s-lbl">Min</span><input v-model.number="minVal" type="number" class="s-num"/>
+          <span class="s-lbl">Max</span><input v-model.number="maxVal" type="number" class="s-num"/>
+        </div>
+        <div v-for="(w, i) in warnings" :key="i" class="s-row">
+          <select v-model="w.op" class="s-sel"><option value="gt">&gt;</option><option value="gte">≥</option><option value="lt">&lt;</option><option value="lte">≤</option></select>
+          <input v-model.number="w.value" type="number" class="s-num"/>
+          <select v-model="w.level" class="s-sel"><option value="warn">warn</option><option value="danger">danger</option></select>
+          <button class="s-rm" @click="removeWarning(i)">✕</button>
+        </div>
+        <div class="s-row">
+          <select v-model="newOp" class="s-sel"><option value="gt">&gt;</option><option value="gte">≥</option><option value="lt">&lt;</option><option value="lte">≤</option></select>
+          <input v-model.number="newValue" type="number" class="s-num"/>
+          <select v-model="newLevel" class="s-sel"><option value="warn">warn</option><option value="danger">danger</option></select>
+          <button class="s-add" @click="addWarning">＋</button>
+        </div>
+      </div>
       </div>
     </template>
 
@@ -277,11 +430,13 @@ const needleBase = computed(() => gaugePt(frac.value, -8));
       </div>
     </template>
 
-    <!-- ── Settings ── -->
-    <div v-if="settingsOpen" class="ov-settings">
+    <!-- ── Settings (badge / gauge only — bars have own settings inside wrap) ── -->
+    <div v-if="settingsOpen && (displayType === 'badge' || displayType === 'gauge')" class="ov-settings">
       <div class="s-row">
         <button class="s-type" :class="{ active: displayType === 'badge' }" @click="displayType = 'badge'">Плашка</button>
         <button class="s-type" :class="{ active: displayType === 'gauge' }" @click="displayType = 'gauge'">Gauge</button>
+        <button class="s-type" :class="{ active: displayType === 'bar-h' }" @click="displayType = 'bar-h'">Bar →</button>
+        <button class="s-type" :class="{ active: displayType === 'bar-v' }" @click="displayType = 'bar-v'">Bar ↑</button>
         <span class="s-spacer"/>
         <span class="s-lbl">Min</span><input v-model.number="minVal" type="number" class="s-num"/>
         <span class="s-lbl">Max</span><input v-model.number="maxVal" type="number" class="s-num"/>
@@ -557,4 +712,77 @@ const needleBase = computed(() => gaugePt(frac.value, -8));
   display: flex; align-items: center; justify-content: center;
 }
 .s-add:hover { border-color: var(--color-accent); }
+
+/* ── Bar SVG shared ── */
+.ov--bar-h { min-width: 8rem; background: transparent !important; border: none !important; padding: 0; position: relative; }
+.ov--bar-v { min-width: 3rem; background: transparent !important; border: none !important; padding: 0; position: relative; }
+
+/* Обёртка берёт всё место в flex-колонке .ov.
+   min-height — fallback для flow-режима (без определённой высоты родителя). */
+.ov-bar-wrap {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+.ov--bar-h .ov-bar-wrap { min-height: 52px; }
+.ov--bar-v .ov-bar-wrap { min-height: 100px; }
+
+/* SVG абсолютно заполняет обёртку */
+.ov-bar-h,
+.ov-bar-v {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Настройки для баров — дропдаун ниже бара, не закрывает SVG */
+.ov-settings--bar {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  max-height: 180px;
+  overflow-y: auto;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+
+/* bar SVG internals */
+.b-face {
+  fill: var(--color-bg-muted);
+  stroke: var(--color-border);
+  stroke-width: 1.5;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,.10));
+}
+.ov.warn   .b-face { stroke: var(--color-warn, #d97706); }
+.ov.danger .b-face { stroke: var(--color-danger, #dc2626); }
+
+.b-track { fill: var(--color-bg); stroke: var(--color-border); stroke-width: 1; }
+
+.b-fill      { fill: var(--color-accent, #e07020); }
+.b-fill.warn { fill: var(--color-warn, #d97706); }
+.b-fill.danger { fill: var(--color-danger, #dc2626); }
+
+.b-zone         { opacity: 0.22; }
+.b-zone--warn   { fill: var(--color-warn, #d97706); }
+.b-zone--danger { fill: var(--color-danger, #dc2626); }
+
+.b-label { font-size: 9px; fill: var(--color-text-muted); font-weight: 500; }
+.b-value { font-size: 13px; font-weight: 700; fill: var(--color-text); font-variant-numeric: tabular-nums; }
+.b-value.warn   { fill: var(--color-warn, #d97706); }
+.b-value.danger { fill: var(--color-danger, #dc2626); }
+.b-unit { font-size: 8px; fill: var(--color-text-muted); }
+.b-src  { font-size: 6px; fill: var(--color-text-subtle); }
+.b-src--log { fill: var(--color-accent, #e07020); }
+
+.b-gear-btn { cursor: pointer; opacity: 0; transition: opacity 0.15s; }
+.ov:hover .b-gear-btn { opacity: 1; }
+.b-gear-bg   { fill: var(--color-bg-muted); opacity: 0.85; }
+.b-gear-ring { fill: none; stroke: var(--color-text-muted); stroke-width: 1.5; }
+.b-gear-ring.active { stroke: var(--color-accent, #e07020); }
+.b-gear-dot  { fill: var(--color-text-muted); }
 </style>

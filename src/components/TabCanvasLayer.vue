@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import type { ComponentInstance, ResolvedTab } from "../core/types";
 import { childPath as makeChildPath } from "../core/instance";
 import { useCanvasLayout, snapGrid } from "../composables/useCanvasLayout";
+import { setNavExtension } from "../composables/useWorkspaceNav";
 import type { CanvasItemRect } from "../composables/useCanvasLayout";
 import { useCanvasContextMenu, listMenuTypes } from "../composables/useCanvasContextMenu";
 import ComponentHost from "./ComponentHost.vue";
@@ -86,7 +87,7 @@ const flowRefs: (HTMLElement | null)[] = [];
 function setFlowRef(i: number, el: unknown) { flowRefs[i] = el as HTMLElement | null; }
 const containerRef = ref<HTMLElement | null>(null);
 
-const CANVAS_PAD = 80;
+const CANVAS_PAD = 300;
 const canvasMinH = computed(() => {
   let max = 400;
   allItems.value.forEach(({ key, child }) => {
@@ -200,6 +201,21 @@ const {
 
 let loaded = false;
 if (!loaded) { loaded = true; void load(); }
+
+// Экстра-инстансы не в YAML-дереве — регистрируем как nav-extension.
+// basePath `tab/${id}/extra` + childPath(basePath, _, child) = `tab/${id}/extra/${child.id}`,
+// что совпадает с path в шаблоне для extra-items.
+const extraNavKey = `tab/${props.tab.id}/extra`;
+watch(
+  () => stored.value.extra ?? [],
+  (extras) => {
+    setNavExtension(extraNavKey,
+      extras.length ? { type: 'composite', id: 'canvas-extra', children: extras } : null
+    );
+  },
+  { immediate: true }
+);
+onUnmounted(() => { setNavExtension(extraNavKey, null); });
 </script>
 
 <template>
@@ -234,7 +250,7 @@ if (!loaded) { loaded = true; void load(); }
     ref="containerRef"
     class="tcl-canvas"
     :class="{ 'tcl-canvas--edit': editMode }"
-    :style="editMode ? { minHeight: `${canvasMinH}px` } : undefined"
+    :style="{ minHeight: `${canvasMinH}px` }"
     @contextmenu.self="onCanvasContextMenu"
   >
     <CanvasWindow
@@ -306,6 +322,7 @@ if (!loaded) { loaded = true; void load(); }
   background: var(--color-bg);
 }
 .tcl-canvas--edit {
+  height: auto;
   background-image: radial-gradient(circle, var(--color-border) 1px, transparent 1px);
   background-size: 16px 16px; background-position: 8px 8px;
 }

@@ -15,6 +15,7 @@ import {
 } from "../composables/useKeyboardRouter";
 import {
   activateComponent,
+  buildSpatialData,
   collectAllNavPaths,
   ensureSelectedInNav,
   focusComponent,
@@ -62,13 +63,14 @@ function syncActiveTab(ids: string[]): void {
 
 function rebuildNavPaths(): void {
   const tab = tabs.value.find((t) => t.id === activeTabId.value);
-  if (!tab) {
-    setNavPaths([]);
-    return;
-  }
-  setNavPaths(collectAllNavPaths(tab.root, `tab/${tab.id}`));
+  if (!tab) { setNavPaths([]); return; }
+  const paths = collectAllNavPaths(tab.root, `tab/${tab.id}`);
+  setNavPaths(paths);
   ensureSelectedInNav();
-  void nextTick(() => syncNavSelectionVisual(selectedPath.value));
+  void nextTick(() => {
+    buildSpatialData(paths);
+    syncNavSelectionVisual(selectedPath.value);
+  });
 }
 
 watch(navExtensions, () => {
@@ -92,22 +94,18 @@ function activateSelection(): void {
 }
 
 function onTabKeydown(e: KeyboardEvent): boolean {
-  if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) {
-    return false;
-  }
-
-  if (e.key === "Enter") {
+  // Enter (без модификаторов) → активировать выбранный компонент
+  if (e.key === "Enter" && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
     activateSelection();
     return true;
   }
 
+  // Ctrl+Arrow (без Alt/Shift) → навигация со стрелками
   if (
-    e.key === "ArrowUp" ||
-    e.key === "ArrowDown" ||
-    e.key === "ArrowLeft" ||
-    e.key === "ArrowRight"
+    (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey &&
+    (e.key === "ArrowUp" || e.key === "ArrowDown" || e.key === "ArrowLeft" || e.key === "ArrowRight")
   ) {
-    moveNavSelection(e.key);
+    moveNavSelection(e.key as Parameters<typeof moveNavSelection>[0]);
     return true;
   }
 
