@@ -4,6 +4,8 @@ const RUST_LOGIC_TYPES = new Set([
   "simulation",
   "dyno",
   "knock",
+  "knock-threshold",
+  "knock-spectrum",
   "config-table",
   "ignition-table",
   "command",

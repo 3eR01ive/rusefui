@@ -332,6 +332,25 @@ export async function setKnockSpectrogramFollowLive(follow: boolean): Promise<vo
   }
 }
 
+export async function setKnockSpectrogramViewportColumns(cols: number): Promise<void> {
+  try {
+    const snap = await invoke<KnockScopeSnapshot>("knock_scope_set_viewport_columns", {
+      cols: Math.max(1, Math.round(cols)),
+    });
+    snapshot.value = { ...snapshot.value, ...snap };
+    spectrogramWidth.value = snap.spectrogram?.width ?? snap.spectrogramWidth ?? 0;
+    if (snap.spectrogramMarkers != null) {
+      spectrogramMarkers.value = snap.spectrogramMarkers.map((m) => ({
+        column: m.column,
+        cylinder: m.cylinder,
+        channel: m.channel,
+      }));
+    }
+  } catch {
+    /* not in tauri */
+  }
+}
+
 export function formatKnockCaptureStats(snap: Readonly<KnockScopeUiTick>, windowMs: number): string {
   const inView = snap.spectrogramViewCaptures ?? snap.spectrogramWidth ?? 0;
   const total = snap.spectrogramTotalColumns ?? snap.captureCount ?? 0;
@@ -384,6 +403,7 @@ export function useKnockScope() {
     refreshKnockScopeSnapshot,
     panSpectrogram: panKnockSpectrogram,
     setSpectrogramFollowLive: setKnockSpectrogramFollowLive,
+    setViewportColumns: setKnockSpectrogramViewportColumns,
     formatCaptureStats: formatKnockCaptureStats,
     setWaveformWindowMs,
   };

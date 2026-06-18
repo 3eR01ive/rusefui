@@ -22,6 +22,8 @@ import CompositeChart from "./builtins/CompositeChart.vue";
 import OutputValue from "./builtins/OutputValue.vue";
 import Dyno from "./builtins/Dyno.vue";
 import KnockPanel from "./builtins/KnockPanel.vue";
+import KnockThresholdPanel from "./builtins/KnockThresholdPanel.vue";
+import KnockSpectrumPanel from "./builtins/KnockSpectrumPanel.vue";
 import Spectrogram from "./builtins/Spectrogram.vue";
 import ConfigChecklist from "./builtins/ConfigChecklist.vue";
 import LuaScriptPanel from "./builtins/LuaScriptPanel.vue";
@@ -30,6 +32,7 @@ import GeneratedPanel from "./builtins/GeneratedPanel.vue";
 import ProjectTimeline from "./builtins/ProjectTimeline.vue";
 import ProjectHistory from "./builtins/ProjectHistory.vue";
 import ProjectScripts from "./builtins/ProjectScripts.vue";
+import AutotunePanel from "./builtins/AutotunePanel.vue";
 
 let registered = false;
 
@@ -85,10 +88,16 @@ export function registerBuiltinComponents(): void {
     { autoSource: "outputChannels" });
   reg("knock",           "Knock Panel",         KnockPanel,
     { autoSource: "outputChannels" });
+  reg("knock-threshold", "Knock Threshold",     KnockThresholdPanel,
+    { autoSource: "outputChannels" });
+  reg("knock-spectrum",  "Knock Частота",       KnockSpectrumPanel,
+    { autoSource: "outputChannels" });
   reg("spectrogram",     "Spectrogram",         Spectrogram,
     { autoSource: "knockScope" });
 
   reg("project-timeline", "Project Timeline", ProjectTimeline);
   reg("project-history",  "Project History",  ProjectHistory);
   reg("project-scripts",  "Project Scripts",  ProjectScripts);
+
+  reg("autotune", "Autotune (AFR)", AutotunePanel);
 }

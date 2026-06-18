@@ -21,7 +21,7 @@ impl LogicComponentType {
             "connection" => Some(Self::Connection),
             "simulation" => Some(Self::Simulation),
             "dyno" => Some(Self::Dyno),
-            "knock" => Some(Self::Knock),
+            "knock" | "knock-threshold" | "knock-spectrum" => Some(Self::Knock),
             "config-table" => Some(Self::ConfigTable),
             "ignition-table" => Some(Self::IgnitionTable),
             "command" => Some(Self::Command),

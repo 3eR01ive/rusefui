@@ -13,6 +13,7 @@ import {
   onKnockSpectrogramGlReset,
   panKnockSpectrogram,
   setKnockSpectrogramFollowLive,
+  setKnockSpectrogramViewportColumns,
   formatKnockCaptureStats,
   subscribeKnockSpectrogramGpu,
   useKnockScope,
@@ -51,10 +52,18 @@ const spectrogramHeight = computed(() => {
   return h >= 120 ? h : 200;
 });
 
-/** Длина скользящего окна на графике (мс). */
+/** Длина скользящего окна на графике (мс) — используется если windowEvents не задан. */
 const windowMs = computed(() => {
   const w = Number(yamlProps.props.windowMs ?? 500);
   return w >= 50 ? w : 500;
+});
+
+/** Ширина окна в событиях (FFT-столбцах). Если > 0 — имеет приоритет над windowMs. */
+const windowEvents = computed(() => {
+  const v = yamlProps.props.windowEvents;
+  if (v == null) return 0;
+  const n = Math.round(Number(v));
+  return n >= 1 ? n : 0;
 });
 
 const chartRef = ref<HTMLCanvasElement | null>(null);
@@ -74,6 +83,11 @@ let unsubSpectrogramGpu: (() => void) | null = null;
 let unsubSpectrogramReset: (() => void) | null = null;
 let redrawRaf = 0;
 
+// Drag panning
+let dragActive = false;
+let dragLastX = 0;
+let dragAccumPx = 0;
+
 if (bindSource.value && bindSource.value !== "knockScope") {
   console.warn(
     `[spectrogram] ожидался bind.source=knockScope, получен ${bindSource.value}`,
@@ -82,9 +96,21 @@ if (bindSource.value && bindSource.value !== "knockScope") {
 
 const spectrogramTitle = computed(() => {
   const w = spectrogramWidth.value;
+  const total = snapshot.value.spectrogramTotalColumns ?? 0;
   if (w < 1) return "Спектрограмма (0–20 kHz, dBFS)";
-  const stats = formatKnockCaptureStats(snapshot.value, windowMs.value);
-  return `Спектрограмма · ${stats}`;
+  const follow = snapshot.value.spectrogramFollowLive !== false;
+  const inView = snapshot.value.spectrogramViewCaptures ?? w;
+  const start = snapshot.value.spectrogramViewStart ?? 0;
+  const winStr = windowEvents.value > 0
+    ? `окно ${windowEvents.value} событий`
+    : `окно ${windowMs.value} ms`;
+  const parts = [`Спектрограмма · ${winStr}`];
+  if (total > inView) {
+    parts.push(`${start + 1}–${start + inView}/${total}`);
+  }
+  parts.push(follow ? "live" : "просмотр");
+  if (!follow) parts.push("dblclick → live");
+  return parts.join(" · ");
 });
 
 const connected = computed(() => snapshot.value.connected);
@@ -236,6 +262,10 @@ watch(windowMs, (ms) => {
   setWaveformWindowMs(ms);
 });
 
+watch(windowEvents, (n) => {
+  if (n > 0) void setKnockSpectrogramViewportColumns(n);
+});
+
 watch(tabActive, (active, wasActive) => {
   if (active && !wasActive) {
     scheduleRedraw();
@@ -264,6 +294,7 @@ onMounted(async () => {
   });
   unsubSpectrogramReset = onKnockSpectrogramGlReset(() => spectrogramGl?.reset());
   await initKnockScope();
+  if (windowEvents.value > 0) void setKnockSpectrogramViewportColumns(windowEvents.value);
   bindSpectrogramGl();
   scheduleRedraw();
   const observeTarget = panelRef.value ?? chartRef.value;
@@ -314,6 +345,43 @@ function onSpectrogramWheel(e: WheelEvent): void {
 function onSpectrogramDblClick(): void {
   void setKnockSpectrogramFollowLive(true);
 }
+
+const SPECTROGRAM_MARGIN_LEFT = 52;
+const SPECTROGRAM_MARGIN_RIGHT = 56;
+
+function onHeatmapPointerDown(e: PointerEvent): void {
+  if (!scopeEnabled.value && captureCount.value < 1) return;
+  dragActive = true;
+  dragLastX = e.clientX;
+  dragAccumPx = 0;
+  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+}
+
+function onHeatmapPointerMove(e: PointerEvent): void {
+  if (!dragActive) return;
+  const dx = e.clientX - dragLastX;
+  dragLastX = e.clientX;
+  if (dx === 0) return;
+  dragAccumPx += dx;
+  const wrap = spectrogramWrapRef.value;
+  const plotW = Math.max(1, (wrap?.clientWidth ?? 800) - SPECTROGRAM_MARGIN_LEFT - SPECTROGRAM_MARGIN_RIGHT);
+  const viewW = spectrogramWidth.value;
+  if (viewW < 1) return;
+  const colsPerPx = viewW / plotW;
+  const cols = Math.round(dragAccumPx * colsPerPx);
+  if (cols !== 0) {
+    dragAccumPx -= cols / colsPerPx;
+    // drag right → показать более старые данные (отрицательный сдвиг)
+    void panKnockSpectrogram(-cols);
+  }
+}
+
+function onHeatmapPointerUp(e: PointerEvent): void {
+  if (!dragActive) return;
+  dragActive = false;
+  dragAccumPx = 0;
+  try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch {}
+}
 </script>
 
 <template>
@@ -342,6 +410,10 @@ function onSpectrogramDblClick(): void {
       :style="{ height: `${spectrogramHeight}px` }"
       @wheel.prevent="onSpectrogramWheel"
       @dblclick="onSpectrogramDblClick"
+      @pointerdown="onHeatmapPointerDown"
+      @pointermove="onHeatmapPointerMove"
+      @pointerup="onHeatmapPointerUp"
+      @pointercancel="onHeatmapPointerUp"
     >
       <canvas ref="spectrogramRef" class="spectrogram-canvas spectrogram-canvas--gl" />
       <div class="spectrogram-markers" aria-hidden="true">
@@ -397,6 +469,11 @@ function onSpectrogramDblClick(): void {
   border-radius: 6px;
   border: 1px solid var(--color-border);
   background: #000;
+  cursor: grab;
+  touch-action: none;
+}
+.spectrogram-heatmap-wrap:active {
+  cursor: grabbing;
 }
 
 .spectrogram-markers {

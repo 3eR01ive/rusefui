@@ -3,7 +3,82 @@ id: monitor.panel
 description: Output channels — значения и кривые
 
 children:
+  - type: output-value
+    id: rpm
+    layout: { x: 0, y: 0, w: 200, h: 232 }
+    props:
+      label: RPM
+      unit: rpm
+      decimals: 0
+      displayType: gauge
+      min: 0
+      max: 8000
+    bind:
+      source: outputChannels
+      field: RPMValue
+
+  - type: output-value
+    id: map
+    layout: { x: 208, y: 0, w: 200, h: 232 }
+    props:
+      label: MAP
+      unit: kPa
+      decimals: 0
+      displayType: gauge
+      min: 20
+      max: 300
+    bind:
+      source: outputChannels
+      field: MAPValue
+
+  - type: output-value
+    id: clt
+    layout: { x: 416, y: 0, w: 200, h: 232 }
+    props:
+      label: CLT
+      unit: "°C"
+      decimals: 1
+      displayType: gauge
+      min: -20
+      max: 120
+    bind:
+      source: outputChannels
+      field: coolant
+
+  - type: output-value
+    id: iat
+    layout: { x: 624, y: 0, w: 200, h: 232 }
+    props:
+      label: IAT
+      unit: "°C"
+      decimals: 1
+      displayType: gauge
+      min: -20
+      max: 80
+    bind:
+      source: outputChannels
+      field: intake
+
+  - type: output-value
+    id: knock
+    layout: { x: 832, y: 0, w: 200, h: 232 }
+    props:
+      label: Knock
+      unit: deg
+      decimals: 1
+      displayType: gauge
+      min: 0
+      max: 10
+      warnings:
+        - { op: gt, value: 2, level: warn }
+        - { op: gt, value: 5, level: danger }
+    bind:
+      source: outputChannels
+      field: m_knockRetard
+
   - type: section
+    id: log-section
+    layout: { x: 0, y: 240, w: 1864, h: 352 }
     props:
       title: Log
     children:
@@ -20,6 +95,8 @@ children:
             - coolant
 
   - type: section
+    id: trigger-logger-section
+    layout: { x: 0, y: 600, w: 1864, h: 664 }
     props:
       title: Trigger logger
     children:
@@ -32,34 +109,3 @@ children:
         bind:
           source: compositeLogger
           # autoStopSec: 0  # авто-disable на ECU через N с (0 = только в UI)
-
-  - type: section
-    props:
-      title: Live values
-    children:
-      - type: row
-        children:
-          - type: output-value
-            id: rpm
-            props:
-              label: RPM
-              unit: rpm
-              decimals: 0
-            bind:
-              source: outputChannels
-              field: RPMValue
-
-          - type: output-value
-            id: clt
-            props:
-              label: CLT
-              unit: "°C"
-              decimals: 1
-            bind:
-              source: outputChannels
-              field: coolant
-
-      - type: text
-        props:
-          text: "Output: live snapshot + OutputTimeline (окно, перемотка, CSV-сессия). Log читает через timeline."
-          variant: hint

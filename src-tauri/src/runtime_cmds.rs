@@ -754,20 +754,37 @@ pub fn read_ui_config(app: AppHandle, path: String) -> Result<String, String> {
     }
 }
 
-/// Читает UI-конфиг из папки проекта.
+/// Читает UI-конфиг из папки проекта; если не найден — из бандла приложения.
 #[tauri::command]
 pub fn project_read_ui_config(
     path: String,
     state: State<RuntimeState>,
+    app: AppHandle,
 ) -> Result<String, String> {
-    let dir = state
-        .project
-        .lock()
-        .unwrap()
-        .project_dir()
-        .ok_or_else(|| "no project open".to_string())?;
-    let config_path = dir.join("config").join(path.trim_start_matches('/'));
-    std::fs::read_to_string(&config_path).map_err(|e| format!("{path}: {e}"))
+    if let Some(dir) = state.project.lock().unwrap().project_dir() {
+        let config_path = dir.join("config").join(path.trim_start_matches('/'));
+        if config_path.exists() {
+            return std::fs::read_to_string(&config_path)
+                .map_err(|e| format!("{path}: {e}"));
+        }
+    }
+    // Dev: читаем живые файлы из public/ (dist/ может быть устаревшим)
+    #[cfg(debug_assertions)]
+    {
+        let dev_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../public/config")
+            .join(path.trim_start_matches('/'));
+        if dev_path.exists() {
+            return std::fs::read_to_string(&dev_path)
+                .map_err(|e| format!("{path}: {e}"));
+        }
+    }
+    // Prod: бандлированные assets
+    let key = format!("/config/{}", path.trim_start_matches('/'));
+    match app.asset_resolver().get(key.clone()) {
+        Some(asset) => String::from_utf8(asset.bytes).map_err(|e| e.to_string()),
+        None => Err(format!("{path}: No such file or directory")),
+    }
 }
 
 pub fn register_knock_scope_emitter(app: &AppHandle) {
@@ -1357,6 +1374,27 @@ pub fn knock_scope_set_enabled(
         emit_composite(&app, &state.session.composite().snapshot());
         emit_composite_timeline(&app, &state.session.composite_timeline_status());
     } else {
+        // Сохранить лог ДО stop (engine ещё жив)
+        match state.session.knock_scope().save_recording() {
+            Ok(Some(path)) => {
+                state.project.lock().unwrap().add_log(
+                    &path,
+                    None,
+                    Some("knock_spectrogram"),
+                );
+                emit_project(&app, &state);
+                state.session.protocol_log().log_info(&format!(
+                    "Knock spectrogram log: {}",
+                    path.display()
+                ));
+            }
+            Ok(None) => {}
+            Err(e) => {
+                state.session.protocol_log().log_info(&format!(
+                    "Не удалось сохранить knock log: {e}"
+                ));
+            }
+        }
         state.session.knock_scope().stop_recording(&state.session);
         sync_output_poll_session(&state.session, &app);
     }
@@ -1390,6 +1428,23 @@ pub fn knock_scope_set_spectrogram_follow_live(
         .session
         .knock_scope()
         .set_spectrogram_follow_live(follow);
+    emit_knock_scope_tick(
+        &app,
+        &state.session.knock_scope().viewport_refresh_ui_tick(),
+    );
+    state.session.knock_scope_snapshot()
+}
+
+#[tauri::command]
+pub fn knock_scope_set_viewport_columns(
+    cols: u32,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> KnockScopeSnapshot {
+    state
+        .session
+        .knock_scope()
+        .set_viewport_columns(cols as usize);
     emit_knock_scope_tick(
         &app,
         &state.session.knock_scope().viewport_refresh_ui_tick(),

@@ -1,15 +1,33 @@
 id: knock.panel
-description: Knock tuning — threshold autotune, спектр частоты, momentum knock
+description: Knock tuning — threshold autotune + частота детонации (общая Rust-логика)
 
 children:
-  - type: knock
-    id: knock-main
+  - type: knock-threshold
+    id: knock-threshold
     navSelectable: false
+    layout: { x: 0, y: 0, w: 760, h: 600 }
     props:
-      height: 360
+      height: 320
     bind:
       source: outputChannels
       params:
+        logicId: knock-shared
+        rpmField: RPMValue
+        knockLevelField: m_knockLevel
+        knockThresholdField: m_knockThreshold
+        loadField: ignitionLoad
+        advanceField: ignitionAdvanceCyl1
+
+  - type: knock-spectrum
+    id: knock-spectrum
+    navSelectable: false
+    layout: { x: 776, y: 0, w: 1088, h: 600 }
+    props:
+      height: 320
+    bind:
+      source: outputChannels
+      params:
+        logicId: knock-shared
         rpmField: RPMValue
         knockLevelField: m_knockLevel
         knockThresholdField: m_knockThreshold
@@ -18,5 +36,6 @@ children:
 
   - type: generated-panel
     id: knock-ini-settings
+    layout: { x: 0, y: 616, w: 1864, h: 360 }
     props:
       file: softwareknock.panel.yaml

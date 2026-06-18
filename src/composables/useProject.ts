@@ -103,6 +103,9 @@ export interface KnockUiSettings {
   spectrogramGainPercent: number;
   chartHeight: number;
   settingsOpen: boolean;
+  /** Отдельное состояние шестерёнки для разделённых панелей knock. */
+  thresholdSettingsOpen?: boolean;
+  spectrumSettingsOpen?: boolean;
 }
 
 export type SimulationRampCurve = "linear" | "smooth";

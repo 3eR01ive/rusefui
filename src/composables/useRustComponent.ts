@@ -28,8 +28,13 @@ export function useRustComponent(
     | Record<string, unknown>
     | undefined
     | Promise<Record<string, unknown> | undefined>,
+  /**
+   * Явный id Rust-логики. Несколько Vue-компонентов с одинаковым override
+   * делят один инстанс логики в Rust (общий run mode, refcount на unmount).
+   */
+  logicIdOverride?: string,
 ) {
-  const instanceId = resolveInstanceId(instance, path);
+  const instanceId = logicIdOverride ?? resolveInstanceId(instance, path);
   const state = shallowRef<ComponentViewState>({});
   const ready = ref(false);
   const mounting = ref(false);

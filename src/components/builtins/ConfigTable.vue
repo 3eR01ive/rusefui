@@ -38,6 +38,8 @@ function numericProp(name: string): number | undefined {
 
 function buildBindPayload(): Record<string, unknown> {
   const nudgeStep = numericProp("nudgeStep");
+  const xOutputChannel = paramString("xOutputChannel");
+  const yOutputChannel = paramString("yOutputChannel");
   return {
     title: propsRef.value.title,
     xLabel: propsRef.value.xLabel,
@@ -46,6 +48,8 @@ function buildBindPayload(): Record<string, unknown> {
     yBins: paramString("yBins") ?? "",
     zBins: paramString("zBins") ?? "",
     ...(nudgeStep !== undefined ? { nudgeStep } : {}),
+    ...(xOutputChannel !== undefined ? { xOutputChannel } : {}),
+    ...(yOutputChannel !== undefined ? { yOutputChannel } : {}),
   };
 }
 
@@ -177,13 +181,20 @@ const yOutputChannel = computed(() => state.value.yOutputChannel as string | und
 
 function findLiveIndex(bins: number[], value: number): number {
   if (bins.length === 0) return -1;
-  // Нижняя граница: наибольший индекс где bins[i] <= value
-  let idx = 0;
-  for (let i = 0; i < bins.length; i++) {
-    if (bins[i] <= value) idx = i;
-    else break;
+  if (bins.length === 1) return 0;
+  const desc = bins[bins.length - 1]! < bins[0]!;
+  if (desc) {
+    // убывающий ряд: переваливаем если value > середины между i и i+1
+    for (let i = 0; i < bins.length - 1; i++) {
+      if (value > (bins[i]! + bins[i + 1]!) / 2) return i;
+    }
+    return bins.length - 1;
   }
-  return idx;
+  // возрастающий ряд: переваливаем если value >= середины между i и i+1
+  for (let i = 0; i < bins.length - 1; i++) {
+    if (value < (bins[i]! + bins[i + 1]!) / 2) return i;
+  }
+  return bins.length - 1;
 }
 
 const liveCol = computed(() => {

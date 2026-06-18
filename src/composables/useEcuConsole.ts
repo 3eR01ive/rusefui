@@ -19,7 +19,7 @@ function nowTs(): string {
 }
 
 const POLL_INTERVAL_MS = 500;
-const MAX_LINES = 500;
+const MAX_LINES = 1000;
 
 export function useEcuConsole() {
   const lines = ref<EcuConsoleLine[]>([]);

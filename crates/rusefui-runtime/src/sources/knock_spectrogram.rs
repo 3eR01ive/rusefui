@@ -187,6 +187,50 @@ impl KnockSpectrogramEngine {
         self.view_start = self.clamp_view_start();
     }
 
+    /// Задать ширину viewport напрямую в событиях (FFT-столбцах), минуя ms-конвертацию.
+    pub fn set_view_columns_events(&mut self, n: usize) {
+        self.view_columns_max = n.max(1);
+        if self.follow_live {
+            self.view_start = self
+                .columns
+                .len()
+                .saturating_sub(self.view_columns_max);
+        }
+        self.view_start = self.clamp_view_start();
+    }
+
+    /// Сохранить всю запись в бинарный лог-файл.
+    pub fn save_to_file(&self, path: &std::path::Path) -> Result<(), String> {
+        use std::io::Write;
+        let h = self.height_bins;
+        let total = self.columns.len() as u32;
+        let marker_count = self.markers.len() as u32;
+        let mut file = std::fs::File::create(path)
+            .map_err(|e| format!("create knock log: {e}"))?;
+        // Header: magic(8) version(4) sample_rate(4) height(4) total_cols(4) markers(4)
+        file.write_all(b"RUSFKSP1").map_err(|e| e.to_string())?;
+        file.write_all(&1u32.to_le_bytes()).map_err(|e| e.to_string())?;
+        file.write_all(&self.sample_rate_hz.to_le_bytes()).map_err(|e| e.to_string())?;
+        file.write_all(&(h as u32).to_le_bytes()).map_err(|e| e.to_string())?;
+        file.write_all(&total.to_le_bytes()).map_err(|e| e.to_string())?;
+        file.write_all(&marker_count.to_le_bytes()).map_err(|e| e.to_string())?;
+        // Markers: column(4) cylinder(1) channel(1) pad(2)
+        for m in &self.markers {
+            file.write_all(&(m.column as u32).to_le_bytes()).map_err(|e| e.to_string())?;
+            file.write_all(&[m.cylinder, m.channel, 0, 0]).map_err(|e| e.to_string())?;
+        }
+        // Pixel columns (column-major, h bytes each)
+        let pad = vec![0u8; h];
+        for col in &self.columns {
+            let to_write = if col.len() >= h { &col[..h] } else { col.as_slice() };
+            file.write_all(to_write).map_err(|e| e.to_string())?;
+            if to_write.len() < h {
+                file.write_all(&pad[..h - to_write.len()]).map_err(|e| e.to_string())?;
+            }
+        }
+        Ok(())
+    }
+
     pub fn set_follow_live(&mut self, follow: bool) {
         self.follow_live = follow;
         if follow {

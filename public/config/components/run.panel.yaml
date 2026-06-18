@@ -1,5 +1,5 @@
 id: run.panel
-description: Virtual Dyno run
+description: Virtual Dyno run + Autotune
 
 children:
   - type: dyno
@@ -13,3 +13,24 @@ children:
       params:
         rpmField: RPMValue
         tpsField: TPSValue
+
+  - type: autotune
+    id: autotune-main
+    props:
+      veXBins: veRpmBins
+      veYBins: veLoadBins
+      veZBins: veTable
+      targetAfrXBins: lambdaRpmBins
+      targetAfrYBins: lambdaLoadBins
+      targetAfrZBins: lambdaTable
+      afrChannel: AFRValue
+      targetAfrChannel: targetAFR
+      rpmChannel: RPMValue
+      loadChannel: MAPValue
+      tableXChannel: RPMValue
+      tableYChannel: MAPValue
+      strength: 0.1
+      tickMs: 500
+      limits:
+        - { channel: RPMValue, op: ">=", value: 500 }
+        - { channel: RPMValue, op: "<=", value: 7000 }

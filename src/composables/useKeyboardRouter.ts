@@ -207,55 +207,28 @@ function onKeydownCapture(e: KeyboardEvent): void {
 
   if (navMode.value === "active" && activePath.value) {
     const noMod = hasNoModifiers(e);
-    const ctrlArrow = (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && isArrowKey(e.key);
+    const handler = componentBindings.get(activePath.value);
 
     if (isEditableInActiveComponent(e)) {
+      // Сначала даём компоненту обработать (отмена редактирования ячейки и т.п.)
+      if (handler?.(e)) { blockKey(e); return; }
       if (e.key === "Escape" && noMod) {
         blockKey(e);
         deactivateComponent();
         return;
       }
-      const handler = componentBindings.get(activePath.value);
-      if (handler?.(e)) {
-        blockKey(e);
-        return;
-      }
       if (noMod && isArrowKey(e.key) && !shouldAllowArrowDefault(e)) {
         blockKey(e);
-      }
-      if (ctrlArrow) {
-        blockKey(e);
-        deactivateComponent();
-        if (tabBinding?.(e)) ctrlNavActive = true;
       }
       return;
     }
 
+    // Фокус на самом компоненте (не в input): компонент обрабатывает первым
+    if (handler?.(e)) { blockKey(e); return; }
     if (e.key === "Escape" && noMod) {
       blockKey(e);
       ctrlNavActive = false;
       deactivateComponent();
-      return;
-    }
-    if (e.key === "Enter" && noMod) {
-      const handler = componentBindings.get(activePath.value);
-      if (handler?.(e)) {
-        blockKey(e);
-        return;
-      }
-      blockKey(e);
-      deactivateComponent();
-      return;
-    }
-    const handler = componentBindings.get(activePath.value);
-    if (handler?.(e)) {
-      blockKey(e);
-      return;
-    }
-    if (ctrlArrow) {
-      deactivateComponent();
-      if (tabBinding?.(e)) ctrlNavActive = true;
-      blockKey(e);
       return;
     }
     if (!isGlobalBinding(e)) {

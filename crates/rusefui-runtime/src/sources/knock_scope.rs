@@ -611,6 +611,33 @@ impl KnockScopeSource {
         self.scope_enabled_on_ecu.store(false, Ordering::SeqCst);
     }
 
+    /// Задать ширину viewport напрямую в событиях (без ms-конвертации).
+    pub fn set_viewport_columns(&self, n: usize) {
+        if let Some(eng) = self.spectrogram.lock().unwrap().as_mut() {
+            eng.set_view_columns_events(n);
+            let mut snap = self.snapshot.write().unwrap();
+            apply_engine_viewport(&mut snap, eng);
+        }
+    }
+
+    /// Сохранить полную запись в бинарный лог. Возвращает путь (None если нет данных).
+    /// Вызывать ДО stop(), пока engine ещё жив.
+    pub fn save_recording(&self) -> Result<Option<std::path::PathBuf>, String> {
+        let guard = self.spectrogram.lock().unwrap();
+        let Some(eng) = guard.as_ref() else {
+            return Ok(None);
+        };
+        if eng.total_columns() == 0 {
+            return Ok(None);
+        }
+        let dir = knock_logs_dir();
+        std::fs::create_dir_all(&dir)
+            .map_err(|e| format!("knock logs dir: {e}"))?;
+        let path = knock_log_unique_path(&dir)?;
+        eng.save_to_file(&path)?;
+        Ok(Some(path))
+    }
+
     /// Сдвинуть viewport по записи (столбцы FFT). `delta > 0` — к более новым захватам.
     pub fn pan_spectrogram_view(&self, delta_columns: i32) -> KnockScopeSnapshot {
         if let Some(eng) = self.spectrogram.lock().unwrap().as_mut() {
@@ -787,6 +814,32 @@ impl KnockScopeSource {
         }
         Ok(())
     }
+}
+
+pub fn knock_logs_dir() -> std::path::PathBuf {
+    if let Ok(path) = std::env::var("RUSEFUI_KNOCK_LOG_DIR") {
+        return std::path::PathBuf::from(path);
+    }
+    dirs::data_local_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("rusefui")
+        .join("knock_logs")
+}
+
+fn knock_log_unique_path(dir: &std::path::Path) -> Result<std::path::PathBuf, String> {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let mut ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0);
+    for attempt in 0..64u64 {
+        let path = dir.join(format!("knock_{ts}.ksp"));
+        if !path.exists() {
+            return Ok(path);
+        }
+        ts = ts.saturating_add(attempt + 1);
+    }
+    Err("не удалось выделить имя knock log".into())
 }
 
 fn join_thread_bounded(handle: JoinHandle<()>, max_wait: Duration) {

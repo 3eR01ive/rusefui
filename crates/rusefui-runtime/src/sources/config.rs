@@ -1114,12 +1114,18 @@ impl ConfigSource {
         let count = u16::try_from(encoded.len())
             .map_err(|_| format!("encoded chunk too large for {field_label}"))?;
 
+        // ECU scratchBuffer = BLOCKING_FACTOR + 30 ≈ 1054 байт.
+        // Write-пакет: C(1) + page(2) + offset(2) + count(2) + data(N) + CRC(4) → N <= 1043.
+        // Используем 1000 как консервативный лимит, чтобы не зависеть от конкретного blocking_factor.
+        const MAX_WRITE_CHUNK: usize = 1000;
+
         session.run_without_output_poll(|session| {
             session.with_link(|link| {
-                link.write_config_chunk(
+                link.write_config_chunks(
                     protocol_page,
                     offset,
                     encoded,
+                    MAX_WRITE_CHUNK,
                     page_chunk_write_has_page_index,
                 )?;
                 sleep(Duration::from_millis(INTER_WRITE_DELAY_MS));

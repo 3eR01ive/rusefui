@@ -726,12 +726,12 @@ impl ConfigTableLogic {
         }
         if payload.get("zBins").is_some() {
             self.z_field = Self::bind_str(payload, "zBins");
-            // Look up output channel names from INI table definitions.
-            let ini = self.session.ini_context();
-            let table_def = self.z_field.as_deref()
-                .and_then(|z| ini.tables.values().find(|t| t.z_bins == z));
-            self.x_output_channel = table_def.and_then(|t| t.x_output.clone());
-            self.y_output_channel = table_def.and_then(|t| t.y_output.clone());
+        }
+        if payload.get("xOutputChannel").is_some() {
+            self.x_output_channel = Self::bind_str(payload, "xOutputChannel");
+        }
+        if payload.get("yOutputChannel").is_some() {
+            self.y_output_channel = Self::bind_str(payload, "yOutputChannel");
         }
         if payload.get("nudgeStep").is_some() {
             self.nudge_step = Self::bind_f64(payload, "nudgeStep")

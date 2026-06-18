@@ -21,6 +21,8 @@ use crate::session::EcuSession;
 pub struct ComponentRuntime {
     session: Arc<EcuSession>,
     instances: HashMap<String, Box<dyn ComponentLogic>>,
+    /// Сколько Vue-вью держат каждый instance_id (общая Rust-логика на несколько компонентов).
+    mount_counts: HashMap<String, u32>,
     /// Общие для всех ignition-table: параметры автогенерации УОЗ.
     ignition_gen_params: Arc<Mutex<EngineParams>>,
 }
@@ -30,6 +32,7 @@ impl ComponentRuntime {
         Self {
             session,
             instances: HashMap::new(),
+            mount_counts: HashMap::new(),
             ignition_gen_params: Arc::new(Mutex::new(EngineParams::default())),
         }
     }
@@ -64,6 +67,8 @@ impl ComponentRuntime {
         }
 
         if self.instances.contains_key(instance_id) {
+            // Ещё одно Vue-вью на ту же логику — считаем ссылки.
+            *self.mount_counts.entry(instance_id.to_string()).or_insert(1) += 1;
             if !payload.is_null() {
                 let remount_action = match LogicComponentType::from_str(component_type) {
                     Some(LogicComponentType::ConfigTable)
@@ -112,6 +117,7 @@ impl ComponentRuntime {
         };
 
         self.instances.insert(instance_id.to_string(), logic);
+        self.mount_counts.insert(instance_id.to_string(), 1);
         let mount_payload = if payload.is_null() {
             Value::Null
         } else {
@@ -121,6 +127,18 @@ impl ComponentRuntime {
     }
 
     pub fn unmount(&mut self, instance_id: &str) {
+        // Несколько вью могут делить одну логику — рвём только когда отписалось последнее.
+        let remaining = match self.mount_counts.get_mut(instance_id) {
+            Some(c) => {
+                *c = c.saturating_sub(1);
+                *c
+            }
+            None => 0,
+        };
+        if remaining > 0 {
+            return;
+        }
+        self.mount_counts.remove(instance_id);
         if let Some(logic) = self.instances.get_mut(instance_id) {
             let _ = logic.dispatch("unmount", Value::Null);
         }

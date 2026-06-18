@@ -346,6 +346,34 @@ impl SerialLink {
         Ok(())
     }
 
+    /// Запись большого блока данных порциями по `chunk_size` байт.
+    ///
+    /// ECU scratchBuffer = BLOCKING_FACTOR + 30 (~1054 байт); каждый write-пакет занимает
+    /// 7 байт overhead (C + page + offset + count) + данные, поэтому chunk_size должен
+    /// быть ≤ blocking_factor ECU (обычно 1024), т.е. ≤ ~1043 байт данных.
+    pub fn write_config_chunks(
+        &mut self,
+        page: u16,
+        base_offset: u16,
+        data: &[u8],
+        chunk_size: usize,
+        include_page_index: bool,
+    ) -> Result<(), ProtocolError> {
+        let chunk_size = chunk_size.max(1);
+        let mut off = 0usize;
+        while off < data.len() {
+            let end = (off + chunk_size).min(data.len());
+            let chunk = &data[off..end];
+            let chunk_offset = (base_offset as usize)
+                .checked_add(off)
+                .and_then(|v| u16::try_from(v).ok())
+                .ok_or_else(|| ProtocolError::InvalidPacket("offset overflow in chunked write".into()))?;
+            self.write_config_chunk(page, chunk_offset, chunk, include_page_index)?;
+            off = end;
+        }
+        Ok(())
+    }
+
     /// `B` + page (LE) — commit page 0 в flash (Java `BurnCommand`, INI `burnCommand = "B%2i"`).
     pub fn burn_config_page(&mut self, page: u16) -> Result<(), ProtocolError> {
         let payload = [

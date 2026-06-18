@@ -24,8 +24,9 @@ const rootChildren = computed<ComponentInstance[]>(() => {
   return [props.tab.root];
 });
 
-// Кастомный таб всегда показывает canvas-режим (даже без layout)
-const showCanvas = computed(() => hasLayout.value || Boolean(props.tab.isCustom));
+const hasYamlLayoutHints = computed(() =>
+  rootChildren.value.some(c => c.layout?.x != null || c.layout?.y != null),
+);
 
 function childKey(child: ComponentInstance, index: number): string {
   return child.id ?? `c${index}`;
@@ -45,6 +46,9 @@ const {
 } = useCanvasLayout(`tab-${props.tab.id}`);
 
 const hasLayout = computed(() => Object.keys(stored.value.items).length > 0);
+
+// Кастомный таб или YAML-хинты → canvas-режим
+const showCanvas = computed(() => hasLayout.value || hasYamlLayoutHints.value || Boolean(props.tab.isCustom));
 
 // ── All visible canvas items ──────────────────────────────────
 const allItems = computed(() => {
@@ -100,7 +104,11 @@ const canvasMinH = computed(() => {
 // ── Toggle layout ──────────────────────────────────────────────
 async function toggleLayout() {
   if (!hasLayout.value) {
-    if (rootChildren.value.length > 0) {
+    if (hasYamlLayoutHints.value) {
+      // Уже в canvas-режиме по YAML-хинтам — просто переключить edit
+      editMode.value = !editMode.value;
+    } else if (rootChildren.value.length > 0) {
+      // Flow mode → снять позиции с DOM-элементов
       await nextTick();
       const cr = containerRef.value?.getBoundingClientRect();
       if (cr) {
@@ -121,8 +129,8 @@ async function toggleLayout() {
           });
         });
       }
+      editMode.value = true;
     }
-    editMode.value = true;
   } else {
     editMode.value = !editMode.value;
   }
