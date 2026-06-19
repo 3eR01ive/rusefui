@@ -313,6 +313,33 @@ export async function panKnockSpectrogram(deltaColumns: number): Promise<void> {
   }
 }
 
+/** Авто-сохранение текущего прогона в проект (вызывать ДО stop). Возвращает путь лога или null. */
+export async function saveKnockRecording(): Promise<string | null> {
+  try {
+    return await invoke<string | null>("knock_scope_save_recording");
+  } catch {
+    return null;
+  }
+}
+
+/** Загрузить сохранённую запись спектрограммы для просмотра. Полный GPU-буфер придёт событием `knock-scope`. */
+export async function loadKnockRecording(path: string, windowMs: number): Promise<void> {
+  setWaveformWindowMs(windowMs);
+  const snap = await invoke<KnockScopeSnapshot>("knock_scope_load_recording", {
+    path,
+    windowMs: Math.round(windowMs),
+  });
+  snapshot.value = { ...snapshot.value, ...snap };
+  spectrogramWidth.value = snap.spectrogram?.width ?? snap.spectrogramWidth ?? 0;
+  spectrogramHeight.value = snap.spectrogram?.height ?? snap.spectrogramHeight ?? 0;
+  spectrogramPeakHz.value = snap.spectrogramPeakHz ?? null;
+  spectrogramMarkers.value = (snap.spectrogramMarkers ?? []).map((m) => ({
+    column: m.column,
+    cylinder: m.cylinder,
+    channel: m.channel,
+  }));
+}
+
 export async function setKnockSpectrogramFollowLive(follow: boolean): Promise<void> {
   try {
     const snap = await invoke<KnockScopeSnapshot>("knock_scope_set_spectrogram_follow_live", {

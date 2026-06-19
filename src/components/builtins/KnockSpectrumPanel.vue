@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   computed,
+  inject,
   nextTick,
   onMounted,
   onUnmounted,
@@ -24,9 +25,12 @@ import {
   onKnockSpectrogramGlReset,
   panKnockSpectrogram,
   setKnockSpectrogramFollowLive,
+  setKnockSpectrogramViewportColumns,
   formatKnockCaptureStats,
   refreshKnockScopeSnapshot,
   subscribeKnockSpectrogramGpu,
+  saveKnockRecording,
+  loadKnockRecording,
   useKnockScope,
 } from "../../composables/useKnockScope";
 import { invoke } from "@tauri-apps/api/core";
@@ -37,6 +41,7 @@ import {
   useProject,
   workspaceResetEpoch,
   type KnockUiSettings,
+  type ProjectLogRef,
 } from "../../composables/useProject";
 import { useRustComponent } from "../../composables/useRustComponent";
 import { useInstanceBind } from "../../composables/useInstanceBind";
@@ -79,7 +84,7 @@ const {
   spectrogramMarkers,
 } = useKnockScope();
 const { isActive: tabActive } = useTabActivity();
-const { getProjectUi, setProjectUi } = useProject();
+const { getProjectUi, setProjectUi, listLogs } = useProject();
 
 let applyingProjectUi = false;
 let saveUiTimer = 0;
@@ -162,6 +167,7 @@ const momentumMinLoad = ref(40);
 const momentumAdvanceAddDeg = ref(6);
 const momentumDurationMs = ref(800);
 const spectrogramWindowMs = ref(500);
+const spectrogramWindowEvents = ref(200);
 const spectrogramAutocontrast = ref(true);
 const spectrogramGainPercent = ref(100);
 const settingsOpen = ref(false);
@@ -216,6 +222,7 @@ function ownUiSettings(): Partial<KnockUiSettings> {
     momentumAdvanceAddDeg: momentumAdvanceAddDeg.value,
     momentumDurationMs: Math.round(momentumDurationMs.value),
     spectrogramWindowMs: Math.round(spectrogramWindowMs.value),
+    spectrogramWindowEvents: Math.round(spectrogramWindowEvents.value),
     spectrogramAutocontrast: spectrogramAutocontrast.value,
     spectrogramGainPercent: Math.round(spectrogramGainPercent.value),
     spectrumSettingsOpen: settingsOpen.value,
@@ -246,6 +253,7 @@ async function applyUiFromProject(): Promise<void> {
     momentumAdvanceAddDeg.value = ui.momentumAdvanceAddDeg;
     momentumDurationMs.value = ui.momentumDurationMs;
     spectrogramWindowMs.value = ui.spectrogramWindowMs;
+    spectrogramWindowEvents.value = ui.spectrogramWindowEvents ?? 200;
     spectrogramAutocontrast.value = ui.spectrogramAutocontrast ?? true;
     spectrogramGainPercent.value = ui.spectrogramGainPercent ?? 100;
     settingsOpen.value = ui.spectrumSettingsOpen ?? false;
@@ -257,6 +265,7 @@ async function applyUiFromProject(): Promise<void> {
   }
   if (gen !== applyUiGeneration) return;
   await syncOptionsToRust();
+  await applyEventsViewport();
   scheduleSpectrogramRedraw();
 }
 
@@ -284,6 +293,10 @@ function scheduleSaveUiToProject(): void {
   }, 400);
 }
 
+/** Поднять окно canvas над соседями, пока открыты настройки (см. CanvasWindow). */
+const setWindowElevated = inject<((on: boolean) => void) | null>("cwSetElevated", null);
+watch(settingsOpen, (open) => setWindowElevated?.(open), { immediate: true });
+
 function toggleSettings(): void {
   settingsOpen.value = !settingsOpen.value;
   void flushUiToProject();
@@ -295,6 +308,7 @@ async function toggleSpectrumRun(): Promise<void> {
   } else {
     spectrogramGl?.reset();
     await dispatch("start_spectrum_run");
+    await applyEventsViewport();
     try {
       const b64 = await invoke<string>("knock_scope_gpu_buffer");
       if (b64) applySpectrogramGpuB64(b64);
@@ -304,11 +318,65 @@ async function toggleSpectrumRun(): Promise<void> {
   }
 }
 
+/** Применить ширину скользящего окна просмотра (в событиях/FFT-столбцах) к движку. */
+async function applyEventsViewport(): Promise<void> {
+  await setKnockSpectrogramViewportColumns(spectrogramWindowEvents.value);
+  scheduleSpectrogramRedraw();
+}
+
 async function stopSpectrumRun(): Promise<void> {
+  // Авто-сохранение прогона ДО stop_run (engine ещё жив).
+  const savedPath = await saveKnockRecording();
   await dispatch("stop_run", { applyThreshold: false });
   await refreshKnockScopeSnapshot();
   pushSpectrogramDisplay();
   scheduleSpectrogramRedraw();
+  if (savedPath) void refreshSavedRecordings();
+}
+
+// --- Сохранённые записи (загрузка прогона) ---
+const savedRecordings = ref<ProjectLogRef[]>([]);
+const recordingsOpen = ref(false);
+const loadingRecording = ref(false);
+
+async function refreshSavedRecordings(): Promise<void> {
+  try {
+    const logs = await listLogs();
+    savedRecordings.value = logs
+      .filter((l) => l.kind === "knock_spectrogram")
+      .sort((a, b) => b.addedAtMs - a.addedAtMs);
+  } catch {
+    savedRecordings.value = [];
+  }
+}
+
+function recordingLabel(rec: ProjectLogRef): string {
+  if (rec.label) return rec.label;
+  const d = new Date(rec.addedAtMs);
+  return Number.isFinite(rec.addedAtMs)
+    ? d.toLocaleString()
+    : rec.path.split(/[/\\]/).pop() || rec.path;
+}
+
+async function toggleRecordings(): Promise<void> {
+  recordingsOpen.value = !recordingsOpen.value;
+  if (recordingsOpen.value) await refreshSavedRecordings();
+}
+
+async function onLoadRecording(rec: ProjectLogRef): Promise<void> {
+  if (loadingRecording.value || recording.value) return;
+  loadingRecording.value = true;
+  try {
+    await loadKnockRecording(rec.path, spectrogramWindowMs.value);
+    await applyEventsViewport();
+    recordingsOpen.value = false;
+    pushSpectrogramDisplay();
+    scheduleSpectrogramRedraw();
+  } catch (e) {
+    console.error("knock load recording", e);
+  } finally {
+    loadingRecording.value = false;
+  }
 }
 
 // --- Спектрограмма (рендер — не трогать, оптимизировано по скорости) ---
@@ -455,6 +523,59 @@ function onSpectrogramDblClick(): void {
   void setKnockSpectrogramFollowLive(true);
 }
 
+// --- Промотка спектрограммы перетаскиванием мышью ---
+const SPECTROGRAM_MARGIN_LEFT = 52;
+const SPECTROGRAM_MARGIN_RIGHT = 56;
+let dragActive = false;
+let dragLastX = 0;
+let dragAccumPx = 0;
+
+function spectrogramHasData(): boolean {
+  const s = knockScopeSnapshot.value;
+  return recordingSpectrum.value || spectrogramWidth.value > 0 || (s.captureCount ?? 0) > 0;
+}
+
+function onSpectrogramPointerDown(e: PointerEvent): void {
+  if (!spectrogramHasData()) return;
+  dragActive = true;
+  dragLastX = e.clientX;
+  dragAccumPx = 0;
+  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+}
+
+function onSpectrogramPointerMove(e: PointerEvent): void {
+  if (!dragActive) return;
+  const dx = e.clientX - dragLastX;
+  dragLastX = e.clientX;
+  if (dx === 0) return;
+  dragAccumPx += dx;
+  const wrap = spectrogramContainerRef.value;
+  const plotW = Math.max(
+    1,
+    (wrap?.clientWidth ?? 800) - SPECTROGRAM_MARGIN_LEFT - SPECTROGRAM_MARGIN_RIGHT,
+  );
+  const viewW = spectrogramWidth.value;
+  if (viewW < 1) return;
+  const colsPerPx = viewW / plotW;
+  const cols = Math.round(dragAccumPx * colsPerPx);
+  if (cols !== 0) {
+    dragAccumPx -= cols / colsPerPx;
+    // drag вправо → показать более старые данные (отрицательный сдвиг)
+    void panKnockSpectrogram(-cols);
+  }
+}
+
+function onSpectrogramPointerUp(e: PointerEvent): void {
+  if (!dragActive) return;
+  dragActive = false;
+  dragAccumPx = 0;
+  try {
+    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+  } catch {
+    /* pointer уже отпущен */
+  }
+}
+
 // --- Watchers / observers ---
 watch(ready, (r) => {
   if (r) void applyUiFromProject();
@@ -481,6 +602,12 @@ watch([spectrogramAutocontrast, spectrogramGainPercent], () => {
   if (applyingProjectUi) return;
   scheduleSaveUiToProject();
   redrawSpectrogramNow();
+});
+
+watch(spectrogramWindowEvents, () => {
+  if (applyingProjectUi) return;
+  void applyEventsViewport();
+  scheduleSaveUiToProject();
 });
 
 watch(
@@ -650,9 +777,14 @@ onUnmounted(() => {
           <div
             ref="spectrogramContainerRef"
             class="knock-chart-wrap knock-chart-wrap--spectrogram"
+            :class="{ 'knock-chart-wrap--draggable': spectrogramWidth > 0 || recordingSpectrum }"
             :style="{ height: `${chartHeight}px` }"
             @wheel.prevent="onSpectrogramWheel"
             @dblclick="onSpectrogramDblClick"
+            @pointerdown="onSpectrogramPointerDown"
+            @pointermove="onSpectrogramPointerMove"
+            @pointerup="onSpectrogramPointerUp"
+            @pointercancel="onSpectrogramPointerUp"
           >
             <canvas ref="spectrogramCanvasRef" class="knock-canvas knock-canvas--spectrogram" />
             <div class="knock-spectrogram-markers" aria-hidden="true">
@@ -692,6 +824,32 @@ onUnmounted(() => {
             >
               {{ recordingSpectrum ? "Стоп запись" : "Запись спектрограммы (прогон)" }}
             </button>
+            <div class="knock-recordings">
+              <button
+                type="button"
+                class="knock-btn knock-btn--secondary"
+                :disabled="recording"
+                :aria-expanded="recordingsOpen"
+                @click="toggleRecordings"
+              >
+                Загрузить запись ▾
+              </button>
+              <div v-if="recordingsOpen" class="knock-recordings-menu">
+                <p v-if="savedRecordings.length === 0" class="knock-recordings-empty">
+                  Нет сохранённых записей
+                </p>
+                <button
+                  v-for="rec in savedRecordings"
+                  :key="rec.path"
+                  type="button"
+                  class="knock-recordings-item"
+                  :disabled="loadingRecording"
+                  @click="onLoadRecording(rec)"
+                >
+                  {{ recordingLabel(rec) }}
+                </button>
+              </div>
+            </div>
             <button
               type="button"
               class="knock-btn knock-btn--secondary"
@@ -718,14 +876,25 @@ onUnmounted(() => {
             <div class="knock-settings-group">
               <h4 class="knock-settings-title">Спектрограмма</h4>
               <div class="knock-settings-fields">
-                <label class="knock-field knock-field--wide">
-                  <span>Окно спектрограммы, ms</span>
+                <label class="knock-field">
+                  <span>Окно просмотра, событий</span>
                   <input
-                    v-model.number="spectrogramWindowMs"
+                    v-model.number="spectrogramWindowEvents"
+                    type="range"
+                    min="20"
+                    max="2000"
+                    step="10"
+                  />
+                  <span class="knock-field-hint">{{ spectrogramWindowEvents }}</span>
+                </label>
+                <label class="knock-field">
+                  <span>Окно просмотра (точно)</span>
+                  <input
+                    v-model.number="spectrogramWindowEvents"
                     type="number"
-                    min="100"
-                    max="3000"
-                    step="50"
+                    min="20"
+                    max="2000"
+                    step="10"
                   />
                 </label>
                 <label class="knock-field knock-field--check">
@@ -937,6 +1106,15 @@ onUnmounted(() => {
   background: #000;
 }
 
+.knock-chart-wrap--draggable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.knock-chart-wrap--draggable:active {
+  cursor: grabbing;
+}
+
 .knock-canvas--spectrogram {
   display: block;
   width: 100%;
@@ -1108,6 +1286,55 @@ onUnmounted(() => {
 
 .knock-btn--secondary {
   background: transparent;
+}
+
+.knock-recordings {
+  position: relative;
+  display: inline-flex;
+}
+
+.knock-recordings-menu {
+  position: absolute;
+  bottom: calc(100% + 0.35rem);
+  left: 0;
+  z-index: 20;
+  min-width: 16rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 0.25rem;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-surface, #1c1c1c);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.knock-recordings-empty {
+  margin: 0;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+.knock-recordings-item {
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  background: transparent;
+  color: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.knock-recordings-item:hover:not(:disabled) {
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.08));
+}
+
+.knock-recordings-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .knock-settings {

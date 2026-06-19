@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   computed,
+  inject,
   nextTick,
   onMounted,
   onUnmounted,
@@ -365,6 +366,10 @@ function scheduleSaveUiToProject(): void {
     void flushUiToProject();
   }, 400);
 }
+
+/** Поднять окно canvas над соседями, пока открыты настройки (см. CanvasWindow). */
+const setWindowElevated = inject<((on: boolean) => void) | null>("cwSetElevated", null);
+watch(settingsOpen, (open) => setWindowElevated?.(open), { immediate: true });
 
 function toggleSettings(): void {
   settingsOpen.value = !settingsOpen.value;

@@ -1452,6 +1452,51 @@ pub fn knock_scope_set_viewport_columns(
     state.session.knock_scope_snapshot()
 }
 
+/// Авто-сохранение текущего прогона спектрограммы в проект. Вызывать ДО stop (engine ещё жив).
+/// Возвращает путь сохранённого лога (None — нет данных).
+#[tauri::command]
+pub fn knock_scope_save_recording(
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<Option<String>, String> {
+    match state.session.knock_scope().save_recording()? {
+        Some(path) => {
+            state
+                .project
+                .lock()
+                .unwrap()
+                .add_log(&path, None, Some("knock_spectrogram"));
+            emit_project(&app, &state);
+            let path_str = path.display().to_string();
+            state
+                .session
+                .protocol_log()
+                .log_info(&format!("Knock spectrogram log: {path_str}"));
+            Ok(Some(path_str))
+        }
+        None => Ok(None),
+    }
+}
+
+/// Загрузить сохранённую запись спектрограммы для просмотра.
+#[tauri::command]
+pub fn knock_scope_load_recording(
+    path: String,
+    window_ms: Option<u32>,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<KnockScopeSnapshot, String> {
+    let snap = state
+        .session
+        .knock_scope()
+        .load_recording(std::path::Path::new(&path), window_ms.unwrap_or(500))?;
+    emit_knock_scope_tick(
+        &app,
+        &state.session.knock_scope().viewport_refresh_ui_tick(),
+    );
+    Ok(snap)
+}
+
 #[tauri::command]
 pub fn composite_timeline_status(state: State<RuntimeState>) -> CompositeTimelineStatus {
     state.session.composite_timeline_status()

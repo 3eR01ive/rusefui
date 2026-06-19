@@ -638,6 +638,34 @@ impl KnockScopeSource {
         Ok(Some(path))
     }
 
+    /// Загрузить сохранённую запись для просмотра. Engine оживает (pan/follow работают),
+    /// но poll-потоки не поднимаются. Нельзя во время активной записи.
+    pub fn load_recording(
+        &self,
+        path: &std::path::Path,
+        window_ms: u32,
+    ) -> Result<KnockScopeSnapshot, String> {
+        if self.is_polling() {
+            return Err("Остановите текущую запись перед загрузкой".into());
+        }
+        let eng = KnockSpectrogramEngine::load_from_file(path, window_ms)?;
+        {
+            let mut snap = self.snapshot.write().unwrap();
+            apply_engine_viewport(&mut snap, &eng);
+            snap.scope_enabled = false;
+            snap.polling = false;
+            snap.last_error = None;
+            snap.status_message = Some(format!(
+                "Загружена запись: {}",
+                path.file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("knock log")
+            ));
+        }
+        *self.spectrogram.lock().unwrap() = Some(eng);
+        Ok(self.snapshot.read().unwrap().clone())
+    }
+
     /// Сдвинуть viewport по записи (столбцы FFT). `delta > 0` — к более новым захватам.
     pub fn pan_spectrogram_view(&self, delta_columns: i32) -> KnockScopeSnapshot {
         if let Some(eng) = self.spectrogram.lock().unwrap().as_mut() {

@@ -91,6 +91,12 @@ provide('cwReportContentH', (h: number) => {
 provide('cwReportMinW', (w: number) => { lastReportedMinW = w; });
 provide('cwReportMinH', (h: number) => { lastReportedMinH = h; });
 
+// ── Подъём окна над соседями, когда контент разворачивает оверлей ─
+// (напр. панель открыла настройки, выходящие за пределы окна). z окон
+// в canvas-режиме одинаковый, поэтому соседнее окно перекрыло бы выезд.
+const elevated = ref(false);
+provide('cwSetElevated', (on: boolean) => { elevated.value = on; });
+
 // ── ResizeObserver: сообщаем actual-height (авторост), не пишем в lastReportedH ─
 const rootRef = ref<HTMLElement | null>(null);
 let ro: ResizeObserver | null = null;
@@ -124,7 +130,7 @@ const windowStyle = computed(() => ({
   top: `${props.rect.y}px`,
   width: `${props.rect.w}px`,
   height: `${props.rect.h}px`,
-  zIndex: props.rect.z,
+  zIndex: elevated.value ? 1000 : props.rect.z,
 }));
 </script>
 

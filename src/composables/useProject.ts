@@ -99,6 +99,8 @@ export interface KnockUiSettings {
   momentumAdvanceAddDeg: number;
   momentumDurationMs: number;
   spectrogramWindowMs: number;
+  /** Ширина скользящего окна просмотра спектрограммы в событиях (FFT-столбцах). */
+  spectrogramWindowEvents: number;
   spectrogramAutocontrast: boolean;
   spectrogramGainPercent: number;
   chartHeight: number;

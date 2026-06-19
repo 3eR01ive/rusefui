@@ -231,6 +231,79 @@ impl KnockSpectrogramEngine {
         Ok(())
     }
 
+    /// Загрузить запись из бинарного лог-файла (формат `save_to_file`).
+    pub fn load_from_file(path: &std::path::Path, window_ms: u32) -> Result<Self, String> {
+        use std::io::Read;
+        let mut file =
+            std::fs::File::open(path).map_err(|e| format!("open knock log: {e}"))?;
+        // Header: magic(8) version(4) sample_rate(4) height(4) total_cols(4) markers(4)
+        let mut header = [0u8; 28];
+        file.read_exact(&mut header)
+            .map_err(|e| format!("read knock log header: {e}"))?;
+        if &header[0..8] != b"RUSFKSP1" {
+            return Err("неизвестный формат knock log".into());
+        }
+        let version = u32::from_le_bytes(header[8..12].try_into().unwrap());
+        if version != 1 {
+            return Err(format!("неподдерживаемая версия knock log: {version}"));
+        }
+        let sample_rate_hz = f32::from_le_bytes(header[12..16].try_into().unwrap());
+        let saved_height = u32::from_le_bytes(header[16..20].try_into().unwrap()) as usize;
+        let total = u32::from_le_bytes(header[20..24].try_into().unwrap()) as usize;
+        let marker_count = u32::from_le_bytes(header[24..28].try_into().unwrap()) as usize;
+
+        let mut markers = Vec::with_capacity(marker_count);
+        for _ in 0..marker_count {
+            let mut mbuf = [0u8; 8];
+            file.read_exact(&mut mbuf)
+                .map_err(|e| format!("read knock log marker: {e}"))?;
+            markers.push(KnockSpectrogramMarker {
+                column: u32::from_le_bytes(mbuf[0..4].try_into().unwrap()) as usize,
+                cylinder: mbuf[4],
+                channel: mbuf[5],
+            });
+        }
+
+        let sr = if sample_rate_hz.is_finite() && sample_rate_hz > 0.0 {
+            sample_rate_hz
+        } else {
+            KNOCK_ADC_SAMPLE_RATE_HZ
+        };
+        let mut eng = Self::new(sr, window_ms);
+        let h = eng.height_bins;
+        let mut columns: VecDeque<Vec<u8>> = VecDeque::with_capacity(total);
+        for _ in 0..total {
+            let mut col = vec![0u8; saved_height];
+            file.read_exact(&mut col)
+                .map_err(|e| format!("read knock log column: {e}"))?;
+            // Привести к расчётной высоте текущего движка (обычно совпадает).
+            if saved_height != h {
+                col.resize(h, 0);
+            }
+            columns.push_back(col);
+        }
+
+        eng.load_columns(columns, markers);
+        Ok(eng)
+    }
+
+    /// Заменить запись загруженным логом (для просмотра): пересчитать пик и прижать viewport к началу.
+    pub fn load_columns(
+        &mut self,
+        columns: VecDeque<Vec<u8>>,
+        markers: Vec<KnockSpectrogramMarker>,
+    ) {
+        self.clear();
+        for col in &columns {
+            self.note_column_peak(col);
+        }
+        self.columns = columns;
+        self.markers = markers;
+        self.follow_live = false;
+        self.view_start = 0;
+        self.view_start = self.clamp_view_start();
+    }
+
     pub fn set_follow_live(&mut self, follow: bool) {
         self.follow_live = follow;
         if follow {

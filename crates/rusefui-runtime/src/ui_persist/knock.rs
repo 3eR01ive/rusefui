@@ -32,6 +32,9 @@ pub struct KnockUiSettings {
     pub momentum_duration_ms: u32,
     #[serde(default = "default_spectrogram_window")]
     pub spectrogram_window_ms: u32,
+    /// Ширина скользящего окна просмотра спектрограммы в событиях (FFT-столбцах).
+    #[serde(default = "default_spectrogram_window_events")]
+    pub spectrogram_window_events: u32,
     #[serde(default = "default_spectrogram_autocontrast")]
     pub spectrogram_autocontrast: bool,
     #[serde(default = "default_spectrogram_gain")]
@@ -79,6 +82,9 @@ fn default_momentum_duration() -> u32 {
 fn default_spectrogram_window() -> u32 {
     500
 }
+fn default_spectrogram_window_events() -> u32 {
+    200
+}
 fn default_spectrogram_autocontrast() -> bool {
     true
 }
@@ -104,6 +110,7 @@ impl Default for KnockUiSettings {
             momentum_advance_add_deg: default_momentum_advance(),
             momentum_duration_ms: default_momentum_duration(),
             spectrogram_window_ms: default_spectrogram_window(),
+            spectrogram_window_events: default_spectrogram_window_events(),
             spectrogram_autocontrast: default_spectrogram_autocontrast(),
             spectrogram_gain_percent: default_spectrogram_gain(),
             chart_height: default_chart_height(),
