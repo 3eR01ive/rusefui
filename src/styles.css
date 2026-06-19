@@ -250,12 +250,19 @@ input[type="radio"]:focus-visible {
   min-height: 0;
 }
 
-.tab-panel[data-tab-id="control"] .composite-root {
+/* Пропускаем высоту до низа панели по реальной цепочке flow-режима
+   (.tcl-flow → flow-item div → .layout-row), а также по .composite-root
+   на случай рендера через CompositeLayout. */
+.tab-panel[data-tab-id="control"] .composite-root,
+.tab-panel[data-tab-id="control"] .tcl-flow,
+.tab-panel[data-tab-id="control"] .tcl-flow > div {
   flex: 1 1 0;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.tab-panel[data-tab-id="control"] .composite-root > .layout-row {
+.tab-panel[data-tab-id="control"] .layout-row {
   flex: 1 1 0;
   min-height: 0;
   flex-wrap: nowrap;
@@ -309,7 +316,7 @@ input[type="radio"]:focus-visible {
     overflow: auto;
   }
 
-  .tab-panel[data-tab-id="control"] .composite-root > .layout-row {
+  .tab-panel[data-tab-id="control"] .layout-row {
     flex-wrap: wrap;
   }
 
@@ -327,13 +334,19 @@ input[type="radio"]:focus-visible {
   min-height: 0;
 }
 
-.tab-panel[data-tab-id="scripts"] .composite-root {
+/* Высота до низа панели по реальной цепочке flow-режима
+   (.tcl-flow → flow-item div → .ps-root), и .composite-root про запас. */
+.tab-panel[data-tab-id="scripts"] .composite-root,
+.tab-panel[data-tab-id="scripts"] .tcl-flow,
+.tab-panel[data-tab-id="scripts"] .tcl-flow > div {
   flex: 1 1 0;
   min-height: 0;
   gap: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.tab-panel[data-tab-id="scripts"] .lua-script-panel {
+.tab-panel[data-tab-id="scripts"] .ps-root {
   flex: 1 1 0;
   min-height: 0;
   height: 100%;

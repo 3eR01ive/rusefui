@@ -76,11 +76,21 @@ watch(children, (c) => {
 
 <style scoped>
 .generated-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  /* Секции INI узкие по контенту, но каждая тянется на всю ширину и оставляет
+     справа пустоту. Раскладываем их адаптивной сеткой: на широком экране —
+     несколько колонок (секции + график рядом), на узком — один столбец. */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 26rem), 1fr));
+  align-items: start;
+  gap: 0.75rem;
   width: 100%;
   min-width: 0;
+}
+
+/* Загрузка/ошибка не должны участвовать в сетке как колонка. */
+.generated-panel-hint,
+.generated-panel-error {
+  grid-column: 1 / -1;
 }
 
 .generated-panel-hint {
