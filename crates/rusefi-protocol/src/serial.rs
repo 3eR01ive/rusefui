@@ -686,10 +686,54 @@ mod tests {
     fn get_console_text_payload_format() {
         assert_eq!([TS_GET_TEXT], [b'G']);
     }
+
+    #[test]
+    fn console_text_keeps_only_msg_records() {
+        // Поток G: msg-сообщения вперемешку с engine sniffer / версией / outpin.
+        let raw = "msg`first line`wave_chart`u|d|123|456`msg`second line`\
+                   rusEfiVersion`rusEFI 2024@abcdef`outpin`PA0@led`";
+        assert_eq!(
+            super::extract_console_messages(raw),
+            "first line\nsecond line"
+        );
+    }
+
+    #[test]
+    fn console_text_passthrough_without_frames() {
+        assert_eq!(super::extract_console_messages("plain text\0"), "plain text\0");
+        assert_eq!(super::extract_console_messages("  plain text  "), "plain text");
+    }
+}
+
+/// Разделитель записей текстового протокола rusEFI (`LOG_DELIMITER`).
+const LOG_DELIMITER: char = '`';
+/// Префикс консольных сообщений (`PROTOCOL_MSG`).
+const PROTOCOL_MSG: &str = "msg";
+
+/// Буфер `G` — это мультиплексированный поток записей `<prefix>`+`` ` ``+payload+`` ` ``:
+/// `msg` (консоль), `wave_chart` (engine sniffer), `outpin`, `rusEfiVersion` и т.д.
+/// Консоль показывает только `msg` (как rusEFI `EngineState` → `MessagesCentral`),
+/// иначе ответ забивается повторяющимся дампом engine sniffer.
+fn extract_console_messages(raw: &str) -> String {
+    if !raw.contains(LOG_DELIMITER) {
+        // Нефреймленный текст (пустой буфер / иная прошивка) — отдаём как есть.
+        return raw.trim().to_string();
+    }
+    let tokens: Vec<&str> = raw.split(LOG_DELIMITER).collect();
+    let mut messages: Vec<&str> = Vec::new();
+    let mut i = 0;
+    while i < tokens.len() {
+        if tokens[i].trim() == PROTOCOL_MSG && i + 1 < tokens.len() {
+            messages.push(tokens[i + 1]);
+            i += 2;
+        } else {
+            i += 1;
+        }
+    }
+    messages.join("\n")
 }
 
 fn decode_console_text_payload(payload: &[u8]) -> String {
-    String::from_utf8_lossy(payload)
-        .trim_end_matches('\0')
-        .to_string()
+    let raw = String::from_utf8_lossy(payload);
+    extract_console_messages(raw.trim_end_matches('\0'))
 }
