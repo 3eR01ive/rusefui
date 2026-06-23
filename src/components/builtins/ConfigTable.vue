@@ -87,6 +87,33 @@ async function dispatchWrite(
     payload,
     { xField: xField.value || undefined, yField: yField.value || undefined },
   );
+  // Правка применилась в RAM (живой предпросмотр). Запись в ECU откладываем и
+  // делаем разом, когда ввод/удержание клавиши прекратится (≈ отпускание).
+  scheduleFlush();
+}
+
+// ---- Отложенная запись в ECU (debounce) -----------------------------------
+let flushTimer = 0;
+let pendingDirty = false;
+const FLUSH_IDLE_MS = 250;
+
+function scheduleFlush(): void {
+  pendingDirty = true;
+  if (flushTimer !== 0) window.clearTimeout(flushTimer);
+  flushTimer = window.setTimeout(() => {
+    flushTimer = 0;
+    void flushNow();
+  }, FLUSH_IDLE_MS);
+}
+
+async function flushNow(): Promise<void> {
+  if (flushTimer !== 0) {
+    window.clearTimeout(flushTimer);
+    flushTimer = 0;
+  }
+  if (!pendingDirty) return;
+  pendingDirty = false;
+  await dispatch("flush_writes");
 }
 
 function onConfigUndoRedo() {
@@ -101,6 +128,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener("config-undo-redo", onConfigUndoRedo);
   window.removeEventListener("mouseup", onGlobalMouseUp);
+  // Не потерять отложенные правки при размонтировании.
+  void flushNow();
 });
 
 const gridRef = ref<HTMLElement | null>(null);
@@ -370,26 +399,63 @@ async function pasteSelection(): Promise<void> {
   await dispatchWrite("paste", { text });
 }
 
+/** Можно ли редактировать значения текущего фокуса (grid/X/Y). */
+function canEditFocus(): boolean {
+  if (editFocus.value === "x") return canEditX.value;
+  if (editFocus.value === "y") return canEditY.value;
+  return !disabled.value;
+}
+
 function onComponentKeydown(e: KeyboardEvent): boolean {
   if (!ready.value) return false;
   const key = e.key;
   const code = e.code;
+
+  // Esc: схлопнуть прямоугольное выделение в одну ячейку (верхний левый угол),
+  // либо отменить набор значения. Из компонента НЕ выходим (старое поведение убрано).
+  if (key === "Escape") {
+    if (editBuffer.value) {
+      void dispatchWrite("type_key", { kind: "cancel" });
+    } else {
+      void dispatch("collapse_selection");
+    }
+    return true;
+  }
+
+  // Редактирование одной клавишей по ФИЗИЧЕСКОЙ позиции (event.code — не зависит
+  // от раскладки, без Shift). Ctrl/Meta не трогаем — Ctrl остаётся для навигации.
+  //   ,(Comma) декремент · .(Period) инкремент · /(Slash) интерполяция
+  const noCmd = !e.ctrlKey && !e.metaKey;
+  if (noCmd && code === "Comma") {
+    if (!canEditFocus()) return false;
+    void dispatchWrite("keydown", { key: "ArrowDown", shift: false, ctrl: true });
+    return true;
+  }
+  if (noCmd && code === "Period") {
+    if (!canEditFocus()) return false;
+    void dispatchWrite("keydown", { key: "ArrowUp", shift: false, ctrl: true });
+    return true;
+  }
+  if (noCmd && !e.altKey && code === "Slash") {
+    if (!canEditFocus()) return false;
+    void dispatchWrite("interpolate");
+    return true;
+  }
+
   const isCopy = (e.ctrlKey || e.metaKey) && !e.shiftKey && code === "KeyC";
   const isPaste = (e.ctrlKey || e.metaKey) && !e.shiftKey && code === "KeyV";
-  const isInterpolate = e.ctrlKey && code === "KeyI";
+  // Десятичная точка — только Numpad `.` (основные `,`/`.` заняты ±шагом).
+  const isDecimalChar = code === "NumpadDecimal";
+  const isMinusChar = code === "NumpadSubtract" || code === "Minus";
   const isTypeChar =
     (!e.ctrlKey && !e.metaKey && !e.altKey && /^[0-9]$/.test(key)) ||
-    code === "NumpadDecimal" ||
-    code === "NumpadSubtract" ||
-    key === "." ||
-    key === "," ||
-    key === "-";
-  const isTypeControl = key === "Backspace" || key === "Enter" || key === "Escape";
+    isDecimalChar ||
+    isMinusChar;
+  const isTypeControl = key === "Backspace" || key === "Enter";
   if (
     !["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key) &&
     !isCopy &&
     !isPaste &&
-    !isInterpolate &&
     !isTypeChar &&
     !isTypeControl
   ) {
@@ -408,38 +474,27 @@ function onComponentKeydown(e: KeyboardEvent): boolean {
     if (editFocus.value === "y" && !canEditY.value) return false;
     if (editFocus.value === "grid" && disabled.value) return false;
     if (isTypeControl) {
-      if ((key === "Enter" || key === "Escape") && !editBuffer.value) {
+      if (key === "Enter" && !editBuffer.value) {
         return false;
       }
-      const kind = key === "Backspace" ? "backspace" : key === "Enter" ? "commit" : "cancel";
-      void dispatchWrite("type_key", { kind });
+      const kind = key === "Backspace" ? "backspace" : "commit";
+      if (kind === "commit") {
+        // Коммит значения — пишем в ECU сразу, не ждём debounce.
+        void dispatchWrite("type_key", { kind }).then(() => void flushNow());
+      } else {
+        void dispatchWrite("type_key", { kind });
+      }
       return true;
     }
     let ch = key;
-    if (code === "NumpadDecimal" || key === "," || key === ".") ch = ".";
-    if (code === "NumpadSubtract" || key === "-") ch = "-";
+    if (isDecimalChar) ch = ".";
+    else if (isMinusChar) ch = "-";
     void dispatchWrite("type_key", { kind: "char", ch });
     return true;
   }
-  if (isInterpolate) {
-    if (editFocus.value === "x" && !canEditX.value) return false;
-    if (editFocus.value === "y" && !canEditY.value) return false;
-    if (editFocus.value === "grid" && disabled.value) return false;
-    void dispatchWrite("interpolate");
-    return true;
-  }
-  const arrowPayload = { key, shift: e.shiftKey, ctrl: e.ctrlKey };
-  const isNudge =
-    e.ctrlKey &&
-    (key === "ArrowUp" ||
-      key === "ArrowDown" ||
-      key === "ArrowLeft" ||
-      key === "ArrowRight");
-  if (isNudge) {
-    void dispatchWrite("keydown", arrowPayload);
-  } else {
-    void dispatch("keydown", arrowPayload);
-  }
+  // Стрелки: Ctrl+стрелки отдаём навигации между панелями, обычные — таблице.
+  if (e.ctrlKey || e.metaKey) return false;
+  void dispatch("keydown", { key, shift: e.shiftKey, ctrl: false });
   return true;
 }
 
@@ -610,8 +665,8 @@ function onCellFocus(row: number, col: number, e: FocusEvent) {
       </table>
     </div>
     <p class="grid-hint">
-      Таблица: ↑↓←→ · Shift — выделение · Ctrl+↑↓ — ±шаг · Ctrl+C/V · Ctrl+I — интерполяция.
-      Оси X/Y: клик по заголовку · ←→ (X) / ↑↓ (Y) · Shift — диапазон · Ctrl+↑↓ — ±шаг · цифры — замена · Ctrl+I — интерполяция.
+      Таблица: ↑↓←→ · Shift — выделение · «,» −шаг / «.» +шаг · «/» — интерполяция · Ctrl+C/V · Esc — свернуть выделение.
+      Оси X/Y: клик по заголовку · ←→ (X) / ↑↓ (Y) · Shift — диапазон · «,» −шаг / «.» +шаг · цифры — замена · «/» — интерполяция.
       Из таблицы: ↑ на верхней строке → ось X; ← в первом столбце → ось Y.
     </p>
   </div>

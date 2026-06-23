@@ -1,4 +1,5 @@
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
+use std::net::{TcpStream, ToSocketAddrs};
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -67,15 +68,138 @@ pub struct ConnectionInfo {
     pub handshake_command: char,
 }
 
-pub struct SerialLink {
+/// Байтовый транспорт под TS-протоколом. Абстрагирует физический канал к ECU:
+/// последовательный порт (UART / USB-CDC) или TCP (например Wi-Fi мост ESP32,
+/// который прозрачно проксирует байты между сокетом и UART ECU).
+///
+/// `EcuLink` реализует весь протокол TunerStudio поверх этого трейта и ничего
+/// не знает о том, serial это или сеть — добавление нового канала сводится к
+/// новой реализации `Transport`.
+pub trait Transport: Send {
+    /// Прочитать доступные байты (семантика `Read::read`); `Ok(0)` — данных пока нет.
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize>;
+    /// Записать буфер целиком.
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()>;
+    /// Протолкнуть исходящий буфер.
+    fn flush(&mut self) -> io::Result<()>;
+    /// Сбросить входящий буфер (drop pending RX перед новым запросом).
+    fn clear_input(&mut self) -> io::Result<()>;
+    /// Сбросить оба буфера (перед handshake).
+    fn clear_all(&mut self) -> io::Result<()>;
+}
+
+fn serial_clear_err(e: serialport::Error) -> io::Error {
+    io::Error::new(io::ErrorKind::Other, e)
+}
+
+/// Транспорт поверх последовательного порта (`serialport`).
+struct SerialTransport {
     port: Box<dyn serialport::SerialPort>,
+}
+
+impl Transport for SerialTransport {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        self.port.read(buf)
+    }
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.port.write_all(buf)
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        self.port.flush()
+    }
+    fn clear_input(&mut self) -> io::Result<()> {
+        self.port
+            .clear(serialport::ClearBuffer::Input)
+            .map_err(serial_clear_err)
+    }
+    fn clear_all(&mut self) -> io::Result<()> {
+        self.port
+            .clear(serialport::ClearBuffer::All)
+            .map_err(serial_clear_err)
+    }
+}
+
+/// Транспорт поверх TCP-сокета (Wi-Fi мост ESP32 ↔ UART ECU).
+///
+/// Чтение работает с таймаутом опроса `read_timeout`: при отсутствии данных
+/// возвращается `Ok(0)` (как у не-блокирующего serial), чтобы внешний цикл
+/// `read_exact_deadline` сам отслеживал общий дедлайн.
+struct TcpTransport {
+    stream: TcpStream,
+    read_timeout: Duration,
+}
+
+impl TcpTransport {
+    /// Гранулярность опроса чтения: read() блокируется максимум на столько.
+    const POLL_INTERVAL: Duration = Duration::from_millis(50);
+
+    /// Слить накопившиеся входящие байты (аналог `clear` для serial).
+    fn drain(&mut self) -> io::Result<()> {
+        self.stream.set_read_timeout(Some(Duration::from_millis(2)))?;
+        let mut scratch = [0u8; 512];
+        let result = loop {
+            match self.stream.read(&mut scratch) {
+                Ok(0) => break Ok(()),
+                Ok(_) => continue,
+                Err(e)
+                    if e.kind() == io::ErrorKind::WouldBlock
+                        || e.kind() == io::ErrorKind::TimedOut =>
+                {
+                    break Ok(())
+                }
+                Err(e) => break Err(e),
+            }
+        };
+        self.stream.set_read_timeout(Some(self.read_timeout))?;
+        result
+    }
+}
+
+impl Transport for TcpTransport {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        match self.stream.read(buf) {
+            Ok(n) => Ok(n),
+            // Таймаут опроса — данных пока нет, не ошибка.
+            Err(e)
+                if e.kind() == io::ErrorKind::WouldBlock
+                    || e.kind() == io::ErrorKind::TimedOut =>
+            {
+                Ok(0)
+            }
+            Err(e) => Err(e),
+        }
+    }
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.stream.write_all(buf)
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        self.stream.flush()
+    }
+    fn clear_input(&mut self) -> io::Result<()> {
+        self.drain()
+    }
+    fn clear_all(&mut self) -> io::Result<()> {
+        self.drain()
+    }
+}
+
+/// Линк к ECU поверх произвольного [`Transport`] (serial или TCP).
+///
+/// Реализует протокол TunerStudio (handshake, чтение output-каналов, страниц
+/// конфигурации, консольные команды и т.д.) транспорт-агностично.
+pub struct EcuLink {
+    transport: Box<dyn Transport>,
     timeout_ms: u64,
     info: ConnectionInfo,
     tracer: Option<Arc<dyn ProtocolTracer>>,
     last_request_payload: Vec<u8>,
 }
 
-impl SerialLink {
+/// Историческое имя — линк больше не привязан к serial, но многие вызовы
+/// (`session`, `port_discovery`, UI-компонент) используют это имя.
+pub type SerialLink = EcuLink;
+
+impl EcuLink {
     pub fn list_ports() -> Result<Vec<String>, ProtocolError> {
         let mut names: Vec<String> = serialport::available_ports()?
             .into_iter()
@@ -85,6 +209,7 @@ impl SerialLink {
         Ok(names)
     }
 
+    /// Подключение по последовательному порту (UART / USB-CDC).
     pub fn connect(
         port_name: &str,
         baud_rate: u32,
@@ -101,20 +226,94 @@ impl SerialLink {
             .open()
             .map_err(|e| crate::port_discovery::map_serial_open_error(port_name, e))?;
 
-        let mut link = Self {
-            port,
+        let info = ConnectionInfo {
+            port_name: port_name.to_string(),
+            baud_rate,
+            signature: String::new(),
+            handshake_command: TS_HELLO_COMMAND as char,
+        };
+        Self::establish(Box::new(SerialTransport { port }), info, timeout_ms, tracer)
+    }
+
+    /// Подключение по TCP (Wi-Fi мост ESP32 ↔ UART ECU).
+    ///
+    /// `port_name` в [`ConnectionInfo`] = `host:port`, `baud_rate` = 0 (baud к
+    /// сетевому каналу неприменим — он задаётся на мосте/ECU).
+    pub fn connect_tcp(
+        host: &str,
+        tcp_port: u16,
+        timeout_ms: u64,
+        tracer: Option<Arc<dyn ProtocolTracer>>,
+    ) -> Result<Self, ProtocolError> {
+        let connect_timeout = Duration::from_millis(timeout_ms.max(2000));
+        let addrs = (host, tcp_port)
+            .to_socket_addrs()
+            .map_err(|e| {
+                io::Error::new(io::ErrorKind::InvalidInput, format!("{host}:{tcp_port}: {e}"))
+            })?
+            .collect::<Vec<_>>();
+        if addrs.is_empty() {
+            return Err(ProtocolError::Io(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!("не удалось разрешить адрес {host}:{tcp_port}"),
+            )));
+        }
+
+        let mut last_err: Option<io::Error> = None;
+        let stream = addrs
+            .iter()
+            .find_map(|addr| match TcpStream::connect_timeout(addr, connect_timeout) {
+                Ok(stream) => Some(stream),
+                Err(e) => {
+                    last_err = Some(e);
+                    None
+                }
+            })
+            .ok_or_else(|| {
+                ProtocolError::Io(last_err.unwrap_or_else(|| {
+                    io::Error::new(io::ErrorKind::Other, "TCP connect failed")
+                }))
+            })?;
+
+        stream.set_nodelay(true)?;
+        let read_timeout = TcpTransport::POLL_INTERVAL;
+        stream.set_read_timeout(Some(read_timeout))?;
+        stream.set_write_timeout(Some(Duration::from_millis(timeout_ms.max(2000))))?;
+
+        let info = ConnectionInfo {
+            port_name: format!("{host}:{tcp_port}"),
+            baud_rate: 0,
+            signature: String::new(),
+            handshake_command: TS_HELLO_COMMAND as char,
+        };
+        Self::establish(
+            Box::new(TcpTransport {
+                stream,
+                read_timeout,
+            }),
+            info,
             timeout_ms,
-            info: ConnectionInfo {
-                port_name: port_name.to_string(),
-                baud_rate,
-                signature: String::new(),
-                handshake_command: TS_HELLO_COMMAND as char,
-            },
+            tracer,
+        )
+    }
+
+    /// Общий путь: собрать линк поверх готового транспорта, сбросить буферы и
+    /// выполнить handshake `S` для получения signature.
+    fn establish(
+        transport: Box<dyn Transport>,
+        info: ConnectionInfo,
+        timeout_ms: u64,
+        tracer: Option<Arc<dyn ProtocolTracer>>,
+    ) -> Result<Self, ProtocolError> {
+        let mut link = Self {
+            transport,
+            timeout_ms,
+            info,
             tracer,
             last_request_payload: Vec::new(),
         };
 
-        link.port.clear(serialport::ClearBuffer::All)?;
+        link.transport.clear_all()?;
 
         let signature = link.handshake()?;
         link.info.signature = signature;
@@ -122,15 +321,15 @@ impl SerialLink {
     }
 
     fn handshake(&mut self) -> Result<String, ProtocolError> {
-        self.port.clear(serialport::ClearBuffer::All)?;
+        self.transport.clear_all()?;
         let payload = [TS_HELLO_COMMAND];
         self.last_request_payload = payload.to_vec();
         let request = make_crc_request(&payload);
         if let Some(tracer) = &self.tracer {
             tracer.on_tx(&payload, &request);
         }
-        self.port.write_all(&request)?;
-        self.port.flush()?;
+        self.transport.write_all(&request)?;
+        self.transport.flush()?;
 
         match self.read_crc_frame_logged(&payload, self.timeout_ms) {
             Ok(response) => {
@@ -165,14 +364,14 @@ impl SerialLink {
         if let Some(tracer) = &self.tracer {
             tracer.on_tx(payload, &request);
         }
-        self.port.write_all(&request)?;
-        self.port.flush()?;
+        self.transport.write_all(&request)?;
+        self.transport.flush()?;
         self.read_crc_frame_logged(payload, timeout_ms)
     }
 
     /// Сброс «хвостов» в RX (аналог Java `IncomingDataBuffer.dropPending` — без ожидания).
     fn drop_pending_rx(&mut self) {
-        let _ = self.port.clear(serialport::ClearBuffer::Input);
+        let _ = self.transport.clear_input();
     }
 
     /// `ochGetCommand` — live output block (`O%2o%2c`).
@@ -466,6 +665,18 @@ impl SerialLink {
         Ok(decode_console_text_payload(&response.payload))
     }
 
+    /// Сырой `G`-буфер без фильтрации `msg` — для разбора `wave_chart`
+    /// (engine sniffer). Записи остаются мультиплексированными, как на проводе.
+    pub fn get_console_raw(&mut self) -> Result<String, ProtocolError> {
+        let response = self.send_request(&[TS_GET_TEXT])?;
+        if response.code != TS_RESPONSE_OK {
+            return Err(ProtocolError::ErrorResponse(response.code));
+        }
+        Ok(String::from_utf8_lossy(&response.payload)
+            .trim_end_matches('\0')
+            .to_string())
+    }
+
     /// `E` + текст, затем `G` — одна консольная команда с ответом.
     pub fn execute_console_command_with_response(&mut self, text: &str) -> Result<String, ProtocolError> {
         self.execute_console_command(text)?;
@@ -560,7 +771,7 @@ impl SerialLink {
             if Instant::now() >= deadline {
                 return Err(ProtocolError::Timeout(self.timeout_ms));
             }
-            match self.port.read(&mut buf[offset..]) {
+            match self.transport.read(&mut buf[offset..]) {
                 Ok(0) => {
                     std::thread::sleep(Duration::from_millis(1));
                 }

@@ -2,4 +2,7 @@
 
 mod view;
 
-pub use view::{dyno_config_from_values, DynoRunOptions, DynoRunPoint, DynoView};
+pub use view::{
+    dyno_config_from_values, DynoConfig, DynoRunOptions, DynoRunPoint, DynoView,
+    DEFAULT_DYNO_CONFIG,
+};

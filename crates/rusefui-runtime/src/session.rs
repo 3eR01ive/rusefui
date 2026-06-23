@@ -18,6 +18,7 @@ use crate::protocol_log::ProtocolLogStore;
 use crate::stimulator_ramp::StimulatorRampRunner;
 use crate::sources::composite_data_log::CompositeDataLogWriter;
 use crate::sources::composite_logger::{CompositeEventJson, CompositeLoggerSource};
+use crate::sources::engine_sniffer::EngineSnifferSource;
 use crate::sources::knock_scope::KnockScopeSource;
 use crate::sources::composite_timeline::{
     CompositeTimeline, CompositeTimelineStatus, CompositeTimelineView,
@@ -35,6 +36,15 @@ use crate::sources::output_timeline::{
 
 const STIMULATOR_CMD: &str = "self_stimulation";
 const TRIGGER_RPM_FIELD: &str = "triggerSimulatorRpm";
+
+/// Куда подключаться к ECU: последовательный порт или TCP (Wi-Fi мост ESP32).
+/// Различие между каналами скрыто в [`rusefi_protocol::EcuLink`] — здесь это
+/// лишь выбор способа установки соединения.
+#[derive(Debug, Clone)]
+enum ConnectTarget {
+    Serial { port: String, baud_rate: u32 },
+    Tcp { host: String, port: u16 },
+}
 
 /// Состояние ожидания выбора INI: link к ECU установлен, signature прочитана,
 /// но подходящий INI ещё не выбран (mismatch / not found / forced flow).
@@ -65,6 +75,7 @@ pub struct EcuSession {
     loaded_ini_path: Mutex<Option<PathBuf>>,
     output: OutputChannelsSource,
     composite: CompositeLoggerSource,
+    engine_sniffer: EngineSnifferSource,
     knock_scope: KnockScopeSource,
     config: ConfigSource,
     protocol_log: Arc<ProtocolLogStore>,
@@ -99,6 +110,7 @@ impl EcuSession {
             loaded_ini_path: Mutex::new(None),
             output: OutputChannelsSource::new(ini_ctx.clone()),
             composite: CompositeLoggerSource::new(),
+            engine_sniffer: EngineSnifferSource::new(),
             knock_scope: KnockScopeSource::new(),
             config: ConfigSource::new(ini_ctx),
             protocol_log,
@@ -752,6 +764,10 @@ impl EcuSession {
         &self.composite
     }
 
+    pub fn engine_sniffer(&self) -> &EngineSnifferSource {
+        &self.engine_sniffer
+    }
+
     pub fn knock_scope(&self) -> &KnockScopeSource {
         &self.knock_scope
     }
@@ -795,17 +811,39 @@ impl EcuSession {
     }
 
     pub fn connect(&self, port: &str, baud_rate: u32) -> Result<ConnectionInfo, String> {
-        self.connect_internal(port, baud_rate, false)
+        self.connect_internal(
+            ConnectTarget::Serial {
+                port: port.to_string(),
+                baud_rate,
+            },
+            false,
+        )
     }
 
     pub fn connect_automatic(&self, port: &str, baud_rate: u32) -> Result<ConnectionInfo, String> {
-        self.connect_internal(port, baud_rate, true)
+        self.connect_internal(
+            ConnectTarget::Serial {
+                port: port.to_string(),
+                baud_rate,
+            },
+            true,
+        )
+    }
+
+    /// Подключение к ECU через Wi-Fi мост (TCP-сервер ESP32, по умолчанию порт 29000).
+    pub fn connect_tcp(&self, host: &str, port: u16) -> Result<ConnectionInfo, String> {
+        self.connect_internal(
+            ConnectTarget::Tcp {
+                host: host.to_string(),
+                port,
+            },
+            false,
+        )
     }
 
     fn connect_internal(
         &self,
-        port: &str,
-        baud_rate: u32,
+        target: ConnectTarget,
         automatic: bool,
     ) -> Result<ConnectionInfo, String> {
         self.output.stop();
@@ -827,8 +865,15 @@ impl EcuSession {
 
         let tracer =
             Some(Arc::clone(&self.protocol_log) as Arc<dyn rusefi_protocol::ProtocolTracer>);
-        let link = SerialLink::connect(port, baud_rate, DEFAULT_IO_TIMEOUT_MS, tracer)
-            .map_err(protocol_error_message)?;
+        let link = match &target {
+            ConnectTarget::Serial { port, baud_rate } => {
+                SerialLink::connect(port, *baud_rate, DEFAULT_IO_TIMEOUT_MS, tracer)
+            }
+            ConnectTarget::Tcp { host, port } => {
+                SerialLink::connect_tcp(host, *port, DEFAULT_IO_TIMEOUT_MS, tracer)
+            }
+        }
+        .map_err(protocol_error_message)?;
         let info = link.info().clone();
 
         let resolve_result = resolve_ini_for_signature(&info.signature);

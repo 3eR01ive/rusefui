@@ -84,6 +84,21 @@ export interface DynoUiSettings {
   chartNmMax: number;
   chartHpMin: number;
   chartHpMax: number;
+  // Параметры расчёта (перенесены из настроек MCU в настройки компонента).
+  dynoRpmStep: number;
+  dynoSaeTemperatureC: number;
+  dynoSaeRelativeHumidity: number;
+  dynoSaeBaro: number;
+  dynoCarWheelDiaInch: number;
+  dynoCarWheelAspectRatio: number;
+  dynoCarWheelTireWidthMm: number;
+  dynoCarGearPrimaryReduction: number;
+  dynoCarGearRatio: number;
+  dynoCarGearFinalDrive: number;
+  dynoCarCarMassKg: number;
+  dynoCarCargoMassKg: number;
+  dynoCarCoeffOfDrag: number;
+  dynoCarFrontalAreaM2: number;
 }
 
 export interface KnockUiSettings {
@@ -100,7 +115,7 @@ export interface KnockUiSettings {
   momentumDurationMs: number;
   spectrogramWindowMs: number;
   /** Ширина скользящего окна просмотра спектрограммы в событиях (FFT-столбцах). */
-  spectrogramWindowEvents: number;
+  spectrogramWindowEvents?: number;
   spectrogramAutocontrast: boolean;
   spectrogramGainPercent: number;
   chartHeight: number;

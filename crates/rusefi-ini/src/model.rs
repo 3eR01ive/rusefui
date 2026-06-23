@@ -28,6 +28,28 @@ pub struct IniFile {
     pub curves: HashMap<String, IniCurveDef>,
     /// Сырые байты из `[ControllerCommands]` (`cmd_enable_self_stim` и т.д.).
     pub ts_commands: HashMap<String, Vec<u8>>,
+    /// Формат записи composite logger из `[LoggerDefinition]` (размер зависит от
+    /// прошивки: `recordDef … recordLen`). `None`, если секции нет.
+    #[serde(default)]
+    pub composite_logger: Option<CompositeLoggerDef>,
+}
+
+/// Поле записи composite (`recordField name, "Header", startBit, bitCount, …`).
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct CompositeRecordField {
+    pub start_bit: u32,
+    pub bit_count: u32,
+}
+
+/// Определение записи composite logger (`[LoggerDefinition]`, тип `composite`).
+#[derive(Debug, Clone, Serialize)]
+pub struct CompositeLoggerDef {
+    pub header_len: usize,
+    pub footer_len: usize,
+    /// Размер одной записи в байтах (`@@COMPOSITE_PACKET_SIZE@@` в прошивке).
+    pub record_len: usize,
+    /// `recordField` по имени → позиция бит.
+    pub fields: HashMap<String, CompositeRecordField>,
 }
 
 #[derive(Debug, Clone, Serialize)]

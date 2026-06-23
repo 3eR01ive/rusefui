@@ -30,10 +30,12 @@ import { invoke } from "@tauri-apps/api/core";
 import CompositeTriggerWheels, {
   type TriggerWheelsView,
 } from "./CompositeTriggerWheels.vue";
+import CompositeTriggerAnalysis, {
+  type TriggerAnalysis,
+} from "./CompositeTriggerAnalysis.vue";
 import {
   bufferSpanMs,
   buildChartView,
-  channelValue,
   crankAngleDeg,
   crankDegFromFirmwareTdc,
   computeNextGlobalTriggerAngleOffset,
@@ -129,7 +131,12 @@ const CAPTURE_DURATIONS_MS = [500, 1000, 3000] as const;
 const captureDurationMs = ref(1000);
 const durationDropdownOpen = ref(false);
 const crankEdgeMode = ref<CrankEdgeMode>("both");
-const showTriggerWheels = ref(true);
+// По умолчанию скрыто: trigger wheels делают компонент высоким (нельзя ужать
+// канвас по высоте). Включается галкой в тулбаре.
+const showTriggerWheels = ref(false);
+const showTriggerAnalysis = ref(false);
+const triggerAnalysis = ref<TriggerAnalysis | null>(null);
+const analysisBusy = ref(false);
 const triggerWheelsView = ref<TriggerWheelsView | null>(null);
 let wheelComputeTimer: ReturnType<typeof setTimeout> | null = null;
 const autoStopRemainingSec = ref<number | null>(null);
@@ -1096,6 +1103,55 @@ async function computeTriggerWheels() {
   } catch { triggerWheelsView.value = null; }
 }
 
+function onToggleAnalysis() {
+  if (showTriggerAnalysis.value && !triggerAnalysis.value) {
+    void computeTriggerAnalysis();
+  }
+}
+
+async function computeTriggerAnalysis() {
+  if (analysisBusy.value) return;
+  analysisBusy.value = true;
+  try {
+    const events = await allSessionEventsForWheels();
+    if (events.length < 8) {
+      triggerAnalysis.value = null;
+      return;
+    }
+    triggerAnalysis.value = await invoke<TriggerAnalysis>("composite_analyze_trigger", {
+      params: { events, channel: "pri", edgeMode: "rise" },
+    });
+  } catch {
+    triggerAnalysis.value = null;
+  } finally {
+    analysisBusy.value = false;
+  }
+}
+
+/** Центрировать окно графика на сбое. Работает и в live, и в review (по `pos`). */
+function jumpToFault(f: { tUs: number; pos: number }) {
+  if (reviewMode.value) {
+    const st = timelineStatus.value;
+    const dataSpan = Math.max(0, st.dataMaxSec - st.dataMinSec);
+    if (dataSpan <= 0) return;
+    const span = st.spanSec;
+    const centerSec = st.dataMinSec + f.pos * dataSpan;
+    void controlTimelineView({
+      followLive: false,
+      viewEndSec: centerSec + span / 2,
+      spanSec: span,
+    });
+    return;
+  }
+  const events = chartEvents();
+  if (events.length < 2) return;
+  const spanUs = viewSpanMs.value * 1000;
+  viewAnchorT0Us.value = f.tUs - spanUs / 2;
+  userAdjustedView.value = true;
+  clampViewToBuffer(events);
+  scheduleDraw();
+}
+
 function onTdcPlaceKeyDown(e: KeyboardEvent) {
   if (e.key === "Escape" && tdcPlaceMode.value) {
     tdcPlaceMode.value = false;
@@ -1189,6 +1245,12 @@ watch(
   () => scheduleWheelCompute(),
 );
 watch([crankEdgeMode, showTriggerWheels], () => scheduleWheelCompute());
+// Анализ сбоев инвалидируем при смене источника (live↔review, новый файл):
+// он считается по требованию, поэтому пере-считываем только если панель открыта.
+watch([reviewMode, compositeTimelineLoadEpoch], () => {
+  triggerAnalysis.value = null;
+  if (showTriggerAnalysis.value) void computeTriggerAnalysis();
+});
 watch(
   () => getConfigField(GLOBAL_TRIGGER_ANGLE_OFFSET_FIELD),
   () => scheduleWheelCompute(),
@@ -1299,6 +1361,13 @@ const statusLine = computed(() => {
       <label class="cc-wheels-toggle" title="Диски коленвала и распредвала (усреднение по циклам TDC)">
         <input v-model="showTriggerWheels" type="checkbox" @change="scheduleWheelCompute()" />
         Диски
+      </label>
+      <label
+        class="cc-wheels-toggle"
+        title="Поиск сбоев декодирования: потерянные/лишние фронты и рассинхрон счёта зубьев"
+      >
+        <input v-model="showTriggerAnalysis" type="checkbox" @change="onToggleAnalysis()" />
+        Анализ
       </label>
       <div
         class="cc-tdc-cal"
@@ -1437,6 +1506,13 @@ const statusLine = computed(() => {
       v-if="showTriggerWheels"
       :view="triggerWheelsView"
       :edge-mode="crankEdgeMode"
+    />
+    <CompositeTriggerAnalysis
+      v-if="showTriggerAnalysis"
+      :analysis="triggerAnalysis"
+      :busy="analysisBusy"
+      @refresh="computeTriggerAnalysis()"
+      @jump="jumpToFault"
     />
     <p v-if="snapshot.lastError" class="cc-error">{{ snapshot.lastError }}</p>
     <p v-else-if="connected && !loggingEnabled && !reviewMode" class="cc-hint">

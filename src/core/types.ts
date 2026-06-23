@@ -10,7 +10,8 @@ export type DataSourceId =
   | "outputChannels"
   | "textLog"
   | "knockScope"
-  | "compositeLogger";
+  | "compositeLogger"
+  | "engineSniffer";
 
 export interface DataBinding {
   /** `config`, `outputChannels`, `knockScope`, … */

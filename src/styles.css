@@ -63,6 +63,14 @@
   -webkit-user-select: none;
 }
 
+/* Текст логов/консоли — вернуть выделение и копирование поверх глобального запрета. */
+.selectable,
+.selectable * {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+}
+
 html,
 body {
   margin: 0;

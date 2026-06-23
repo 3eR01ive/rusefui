@@ -492,8 +492,16 @@ function scheduleSaveLogUiToProject(): void {
 }
 
 watch(projectUiEpoch, () => {
-  // project-changed шлётся на любой project_ui_set (composite/knock/…); viewport log не трогаем.
-  void applyLogUiFromProject({ applyViewport: false });
+  // project-changed шлётся на любой project_ui_set (composite/knock/canvas-layout/…).
+  // Если есть несохранённые локальные изменения (debounce ещё не сработал) — сперва
+  // сбрасываем их на диск, иначе перезагрузка прочитает устаревшие значения и
+  // «сбросит» только что изменённые настройки. viewport log не трогаем.
+  const reload = () => applyLogUiFromProject({ applyViewport: false });
+  if (saveLogUiTimer !== 0) {
+    void flushLogUiToProject().then(reload);
+  } else {
+    void reload();
+  }
 });
 
 watch(workspaceResetEpoch, () => {
@@ -1556,7 +1564,11 @@ onMounted(async () => {
     invalidateSeriesCache();
     lastView.value = null;
     seriesStreamGen += 1;
-    void refreshFieldCatalog();
+    // Только обновляем каталог доступных полей — НЕ сбрасываем графы/диапазоны
+    // пользователя. refreshFieldCatalog() пересоздаёт graphGroups в дефолт, и без
+    // последующего applyLogUiFromProject (как на mount) это стирало настройки при
+    // каждом подключении ECU и выходе из offline.
+    void reloadOutputFields().then(() => syncGraphFields());
     void ensureTimelineSeriesBootstrap(true).then(() => scheduleRedraw());
   });
 

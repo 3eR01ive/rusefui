@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onUnmounted, ref, watch } from "vue";
+import { invoke } from "@tauri-apps/api/core";
 import type { ComponentInstance, ResolvedTab } from "../core/types";
+import { panelsEpoch } from "../composables/useIniPanels";
 import { childPath as makeChildPath } from "../core/instance";
 import { useCanvasLayout, snapGrid } from "../composables/useCanvasLayout";
 import { setNavExtension } from "../composables/useWorkspaceNav";
@@ -136,7 +138,19 @@ async function toggleLayout() {
   }
 }
 
-function resetLayout() { reset(); editMode.value = false; }
+async function resetLayout() {
+  // Сбрасываем вкладку к версии из бандла софта: удаляем локальную копию её
+  // UI-config из проекта (если проект сделан в старой версии), затем чистим
+  // позиции канваса и перечитываем дерево вкладок из бандла.
+  try {
+    await invoke("project_reset_tab_config", { tabId: props.tab.id });
+  } catch (e) {
+    console.warn("[layout] reset tab config:", e);
+  }
+  reset();
+  editMode.value = false;
+  panelsEpoch.value += 1;
+}
 
 // ── Drag / swap ───────────────────────────────────────────────
 let activeDragKey: string | null = null;
@@ -218,7 +232,7 @@ watch(
   () => stored.value.extra ?? [],
   (extras) => {
     setNavExtension(extraNavKey,
-      extras.length ? { type: 'composite', id: 'canvas-extra', children: extras } : null
+      extras.length ? { type: 'composite', id: 'canvas-extra', children: extras as unknown as ComponentInstance[] } : null
     );
   },
   { immediate: true }

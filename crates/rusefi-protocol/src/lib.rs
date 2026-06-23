@@ -5,6 +5,7 @@
 
 mod commands;
 mod composite;
+mod engine_sniffer;
 mod crc;
 mod error;
 mod log_format;
@@ -14,7 +15,11 @@ mod serial;
 mod tracer;
 
 pub use commands::{DEFAULT_IO_TIMEOUT_MS, *};
-pub use composite::{parse_composite_records, CompositeParseState, CompositeRecord};
+pub use composite::{
+    parse_composite_records, parse_composite_records_with, CompositeLayout, CompositeParseState,
+    CompositeRecord,
+};
+pub use engine_sniffer::{parse_wave_chart, SnifferEvent, WaveChartParseState};
 pub use error::ProtocolError;
 pub use packet::{make_crc_request, parse_crc_response, CrcResponse};
 pub use port_discovery::{
@@ -24,7 +29,10 @@ pub use port_discovery::{
     try_open_serial_port, SerialPortEntry, RUSEFI_SIGNATURE_PREFIX, RUSEFI_USB_PID,
     RUSEFI_USB_VID,
 };
-pub use serial::{pack_config_read_request, pack_config_write_request, ConnectionInfo, SerialLink};
+pub use serial::{
+    pack_config_read_request, pack_config_write_request, ConnectionInfo, EcuLink, SerialLink,
+    Transport,
+};
 pub use tracer::ProtocolTracer;
 pub use log_format::{
     command_char, describe_payload, describe_response, hex_preview, is_composite_logger_io,

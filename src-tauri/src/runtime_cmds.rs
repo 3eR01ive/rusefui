@@ -3,9 +3,10 @@ use rusefui_runtime::{
     evaluate_checklist, AutoConnectManager, AutoConnectSnapshot, ComponentRuntime, CompositeEventJson, CompositeSnapshot,
     ComputeTriggerWheelsParams, KnockScopeSnapshot, KnockScopeUiTick, CompositeTimelineStatus, CompositeTimelineView,
     CompositeTimelineViewQuery, TriggerWheelsView, compute_trigger_wheels,
+    AnalyzeTriggerParams, TriggerAnalysis, analyze_trigger,
     ConfigDiffSnapshot, ConfigDiffStore, ConfigFieldInfo, ConfigSnapshot, ConfigSource, ChecklistRules,
     DiffSide,
-    EcuSession, EcuSyncOnMount, IniCandidate, OnlineDownloadStatus, OutputFieldInfo,
+    EcuSession, EcuSyncOnMount, EngineSnifferSnapshot, IniCandidate, OnlineDownloadStatus, OutputFieldInfo,
     OutputSnapshot, OutputTimelineChunkQuery, OutputTimelineSeriesChunk,
     OutputTimelineSeriesQuery, OutputTimelineSeriesSnapshot, OutputTimelineStatus, OutputTimelineView,
     OutputTimelineViewControl,
@@ -276,6 +277,14 @@ fn emit_composite(app: &AppHandle, snapshot: &CompositeSnapshot) {
     let snapshot = snapshot.clone();
     tauri::async_runtime::spawn(async move {
         let _ = app.emit("composite-logger", snapshot);
+    });
+}
+
+fn emit_engine_sniffer(app: &AppHandle, snapshot: &EngineSnifferSnapshot) {
+    let app = app.clone();
+    let snapshot = snapshot.clone();
+    tauri::async_runtime::spawn(async move {
+        let _ = app.emit("engine-sniffer", snapshot);
     });
 }
 
@@ -785,6 +794,20 @@ pub fn project_read_ui_config(
         Some(asset) => String::from_utf8(asset.bytes).map_err(|e| e.to_string()),
         None => Err(format!("{path}: No such file or directory")),
     }
+}
+
+/// Reset вкладки до версии из бандла: удаляет локальные копии её UI-config из
+/// каталога проекта (tab + достижимые компоненты, кроме общих с другими вкладками),
+/// чтобы дерево читалось из бандла текущей версии софта. Возвращает удалённые пути.
+#[tauri::command]
+pub fn project_reset_tab_config(
+    tab_id: String,
+    state: State<RuntimeState>,
+) -> Result<Vec<String>, String> {
+    let Some(dir) = state.project.lock().unwrap().project_dir() else {
+        return Ok(Vec::new()); // нет проекта — уже читается из бандла
+    };
+    rusefui_runtime::reset_tab_ui_config(&dir.join("config"), &tab_id)
 }
 
 pub fn register_knock_scope_emitter(app: &AppHandle) {
@@ -1335,6 +1358,11 @@ pub fn composite_compute_trigger_wheels(params: ComputeTriggerWheelsParams) -> T
 }
 
 #[tauri::command]
+pub fn composite_analyze_trigger(params: AnalyzeTriggerParams) -> TriggerAnalysis {
+    analyze_trigger(&params)
+}
+
+#[tauri::command]
 pub fn composite_timeline_session_events(state: State<RuntimeState>) -> Vec<CompositeEventJson> {
     state.session.composite_timeline_session_events()
 }
@@ -1342,6 +1370,41 @@ pub fn composite_timeline_session_events(state: State<RuntimeState>) -> Vec<Comp
 #[tauri::command]
 pub fn composite_set_max_window_ms(max_window_ms: f64, state: State<RuntimeState>) {
     state.session.composite().set_max_window_ms(max_window_ms);
+}
+
+#[tauri::command]
+pub fn engine_sniffer_get_snapshot(state: State<RuntimeState>) -> EngineSnifferSnapshot {
+    state.session.engine_sniffer().snapshot()
+}
+
+/// Старт/стоп опроса engine sniffer (`wave_chart` из `G`-потока).
+/// На ECU sniffer включается сам при `rpm < engineSnifferRpmThreshold` —
+/// здесь это только клиентский poll on/off.
+#[tauri::command]
+pub fn engine_sniffer_set_enabled(
+    enabled: bool,
+    state: State<RuntimeState>,
+    app: AppHandle,
+) -> Result<EngineSnifferSnapshot, String> {
+    if enabled {
+        if !state.session.is_connected() {
+            return Err("ECU не подключена".into());
+        }
+        if state.session.config().snapshot().loading {
+            return Err("Дождитесь окончания загрузки config".into());
+        }
+        let app_emit = app.clone();
+        let session = Arc::clone(&state.session);
+        state.session.engine_sniffer().start(session, move |snap| {
+            emit_engine_sniffer(&app_emit, &snap);
+        })?;
+        // Старт sniffer останавливает composite/knock — обновим их UI.
+        emit_composite(&app, &state.session.composite().snapshot());
+    } else {
+        state.session.engine_sniffer().stop();
+        emit_engine_sniffer(&app, &state.session.engine_sniffer().snapshot());
+    }
+    Ok(state.session.engine_sniffer().snapshot())
 }
 
 #[tauri::command]

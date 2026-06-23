@@ -5,8 +5,8 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use rusefi_ini::{
-    decode_output_channels, ConfigFieldKind, FieldKind, IniCurveDef, IniFile, IniTableDef,
-    OutputChannels,
+    decode_output_channels, CompositeLoggerDef, ConfigFieldKind, FieldKind, IniCurveDef, IniFile,
+    IniTableDef, OutputChannels,
 };
 use serde::Serialize;
 use serde_json::{json, Value};
@@ -93,6 +93,8 @@ pub struct IniContext {
     pub curves: HashMap<String, IniCurveDef>,
     pub inter_write_delay_ms: u16,
     pub page_activation_delay_ms: u16,
+    /// Формат записи composite logger (`[LoggerDefinition]`) — размер зависит от прошивки.
+    pub composite_logger: Option<CompositeLoggerDef>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -151,6 +153,7 @@ impl IniContext {
             curves: HashMap::new(),
             inter_write_delay_ms: 10,
             page_activation_delay_ms: 500,
+            composite_logger: None,
         }
     }
 
@@ -170,6 +173,7 @@ impl IniContext {
             curves: ini.curves.clone(),
             inter_write_delay_ms: ini.inter_write_delay_ms,
             page_activation_delay_ms: ini.page_activation_delay_ms,
+            composite_logger: ini.composite_logger.clone(),
         }
     }
 }

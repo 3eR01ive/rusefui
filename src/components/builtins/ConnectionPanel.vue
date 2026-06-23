@@ -15,6 +15,12 @@ const props = defineProps<{
 const { state, dispatch, error, ready } = useRustComponent(props.instance, props.path);
 const dataCtx = useDataContext();
 
+const mode = computed({
+  get: () => (state.value.mode as string) ?? "serial",
+  set: (m: string) => void dispatch("set_mode", { mode: m }),
+});
+const isTcp = computed(() => mode.value === "tcp");
+
 const ports = computed(() => (state.value.ports as string[]) ?? []);
 const selectedPort = computed({
   get: () => (state.value.selectedPort as string) ?? "",
@@ -25,6 +31,14 @@ const baudRate = computed({
   set: (baud_rate: number) => void dispatch("set_baud_rate", { baud_rate }),
 });
 const baudRates = computed(() => (state.value.baudRates as number[]) ?? [115200]);
+const tcpHost = computed({
+  get: () => (state.value.tcpHost as string) ?? "",
+  set: (host: string) => void dispatch("set_tcp_host", { host }),
+});
+const tcpPort = computed({
+  get: () => (state.value.tcpPort as number) ?? 29000,
+  set: (port: number) => void dispatch("set_tcp_port", { port }),
+});
 const loadingPorts = computed(() => Boolean(state.value.loadingPorts));
 const connecting = computed(() => Boolean(state.value.connecting));
 const message = computed(() => (state.value.message as string) ?? null);
@@ -32,7 +46,10 @@ const messageIsError = computed(() => Boolean(state.value.messageIsError));
 const isConnected = computed(() => Boolean(state.value.connected));
 
 const canConnect = computed(
-  () => !!selectedPort.value && !connecting.value && !isConnected.value,
+  () =>
+    !connecting.value &&
+    !isConnected.value &&
+    (isTcp.value ? !!tcpHost.value.trim() : !!selectedPort.value),
 );
 
 watch(
@@ -82,40 +99,94 @@ function disconnect() {
 
 <template>
   <div class="connection-panel">
-    <div class="field">
-      <label for="port">Порт</label>
-      <div class="row">
-        <select
-          id="port"
-          :value="selectedPort"
-          :disabled="isConnected || connecting"
-          @change="selectedPort = ($event.target as HTMLSelectElement).value"
-        >
-          <option v-if="!ports.length" value="" disabled>— нет портов —</option>
-          <option v-for="p in ports" :key="p" :value="p">{{ p }}</option>
-        </select>
+    <div class="field full">
+      <label>Тип подключения</label>
+      <div class="mode-toggle" role="tablist">
         <button
           type="button"
-          class="btn secondary"
-          :disabled="loadingPorts || isConnected"
-          @click="refreshPorts"
+          class="mode-btn"
+          :class="{ active: !isTcp }"
+          :disabled="isConnected || connecting"
+          @click="mode = 'serial'"
         >
-          {{ loadingPorts ? "…" : "Обновить" }}
+          Serial / USB
+        </button>
+        <button
+          type="button"
+          class="mode-btn"
+          :class="{ active: isTcp }"
+          :disabled="isConnected || connecting"
+          @click="mode = 'tcp'"
+        >
+          TCP / Wi-Fi
         </button>
       </div>
     </div>
 
-    <div class="field">
-      <label for="baud">Скорость (baud)</label>
-      <select
-        id="baud"
-        :value="baudRate"
-        :disabled="isConnected || connecting"
-        @change="baudRate = Number(($event.target as HTMLSelectElement).value)"
-      >
-        <option v-for="b in baudRates" :key="b" :value="b">{{ b }}</option>
-      </select>
-    </div>
+    <template v-if="!isTcp">
+      <div class="field">
+        <label for="port">Порт</label>
+        <div class="row">
+          <select
+            id="port"
+            :value="selectedPort"
+            :disabled="isConnected || connecting"
+            @change="selectedPort = ($event.target as HTMLSelectElement).value"
+          >
+            <option v-if="!ports.length" value="" disabled>— нет портов —</option>
+            <option v-for="p in ports" :key="p" :value="p">{{ p }}</option>
+          </select>
+          <button
+            type="button"
+            class="btn secondary"
+            :disabled="loadingPorts || isConnected"
+            @click="refreshPorts"
+          >
+            {{ loadingPorts ? "…" : "Обновить" }}
+          </button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="baud">Скорость (baud)</label>
+        <select
+          id="baud"
+          :value="baudRate"
+          :disabled="isConnected || connecting"
+          @change="baudRate = Number(($event.target as HTMLSelectElement).value)"
+        >
+          <option v-for="b in baudRates" :key="b" :value="b">{{ b }}</option>
+        </select>
+      </div>
+    </template>
+
+    <template v-else>
+      <div class="field">
+        <label for="tcp-host">Хост (IP моста ESP32)</label>
+        <input
+          id="tcp-host"
+          type="text"
+          :value="tcpHost"
+          :disabled="isConnected || connecting"
+          placeholder="192.168.4.1"
+          @change="tcpHost = ($event.target as HTMLInputElement).value"
+        />
+      </div>
+
+      <div class="field">
+        <label for="tcp-port">TCP-порт</label>
+        <input
+          id="tcp-port"
+          type="number"
+          min="1"
+          max="65535"
+          :value="tcpPort"
+          :disabled="isConnected || connecting"
+          placeholder="29000"
+          @change="tcpPort = Number(($event.target as HTMLInputElement).value)"
+        />
+      </div>
+    </template>
 
     <div class="actions">
       <button type="button" class="btn primary" :disabled="!canConnect" @click="connect">
@@ -191,8 +262,17 @@ function disconnect() {
   gap: 0.5rem;
 }
 
-select {
+@media (min-width: 768px) {
+  .field.full {
+    grid-column: 1 / -1;
+  }
+}
+
+select,
+input[type="text"],
+input[type="number"] {
   flex: 1;
+  width: 100%;
   min-width: 0;
   padding: 0.55rem 0.7rem;
   border-radius: var(--radius-md);
@@ -201,9 +281,36 @@ select {
   color: var(--color-text);
 }
 
-select:disabled {
+select:disabled,
+input:disabled {
   opacity: 0.6;
   background: var(--color-bg-muted);
+}
+
+.mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.mode-btn {
+  flex: 1;
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.mode-btn.active {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  border-color: var(--color-accent);
+}
+
+.mode-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .actions {

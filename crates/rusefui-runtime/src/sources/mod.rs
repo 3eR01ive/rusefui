@@ -1,7 +1,9 @@
 pub mod composite_data_log;
 pub mod composite_logger;
 pub mod composite_timeline;
+pub mod composite_trigger_analysis;
 pub mod composite_trigger_wheels;
+pub mod engine_sniffer;
 pub mod knock_scope;
 pub mod knock_spectrogram;
 pub mod config;

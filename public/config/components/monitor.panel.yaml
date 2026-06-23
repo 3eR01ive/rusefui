@@ -96,7 +96,7 @@ children:
 
   - type: section
     id: trigger-logger-section
-    layout: { x: 0, y: 600, w: 1864, h: 664 }
+    layout: { x: 0, y: 600, w: 1864, h: 320 }
     props:
       title: Trigger logger
     children:
@@ -109,3 +109,17 @@ children:
         bind:
           source: compositeLogger
           # autoStopSec: 0  # авто-disable на ECU через N с (0 = только в UI)
+
+  - type: section
+    id: engine-sniffer-section
+    layout: { x: 0, y: 928, w: 1864, h: 440 }
+    props:
+      title: Engine Sniffer
+    children:
+      - type: engine-sniffer
+        id: engine-sniffer
+        navSelectable: false
+        props:
+          height: 320
+        bind:
+          source: engineSniffer

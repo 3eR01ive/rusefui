@@ -4,8 +4,24 @@ use serde::Serialize;
 use serde_json::{json, Value};
 
 use crate::component::{ComponentLogic, ComponentMeta, EcuSyncOnMount, LogicComponentType};
-use crate::dyno::{dyno_config_from_values, DynoRunOptions, DynoRunPoint, DynoView};
+use crate::dyno::{
+    dyno_config_from_values, DynoConfig, DynoRunOptions, DynoRunPoint, DynoView, DEFAULT_DYNO_CONFIG,
+};
 use crate::session::EcuSession;
+
+/// Параметры расчёта приходят из настроек компонента (DynoUiSettings), а НЕ из
+/// config MCU. Ключи payload совпадают с именами полей INI (dynoRpmStep и т.д.).
+fn dyno_config_from_payload(payload: &Value) -> DynoConfig {
+    let mut map = std::collections::HashMap::new();
+    if let Some(obj) = payload.as_object() {
+        for (k, v) in obj {
+            if let Some(n) = v.as_f64() {
+                map.insert(k.clone(), n);
+            }
+        }
+    }
+    dyno_config_from_values(&map)
+}
 use crate::sources::output_channels::OutputSnapshot;
 
 const DEFAULT_RPM_FIELD: &str = "RPMValue";
@@ -31,6 +47,8 @@ struct DynoViewState {
 pub struct DynoLogic {
     session: Arc<EcuSession>,
     view: DynoView,
+    /// Текущие параметры расчёта (из настроек компонента).
+    config: DynoConfig,
     recording: bool,
     run_points: Vec<DynoRunPoint>,
     previous_run_points: Vec<DynoRunPoint>,
@@ -45,10 +63,13 @@ pub struct DynoLogic {
 
 impl DynoLogic {
     pub fn new(session: Arc<EcuSession>) -> Self {
-        let cfg = dyno_config_from_values(&session.config().snapshot().values);
+        // Параметры по умолчанию; реальные приходят из настроек компонента
+        // (set_dyno_config). Config MCU намеренно не читаем.
+        let cfg = DEFAULT_DYNO_CONFIG;
         Self {
             session,
             view: DynoView::new(cfg),
+            config: cfg,
             recording: false,
             run_points: Vec::new(),
             previous_run_points: Vec::new(),
@@ -62,9 +83,8 @@ impl DynoLogic {
         }
     }
 
-    fn reload_config(&mut self) {
-        let cfg = dyno_config_from_values(&self.session.config().snapshot().values);
-        self.view.update_config(cfg);
+    fn apply_config(&mut self) {
+        self.view.update_config(self.config);
     }
 
     fn view_state(&self) -> DynoViewState {
@@ -216,9 +236,18 @@ impl ComponentLogic for DynoLogic {
                 }
                 Ok(self.to_json())
             }
+            "set_dyno_config" => {
+                self.config = dyno_config_from_payload(&payload);
+                // Во время записи кривую не пересчитываем — применим на старте.
+                if !self.recording {
+                    self.apply_config();
+                }
+                self.dirty = true;
+                Ok(self.to_json())
+            }
             "reload_config" => {
                 if !self.recording {
-                    self.reload_config();
+                    self.apply_config();
                 }
                 self.dirty = true;
                 Ok(self.to_json())
@@ -233,7 +262,7 @@ impl ComponentLogic for DynoLogic {
                 if self.recording {
                     return Err("Запись уже идёт".into());
                 }
-                self.reload_config();
+                self.apply_config();
                 self.view.set_run_options(self.run_options);
                 self.view.reset();
                 if !self.run_points.is_empty() {

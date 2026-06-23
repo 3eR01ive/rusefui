@@ -23,6 +23,7 @@ mod ui_persist;
 mod protocol_log;
 mod runtime;
 mod stimulator_ramp;
+mod ui_config_reset;
 mod workspace;
 pub mod components;
 pub mod session;
@@ -51,6 +52,7 @@ pub use config_diff::{
 };
 pub use runtime::ComponentRuntime;
 pub use session::{EcuSession, PendingIniResolution};
+pub use ui_config_reset::reset_tab_ui_config;
 pub use stimulator_ramp::{
     StimulatorRampParams, StimulatorRampPhase, StimulatorRampResult, StimulatorRampRunner,
     StimulatorRampStep, DEFAULT_RAMP_STEP_MS,
@@ -89,6 +91,9 @@ pub use sources::composite_data_log::composite_logs_dir;
 pub use sources::composite_logger::{
     CompositeEventJson, CompositeLoggerSource, CompositeSnapshot,
 };
+pub use sources::engine_sniffer::{
+    EngineSnifferSnapshot, EngineSnifferSource, SnifferChannel, SnifferEventJson,
+};
 pub use sources::knock_scope::{KnockScopeSnapshot, KnockScopeSource, KnockScopeUiTick, KNOCK_ADC_HZ};
 pub use sources::knock_spectrogram::{
     encode_knock_spectrogram_gpu, encode_knock_spectrogram_gpu_b64,
@@ -98,6 +103,9 @@ pub use sources::knock_spectrogram::{
 pub use sources::composite_timeline::{
     CompositeTimeline, CompositeTimelineStatus, CompositeTimelineView,
     CompositeTimelineViewQuery,
+};
+pub use sources::composite_trigger_analysis::{
+    analyze_trigger, AnalyzeTriggerParams, TriggerAnalysis, TriggerFault,
 };
 pub use sources::composite_trigger_wheels::{
     compute_trigger_wheels, ComputeTriggerWheelsParams, TriggerWheelsView, WheelEdgeMode,

@@ -166,8 +166,6 @@ const activeIdx = ref(-1);
 // для шаблона — через liveSnap (throttled, не вызывает лишних ре-рендеров)
 const liveAfr    = computed(() => liveField(afrCh.value));
 const liveTarget = computed(() => liveField(targetAfrCh.value));
-const liveRpm    = computed(() => liveField(rpmCh.value));
-const liveLoad   = computed(() => liveField(loadCh.value));
 
 function findBin(bins: number[], v: number): number {
   if (!bins.length) return 0;

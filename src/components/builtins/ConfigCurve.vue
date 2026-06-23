@@ -146,6 +146,8 @@ function applyBufferPreview(): void {
 }
 
 async function commitEditBuffer(): Promise<void> {
+  // Любой переход/коммит сперва досыпает отложенный нудж в ECU.
+  await flushNudge();
   if (!editBuffer.value) return;
   const parsed = Number(editBuffer.value.trim().replace(",", "."));
   if (!Number.isFinite(parsed)) {
@@ -207,6 +209,35 @@ function currentCellNumeric(): number | null {
   return cursorAxis.value === "x" ? displayX(cursorCol.value) : displayY(cursorCol.value);
 }
 
+// Отложенная запись нуджа в ECU: на каждый шаг — живой предпросмотр локально, в
+// ECU пишем разом, когда удержание прекратится (≈ отпускание клавиши).
+let nudgeFlushTimer = 0;
+let pendingNudge: { axis: CurveAxis; col: number; value: number } | null = null;
+const NUDGE_FLUSH_IDLE_MS = 250;
+
+function scheduleNudgeFlush(): void {
+  if (nudgeFlushTimer !== 0) window.clearTimeout(nudgeFlushTimer);
+  nudgeFlushTimer = window.setTimeout(() => {
+    nudgeFlushTimer = 0;
+    void flushNudge();
+  }, NUDGE_FLUSH_IDLE_MS);
+}
+
+async function flushNudge(): Promise<void> {
+  if (nudgeFlushTimer !== 0) {
+    window.clearTimeout(nudgeFlushTimer);
+    nudgeFlushTimer = 0;
+  }
+  const p = pendingNudge;
+  if (!p) return;
+  pendingNudge = null;
+  if (p.axis === "x") {
+    await commitXValue(p.col, p.value);
+  } else {
+    await commitRowValue(p.col, 0, p.value);
+  }
+}
+
 async function nudgeCell(direction: "up" | "down"): Promise<void> {
   if (!axisEditable(cursorAxis.value)) return;
   const current = currentCellNumeric();
@@ -220,11 +251,12 @@ async function nudgeCell(direction: "up" | "down"): Promise<void> {
 
   if (cursorAxis.value === "x") {
     setXPreview(cursorCol.value, next);
-    await commitXValue(cursorCol.value, next);
+    pendingNudge = { axis: "x", col: cursorCol.value, value: next };
   } else {
     setRowPreview(cursorCol.value, 0, next);
-    await commitRowValue(cursorCol.value, 0, next);
+    pendingNudge = { axis: "y", col: cursorCol.value, value: next };
   }
+  scheduleNudgeFlush();
   redraw();
 }
 
@@ -282,29 +314,36 @@ function onComponentKeydown(event: KeyboardEvent): boolean {
 
   const key = event.key;
   const code = event.code;
+
+  // ,(Comma) декремент · .(Period) инкремент по ФИЗИЧЕСКОЙ позиции (event.code,
+  // без Shift, не зависит от раскладки). Ctrl остаётся для навигации.
+  const noCmd = !event.ctrlKey && !event.metaKey;
+  if (noCmd && code === "Comma") {
+    void nudgeCell("down");
+    return true;
+  }
+  if (noCmd && code === "Period") {
+    void nudgeCell("up");
+    return true;
+  }
+
   const isArrow = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(key);
+  // Десятичная точка — только Numpad `.` (основные `,`/`.` заняты ±шагом).
   const isTypeChar =
     (!event.ctrlKey && !event.metaKey && !event.altKey && /^[0-9]$/.test(key)) ||
     code === "NumpadDecimal" ||
     code === "NumpadSubtract" ||
-    key === "." ||
-    key === "," ||
-    key === "-";
+    code === "Minus";
   const isTypeControl = key === "Backspace" || key === "Enter" || key === "Escape";
 
   if (!isArrow && !isTypeChar && !isTypeControl) return false;
 
-  if (
-    isArrow &&
-    (event.ctrlKey || event.metaKey) &&
-    !event.altKey &&
-    (key === "ArrowUp" || key === "ArrowDown")
-  ) {
-    void nudgeCell(key === "ArrowUp" ? "up" : "down");
-    return true;
+  // Ctrl+стрелки отдаём навигации между панелями, а не кривой.
+  if (isArrow && (event.ctrlKey || event.metaKey)) {
+    return false;
   }
 
-  if (isArrow && !event.ctrlKey && !event.metaKey && !event.altKey) {
+  if (isArrow && !event.altKey) {
     void handleArrow(key);
     return true;
   }
@@ -497,6 +536,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener("mousemove", onWindowMouseMove);
   window.removeEventListener("mouseup", onWindowMouseUp);
+  void flushNudge();
 });
 </script>
 
@@ -583,7 +623,7 @@ onBeforeUnmount(() => {
     </div>
 
     <p class="curve-hint">
-      Enter — активировать · ↑↓←→ — ячейка · Ctrl+↑↓ — ±0.1 · цифры — новое значение · график — перетаскивание Y
+      Enter — активировать · ↑↓←→ — ячейка · «,» −0.1 / «.» +0.1 · цифры — новое значение · график — перетаскивание Y
     </p>
   </div>
 </template>

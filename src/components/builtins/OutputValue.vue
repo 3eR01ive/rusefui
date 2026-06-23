@@ -27,6 +27,9 @@ function parseDisplayType(v: unknown): DisplayType {
   return "badge";
 }
 const displayType = ref<DisplayType>(parseDisplayType(props.props.displayType));
+// Сравнение через функцию, чтобы vue-tsc не сужал displayType внутри v-if-блоков
+// (кнопки переключателя типа дублируются в каждом блоке).
+const isType = (t: DisplayType): boolean => displayType.value === t;
 const minVal = ref(Number(props.props.min ?? 0));
 const maxVal = ref(Number(props.props.max ?? 100));
 
@@ -288,10 +291,10 @@ const barWarnZonesV = computed(() =>
       </svg>
       <div v-if="settingsOpen" class="ov-settings ov-settings--bar">
         <div class="s-row">
-          <button class="s-type" :class="{ active: displayType === 'badge' }" @click="displayType = 'badge'">Плашка</button>
-          <button class="s-type" :class="{ active: displayType === 'gauge' }" @click="displayType = 'gauge'">Gauge</button>
-          <button class="s-type" :class="{ active: displayType === 'bar-h' }" @click="displayType = 'bar-h'">Bar →</button>
-          <button class="s-type" :class="{ active: displayType === 'bar-v' }" @click="displayType = 'bar-v'">Bar ↑</button>
+          <button class="s-type" :class="{ active: isType('badge') }" @click="displayType = 'badge'">Плашка</button>
+          <button class="s-type" :class="{ active: isType('gauge') }" @click="displayType = 'gauge'">Gauge</button>
+          <button class="s-type" :class="{ active: isType('bar-h') }" @click="displayType = 'bar-h'">Bar →</button>
+          <button class="s-type" :class="{ active: isType('bar-v') }" @click="displayType = 'bar-v'">Bar ↑</button>
           <span class="s-spacer"/>
           <span class="s-lbl">Min</span><input v-model.number="minVal" type="number" class="s-num"/>
           <span class="s-lbl">Max</span><input v-model.number="maxVal" type="number" class="s-num"/>
@@ -348,10 +351,10 @@ const barWarnZonesV = computed(() =>
       </svg>
       <div v-if="settingsOpen" class="ov-settings ov-settings--bar">
         <div class="s-row">
-          <button class="s-type" :class="{ active: displayType === 'badge' }" @click="displayType = 'badge'">Плашка</button>
-          <button class="s-type" :class="{ active: displayType === 'gauge' }" @click="displayType = 'gauge'">Gauge</button>
-          <button class="s-type" :class="{ active: displayType === 'bar-h' }" @click="displayType = 'bar-h'">Bar →</button>
-          <button class="s-type" :class="{ active: displayType === 'bar-v' }" @click="displayType = 'bar-v'">Bar ↑</button>
+          <button class="s-type" :class="{ active: isType('badge') }" @click="displayType = 'badge'">Плашка</button>
+          <button class="s-type" :class="{ active: isType('gauge') }" @click="displayType = 'gauge'">Gauge</button>
+          <button class="s-type" :class="{ active: isType('bar-h') }" @click="displayType = 'bar-h'">Bar →</button>
+          <button class="s-type" :class="{ active: isType('bar-v') }" @click="displayType = 'bar-v'">Bar ↑</button>
           <span class="s-spacer"/>
           <span class="s-lbl">Min</span><input v-model.number="minVal" type="number" class="s-num"/>
           <span class="s-lbl">Max</span><input v-model.number="maxVal" type="number" class="s-num"/>
@@ -433,10 +436,10 @@ const barWarnZonesV = computed(() =>
     <!-- ── Settings (badge / gauge only — bars have own settings inside wrap) ── -->
     <div v-if="settingsOpen && (displayType === 'badge' || displayType === 'gauge')" class="ov-settings">
       <div class="s-row">
-        <button class="s-type" :class="{ active: displayType === 'badge' }" @click="displayType = 'badge'">Плашка</button>
-        <button class="s-type" :class="{ active: displayType === 'gauge' }" @click="displayType = 'gauge'">Gauge</button>
-        <button class="s-type" :class="{ active: displayType === 'bar-h' }" @click="displayType = 'bar-h'">Bar →</button>
-        <button class="s-type" :class="{ active: displayType === 'bar-v' }" @click="displayType = 'bar-v'">Bar ↑</button>
+        <button class="s-type" :class="{ active: isType('badge') }" @click="displayType = 'badge'">Плашка</button>
+        <button class="s-type" :class="{ active: isType('gauge') }" @click="displayType = 'gauge'">Gauge</button>
+        <button class="s-type" :class="{ active: isType('bar-h') }" @click="displayType = 'bar-h'">Bar →</button>
+        <button class="s-type" :class="{ active: isType('bar-v') }" @click="displayType = 'bar-v'">Bar ↑</button>
         <span class="s-spacer"/>
         <span class="s-lbl">Min</span><input v-model.number="minVal" type="number" class="s-num"/>
         <span class="s-lbl">Max</span><input v-model.number="maxVal" type="number" class="s-num"/>

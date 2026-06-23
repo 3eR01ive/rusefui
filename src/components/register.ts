@@ -19,6 +19,7 @@ import ConfigCurve from "./builtins/ConfigCurve.vue";
 import IniPanelsBrowser from "./builtins/IniPanelsBrowser.vue";
 import OutputChart from "./builtins/OutputChart.vue";
 import CompositeChart from "./builtins/CompositeChart.vue";
+import EngineSniffer from "./builtins/EngineSniffer.vue";
 import OutputValue from "./builtins/OutputValue.vue";
 import Dyno from "./builtins/Dyno.vue";
 import KnockPanel from "./builtins/KnockPanel.vue";
@@ -82,6 +83,8 @@ export function registerBuiltinComponents(): void {
     { autoSource: "outputChannels" });
   reg("composite-chart", "Composite Chart",     CompositeChart,
     { autoSource: "compositeLogger" });
+  reg("engine-sniffer",  "Engine Sniffer",      EngineSniffer,
+    { autoSource: "engineSniffer" });
   reg("output-value",    "Output Value",        OutputValue,
     { autoSource: "outputChannels", needsOutputField: true });
   reg("dyno",            "Dyno",                Dyno,

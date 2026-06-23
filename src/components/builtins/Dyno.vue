@@ -4,17 +4,15 @@ import {
   nextTick,
   onMounted,
   onUnmounted,
+  reactive,
   ref,
   shallowRef,
   watch,
 } from "vue";
-import { parse as parseYaml } from "yaml";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
-import { childPath } from "../../core/instance";
-import ComponentHost from "../ComponentHost.vue";
 import { useDataContext } from "../../core/data-context";
 import { initOutputChannels, useOutputChannels } from "../../composables/useOutputChannels";
-import { initConfig, useConfig, configDataRevision } from "../../composables/useConfig";
+import { initConfig, useConfig } from "../../composables/useConfig";
 import type { DynoRunPoint } from "../../composables/dynoTypes";
 import {
   buildDynoChartOverlay,
@@ -202,6 +200,33 @@ const chartNmMax = ref(DEFAULT_DYNO_AXIS.nmMax);
 const chartHpMin = ref(DEFAULT_DYNO_AXIS.hpMin);
 const chartHpMax = ref(DEFAULT_DYNO_AXIS.hpMax);
 
+// ---- Параметры расчёта (в настройках компонента; настройки MCU игнорируем) ----
+const DYNO_PARAM_DEFAULTS = {
+  dynoRpmStep: 100,
+  dynoSaeTemperatureC: 20,
+  dynoSaeRelativeHumidity: 80,
+  dynoSaeBaro: 101.33,
+  dynoCarWheelDiaInch: 18,
+  dynoCarWheelAspectRatio: 55,
+  dynoCarWheelTireWidthMm: 180,
+  dynoCarGearPrimaryReduction: 1.0,
+  dynoCarGearRatio: 1.0,
+  dynoCarGearFinalDrive: 3.5,
+  dynoCarCarMassKg: 1200,
+  dynoCarCargoMassKg: 80,
+  dynoCarCoeffOfDrag: 0.32,
+  dynoCarFrontalAreaM2: 2.2,
+} as const;
+type DynoParamKey = keyof typeof DYNO_PARAM_DEFAULTS;
+const DYNO_PARAM_KEYS = Object.keys(DYNO_PARAM_DEFAULTS) as DynoParamKey[];
+const carParams = reactive<Record<DynoParamKey, number>>({ ...DYNO_PARAM_DEFAULTS });
+
+/** Отправить параметры расчёта в Rust-логику дино. */
+async function pushDynoConfig(): Promise<void> {
+  if (!ready.value) return;
+  await dispatch("set_dyno_config", { ...carParams });
+}
+
 const chartAxes = computed((): DynoAxisRange =>
   normalizeDynoAxisRange(
     {
@@ -358,6 +383,7 @@ function buildDynoUiSettings(): DynoUiSettings {
     chartNmMax: axes.nmMax,
     chartHpMin: axes.hpMin,
     chartHpMax: axes.hpMax,
+    ...carParams,
   };
 }
 
@@ -395,6 +421,10 @@ async function applyDynoUiFromProject(opts?: { reloadPanelState?: boolean }): Pr
     chartNmMax.value = axes.nmMax;
     chartHpMin.value = axes.hpMin;
     chartHpMax.value = axes.hpMax;
+    for (const k of DYNO_PARAM_KEYS) {
+      const v = ui[k];
+      carParams[k] = Number.isFinite(v) ? Number(v) : DYNO_PARAM_DEFAULTS[k];
+    }
   } catch {
     ignoreTpsMin.value = Boolean(state.value.ignoreTpsMin);
     minRpm.value = Number(state.value.minRpm ?? 0);
@@ -402,6 +432,7 @@ async function applyDynoUiFromProject(opts?: { reloadPanelState?: boolean }): Pr
     applyingProjectUi = false;
   }
   await syncOptionsToRust();
+  await pushDynoConfig();
   scheduleRedraw();
 }
 
@@ -423,37 +454,8 @@ function scheduleSaveDynoUiToProject(): void {
   }, 400);
 }
 
-const dynoCharsChildren = shallowRef<ComponentInstance[]>([]);
-const dynoCharsLoading = ref(false);
-const dynoCharsError = ref<string | null>(null);
-let dynoCharsLoaded = false;
-
-const dynoCharsBasePath = computed(() => `${props.path}/dyno-chars`);
-
-async function ensureDynoCharsPanel(): Promise<void> {
-  if (dynoCharsLoaded || dynoCharsLoading.value) return;
-  dynoCharsLoading.value = true;
-  dynoCharsError.value = null;
-  try {
-    const panelFile = paramStringOr("dynoCharsPanel", "dynochars.panel.yaml");
-    const { loadGeneratedPanelYaml, normalizeGeneratedPanelFile } = await import(
-      "../../composables/useIniPanels"
-    );
-    const doc = parseYaml(
-      await loadGeneratedPanelYaml(normalizeGeneratedPanelFile(panelFile)),
-    ) as { children?: ComponentInstance[] };
-    dynoCharsChildren.value = doc.children ?? [];
-    dynoCharsLoaded = true;
-  } catch (e) {
-    dynoCharsError.value = e instanceof Error ? e.message : String(e);
-  } finally {
-    dynoCharsLoading.value = false;
-  }
-}
-
 function toggleSettings(): void {
   settingsOpen.value = !settingsOpen.value;
-  if (settingsOpen.value) void ensureDynoCharsPanel();
   scheduleSaveDynoUiToProject();
 }
 
@@ -641,10 +643,17 @@ function scheduleRedraw(): void {
 
 useChartCanvasLayout(chartWrapRef, scheduleRedraw);
 
-watch(configDataRevision, () => {
-  if (!ready.value || recording.value || !tabActive.value) return;
-  void dispatch("reload_config");
-});
+// Параметры расчёта — это настройки компонента (config MCU игнорируем). При
+// изменении сохраняем в проект и отправляем в Rust-логику дино.
+watch(
+  () => ({ ...carParams }),
+  () => {
+    if (applyingProjectUi) return;
+    void pushDynoConfig();
+    scheduleSaveDynoUiToProject();
+  },
+  { deep: true },
+);
 
 watch([tabActive, ready], ([active, r], [wasActive]) => {
   if (active && r) void onTabActivated();
@@ -685,10 +694,6 @@ watch(smoothStrength, (v) => {
 watch(chartHeight, () => {
   scheduleSaveDynoUiToProject();
   if (tabActive.value) scheduleRedraw();
-});
-
-watch(settingsOpen, (open) => {
-  if (open && tabActive.value) void ensureDynoCharsPanel();
 });
 
 let unregUiFlush: (() => void) | null = null;
@@ -903,16 +908,67 @@ onUnmounted(() => {
           </div>
 
           <div class="dyno-settings-block">
-            <h3 class="dyno-settings-title">Параметры авто (dynoChars)</h3>
-            <p v-if="dynoCharsLoading" class="dyno-field-hint">Загрузка полей…</p>
-            <p v-else-if="dynoCharsError" class="dyno-note dyno-note--error">{{ dynoCharsError }}</p>
-            <div v-else class="dyno-chars-host">
-              <ComponentHost
-                v-for="(child, index) in dynoCharsChildren"
-                :key="child.id ?? `${index}`"
-                :instance="child"
-                :path="childPath(dynoCharsBasePath, index, child)"
-              />
+            <h3 class="dyno-settings-title">Параметры расчёта (компонент)</h3>
+            <p class="dyno-field-hint">
+              Хранятся в настройках компонента, не в ECU. Настройки MCU не используются.
+            </p>
+            <div class="dyno-axis-grid">
+              <label class="dyno-field">
+                <span>Шаг RPM</span>
+                <input v-model.number="carParams.dynoRpmStep" type="number" min="1" max="250" step="1" />
+              </label>
+              <label class="dyno-field">
+                <span>SAE темп., °C</span>
+                <input v-model.number="carParams.dynoSaeTemperatureC" type="number" min="-80" max="80" step="1" />
+              </label>
+              <label class="dyno-field">
+                <span>SAE влажн., %</span>
+                <input v-model.number="carParams.dynoSaeRelativeHumidity" type="number" min="0" max="100" step="1" />
+              </label>
+              <label class="dyno-field">
+                <span>SAE баро, kPa</span>
+                <input v-model.number="carParams.dynoSaeBaro" type="number" min="30" max="110" step="0.1" />
+              </label>
+              <label class="dyno-field">
+                <span>Диск, дюйм</span>
+                <input v-model.number="carParams.dynoCarWheelDiaInch" type="number" min="0" max="24" step="0.5" />
+              </label>
+              <label class="dyno-field">
+                <span>Профиль, %</span>
+                <input v-model.number="carParams.dynoCarWheelAspectRatio" type="number" min="0" max="100" step="1" />
+              </label>
+              <label class="dyno-field">
+                <span>Ширина, мм</span>
+                <input v-model.number="carParams.dynoCarWheelTireWidthMm" type="number" min="0" max="400" step="5" />
+              </label>
+              <label class="dyno-field">
+                <span>Главная пара</span>
+                <input v-model.number="carParams.dynoCarGearPrimaryReduction" type="number" min="0" max="10" step="0.01" />
+              </label>
+              <label class="dyno-field">
+                <span>Передача</span>
+                <input v-model.number="carParams.dynoCarGearRatio" type="number" min="0" max="10" step="0.01" />
+              </label>
+              <label class="dyno-field">
+                <span>Главный редуктор</span>
+                <input v-model.number="carParams.dynoCarGearFinalDrive" type="number" min="0" max="10" step="0.01" />
+              </label>
+              <label class="dyno-field">
+                <span>Масса авто, кг</span>
+                <input v-model.number="carParams.dynoCarCarMassKg" type="number" min="0" max="5000" step="10" />
+              </label>
+              <label class="dyno-field">
+                <span>Груз, кг</span>
+                <input v-model.number="carParams.dynoCarCargoMassKg" type="number" min="0" max="1000" step="5" />
+              </label>
+              <label class="dyno-field">
+                <span>Cx (drag)</span>
+                <input v-model.number="carParams.dynoCarCoeffOfDrag" type="number" min="0" max="1" step="0.01" />
+              </label>
+              <label class="dyno-field">
+                <span>Площадь, м²</span>
+                <input v-model.number="carParams.dynoCarFrontalAreaM2" type="number" min="0" max="100" step="0.1" />
+              </label>
             </div>
           </div>
         </section>
@@ -920,7 +976,7 @@ onUnmounted(() => {
 
       <p v-if="!connected" class="dyno-note dyno-note--warn">Подключите ECU для live output.</p>
       <p v-else-if="!configLoaded" class="dyno-note dyno-note--warn">
-        Загрузите config — параметры dyno из dynoChars.
+        Загрузите config — нужен для live-каналов RPM/TPS.
       </p>
       <p
         v-if="message || error"

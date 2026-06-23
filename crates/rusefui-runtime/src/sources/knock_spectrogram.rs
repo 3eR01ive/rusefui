@@ -137,6 +137,9 @@ pub struct KnockSpectrogramEngine {
     /// Максимум u8 за весь прогон (не только видимое окно).
     run_peak_val: u8,
     run_peak_bin: usize,
+    /// Чувствительность спектра (knockSpectrumSensitivity из ECU). Множитель
+    /// сигнала перед FFT — ровно как на MCU (`fft_adc_sample`). По умолчанию 1.0.
+    sensitivity: f32,
 }
 
 impl KnockSpectrogramEngine {
@@ -162,6 +165,15 @@ impl KnockSpectrogramEngine {
             last_emit_total_columns: 0,
             run_peak_val: 0,
             run_peak_bin: MIN_PEAK_BIN,
+            sensitivity: SENSITIVITY,
+        }
+    }
+
+    /// Чувствительность спектра (knockSpectrumSensitivity, MCU). Применяется к
+    /// последующим столбцам — как на прошивке (множитель до FFT).
+    pub fn set_sensitivity(&mut self, sensitivity: f32) {
+        if sensitivity.is_finite() && sensitivity >= 0.0 {
+            self.sensitivity = sensitivity;
         }
     }
 
@@ -483,7 +495,7 @@ impl KnockSpectrogramEngine {
                 mean
             };
             let voltage = ADC_RATIO * (adc - mean);
-            self.scratch[i] = Complex::new(SENSITIVITY * voltage * self.window[i], 0.0);
+            self.scratch[i] = Complex::new(self.sensitivity * voltage * self.window[i], 0.0);
         }
         for i in FFT_SIZE..self.scratch.len() {
             self.scratch[i] = Complex::new(0.0, 0.0);

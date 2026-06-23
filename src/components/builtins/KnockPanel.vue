@@ -10,7 +10,7 @@ import {
 } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import { useDataContext } from "../../core/data-context";
-import { configDataRevision, initConfig, useConfig } from "../../composables/useConfig";
+import { configCanEdit, configDataRevision, initConfig, useConfig } from "../../composables/useConfig";
 import {
   drawKnockThresholdChart,
   type KnockRpmValuePoint,
@@ -77,7 +77,34 @@ const { state, dispatch, error, hasLogic, ready, mounting } = useRustComponent(
 const instanceRef = computed(() => props.instance);
 const { paramStringOr } = useInstanceBind(instanceRef);
 const dataCtx = useDataContext();
-const { snapshot: configSnapshot, getArray: getConfigArray } = useConfig();
+const {
+  snapshot: configSnapshot,
+  getArray: getConfigArray,
+  getField: getConfigField,
+  getFieldInfo: getConfigFieldInfo,
+  setField: setConfigField,
+} = useConfig();
+
+// ---- Настройки детонации из ECU (no-hardcode: только имя поля INI) ----------
+const KNOCK_SENSITIVITY_FIELD = "knockSpectrumSensitivity";
+const cfgEditable = computed(() => configCanEdit(configSnapshot.value));
+function hasConfigField(name: string): boolean {
+  void configSnapshot.value;
+  return getConfigFieldInfo(name) != null;
+}
+const knockSensitivity = computed(() => {
+  void configSnapshot.value;
+  return getConfigField(KNOCK_SENSITIVITY_FIELD);
+});
+async function commitKnockSensitivity(e: Event): Promise<void> {
+  const v = Number((e.target as HTMLInputElement).value);
+  if (!Number.isFinite(v)) return;
+  try {
+    await setConfigField(KNOCK_SENSITIVITY_FIELD, v);
+  } catch (err) {
+    console.warn(`[knock] не удалось записать ${KNOCK_SENSITIVITY_FIELD}:`, err);
+  }
+}
 const { snapshot: knockScopeSnapshot, spectrogramWidth, spectrogramHeight, spectrogramPeakHz, spectrogramPatchPixelMax, spectrogramMarkers } = useKnockScope();
 const { isActive: tabActive } = useTabActivity();
 const { getProjectUi, setProjectUi } = useProject();
@@ -1063,6 +1090,27 @@ onUnmounted(() => {
                     min="100"
                     max="3000"
                     step="50"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div
+              v-if="hasConfigField(KNOCK_SENSITIVITY_FIELD)"
+              class="knock-settings-group"
+            >
+              <h4 class="knock-settings-title">Детонация (ECU)</h4>
+              <div class="knock-settings-fields">
+                <label class="knock-field knock-field--wide">
+                  <span>Чувствительность спектра</span>
+                  <input
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    :value="knockSensitivity ?? ''"
+                    :disabled="!cfgEditable"
+                    @change="commitKnockSensitivity($event)"
                   />
                 </label>
               </div>

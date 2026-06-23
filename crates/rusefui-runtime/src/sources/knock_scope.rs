@@ -3,7 +3,7 @@
 //! ECU: кольцевой BigBuffer, batch v2 (все pending кадры за один READ).
 //! Хост: отдельный поток serial read → очередь сырых batch; FFT/UI — в worker.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::mpsc::{sync_channel, RecvTimeoutError, SyncSender};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread::{self, JoinHandle};
@@ -27,6 +27,8 @@ const STALL_HINT_AFTER: Duration = Duration::from_secs(4);
 const SERIAL_MUTEX_WAIT: Duration = Duration::from_millis(200);
 
 const CONFIG_ENABLE_FIELD: &str = "enableKnockScope";
+/// Чувствительность спектрограммы (как на MCU). Читаем из config по имени INI.
+const CONFIG_SENSITIVITY_FIELD: &str = "knockSpectrumSensitivity";
 
 /// Частота KNOCK_ADC на Proteus F4/F7.
 pub const KNOCK_ADC_HZ: f64 = 218_750.0;
@@ -429,6 +431,18 @@ fn config_enable_knock_scope(session: &EcuSession) -> Option<bool> {
         .map(|v| v >= 0.5)
 }
 
+/// knockSpectrumSensitivity из config (масштабированное значение, как в INI).
+fn config_knock_sensitivity(session: &EcuSession) -> Option<f32> {
+    let cfg = session.config().snapshot();
+    if !cfg.loaded {
+        return None;
+    }
+    cfg.values
+        .get(CONFIG_SENSITIVITY_FIELD)
+        .copied()
+        .map(|v| v as f32)
+}
+
 fn status_hint(
     capture_count: u64,
     knock_ready: bool,
@@ -787,10 +801,15 @@ impl KnockScopeSource {
             snap.knock_frames_dropped = 0;
         }
 
-        *self.spectrogram.lock().unwrap() = Some(KnockSpectrogramEngine::new(
-            KNOCK_ADC_HZ as f32,
-            window_ms,
-        ));
+        // Чувствительность спектра из ECU (knockSpectrumSensitivity). Стартовое
+        // значение — в движок сразу, дальше read-loop обновляет атомик вживую.
+        let start_sensitivity = config_knock_sensitivity(&session).unwrap_or(1.0);
+        let sensitivity_bits = Arc::new(AtomicU32::new(start_sensitivity.to_bits()));
+        {
+            let mut eng = KnockSpectrogramEngine::new(KNOCK_ADC_HZ as f32, window_ms);
+            eng.set_sensitivity(start_sensitivity);
+            *self.spectrogram.lock().unwrap() = Some(eng);
+        }
 
         self.running.store(true, Ordering::SeqCst);
 
@@ -813,8 +832,16 @@ impl KnockScopeSource {
                 let poll_abort = Arc::clone(&poll_abort);
                 let snapshot = Arc::clone(&snapshot);
                 let raw_tx = raw_tx.clone();
+                let sensitivity_bits = Arc::clone(&sensitivity_bits);
                 move || {
-                    knock_scope_read_loop(session, running, poll_abort, snapshot, raw_tx);
+                    knock_scope_read_loop(
+                        session,
+                        running,
+                        poll_abort,
+                        snapshot,
+                        raw_tx,
+                        sensitivity_bits,
+                    );
                 }
             })
             .expect("spawn knock scope read thread");
@@ -831,6 +858,7 @@ impl KnockScopeSource {
                     recording_ref_rpm,
                     max_cylinder_seen,
                     raw_rx,
+                    sensitivity_bits,
                 )
             })
             .expect("spawn knock scope process thread");
@@ -891,6 +919,7 @@ fn knock_scope_read_loop(
     poll_abort: Arc<AtomicBool>,
     snapshot: Arc<RwLock<KnockScopeSnapshot>>,
     raw_tx: SyncSender<Vec<u8>>,
+    sensitivity_bits: Arc<AtomicU32>,
 ) {
     while running.load(Ordering::SeqCst) {
         if poll_abort.load(Ordering::SeqCst) {
@@ -899,7 +928,16 @@ fn knock_scope_read_loop(
         }
 
         let connected = session.is_connected();
-        let allow_poll = connected && !session.config().snapshot().loading;
+        let cfg = session.config().snapshot();
+        let allow_poll = connected && !cfg.loading;
+        // Живое обновление чувствительности из config (как на MCU).
+        if let Some(v) = cfg
+            .loaded
+            .then(|| cfg.values.get(CONFIG_SENSITIVITY_FIELD).copied())
+            .flatten()
+        {
+            sensitivity_bits.store((v as f32).to_bits(), Ordering::Relaxed);
+        }
 
         if !allow_poll {
             thread::sleep(POLL_IDLE);
@@ -945,6 +983,7 @@ fn knock_scope_process_loop(
     recording_ref_rpm: Arc<Mutex<Option<f64>>>,
     max_cylinder_seen: Arc<Mutex<Option<u8>>>,
     raw_rx: std::sync::mpsc::Receiver<Vec<u8>>,
+    sensitivity_bits: Arc<AtomicU32>,
 ) {
     use std::sync::mpsc::TryRecvError;
 
@@ -1015,6 +1054,7 @@ fn knock_scope_process_loop(
                 last_max = samples.iter().copied().fold(f32::NEG_INFINITY, f32::max);
             }
             if let Some(eng) = spectrogram.lock().unwrap().as_mut() {
+                eng.set_sensitivity(f32::from_bits(sensitivity_bits.load(Ordering::Relaxed)));
                 eng.push_samples_with_marker(samples, last_cylinder, last_channel);
             }
             {

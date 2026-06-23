@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use serde::Serialize;
@@ -59,6 +60,11 @@ pub struct ConfigTableLogic {
     y_axis: Axis1dState,
     x_output_channel: Option<String>,
     y_output_channel: Option<String>,
+    /// Накопленные интерактивные правки (поле → индекс → значение), которые ещё
+    /// не записаны в ECU. Пишем в RAM на каждый шаг (живой предпросмотр), а в ECU
+    /// сбрасываем разом по `flush_writes` (отпускание клавиши/коммит) — иначе
+    /// каждый шаг шёл бы отдельной медленной записью по serial.
+    pending_writes: BTreeMap<String, BTreeMap<usize, f64>>,
 }
 
 impl ConfigTableLogic {
@@ -84,6 +90,7 @@ impl ConfigTableLogic {
             y_axis: Axis1dState::new(),
             x_output_channel: None,
             y_output_channel: None,
+            pending_writes: BTreeMap::new(),
         }
     }
 
@@ -274,8 +281,13 @@ impl ConfigTableLogic {
             let snap = self.config().snapshot();
             let live = self.session.is_connected() && snap.loaded && !snap.read_only;
             if live {
-                self.config()
-                    .write_array_values(&self.session, field, updates)?;
+                // Живой предпросмотр в RAM (мгновенно), запись в ECU откладываем
+                // до flush_writes — копим индексы/значения.
+                self.config().patch_array_values_snapshot(field, updates)?;
+                let pend = self.pending_writes.entry(field.to_string()).or_default();
+                for &(index, value) in updates {
+                    pend.insert(index, value);
+                }
             } else if snap.loaded && snap.read_only {
                 self.config()
                     .set_array_values_local(field, updates)?;
@@ -287,6 +299,36 @@ impl ConfigTableLogic {
             Ok(())
         })();
 
+        self.saving = false;
+        if let Err(e) = &result {
+            self.local_error = Some(e.clone());
+            let _ = self.reload();
+        }
+        result
+    }
+
+    /// Сбросить накопленные правки в ECU одной пакетной записью (по каждому полю).
+    /// Вызывается на отпускании клавиши/коммите. Без подключения — no-op (правки
+    /// уже в RAM/локальном config).
+    fn flush_pending_writes(&mut self) -> Result<(), String> {
+        if self.pending_writes.is_empty() {
+            return Ok(());
+        }
+        let snap = self.config().snapshot();
+        let live = self.session.is_connected() && snap.loaded && !snap.read_only;
+        let pending = std::mem::take(&mut self.pending_writes);
+        if !live {
+            return Ok(());
+        }
+        self.saving = true;
+        let result = (|| -> Result<(), String> {
+            for (field, idx_map) in &pending {
+                let updates: Vec<(usize, f64)> = idx_map.iter().map(|(&i, &v)| (i, v)).collect();
+                self.config()
+                    .write_array_values(&self.session, field, &updates)?;
+            }
+            Ok(())
+        })();
         self.saving = false;
         if let Err(e) = &result {
             self.local_error = Some(e.clone());
@@ -813,6 +855,9 @@ impl ComponentLogic for ConfigTableLogic {
             "keydown" => {
                 self.handle_keydown(&payload)?;
             }
+            "flush_writes" => {
+                self.flush_pending_writes()?;
+            }
             "interpolate" => match self.edit_focus {
                 EditFocus::X => {
                     if !self.axis_x_editable() {
@@ -845,6 +890,25 @@ impl ComponentLogic for ConfigTableLogic {
                     self.apply_updates(&updates)?;
                 }
             },
+            "collapse_selection" => {
+                // Esc: схлопнуть прямоугольное выделение в одну ячейку (верхний
+                // левый угол). Выбор только меняется — без записи значений.
+                match self.edit_focus {
+                    EditFocus::Grid => {
+                        let rect = self.grid.selection();
+                        self.grid.select_cell(rect.r0, rect.c0);
+                    }
+                    EditFocus::X => {
+                        let (i0, _) = self.x_axis.selection();
+                        self.x_axis.select(i0, self.x_values.len());
+                    }
+                    EditFocus::Y => {
+                        let (v0, _) = self.y_axis.selection();
+                        self.y_axis.select(v0, self.grid.rows);
+                    }
+                }
+                self.edit_buffer.clear();
+            }
             "select_cell" => {
                 let row = payload.get("row").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
                 let col = payload.get("col").and_then(|v| v.as_u64()).unwrap_or(0) as usize;

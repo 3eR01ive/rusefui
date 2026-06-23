@@ -21,39 +21,53 @@ function nowTs(): string {
 const POLL_INTERVAL_MS = 500;
 const MAX_LINES = 1000;
 
+// Shared singleton state: `ecu_console_poll` drains the ECU text buffer on the
+// firmware side, so two independent pollers would steal each other's lines.
+// All consumers read the same `lines` stream and a single timer runs while at
+// least one consumer is mounted (ref-counted).
+const lines = ref<EcuConsoleLine[]>([]);
+let timer: ReturnType<typeof setInterval> | null = null;
+let consumers = 0;
+
+async function poll() {
+  const raw = await invoke<string>("ecu_console_poll").catch(() => "");
+  if (!raw) return;
+  const ts = nowTs();
+  const newLines: EcuConsoleLine[] = raw
+    .split("\n")
+    .map((s) => s.trimEnd())
+    .filter((s) => s.length > 0)
+    .map((text) => ({ id: lineCounter++, text, ts }));
+  if (newLines.length === 0) return;
+  const combined = [...lines.value, ...newLines];
+  lines.value = combined.length > MAX_LINES ? combined.slice(-MAX_LINES) : combined;
+}
+
+function clear() {
+  lines.value = [];
+}
+
+function start() {
+  if (timer !== null) return;
+  timer = setInterval(() => { void poll(); }, POLL_INTERVAL_MS);
+}
+
+function stop() {
+  if (timer !== null) { clearInterval(timer); timer = null; }
+}
+
 export function useEcuConsole() {
-  const lines = ref<EcuConsoleLine[]>([]);
-  let timer: ReturnType<typeof setInterval> | null = null;
-
-  async function poll() {
-    const raw = await invoke<string>("ecu_console_poll").catch(() => "");
-    if (!raw) return;
-    const ts = nowTs();
-    const newLines: EcuConsoleLine[] = raw
-      .split("\n")
-      .map((s) => s.trimEnd())
-      .filter((s) => s.length > 0)
-      .map((text) => ({ id: lineCounter++, text, ts }));
-    if (newLines.length === 0) return;
-    const combined = [...lines.value, ...newLines];
-    lines.value = combined.length > MAX_LINES ? combined.slice(-MAX_LINES) : combined;
-  }
-
-  function clear() {
-    lines.value = [];
-  }
-
-  function start() {
-    if (timer !== null) return;
-    timer = setInterval(() => { void poll(); }, POLL_INTERVAL_MS);
-  }
-
-  function stop() {
-    if (timer !== null) { clearInterval(timer); timer = null; }
-  }
-
-  onMounted(start);
-  onUnmounted(stop);
+  onMounted(() => {
+    consumers += 1;
+    start();
+  });
+  onUnmounted(() => {
+    consumers -= 1;
+    if (consumers <= 0) {
+      consumers = 0;
+      stop();
+    }
+  });
 
   return { lines, clear, poll };
 }

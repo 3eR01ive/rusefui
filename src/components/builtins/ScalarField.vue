@@ -2,7 +2,7 @@
 import { computed, ref, watch } from "vue";
 import type { ComponentInstance, ComponentMeta } from "../../core/types";
 import type { DataBinding } from "../../core/types";
-import { configCanEdit, configCanView, initConfig, useConfig } from "../../composables/useConfig";
+import { configCanEdit, initConfig, useConfig } from "../../composables/useConfig";
 
 const props = defineProps<{
   instance: ComponentInstance;

@@ -5,8 +5,9 @@ use crate::tables::{parse_array_shape, parse_table_and_curve_editors};
 use crate::enum_options::parse_enum_options;
 use crate::error::IniError;
 use crate::model::{
-    ArrayField, BitsField, ConfigFieldKind, EnumField, FieldKind, IniFile, OutputChannelField,
-    OutputChannels, ScalarField, ScalarType, DEFAULT_INI_PAGE,
+    ArrayField, BitsField, CompositeLoggerDef, CompositeRecordField, ConfigFieldKind, EnumField,
+    FieldKind, IniFile, OutputChannelField, OutputChannels, ScalarField, ScalarType,
+    DEFAULT_INI_PAGE,
 };
 
 #[derive(PartialEq, Eq)]
@@ -17,6 +18,7 @@ enum Section {
     Constants,
     OutputChannels,
     ControllerCommands,
+    LoggerDefinition,
 }
 
 pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
@@ -36,6 +38,8 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
     let mut fields = Vec::new();
     let mut config_fields = HashMap::new();
     let mut ts_commands = HashMap::new();
+    let mut composite_logger: Option<CompositeLoggerDef> = None;
+    let mut collecting_composite = false;
 
     for (line_no, raw) in text.lines().enumerate() {
         let line = raw.trim();
@@ -50,8 +54,56 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
                 "Constants" => Section::Constants,
                 "OutputChannels" => Section::OutputChannels,
                 "ControllerCommands" => Section::ControllerCommands,
+                "LoggerDefinition" => Section::LoggerDefinition,
                 _ => Section::None,
             };
+            continue;
+        }
+
+        if section == Section::LoggerDefinition {
+            // Берём первый loggerDef типа `composite`; собираем его recordDef/recordField.
+            if let Some(rest) = line.strip_prefix("loggerDef") {
+                let value = rest.trim_start_matches([' ', '\t', '=']);
+                let kind = value.split(',').nth(2).map(|s| strip_inline_comment(s).trim());
+                if kind == Some("composite") && composite_logger.is_none() {
+                    composite_logger = Some(CompositeLoggerDef {
+                        header_len: 0,
+                        footer_len: 0,
+                        record_len: 0,
+                        fields: HashMap::new(),
+                    });
+                    collecting_composite = true;
+                } else {
+                    collecting_composite = false;
+                }
+                continue;
+            }
+            if collecting_composite {
+                if let Some(def) = composite_logger.as_mut() {
+                    if let Some(rest) = line.strip_prefix("recordDef") {
+                        let nums = parse_csv_usize(rest.trim_start_matches([' ', '\t', '=']));
+                        if nums.len() >= 3 {
+                            def.header_len = nums[0];
+                            def.footer_len = nums[1];
+                            def.record_len = nums[2];
+                        }
+                    } else if let Some(rest) = line.strip_prefix("recordField") {
+                        let value = rest.trim_start_matches([' ', '\t', '=']);
+                        let parts: Vec<&str> =
+                            strip_inline_comment(value).split(',').map(|s| s.trim()).collect();
+                        if parts.len() >= 4 {
+                            if let (Ok(start_bit), Ok(bit_count)) =
+                                (parts[2].parse::<u32>(), parts[3].parse::<u32>())
+                            {
+                                def.fields.insert(
+                                    parts[0].to_string(),
+                                    CompositeRecordField { start_bit, bit_count },
+                                );
+                            }
+                        }
+                    }
+                }
+            }
             continue;
         }
 
@@ -186,7 +238,21 @@ pub fn parse_ini(text: &str) -> Result<IniFile, IniError> {
         tables,
         curves,
         ts_commands,
+        composite_logger,
     })
+}
+
+/// Отрезать inline-комментарий `;` (как `dataReadTimeout = 10000 ; ms`).
+fn strip_inline_comment(s: &str) -> &str {
+    s.split(';').next().unwrap_or(s)
+}
+
+/// Разобрать список целых через запятую (`0, 0, 8`), игнорируя комментарий.
+fn parse_csv_usize(s: &str) -> Vec<usize> {
+    strip_inline_comment(s)
+        .split(',')
+        .filter_map(|p| p.trim().parse::<usize>().ok())
+        .collect()
 }
 
 /// `Z\x00\x14\x00\x0d` → байты для CRC-запроса (без envelope).
@@ -471,6 +537,28 @@ pub fn split_ini_args(s: &str) -> Result<Vec<String>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parse_composite_logger_def() {
+        let text = "\
+[LoggerDefinition]
+\tloggerDef = compositeLogger, \"Composite Logger\", composite
+\t\trecordDef = 0, 0, 10
+\t\trecordField = refTime, \"RefTime\", 0, 32, 0.001, \"ms\"
+\t\trecordField = priLevel, \"PriLevel\", 32, 1, 1, \"Flag\"
+\t\trecordField = tdc, \"TDC\", 36, 1, 1, \"Flag\"
+\t\trecordField = coil1, \"Coil 1\", 40, 1, 1, \"Flag\"
+\tloggerDef = compositeLogger, \"Primary Tooth Time Logger\", tooth
+\t\trecordDef = 0, 0, 99
+";
+        let ini = parse_ini(text).expect("parse");
+        let def = ini.composite_logger.expect("composite def");
+        assert_eq!(def.record_len, 10); // не подхватил tooth (99)
+        assert_eq!(def.fields["priLevel"].start_bit, 32);
+        assert_eq!(def.fields["refTime"].bit_count, 32);
+        assert_eq!(def.fields["tdc"].start_bit, 36);
+        assert!(def.fields.contains_key("coil1"));
+    }
 
     #[test]
     fn parse_proteus_fixture() {

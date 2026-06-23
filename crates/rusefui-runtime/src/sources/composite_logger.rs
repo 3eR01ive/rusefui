@@ -6,7 +6,10 @@ use std::sync::{Arc, Mutex, RwLock};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-use rusefi_protocol::{parse_composite_records, CompositeParseState, CompositeRecord};
+use rusefi_ini::CompositeLoggerDef;
+use rusefi_protocol::{
+    parse_composite_records_with, CompositeLayout, CompositeParseState, CompositeRecord,
+};
 use serde::{Deserialize, Serialize};
 
 use super::composite_data_log::CompositeDataLogWriter;
@@ -92,6 +95,59 @@ impl CompositeSnapshot {
             last_error: None,
             rpm: None,
         }
+    }
+}
+
+/// Построить раскладку записи composite из INI-определения (или дефолт 8 байт).
+fn build_composite_layout(def: Option<&CompositeLoggerDef>) -> CompositeLayout {
+    let Some(def) = def else {
+        return CompositeLayout::default();
+    };
+    if def.record_len == 0 {
+        // recordLen не распознан (например, макрос не подставлен) — дефолт.
+        return CompositeLayout::default();
+    }
+    let bit = |name: &str| def.fields.get(name).map(|f| f.start_bit);
+    let (ref_time_bit, ref_time_bits) = def
+        .fields
+        .get("refTime")
+        .map(|f| (f.start_bit, f.bit_count))
+        .unwrap_or((0, 32));
+    let collect = |prefix: &str| -> Vec<u32> {
+        let mut v: Vec<u32> = def
+            .fields
+            .iter()
+            .filter(|(k, _)| {
+                k.starts_with(prefix)
+                    && k[prefix.len()..]
+                        .chars()
+                        .next()
+                        .is_some_and(|c| c.is_ascii_digit())
+            })
+            .map(|(_, f)| f.start_bit)
+            .collect();
+        v.sort_unstable();
+        v
+    };
+    let mut coil_bits = collect("coil");
+    if coil_bits.is_empty() {
+        coil_bits = (40..48).collect();
+    }
+    let mut inj_bits = collect("inj");
+    if inj_bits.is_empty() {
+        inj_bits = (48..56).collect();
+    }
+    CompositeLayout {
+        record_len: def.record_len,
+        ref_time_bit,
+        ref_time_bits,
+        pri_bit: bit("priLevel"),
+        sec_bit: bit("secLevel"),
+        tdc_bit: bit("tdc"),
+        sync_bit: bit("sync"),
+        cam_bit: bit("trigger"),
+        coil_bits,
+        inj_bits,
     }
 }
 
@@ -265,6 +321,8 @@ impl CompositeLoggerSource {
 
         session.knock_scope().disable_on_ecu(&session);
         session.knock_scope().stop();
+        // Engine sniffer непрерывно читает G и конкурирует за порт — останавливаем.
+        session.engine_sniffer().stop();
 
         self.running.store(false, Ordering::SeqCst);
         let _ = self.thread.lock().unwrap().take();
@@ -294,6 +352,8 @@ impl CompositeLoggerSource {
         let parse_state = Arc::clone(&self.parse_state);
         let next_tdc_cycle = Arc::new(AtomicU64::new(0));
         let on_tick = Arc::new(on_tick);
+        // Раскладка записи composite — из INI прошивки (размер 8/10/… зависит от неё).
+        let layout = build_composite_layout(session.ini_context().composite_logger.as_ref());
 
         let handle = thread::Builder::new()
             .name("rusefui-composite-poll".into())
@@ -307,6 +367,7 @@ impl CompositeLoggerSource {
                     log_writer,
                     next_tdc_cycle,
                     on_tick,
+                    layout,
                 );
             })
             .expect("spawn composite poll thread");
@@ -325,6 +386,7 @@ fn poll_loop(
     log_writer: Option<Arc<Mutex<CompositeDataLogWriter>>>,
     next_tdc_cycle: Arc<AtomicU64>,
     on_tick: Arc<dyn Fn(CompositeSnapshot) + Send + Sync>,
+    layout: CompositeLayout,
 ) {
     let mut last_rpm_check = std::time::Instant::now();
     let mut last_status_emit = std::time::Instant::now();
@@ -382,7 +444,7 @@ fn poll_loop(
                 Ok(payload) if !payload.is_empty() => {
                     let parsed = {
                         let mut st = parse_state.lock().unwrap();
-                        parse_composite_records(&payload, &mut st)
+                        parse_composite_records_with(&payload, &mut st, &layout)
                     };
                     if !parsed.is_empty() {
                         let batch: Vec<CompositeEventJson> =

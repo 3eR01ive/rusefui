@@ -22,9 +22,10 @@ pub use decode::{
 pub use error::IniError;
 pub use menu::{parse_menu_section, IniMenu};
 pub use model::{
-    config_field_ini_page, ArrayField, ArrayShape, BitsField, ConfigFieldKind, EnumField,
-    EnumOption, FieldKind, IniCurveDef, IniFile, IniTableDef, OutputChannelField, OutputChannels,
-    ScalarField, ScalarType, StringField, DEFAULT_INI_PAGE,
+    config_field_ini_page, ArrayField, ArrayShape, BitsField, CompositeLoggerDef,
+    CompositeRecordField, ConfigFieldKind, EnumField, EnumOption, FieldKind, IniCurveDef, IniFile,
+    IniTableDef, OutputChannelField, OutputChannels, ScalarField, ScalarType, StringField,
+    DEFAULT_INI_PAGE,
 };
 pub use parse::{parse_ini, split_ini_args, unescape_ini_bytes};
 

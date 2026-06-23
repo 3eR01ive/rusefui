@@ -174,7 +174,7 @@ useComponentBinding(props.path, onComponentKeydown);
         </div>
       </div>
 
-      <div ref="logRef" class="cmd-log" role="log" aria-live="polite" aria-relevant="additions">
+      <div ref="logRef" class="cmd-log selectable" role="log" aria-live="polite" aria-relevant="additions">
         <p v-if="!exchanges.length" class="cmd-log-empty">
           Ответы ECU появятся здесь после отправки команды.
         </p>
